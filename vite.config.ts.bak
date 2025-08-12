@@ -1,13 +1,8 @@
 ﻿import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
-import { fileURLToPath, URL } from "node:url"
 
 export default defineConfig({
   plugins: [react()],
+  // Important for GitHub Pages so assets resolve correctly
   base: "/all-done-sites-platform/",
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
-  },
 })
