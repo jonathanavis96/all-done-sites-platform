@@ -17,6 +17,8 @@ jobs:
           node-version: "20"
       - run: npm ci
       - run: npm run build
+      - run: ls -la dist                  # debug: list files so we can see output in logs
+      - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
