@@ -1,6 +1,0 @@
-git checkout -b feature/site-pages-and-deploy
-git apply --whitespace=fix all-done-sites.patch
-npm i
-git add -A
-git commit -m "Add pages, router, SEO, and GitHub Pages deploy"
-git push -u origin feature/site-pages-and-deploy
