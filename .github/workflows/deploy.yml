@@ -1,12 +1,14 @@
-﻿name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,11 +19,12 @@ jobs:
           node-version: "20"
       - run: npm ci
       - run: npm run build
-      - run: ls -la dist                  # debug: list files so we can see output in logs
+      - run: ls -la dist
       - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
