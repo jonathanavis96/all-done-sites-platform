@@ -1,10 +1,9 @@
 import { ReactNode } from "react";
-import { NavLink, useLocation, Outlet } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, Phone } from "lucide-react";
-import Hero from "@/components/Hero"; // Adjust path if needed
 
-const base = import.meta.env.BASE_URL; // Ensures correct path on GitHub Pages or subfolders
+const base = import.meta.env.BASE_URL; // for logo path if you need it later
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -20,7 +19,6 @@ export const SiteHeader = () => {
           className="flex items-center gap-2"
           aria-label="All Done Sites Home"
         >
-          {/* Updated logo image */}
           <img
             src={`${base}logo.png`}
             alt="All Done Sites Logo"
@@ -30,21 +28,11 @@ export const SiteHeader = () => {
         </NavLink>
 
         <nav className="hidden md:flex items-center gap-1">
-          <NavLink className={navLinkClass} to="/how-it-works">
-            How It Works
-          </NavLink>
-          <NavLink className={navLinkClass} to="/pricing">
-            Pricing
-          </NavLink>
-          <NavLink className={navLinkClass} to="/portfolio">
-            Portfolio
-          </NavLink>
-          <NavLink className={navLinkClass} to="/faq">
-            FAQ
-          </NavLink>
-          <NavLink className={navLinkClass} to="/contact">
-            Contact
-          </NavLink>
+          <NavLink className={navLinkClass} to="/how-it-works">How It Works</NavLink>
+          <NavLink className={navLinkClass} to="/pricing">Pricing</NavLink>
+          <NavLink className={navLinkClass} to="/portfolio">Portfolio</NavLink>
+          <NavLink className={navLinkClass} to="/faq">FAQ</NavLink>
+          <NavLink className={navLinkClass} to="/contact">Contact</NavLink>
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
@@ -58,12 +46,7 @@ export const SiteHeader = () => {
           </Button>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          aria-label="Open menu"
-        >
+        <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu">
           <Menu />
         </Button>
       </div>
@@ -79,18 +62,8 @@ export const SiteFooter = () => {
           © {new Date().getFullYear()} All Done Sites. All rights reserved.
         </p>
         <nav className="flex gap-4 text-sm">
-          <NavLink
-            to="/faq"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            FAQ
-          </NavLink>
-          <NavLink
-            to="/contact"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            Contact
-          </NavLink>
+          <NavLink to="/faq" className="text-muted-foreground hover:text-foreground">FAQ</NavLink>
+          <NavLink to="/contact" className="text-muted-foreground hover:text-foreground">Contact</NavLink>
         </nav>
       </div>
     </footer>
@@ -98,19 +71,12 @@ export const SiteFooter = () => {
 };
 
 export default function Layout({ children }: { children?: ReactNode }) {
-  const location = useLocation();
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <SiteHeader />
-
-      {/* Only show Hero on homepage */}
-      {location.pathname === "/" && <Hero />}
-
       <main className="flex-1">
         {children || <Outlet />}
       </main>
-
       <SiteFooter />
     </div>
   );
