@@ -47,21 +47,32 @@ export default function Index() {
       <section className="container py-10 md:py-14">
         <div className="mx-auto max-w-4xl text-center">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-            Websites built, hosted, and done for you.
+            Websites built, hosted,
+            <br className="hidden md:block" />
+            <span className="block">and done for you.</span>
           </h1>
+
           <p className="mt-3 text-lg md:text-xl text-muted-foreground">
             All Done Sites — one simple monthly fee. No hassles.
           </p>
 
           {/* CTA row */}
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
-            {/* See Pricing — grey “glass” with blur */}
-            <Button asChild size="lg" className="bg-gray-800/40 text-white border border-white/10 backdrop-blur-md hover:bg-gray-800/60 transition">
+            {/* See Pricing — glassy/transparent with blur */}
+            <Button
+              asChild
+              size="lg"
+              className="rounded-2xl bg-white/20 text-white border border-white/30 backdrop-blur-md shadow-sm hover:bg-white/30 hover:border-white/40 transition"
+            >
               <NavLink to="/pricing">See Pricing</NavLink>
             </Button>
 
             {/* Book a Call — purple */}
-            <Button asChild size="lg" className="bg-indigo-500 hover:bg-indigo-600 text-white transition">
+            <Button
+              asChild
+              size="lg"
+              className="rounded-2xl bg-indigo-500 hover:bg-indigo-600 text-white shadow transition"
+            >
               <NavLink to="/contact">Book a Call</NavLink>
             </Button>
           </div>
@@ -82,7 +93,7 @@ export default function Index() {
               aria-hidden="true"
             />
 
-            {/* Reintroduced heading */}
+            {/* Sub-heading as requested */}
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
               Your website, done for you — for one monthly fee
             </h2>
@@ -95,7 +106,11 @@ export default function Index() {
             {/* Buttons under the sentence */}
             <div className="mb-8 flex flex-col sm:flex-row gap-4">
               {/* Get Started (primary) */}
-              <Button asChild size="lg" className="bg-indigo-500 hover:bg-indigo-600 text-white transition">
+              <Button
+                asChild
+                size="lg"
+                className="rounded-2xl bg-indigo-500 hover:bg-indigo-600 text-white shadow transition"
+              >
                 <NavLink to="/pricing">Get Started</NavLink>
               </Button>
 
@@ -104,7 +119,7 @@ export default function Index() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="border-emerald-500 text-emerald-600 hover:bg-emerald-500 hover:text-white transition"
+                className="rounded-2xl border-emerald-500 text-emerald-600 hover:bg-emerald-500 hover:text-white transition"
               >
                 <NavLink to="/how-it-works">See how it works</NavLink>
               </Button>
