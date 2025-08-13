@@ -16,11 +16,7 @@ export default function Index() {
     if (!v) return;
     v.muted = true; // required for autoplay on iOS
     const tryPlay = async () => {
-      try {
-        await v.play();
-      } catch {
-        /* ignore; poster remains until user interacts */
-      }
+      try { await v.play(); } catch { /* ignore; poster remains until user interacts */ }
     };
     if (v.readyState >= 2) tryPlay();
     else v.addEventListener("loadeddata", tryPlay, { once: true });
@@ -58,21 +54,17 @@ export default function Index() {
 
           {/* CTA row */}
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
-            {/* See Pricing — glassy/transparent with blur */}
+            {/* See Pricing — darker glassy/transparent with blur */}
             <Button
               asChild
               size="lg"
-              className="rounded-2xl bg-white/20 text-white border border-white/30 backdrop-blur-md shadow-sm hover:bg-white/30 hover:border-white/40 transition"
+              className="rounded-2xl bg-zinc-800/60 text-white border border-white/10 backdrop-blur-xl shadow-sm hover:bg-zinc-800/80 hover:border-white/20 transition"
             >
               <NavLink to="/pricing">See Pricing</NavLink>
             </Button>
 
-            {/* Book a Call — purple */}
-            <Button
-              asChild
-              size="lg"
-              className="rounded-2xl bg-indigo-500 hover:bg-indigo-600 text-white shadow transition"
-            >
+            {/* Book a Call — use the same gradient style as site header (variant=hero) */}
+            <Button asChild size="lg" variant="hero" className="rounded-2xl">
               <NavLink to="/contact">Book a Call</NavLink>
             </Button>
           </div>
@@ -93,9 +85,11 @@ export default function Index() {
               aria-hidden="true"
             />
 
-            {/* Sub-heading as requested */}
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              Your website, done for you — for one monthly fee
+            {/* Enlarged, two-line structure */}
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+              Your website, done for you
+              <br />
+              <span className="inline-block">— for one monthly fee</span>
             </h2>
 
             <p className="text-lg text-muted-foreground mb-8">
@@ -105,12 +99,8 @@ export default function Index() {
 
             {/* Buttons under the sentence */}
             <div className="mb-8 flex flex-col sm:flex-row gap-4">
-              {/* Get Started (primary) */}
-              <Button
-                asChild
-                size="lg"
-                className="rounded-2xl bg-indigo-500 hover:bg-indigo-600 text-white shadow transition"
-              >
+              {/* Get Started — match top-right gradient (variant=hero) */}
+              <Button asChild size="lg" variant="hero" className="rounded-2xl">
                 <NavLink to="/pricing">Get Started</NavLink>
               </Button>
 
