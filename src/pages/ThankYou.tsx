@@ -15,8 +15,15 @@ export default function ThankYou() {
   const [status, setStatus] = React.useState<"idle" | "sending">("idle");
   const location = useLocation();
   const params = new URLSearchParams(location.search);
-  const plan = params.get("plan") ?? "";
-  const region = params.get("region") ?? "";
+  // Extract plan and region from query parameters.  Paystack appends a
+  // `?reference=...` after our own query string which can leave a
+  // stray question mark in the `region` value (e.g. region=za?reference=123).
+  // Split at the first question mark to avoid leaking the reference into
+  // region or plan.
+  const rawPlan = params.get("plan") ?? "";
+  const rawRegion = params.get("region") ?? "";
+  const plan = rawPlan.split("?")[0];
+  const region = rawRegion.split("?")[0];
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

@@ -3,6 +3,15 @@ import Seo from "@/components/Seo";
 import { Check, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 // -----------------------------
 // Region & currency config
@@ -127,6 +136,13 @@ function contactHref(planName: string, region: RegionKey): string {
 // -----------------------------
 export default function PricingPage() {
   const [region, setRegion] = useState<RegionKey>("OTHER");
+  // Holds the selected plan for which to show the "Get Started" modal. When null no modal is open.
+  const [activePlan, setActivePlan] = useState<{
+    id: "launch" | "business" | "premium";
+    name: string;
+    price: string;
+    payLink: string;
+  } | null>(null);
 
   useEffect(() => {
     // One-time auto-detection (no manual override UI)
@@ -199,6 +215,31 @@ export default function PricingPage() {
     ];
   }, [region, prices]);
 
+  /**
+   * Handles the "Call us" action.  On mobile devices it triggers a tel: link to
+   * start a phone call immediately.  On desktop browsers, tel: links often
+   * don’t work so we instead show an alert with the number.  The number is
+   * copied to the clipboard if available to make it easy for the user to
+   * paste into their phone or dialer.
+   */
+  function handleCall() {
+    const phone = "+27822227457";
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = `tel:${phone}`;
+    } else {
+      // Try to copy to clipboard; if not possible, just show alert.
+      (async () => {
+        try {
+          await navigator.clipboard?.writeText?.(phone);
+          alert(`Call us at ${phone}.\n\nThe number has been copied to your clipboard.`);
+        } catch {
+          alert(`Call us at ${phone}`);
+        }
+      })();
+    }
+  }
+
   return (
     <>
       <Seo
@@ -264,40 +305,21 @@ export default function PricingPage() {
               </ul>
 
               <div className="mt-8">
-                {/* Primary call-to-action: Pay Now */}
-                {plan.highlight ? (
-                  <a
-                    href={plan.payLink}
-                    className="inline-flex w-full items-center justify-center rounded-xl border border-primary bg-primary/95 px-4 py-2 text-sm font-medium text-primary-foreground shadow-md transition hover:bg-primary"
-                  >
-                    Pay Now
-                  </a>
-                ) : (
-                  <a
-                    href={plan.payLink}
-                    className="inline-flex w-full items-center justify-center rounded-xl border px-4 py-2 text-sm font-medium shadow-sm text-primary transition hover:bg-primary/10"
-                  >
-                    Pay Now
-                  </a>
-                )}
-
-                {/* Secondary contact options */}
-                <div className="mt-3 flex flex-col gap-2">
-                  <a
-                    href="https://wa.me/2765864469"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex w-full items-center justify-center rounded-xl border px-4 py-2 text-sm font-medium shadow-sm text-primary transition hover:bg-primary/10"
-                  >
-                    WhatsApp
-                  </a>
-                  <a
-                    href="tel:+27822227457"
-                    className="inline-flex w-full items-center justify-center rounded-xl border px-4 py-2 text-sm font-medium shadow-sm text-primary transition hover:bg-primary/10"
-                  >
-                    Call Us
-                  </a>
-                </div>
+                {/* Primary call-to-action: open a modal with multiple options */}
+                <Button
+                  className="w-full rounded-xl"
+                  variant={plan.highlight ? "hero" : "outline"}
+                  onClick={() =>
+                    setActivePlan({
+                      id: plan.id,
+                      name: plan.name,
+                      price: plan.price,
+                      payLink: plan.payLink,
+                    })
+                  }
+                >
+                  Get Started
+                </Button>
               </div>
 
               {plan.highlight && (
@@ -327,6 +349,66 @@ export default function PricingPage() {
           prevailing exchange rate, so the final price in your currency may vary.
         </p>
       </section>
+
+      {/* Modal for selecting how to get started.  When a plan card is clicked the
+          activePlan state is set and this dialog becomes visible. */}
+      {activePlan && (
+        <Dialog open={true} onOpenChange={() => setActivePlan(null)}>
+          <DialogContent className="max-w-md sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                {activePlan.name} Plan – Get Started
+              </DialogTitle>
+              <DialogDescription>
+                Choose how you’d like to get started with the {activePlan.name} plan.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 mt-4">
+              {/* Pay Now button */}
+              <Button
+                variant="primary"
+                asChild
+              >
+                <a href={activePlan.payLink} target="_blank" rel="noopener noreferrer">
+                  Pay&nbsp;Now
+                </a>
+              </Button>
+              {/* WhatsApp button */}
+              <Button
+                variant="outline"
+                asChild
+              >
+                <a href="https://wa.me/2765864469" target="_blank" rel="noopener noreferrer">
+                  WhatsApp&nbsp;us
+                </a>
+              </Button>
+              {/* Call us button */}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  handleCall();
+                }}
+              >
+                Call&nbsp;us
+              </Button>
+              {/* Email/contact button */}
+              <Button
+                variant="outline"
+                asChild
+              >
+                <Link to={contactHref(activePlan.name, region)}>
+                  Email&nbsp;us
+                </Link>
+              </Button>
+            </div>
+            <DialogFooter className="mt-6">
+              <DialogClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
