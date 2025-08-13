@@ -1,30 +1,16 @@
 import React from "react";
 
-/** Works on Vite/CRA/GitHub Pages */
-function publicUrl(path: string) {
-  // Vite
-  // @ts-ignore
-  if (typeof import.meta !== "undefined" && import.meta.env?.BASE_URL) {
-    // @ts-ignore
-    return `${import.meta.env.BASE_URL}${path.replace(/^\/+/, "")}`;
-  }
-  // CRA/default
-  // @ts-ignore
-  const base = (typeof process !== "undefined" && process.env?.PUBLIC_URL) || "";
-  return `${base}/${path.replace(/^\/+/, "")}`;
-}
-
 export default function Hero() {
-  const videoSrc = publicUrl("hero.mp4");
-  const posterSrc = publicUrl("hero-poster.png");
+  // Works locally and on GitHub Pages (/all-done-sites-platform/)
+  const base = import.meta.env.BASE_URL || "/";
 
   return (
     <header className="relative min-h-[70vh] w-full overflow-hidden flex items-center justify-center text-white bg-black">
-      {/* VIDEO ONLY */}
+      {/* VIDEO ONLY (no gradient) */}
       <video
         className="absolute inset-0 w-full h-full object-cover"
-        src={videoSrc}
-        poster={posterSrc}
+        src={`${base}hero.mp4`}
+        poster={`${base}hero-poster.png`}
         autoPlay
         muted
         loop
