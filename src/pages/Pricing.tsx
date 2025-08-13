@@ -138,10 +138,13 @@ function contactHref(planId: string, region: RegionKey): string {
   // form will show a dropdown when omitted.
   params.set("plan", planId);
   params.set("region", region);
-  // Return a relative path (no leading slash).  The Router basename will be
-  // applied automatically, preventing duplicate base paths such as
-  // `/all-done-sites-platform/all-done-sites-platform/...` when navigating.
-  return `contact?${params.toString()}`;
+  // Prefix with a slash so React Router treats this as an absolute path.
+  // The BrowserRouter basename (e.g. /all-done-sites-platform) will be
+  // prepended automatically, resulting in URLs like
+  // `/all-done-sites-platform/contact?plan=...&region=...`.  Without the
+  // leading slash the path becomes relative to the current page (e.g.
+  // /pricing/contact), which is why the previous version produced 404s.
+  return `/contact?${params.toString()}`;
 }
 
 // -----------------------------
@@ -357,9 +360,9 @@ export default function PricingPage() {
              here because the Link component automatically handles the router
              basename. */}
           <Button asChild variant="default" className="rounded-xl">
-            {/* Link to a dedicated enterprise contact page.  Use a relative path so
-               the Router basename is prepended only once. */}
-            <Link to="contact-enterprise">Talk to us</Link>
+            {/* Link to a dedicated enterprise contact page.  Prefix with a slash so
+               the Router treats this as an absolute path under the basename. */}
+            <Link to="/contact-enterprise">Talk to us</Link>
           </Button>
         </div>
         </div>
