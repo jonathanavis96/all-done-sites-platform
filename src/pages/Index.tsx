@@ -19,7 +19,7 @@ export default function Index() {
       try {
         await v.play();
       } catch {
-        // ignore; browser may block before interaction — poster will show
+        /* ignore; poster remains until user interacts */
       }
     };
     if (v.readyState >= 2) tryPlay();
@@ -43,20 +43,25 @@ export default function Index() {
         jsonLd={jsonLd}
       />
 
-      {/* Top headline (no big image) */}
+      {/* Top headline (centered) */}
       <section className="container py-10 md:py-14">
-        <div className="max-w-4xl">
+        <div className="mx-auto max-w-4xl text-center">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
             Websites built, hosted, and done for you.
           </h1>
           <p className="mt-3 text-lg md:text-xl text-muted-foreground">
             All Done Sites — one simple monthly fee. No hassles.
           </p>
-          <div className="mt-6 flex flex-col sm:flex-row gap-4">
-            <Button asChild size="lg" variant="hero">
+
+          {/* CTA row */}
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+            {/* See Pricing — grey “glass” with blur */}
+            <Button asChild size="lg" className="bg-gray-800/40 text-white border border-white/10 backdrop-blur-md hover:bg-gray-800/60 transition">
               <NavLink to="/pricing">See Pricing</NavLink>
             </Button>
-            <Button asChild size="lg" variant="outline">
+
+            {/* Book a Call — purple */}
+            <Button asChild size="lg" className="bg-indigo-500 hover:bg-indigo-600 text-white transition">
               <NavLink to="/contact">Book a Call</NavLink>
             </Button>
           </div>
@@ -76,11 +81,36 @@ export default function Index() {
               }}
               aria-hidden="true"
             />
-            <h2 className="sr-only">Why All Done Sites</h2>
+
+            {/* Reintroduced heading */}
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+              Your website, done for you — for one monthly fee
+            </h2>
+
             <p className="text-lg text-muted-foreground mb-8">
               We design, host, maintain, and update your site. No upfront costs. Just a friendly
               monthly subscription so you can focus on your business.
             </p>
+
+            {/* Buttons under the sentence */}
+            <div className="mb-8 flex flex-col sm:flex-row gap-4">
+              {/* Get Started (primary) */}
+              <Button asChild size="lg" className="bg-indigo-500 hover:bg-indigo-600 text-white transition">
+                <NavLink to="/pricing">Get Started</NavLink>
+              </Button>
+
+              {/* See how it works — outline with green hover */}
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="border-emerald-500 text-emerald-600 hover:bg-emerald-500 hover:text-white transition"
+              >
+                <NavLink to="/how-it-works">See how it works</NavLink>
+              </Button>
+            </div>
+
+            {/* Feature bullets */}
             <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="text-primary" /> No upfront cost
