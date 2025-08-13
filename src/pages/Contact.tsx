@@ -28,9 +28,34 @@ export default function Contact() {
       return rawSubject;
     }
   }, [rawSubject]);
-  // State for the selected plan.  If a plan parameter is present in the URL
-  // then initialise with that value; otherwise the user can choose one.
-  const [selectedPlan, setSelectedPlan] = React.useState<string>(planParam);
+  // Try to derive a plan identifier from the `subject` query for backward
+  // compatibility.  Subjects are usually formatted like "Launch Plan Enquiry".
+  const subjectPlan = React.useMemo(() => {
+    const match = decodedSubject.match(/^(Launch|Business|Premium|Enterprise)/i);
+    return match ? match[0].toLowerCase() : "";
+  }, [decodedSubject]);
+  // State for the selected plan.  If a `plan` query parameter is present
+  // initialise with that value; otherwise fall back to the derived
+  // subject-based plan; if neither is present the user can choose one.
+  const [selectedPlan, setSelectedPlan] = React.useState<string>(planParam || subjectPlan);
+
+  // Update the selected plan when the URL parameters change.  We only
+  // override the plan when no value has been chosen yet to avoid
+  // overriding the user’s manual selection from the dropdown.  Without
+  // this effect the initial state is set once and won’t respond to
+  // subsequent updates, which caused the plan dropdown to remain
+  // unselected when arriving via a `subject` query parameter.
+  React.useEffect(() => {
+    const initial = planParam || subjectPlan;
+    if (initial && !selectedPlan) {
+      setSelectedPlan(initial);
+    }
+    // We intentionally omit `selectedPlan` from the dependency array
+    // because we only want to update when `planParam` or `subjectPlan`
+    // changes as a result of navigation, not when the user manually
+    // selects a plan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planParam, subjectPlan]);
   // Determine whether this enquiry is for an enterprise plan.  We treat a
   // selected plan of "enterprise" as enterprise, otherwise we fall back to
   // inspecting the subject query for the word "enterprise".
@@ -102,24 +127,6 @@ export default function Contact() {
         </p>
       </header>
 
-      {/* Provide quick contact information for users who prefer to speak directly. */}
-      <div className="mt-8 space-y-1 text-sm">
-        <p>
-          Prefer to speak to us first?{' '}
-          <a href="tel:+27822227457" className="text-primary underline">
-            Call us&nbsp;+27&nbsp;82&nbsp;222&nbsp;7457
-          </a>{' '}
-          or{' '}
-          <a
-            href="https://wa.me/27765864469"
-            className="text-primary underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            WhatsApp&nbsp;us&nbsp;+27&nbsp;76&nbsp;586&nbsp;4469
-          </a>
-        </p>
-      </div>
 
       <form onSubmit={onSubmit} className="mt-8 grid md:grid-cols-2 gap-6">
         <div className="space-y-4">
