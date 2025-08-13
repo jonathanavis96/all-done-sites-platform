@@ -123,16 +123,25 @@ function routeWithBase(path: string): string {
   return `${cleanedBase}${cleanedPath}`;
 }
 
-function contactHref(planName: string, region: RegionKey): string {
-  // Build a query string that pre‑fills the contact form subject and passes
-  // through the user’s region.  The subject is formatted like "Launch Plan
-  // Enquiry" which helps us distinguish enquiries by tier when emails arrive.
+/**
+ * Build a link to the contact page.  We avoid using `routeWithBase` here
+ * because the React Router basename (e.g. `/all-done-sites-platform`) is
+ * automatically applied by the <Link> component.  Passing the full base path
+ * twice caused URLs like `/all-done-sites-platform/all-done-sites-platform/...`
+ * which break on GitHub Pages.  We encode the selected plan (if any) and
+ * region into query parameters so the contact form can pre‑populate fields.
+ */
+function contactHref(planId: string, region: RegionKey): string {
   const params = new URLSearchParams();
-  // encode spaces as plus signs for consistency with typical URL encoding
-  const subject = `${planName} Plan Enquiry`.replace(/ /g, "+");
-  params.set("subject", subject);
+  // include the plan id (launch, business, premium) so the contact form
+  // knows which plan the user selected; this param is optional and the
+  // form will show a dropdown when omitted.
+  params.set("plan", planId);
   params.set("region", region);
-  return `${routeWithBase("/contact")}?${params.toString()}`;
+  // Return a relative path (no leading slash).  The Router basename will be
+  // applied automatically, preventing duplicate base paths such as
+  // `/all-done-sites-platform/all-done-sites-platform/...` when navigating.
+  return `contact?${params.toString()}`;
 }
 
 // -----------------------------
@@ -340,15 +349,19 @@ export default function PricingPage() {
             For very large or complex projects, we’ll scope a tailored monthly plan. A partial upfront may apply to cover
             heavy initial development, then an ongoing subscription for maintenance and enhancements.
           </p>
-          <div className="mt-4">
-            {/* The enterprise tier uses a pre‑filled contact form to capture
-               details up front.  Link directly to the contact page with a
-               subject query so the form knows it’s an enterprise enquiry.  Use
-               the default button variant to emphasise this call to action. */}
-            <Button asChild variant="default" className="rounded-xl">
-              <Link to={routeWithBase("/contact?subject=Enterprise+Plan+Enquiry")}>Talk to us</Link>
-            </Button>
-          </div>
+        <div className="mt-4">
+          {/* The enterprise tier uses a pre‑filled contact form to capture
+             details up front.  We pass a `plan=enterprise` query parameter so
+             the contact page can detect enterprise leads and show the
+             appropriate Formspree endpoint.  We do not call `routeWithBase`
+             here because the Link component automatically handles the router
+             basename. */}
+          <Button asChild variant="default" className="rounded-xl">
+            {/* Link to a dedicated enterprise contact page.  Use a relative path so
+               the Router basename is prepended only once. */}
+            <Link to="contact-enterprise">Talk to us</Link>
+          </Button>
+        </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
@@ -392,7 +405,8 @@ export default function PricingPage() {
                 variant="outline"
                 asChild
               >
-                <a href="https://wa.me/2765864469" target="_blank" rel="noopener noreferrer">
+                {/* Corrected WhatsApp number (076 586 4469 → +27 76 586 4469) */}
+                <a href="https://wa.me/27765864469" target="_blank" rel="noopener noreferrer">
                   WhatsApp&nbsp;us
                 </a>
               </Button>
@@ -410,7 +424,7 @@ export default function PricingPage() {
                 variant="outline"
                 asChild
               >
-                <Link to={contactHref(activePlan.name, region)}>
+                <Link to={contactHref(activePlan.id, region)}>
                   Email&nbsp;us
                 </Link>
               </Button>
