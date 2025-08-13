@@ -25,6 +25,43 @@ const REGION_CURRENCY: Record<RegionKey, { symbol: string; code: string }> = {
   OTHER: { symbol: "$", code: "USD" },
 };
 
+// -----------------------------
+// Paystack subscription pages
+// -----------------------------
+// These URLs point to Paystack payment pages for each region and tier.  Each
+// region defaults to its own set of links, with OTHER falling back to the US
+// pages.  When users click “Pay Now” on the pricing cards the correct page
+// for their detected region and selected tier is opened.  See the README or
+// pricing notes for more details.
+const PAYSTACK_PAGES: Record<RegionKey, { launch: string; business: string; premium: string }> = {
+  ZA: {
+    launch: "https://paystack.com/pay/vwmef9qepw",
+    business: "https://paystack.com/pay/2vckz2kpat",
+    premium: "https://paystack.com/pay/3k1lj5lg7q",
+  },
+  US: {
+    launch: "https://paystack.com/pay/bv9n4t60qh",
+    business: "https://paystack.com/pay/0o8-4eh5xd",
+    premium: "https://paystack.com/pay/x90og4i8e8",
+  },
+  UK: {
+    launch: "https://paystack.com/pay/rgzuk08ran",
+    business: "https://paystack.com/pay/6ex8hpa7ad",
+    premium: "https://paystack.com/pay/q30qlmtqq-",
+  },
+  EU: {
+    launch: "https://paystack.com/pay/lh7ae1u8-t",
+    business: "https://paystack.com/pay/axfspb03tv",
+    premium: "https://paystack.com/pay/rpmvma15mk",
+  },
+  OTHER: {
+    // Fallback to US links for visitors outside supported regions
+    launch: "https://paystack.com/pay/bv9n4t60qh",
+    business: "https://paystack.com/pay/0o8-4eh5xd",
+    premium: "https://paystack.com/pay/x90og4i8e8",
+  },
+};
+
 // Pricing (decoy/anchor)
 const PRICES: Record<RegionKey, { launch: number; business: number; premium: number }> = {
   ZA: { launch: 799, business: 2200, premium: 3600 },
@@ -108,8 +145,11 @@ export default function PricingPage() {
     features: string[];
     highlight?: boolean;
     badge?: string;
-    ctaTo: string;
+    payLink: string;
   }> = useMemo(() => {
+    // Build the plan list with paystack links based on region detection.  The
+    // payLink property points to the Paystack subscription page for the
+    // specific tier and region.
     return [
       {
         id: "launch",
@@ -123,7 +163,7 @@ export default function PricingPage() {
           "1 small update per month included",
           "Basic SEO setup",
         ],
-        ctaTo: contactHref("Launch", region),
+        payLink: PAYSTACK_PAGES[region].launch,
       },
       {
         id: "business",
@@ -137,7 +177,7 @@ export default function PricingPage() {
           "2 small updates per month included",
           "Priority response window",
         ],
-        ctaTo: contactHref("Business", region),
+        payLink: PAYSTACK_PAGES[region].business,
       },
       {
         id: "premium",
@@ -154,7 +194,7 @@ export default function PricingPage() {
         ],
         highlight: true,
         badge: "Most Popular",
-        ctaTo: contactHref("Premium", region),
+        payLink: PAYSTACK_PAGES[region].premium,
       },
     ];
   }, [region, prices]);
@@ -224,18 +264,40 @@ export default function PricingPage() {
               </ul>
 
               <div className="mt-8">
+                {/* Primary call-to-action: Pay Now */}
                 {plan.highlight ? (
-                  <Link
-                    to={plan.ctaTo}
+                  <a
+                    href={plan.payLink}
                     className="inline-flex w-full items-center justify-center rounded-xl border border-primary bg-primary/95 px-4 py-2 text-sm font-medium text-primary-foreground shadow-md transition hover:bg-primary"
                   >
-                    Get Started
-                  </Link>
+                    Pay Now
+                  </a>
                 ) : (
-                  <Button asChild className="w-full rounded-xl border px-4 py-2 text-sm font-medium shadow-sm" variant="secondary">
-                    <Link to={plan.ctaTo}>Get Started</Link>
-                  </Button>
+                  <a
+                    href={plan.payLink}
+                    className="inline-flex w-full items-center justify-center rounded-xl border px-4 py-2 text-sm font-medium shadow-sm text-primary transition hover:bg-primary/10"
+                  >
+                    Pay Now
+                  </a>
                 )}
+
+                {/* Secondary contact options */}
+                <div className="mt-3 flex flex-col gap-2">
+                  <a
+                    href="https://wa.me/2765864469"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-full items-center justify-center rounded-xl border px-4 py-2 text-sm font-medium shadow-sm text-primary transition hover:bg-primary/10"
+                  >
+                    WhatsApp
+                  </a>
+                  <a
+                    href="tel:+27822227457"
+                    className="inline-flex w-full items-center justify-center rounded-xl border px-4 py-2 text-sm font-medium shadow-sm text-primary transition hover:bg-primary/10"
+                  >
+                    Call Us
+                  </a>
+                </div>
               </div>
 
               {plan.highlight && (
@@ -260,7 +322,9 @@ export default function PricingPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          All plans include hosting, SSL, and automated backups. Prices shown are per month and based on your region.
+          All plans include hosting, SSL and automated backups. Prices shown are per month and based on your region.
+          International customers will be charged in South African rand (ZAR); your bank converts the amount at the
+          prevailing exchange rate, so the final price in your currency may vary.
         </p>
       </section>
     </>
