@@ -4,10 +4,33 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import React from "react";
+import { useLocation } from "react-router-dom";
 
 export default function Contact() {
   const { toast } = useToast();
   const [status, setStatus] = React.useState<"idle" | "sending">("idle");
+
+  // Inspect the current URL query parameters to determine if this is an
+  // enterprise enquiry.  When the subject includes the word "enterprise"
+  // we route submissions to a dedicated Formspree endpoint and prefill
+  // the hidden _subject field accordingly.  Otherwise we use the default
+  // contact endpoint and subject.
+  const location = useLocation();
+  const params = React.useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const rawSubject = params.get("subject") || "";
+  // decode any + signs and percent encoding
+  const decodedSubject = React.useMemo(() => {
+    try {
+      return decodeURIComponent(rawSubject.replace(/\+/g, " "));
+    } catch {
+      return rawSubject;
+    }
+  }, [rawSubject]);
+  const isEnterprise = decodedSubject.toLowerCase().includes("enterprise");
+  // Choose the appropriate Formspree endpoint
+  const formEndpoint = isEnterprise
+    ? "https://formspree.io/f/meoznyeg"
+    : "https://formspree.io/f/manbvoja";
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -26,7 +49,7 @@ export default function Contact() {
     }
 
     try {
-      const res = await fetch("https://formspree.io/f/manbvoja", {
+      const res = await fetch(formEndpoint, {
         method: "POST",
         body: data,
         headers: { Accept: "application/json" },
@@ -65,6 +88,10 @@ export default function Contact() {
             <Input name="name" placeholder="Jane Doe" required disabled={status === "sending"} />
           </div>
           <div>
+            <label className="text-sm font-medium">Company</label>
+            <Input name="company" placeholder="Your Company" disabled={status === "sending"} />
+          </div>
+          <div>
             <label className="text-sm font-medium">Email</label>
             <Input
               name="email"
@@ -93,7 +120,12 @@ export default function Contact() {
             required
             disabled={status === "sending"}
           />
-          <input type="hidden" name="_subject" value="All Done Sites — New enquiry" />
+          {/*
+            Hidden subject field: when a subject query parameter is present it
+            pre‑fills this value so our email includes the plan or enterprise
+            intent.  Otherwise it defaults to a generic enquiry subject.
+          */}
+          <input type="hidden" name="_subject" value={decodedSubject || "All Done Sites — New enquiry"} />
           <input type="text" name="_gotcha" className="hidden" tabIndex={-1} autoComplete="off" />
 
           <Button

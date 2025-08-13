@@ -124,10 +124,14 @@ function routeWithBase(path: string): string {
 }
 
 function contactHref(planName: string, region: RegionKey): string {
-  const params = new URLSearchParams({
-    plan: planName.toLowerCase(),
-    region: region,
-  });
+  // Build a query string that pre‑fills the contact form subject and passes
+  // through the user’s region.  The subject is formatted like "Launch Plan
+  // Enquiry" which helps us distinguish enquiries by tier when emails arrive.
+  const params = new URLSearchParams();
+  // encode spaces as plus signs for consistency with typical URL encoding
+  const subject = `${planName} Plan Enquiry`.replace(/ /g, "+");
+  params.set("subject", subject);
+  params.set("region", region);
   return `${routeWithBase("/contact")}?${params.toString()}`;
 }
 
@@ -337,8 +341,12 @@ export default function PricingPage() {
             heavy initial development, then an ongoing subscription for maintenance and enhancements.
           </p>
           <div className="mt-4">
-            <Button asChild className="rounded-xl">
-              <Link to={contactHref("Custom / Enterprise", region)}>Talk to us</Link>
+            {/* The enterprise tier uses a pre‑filled contact form to capture
+               details up front.  Link directly to the contact page with a
+               subject query so the form knows it’s an enterprise enquiry.  Use
+               the default button variant to emphasise this call to action. */}
+            <Button asChild variant="default" className="rounded-xl">
+              <Link to={routeWithBase("/contact?subject=Enterprise+Plan+Enquiry")}>Talk to us</Link>
             </Button>
           </div>
         </div>
@@ -365,8 +373,14 @@ export default function PricingPage() {
             </DialogHeader>
             <div className="grid gap-3 mt-4">
               {/* Pay Now button */}
+              {/*
+                Highlight the pay-now action by using the default button
+                variant.  The default variant renders with the site’s
+                primary colour and contrasts the outline buttons used for
+                secondary actions.
+              */}
               <Button
-                variant="primary"
+                variant="default"
                 asChild
               >
                 <a href={activePlan.payLink} target="_blank" rel="noopener noreferrer">
