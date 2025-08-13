@@ -1,11 +1,30 @@
+// src/pages/Index.tsx
+import React, { useEffect, useRef } from "react";
 import Seo from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Rocket, Shield, Smartphone, Sparkles, Timer } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 export default function Index() {
-  // Base path for assets (Vite + GitHub Pages/subfolders)
+  // Base path so assets work on GitHub Pages (subfolder) and locally
   const base = import.meta.env.BASE_URL || "/";
+
+  // Force the card video to autoplay once metadata is ready (mobile-friendly)
+  const cardVideoRef = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    const v = cardVideoRef.current;
+    if (!v) return;
+    v.muted = true; // required for autoplay on iOS
+    const tryPlay = async () => {
+      try {
+        await v.play();
+      } catch {
+        // ignore; browser may block before interaction — poster will show
+      }
+    };
+    if (v.readyState >= 2) tryPlay();
+    else v.addEventListener("loadeddata", tryPlay, { once: true });
+  }, []);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -13,7 +32,7 @@ export default function Index() {
     name: "All Done Sites",
     url: typeof window !== "undefined" ? window.location.origin : "",
     slogan: "Your website, done for you — for one monthly fee",
-    sameAs: []
+    sameAs: [],
   };
 
   return (
@@ -24,46 +43,65 @@ export default function Index() {
         jsonLd={jsonLd}
       />
 
+      {/* Top headline (no big image) */}
+      <section className="container py-10 md:py-14">
+        <div className="max-w-4xl">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+            Websites built, hosted, and done for you.
+          </h1>
+          <p className="mt-3 text-lg md:text-xl text-muted-foreground">
+            All Done Sites — one simple monthly fee. No hassles.
+          </p>
+          <div className="mt-6 flex flex-col sm:flex-row gap-4">
+            <Button asChild size="lg" variant="hero">
+              <NavLink to="/pricing">See Pricing</NavLink>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <NavLink to="/contact">Book a Call</NavLink>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* First content section: gradient ONLY behind left column; video in right card */}
       <section className="relative overflow-hidden">
-        {/* NOTE: No section-wide gradient here anymore */}
-        <div className="container py-20 md:py-28 grid md:grid-cols-2 gap-10 items-center">
-          {/* LEFT: text column with its own scoped gradient background */}
+        <div className="container py-12 md:py-20 grid md:grid-cols-2 gap-10 items-center">
+          {/* LEFT: text column with scoped gradient */}
           <div className="relative">
             <div
               className="absolute inset-0 -z-10 pointer-events-none"
-              // Scoped gradient only behind the text column
               style={{
                 background:
-                  "radial-gradient(900px 450px at 10% -10%, hsl(var(--primary)/0.15), transparent), radial-gradient(800px 400px at 70% 0%, hsl(var(--accent)/0.12), transparent)"
+                  "radial-gradient(900px 450px at 10% -10%, hsl(var(--primary)/0.15), transparent), radial-gradient(800px 400px at 70% 0%, hsl(var(--accent)/0.12), transparent)",
               }}
               aria-hidden="true"
             />
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-              Your website, done for you — for one monthly fee
-            </h1>
+            <h2 className="sr-only">Why All Done Sites</h2>
             <p className="text-lg text-muted-foreground mb-8">
-              We design, host, maintain, and update your site. No upfront costs. Just a friendly monthly subscription so you can focus on your business.
+              We design, host, maintain, and update your site. No upfront costs. Just a friendly
+              monthly subscription so you can focus on your business.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button asChild size="lg" variant="hero">
-                <NavLink to="/pricing">Get Started</NavLink>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <NavLink to="/how-it-works">See how it works</NavLink>
-              </Button>
-            </div>
-            <div className="mt-8 grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2"><CheckCircle2 className="text-primary" /> No upfront cost</div>
-              <div className="flex items-center gap-2"><Shield className="text-primary" /> Hosting & security</div>
-              <div className="flex items-center gap-2"><Smartphone className="text-primary" /> Mobile-friendly</div>
-              <div className="flex items-center gap-2"><Sparkles className="text-primary" /> SEO-friendly</div>
+            <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="text-primary" /> No upfront cost
+              </div>
+              <div className="flex items-center gap-2">
+                <Shield className="text-primary" /> Hosting &amp; security
+              </div>
+              <div className="flex items-center gap-2">
+                <Smartphone className="text-primary" /> Mobile-friendly
+              </div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="text-primary" /> SEO-friendly
+              </div>
             </div>
           </div>
 
-          {/* RIGHT: video card with NO gradient */}
+          {/* RIGHT: video card (no gradients) */}
           <div className="md:justify-self-end w-full max-w-xl">
             <div className="relative rounded-xl border bg-card p-6 shadow-sm">
               <video
+                ref={cardVideoRef}
                 className="aspect-[4/3] rounded-lg object-cover"
                 src={`${base}hero.mp4`}
                 poster={`${base}hero-poster.png`}
@@ -84,6 +122,7 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Features summary */}
       <section className="container py-16">
         <div className="text-center mb-10">
           <h2 className="text-2xl md:text-3xl font-semibold">Everything included</h2>
