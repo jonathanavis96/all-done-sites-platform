@@ -14,6 +14,7 @@ import Portfolio from "./pages/Portfolio";
 import Faq from "./pages/Faq";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import ThankYou from "./pages/ThankYou";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/faq" element={<Faq />} />
               <Route path="/contact" element={<Contact />} />
+            <Route path="/thank-you" element={<ThankYou />} />
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
