@@ -4,6 +4,9 @@ import { CheckCircle2, Rocket, Shield, Smartphone, Sparkles, Timer } from "lucid
 import { NavLink } from "react-router-dom";
 
 export default function Index() {
+  // Base path for assets (Vite + GitHub Pages/subfolders)
+  const base = import.meta.env.BASE_URL || "/";
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -22,9 +25,19 @@ export default function Index() {
       />
 
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(1200px_600px_at_10%_-10%,hsl(var(--primary)/0.15),transparent),radial-gradient(1200px_600px_at_90%_10%,hsl(var(--accent)/0.15),transparent)]" aria-hidden="true" />
+        {/* NOTE: No section-wide gradient here anymore */}
         <div className="container py-20 md:py-28 grid md:grid-cols-2 gap-10 items-center">
-          <div>
+          {/* LEFT: text column with its own scoped gradient background */}
+          <div className="relative">
+            <div
+              className="absolute inset-0 -z-10 pointer-events-none"
+              // Scoped gradient only behind the text column
+              style={{
+                background:
+                  "radial-gradient(900px 450px at 10% -10%, hsl(var(--primary)/0.15), transparent), radial-gradient(800px 400px at 70% 0%, hsl(var(--accent)/0.12), transparent)"
+              }}
+              aria-hidden="true"
+            />
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
               Your website, done for you — for one monthly fee
             </h1>
@@ -46,9 +59,20 @@ export default function Index() {
               <div className="flex items-center gap-2"><Sparkles className="text-primary" /> SEO-friendly</div>
             </div>
           </div>
+
+          {/* RIGHT: video card with NO gradient */}
           <div className="md:justify-self-end w-full max-w-xl">
             <div className="relative rounded-xl border bg-card p-6 shadow-sm">
-              <div className="aspect-[4/3] rounded-lg bg-gradient-to-tr from-[hsl(var(--primary)/0.15)] to-[hsl(var(--accent)/0.15)]" />
+              <video
+                className="aspect-[4/3] rounded-lg object-cover"
+                src={`${base}hero.mp4`}
+                poster={`${base}hero-poster.png`}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+              />
               <div className="absolute -top-4 -left-4 rounded-md bg-background border px-3 py-2 shadow-sm flex items-center gap-2">
                 <Timer className="text-primary" /> Quick turnaround
               </div>
@@ -66,16 +90,11 @@ export default function Index() {
           <p className="text-muted-foreground mt-2">Simple, transparent, and designed to save you time.</p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {[{
-            title: "One simple monthly fee",
-            desc: "No surprises. Cancel anytime.",
-          },{
-            title: "Hosting, maintenance, updates",
-            desc: "We handle it all so you don’t have to.",
-          },{
-            title: "1 free small update/month",
-            desc: "Keep content fresh without extra charges.",
-          }].map((f, i) => (
+          {[
+            { title: "One simple monthly fee", desc: "No surprises. Cancel anytime." },
+            { title: "Hosting, maintenance, updates", desc: "We handle it all so you don’t have to." },
+            { title: "1 free small update/month", desc: "Keep content fresh without extra charges." },
+          ].map((f, i) => (
             <div key={i} className="rounded-lg border p-6 hover:shadow-md transition-shadow">
               <h3 className="font-medium mb-2">{f.title}</h3>
               <p className="text-sm text-muted-foreground">{f.desc}</p>
