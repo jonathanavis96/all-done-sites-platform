@@ -1,7 +1,8 @@
 import { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation, Outlet } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, Phone } from "lucide-react";
+import Hero from "@/components/Hero"; // Adjust path if needed
 
 const base = import.meta.env.BASE_URL; // Ensures correct path on GitHub Pages or subfolders
 
@@ -96,11 +97,20 @@ export const SiteFooter = () => {
   );
 };
 
-export default function Layout({ children }: { children: ReactNode }) {
+export default function Layout({ children }: { children?: ReactNode }) {
+  const location = useLocation();
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <SiteHeader />
-      <main className="flex-1">{children}</main>
+
+      {/* Only show Hero on homepage */}
+      {location.pathname === "/" && <Hero />}
+
+      <main className="flex-1">
+        {children || <Outlet />}
+      </main>
+
       <SiteFooter />
     </div>
   );
