@@ -39,37 +39,7 @@ export default function Index() {
         jsonLd={jsonLd}
       />
 
-      {/* Top headline (centered) */}
-      <section className="container py-10 md:py-14">
-        <div className="mx-auto max-w-4xl text-center">
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-            Websites built, hosted,
-            <br className="hidden md:block" />
-            <span className="block">and done for you.</span>
-          </h1>
-
-          <p className="mt-3 text-lg md:text-xl text-muted-foreground">
-            All Done Sites — one simple monthly fee. No hassles.
-          </p>
-
-          {/* CTA row */}
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
-            {/* See Pricing — darker glassy/transparent with blur */}
-            <Button
-              asChild
-              size="lg"
-              className="rounded-2xl bg-zinc-800/60 text-white border border-white/10 backdrop-blur-xl shadow-sm hover:bg-zinc-800/80 hover:border-white/20 transition"
-            >
-              <NavLink to="/pricing">See Pricing</NavLink>
-            </Button>
-
-            {/* Book a Call — use the same gradient style as site header (variant=hero) */}
-            <Button asChild size="lg" variant="hero" className="rounded-2xl">
-              <NavLink to="/contact">Book a Call</NavLink>
-            </Button>
-          </div>
-        </div>
-      </section>
+      {/* ===== Removed the top headline/CTA hero section here ===== */}
 
       {/* First content section: gradient ONLY behind left column; video in right card */}
       <section className="relative overflow-hidden">
@@ -85,7 +55,7 @@ export default function Index() {
               aria-hidden="true"
             />
 
-            {/* Enlarged, two-line structure */}
+            {/* Heading */}
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
               Your website, done for you
               <br />
@@ -161,7 +131,7 @@ export default function Index() {
       <section className="container py-16">
         <div className="text-center mb-10">
           <h2 className="text-2xl md:text-3xl font-semibold">Everything included</h2>
-          <p className="text-muted-foreground mt-2">Simple, transparent, and designed to save you time.</p>
+        <p className="text-muted-foreground mt-2">Simple, transparent, and designed to save you time.</p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {[
