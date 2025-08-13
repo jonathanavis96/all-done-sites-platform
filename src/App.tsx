@@ -13,6 +13,7 @@ import Pricing from "./pages/Pricing";
 import Portfolio from "./pages/Portfolio";
 import Faq from "./pages/Faq";
 import Contact from "./pages/Contact";
+import ContactEnterprise from "./pages/ContactEnterprise";
 import NotFound from "./pages/NotFound";
 import ThankYou from "./pages/ThankYou";
 
@@ -33,6 +34,7 @@ export default function App() {
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/faq" element={<Faq />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/contact-enterprise" element={<ContactEnterprise />} />
             <Route path="/thank-you" element={<ThankYou />} />
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
