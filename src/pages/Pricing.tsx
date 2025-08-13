@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Seo from "@/components/Seo";
 import { Check, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 // -----------------------------
 // Region & currency config
@@ -24,7 +25,7 @@ const REGION_CURRENCY: Record<RegionKey, { symbol: string; code: string }> = {
   OTHER: { symbol: "$", code: "USD" },
 };
 
-// Pricing from our decoy/anchor setup
+// Pricing (decoy/anchor)
 const PRICES: Record<RegionKey, { launch: number; business: number; premium: number }> = {
   ZA: { launch: 799, business: 2200, premium: 3600 },
   US: { launch: 89, business: 229, premium: 389 },
@@ -36,83 +37,65 @@ const PRICES: Record<RegionKey, { launch: number; business: number; premium: num
 // -----------------------------
 // Utilities
 // -----------------------------
-function detectInitialRegion(): RegionKey {
+function detectRegion(): RegionKey {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    const lang = navigator.language?.toLowerCase() || "";
+    const lang = (navigator.language || "").toLowerCase();
 
-    // Timezone-based guesses
     if (tz.includes("Johannesburg")) return "ZA";
-    if (tz.includes("Africa/") && !tz.includes("Johannesburg")) return "ZA";
-    if (tz.includes("London")) return "UK";
-    if (tz.includes("Europe/")) return "EU";
-    if (tz.includes("America/")) return "US";
+    if (tz.startsWith("Africa/")) return "ZA";
 
-    // Language-based hints
+    if (tz.includes("London")) return "UK";
+    if (tz.startsWith("Europe/")) return "EU";
+
+    if (tz.startsWith("America/")) return "US";
+
     if (lang.endsWith("-za")) return "ZA";
     if (lang.endsWith("-gb")) return "UK";
-    if (lang.startsWith("en-")) return "US";
     if (lang.startsWith("fr-") || lang.startsWith("de-") || lang.startsWith("es-") || lang.startsWith("it-")) return "EU";
+    if (lang.startsWith("en-")) return "US";
   } catch {
-    // fall through
+    // ignore
   }
   return "OTHER";
 }
 
 function formatPrice(region: RegionKey, amount: number): string {
-  const { symbol, code } = REGION_CURRENCY[region];
-  // Keep it simple and consistent (no decimals for ZAR/GBP/EUR; USD without decimals as we set clean ints)
+  const { symbol } = REGION_CURRENCY[region];
   if (region === "ZA") return `${symbol}${amount.toLocaleString("en-ZA")}/mo`;
-  if (region === "UK") return `${symbol}${amount}/mo`;
-  if (region === "EU") return `${symbol}${amount}/mo`;
-  // US + OTHER -> USD
-  try {
-    return `${symbol}${new Intl.NumberFormat("en-US", {
-      style: "decimal",
-      maximumFractionDigits: 0,
-    }).format(amount)}/mo`;
-  } catch {
-    return `${symbol}${amount}/mo`;
-  }
+  if (region === "UK" || region === "EU") return `${symbol}${amount}/mo`;
+  // US + OTHER
+  return `${symbol}${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(amount)}/mo`;
 }
 
-function mailtoForPlan(planName: string, region: RegionKey) {
-  const subject = encodeURIComponent(`All Done Sites — Get Started (${planName}, ${REGION_LABELS[region]})`);
-  const body = encodeURIComponent(
-    [
-      `Hi team,`,
-      ``,
-      `I'd like to get started with the **${planName}** plan.`,
-      `Region: ${REGION_LABELS[region]}`,
-      `Page: ${typeof window !== "undefined" ? window.location.href : ""}`,
-      ``,
-      `Please let me know next steps.`,
-      ``,
-      `Thanks!`,
-    ].join("\n")
-  );
+function routeWithBase(path: string): string {
+  // Ensure internal routes work on GitHub Pages subfolder
+  const base = import.meta.env.BASE_URL || "/";
+  // Guarantee exactly one slash between base and path
+  const cleanedBase = base.endsWith("/") ? base.slice(0, -1) : base;
+  const cleanedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${cleanedBase}${cleanedPath}`;
+}
 
-  // TODO: Replace with your preferred sales email
-  const salesEmail = "hello@alldonesites.com";
-  return `mailto:${salesEmail}?subject=${subject}&body=${body}`;
+function contactHref(planName: string, region: RegionKey): string {
+  const params = new URLSearchParams({
+    plan: planName.toLowerCase(),
+    region: region,
+  });
+  return `${routeWithBase("/contact")}?${params.toString()}`;
 }
 
 // -----------------------------
 // Page
 // -----------------------------
 export default function PricingPage() {
-  const [region, setRegion] = useState<RegionKey>(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem("ads_region") : null;
-    return (saved as RegionKey) || detectInitialRegion();
-  });
+  const [region, setRegion] = useState<RegionKey>("OTHER");
 
   useEffect(() => {
-    try {
-      localStorage.setItem("ads_region", region);
-    } catch {
-      // ignore
-    }
-  }, [region]);
+    // One-time auto-detection (no manual override UI)
+    const r = detectRegion();
+    setRegion(r);
+  }, []);
 
   const prices = useMemo(() => PRICES[region], [region]);
 
@@ -123,10 +106,9 @@ export default function PricingPage() {
     pages: string;
     price: string;
     features: string[];
-    inherits?: string; // textual cue for "includes everything in ..."
     highlight?: boolean;
     badge?: string;
-    ctaHref: string;
+    ctaTo: string;
   }> = useMemo(() => {
     return [
       {
@@ -141,7 +123,7 @@ export default function PricingPage() {
           "1 small update per month included",
           "Basic SEO setup",
         ],
-        ctaHref: mailtoForPlan("Launch", region),
+        ctaTo: contactHref("Launch", region),
       },
       {
         id: "business",
@@ -155,7 +137,7 @@ export default function PricingPage() {
           "2 small updates per month included",
           "Priority response window",
         ],
-        ctaHref: mailtoForPlan("Business", region),
+        ctaTo: contactHref("Business", region),
       },
       {
         id: "premium",
@@ -172,7 +154,7 @@ export default function PricingPage() {
         ],
         highlight: true,
         badge: "Most Popular",
-        ctaHref: mailtoForPlan("Premium", region),
+        ctaTo: contactHref("Premium", region),
       },
     ];
   }, [region, prices]);
@@ -206,22 +188,6 @@ export default function PricingPage() {
           <p className="mt-3 text-muted-foreground">
             No big upfront fees. Hosting, SSL, backups, and monthly updates included.
           </p>
-
-          {/* Region selector */}
-          <div className="mt-6 inline-flex items-center gap-3 rounded-xl border bg-card p-2 shadow-sm">
-            <span className="text-sm text-muted-foreground">Region:</span>
-            <select
-              className="rounded-lg border bg-background px-3 py-2 text-sm"
-              value={region}
-              onChange={(e) => setRegion(e.target.value as RegionKey)}
-            >
-              <option value="ZA">{REGION_LABELS.ZA}</option>
-              <option value="US">{REGION_LABELS.US}</option>
-              <option value="UK">{REGION_LABELS.UK}</option>
-              <option value="EU">{REGION_LABELS.EU}</option>
-              <option value="OTHER">{REGION_LABELS.OTHER}</option>
-            </select>
-          </div>
         </header>
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -230,13 +196,10 @@ export default function PricingPage() {
               key={plan.id}
               className={[
                 "relative rounded-2xl border p-6 shadow-sm transition",
-                plan.highlight
-                  ? "border-primary/70 ring-2 ring-primary/30"
-                  : "border-muted",
-                "bg-card"
+                plan.highlight ? "border-primary/70 ring-2 ring-primary/30" : "border-muted",
+                "bg-card",
               ].join(" ")}
             >
-              {/* Badge for highlighted plan */}
               {plan.highlight && plan.badge && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground shadow">
@@ -262,24 +225,19 @@ export default function PricingPage() {
 
               <div className="mt-8">
                 {plan.highlight ? (
-                  <a
-                    href={plan.ctaHref}
+                  <Link
+                    to={plan.ctaTo}
                     className="inline-flex w-full items-center justify-center rounded-xl border border-primary bg-primary/95 px-4 py-2 text-sm font-medium text-primary-foreground shadow-md transition hover:bg-primary"
                   >
                     Get Started
-                  </a>
+                  </Link>
                 ) : (
-                  <Button
-                    asChild
-                    className="w-full rounded-xl border px-4 py-2 text-sm font-medium shadow-sm"
-                    variant="secondary"
-                  >
-                    <a href={plan.ctaHref}>Get Started</a>
+                  <Button asChild className="w-full rounded-xl border px-4 py-2 text-sm font-medium shadow-sm" variant="secondary">
+                    <Link to={plan.ctaTo}>Get Started</Link>
                   </Button>
                 )}
               </div>
 
-              {/* Subtle gradient under highlight card */}
               {plan.highlight && (
                 <div className="pointer-events-none absolute inset-x-0 -bottom-6 h-6 rounded-b-2xl bg-gradient-to-b from-primary/15 to-transparent" />
               )}
@@ -291,18 +249,18 @@ export default function PricingPage() {
         <div className="mt-10 rounded-2xl border bg-card p-6 shadow-sm">
           <h3 className="text-lg font-medium">Custom / Enterprise</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            For very large or complex projects, we’ll scope a tailored monthly plan. A partial upfront may apply to
-            cover heavy initial development, then an ongoing subscription for maintenance and enhancements.
+            For very large or complex projects, we’ll scope a tailored monthly plan. A partial upfront may apply to cover
+            heavy initial development, then an ongoing subscription for maintenance and enhancements.
           </p>
           <div className="mt-4">
             <Button asChild className="rounded-xl">
-              <a href={mailtoForPlan("Custom / Enterprise", region)}>Talk to us</a>
+              <Link to={contactHref("Custom / Enterprise", region)}>Talk to us</Link>
             </Button>
           </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          All plans include hosting, SSL, and automated backups. Prices shown are per month. Change region to see local currency.
+          All plans include hosting, SSL, and automated backups. Prices shown are per month and based on your region.
         </p>
       </section>
     </>
