@@ -1,19 +1,38 @@
 import Seo from "@/components/Seo";
 
-import plumber from "@/assets/portfolio/plumber.jpg";
-import electrician from "@/assets/portfolio/electrician.jpg";
-import salon from "@/assets/portfolio/salon.jpg";
-import consultant from "@/assets/portfolio/consultant.jpg";
-import cafe from "@/assets/portfolio/cafe.jpg";
-import fitness from "@/assets/portfolio/fitness.jpg";
+// Replace JPEG mockups with optimized WebP images
+import plumber from "@/assets/portfolio/plumber.webp";
+import electrician from "@/assets/portfolio/electrician.webp";
+import salon from "@/assets/portfolio/salon.webp";
+import consultant from "@/assets/portfolio/consultancy.webp";
+import cafe from "@/assets/portfolio/cafe.webp";
+import fitness from "@/assets/portfolio/fitness.webp";
 
 const items = [
-  { src: plumber, alt: "Plumber website mockup – clean and trustworthy design" },
-  { src: electrician, alt: "Electrician website mockup – bold calls to action" },
-  { src: salon, alt: "Salon website mockup – elegant and modern layout" },
-  { src: consultant, alt: "Consultant website mockup – professional and clear messaging" },
-  { src: cafe, alt: "Cafe website mockup – cozy and inviting visuals" },
-  { src: fitness, alt: "Fitness studio website mockup – energetic and dynamic" },
+  {
+    src: plumber,
+    alt: "Plumbing website mockup – clean professional layout",
+  },
+  {
+    src: electrician,
+    alt: "Electrician website mockup – bold service layout",
+  },
+  {
+    src: salon,
+    alt: "Hair salon website mockup – airy minimalist style",
+  },
+  {
+    src: consultant,
+    alt: "Consultancy website mockup – modern professional design",
+  },
+  {
+    src: cafe,
+    alt: "Cafe website mockup – cozy and inviting visuals",
+  },
+  {
+    src: fitness,
+    alt: "Fitness website mockup – energetic gym theme",
+  },
 ];
 
 export default function Portfolio() {
