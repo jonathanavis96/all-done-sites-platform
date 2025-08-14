@@ -1,4 +1,5 @@
 import Seo from "@/components/Seo";
+import { Link } from "react-router-dom";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 // FAQ content. The first two questions remain unchanged, while the rest reflect
@@ -16,11 +17,17 @@ const faqs = [
   },
   {
     q: "Do I own the website?",
-    a: `No — while you own **your branding, logo, and content**, the website design, code, and infrastructure remain our property.\n\nIf you wish to leave our service, we can offer you the option to **purchase the website** at:\n- Fair market value\n- Plus the cost of any additional work done\n\nPricing is discussed individually for each site.`,
+    // Explain ownership without markdown bolding. The client owns their
+    // branding, logo and content, but not the underlying website code. If they
+    // wish to purchase the site when leaving, pricing is discussed on a case‑by‑case
+    // basis. A full stop has been added after “additional work done” per user
+    // feedback.
+    a: `No — while you own your branding, logo and content, the website design, code, and infrastructure remain our property.\n\nIf you wish to leave our service, we can offer you the option to purchase the website at fair market value plus the cost of any additional work done. Pricing is discussed individually for each site.`,
   },
   {
     q: "Can I cancel anytime?",
-    a: `Our standard agreement is a **minimum 6‑month commitment**.\n\n- **Introductory 1‑month trial** (by invitation) → You can cancel after that month without further charges.\n- **Standard plan** → You may cancel early but must still pay the remaining months of your 6‑month term.`,
+    // Describe the minimum commitment and trial period without markdown bolding.
+    a: `Our standard agreement is a minimum 6‑month commitment.\n\n- Introductory 1‑month trial (by invitation) → You can cancel after that month without further charges.\n- Standard plan → You may cancel early but must still pay the remaining months of your 6‑month term.`,
   },
   {
     q: "What happens if I cancel?",
@@ -28,7 +35,9 @@ const faqs = [
   },
   {
     q: "What happens if I stop paying the subscription?",
-    a: `1. Site remains online for **30 days**.\n2. Backup is kept for a **further 3 months**.\n3. If no payment is received after that period → **Site is permanently deleted**.`,
+    // Provide a single sentence rather than numbered list so the text wraps
+    // correctly on mobile. Remove markdown bolding.
+    a: `If payments stop, the site remains online for 30 days, we keep a backup for a further 3 months, and if no payment is received after that period the site is permanently deleted.`,
   },
   {
     q: "Do you handle hosting and maintenance?",
@@ -52,7 +61,8 @@ const faqs = [
   },
   {
     q: "Do you provide SEO optimisation?",
-    a: `Yes — all our plans include SEO, but the level depends on your subscription:\n\n- **Starter Plan** → Basic SEO setup for launch.\n- **Business Plan** → Solid SEO optimisation for good search visibility, but without ongoing analytics or performance enhancements.\n- **Premium Plan** → Enhanced SEO with ongoing analytics, reporting, and performance improvements.`,
+    // Explain SEO levels without markdown bolding.
+    a: `Yes — all our plans include SEO, but the level depends on your subscription:\n\n- Starter Plan → Basic SEO setup for launch.\n- Business Plan → Solid SEO optimisation for good search visibility, but without ongoing analytics or performance enhancements.\n- Premium Plan → Enhanced SEO with ongoing analytics, reporting and performance improvements.`,
   },
   {
     q: "Can you connect my website to social media?",
@@ -68,7 +78,8 @@ const faqs = [
   },
   {
     q: "Can I move my site to a different host later?",
-    a: `Yes — you can move hosting at any time after your **6‑month contract ends**, provided you have:\n\n- Purchased the site’s code/design at fair market value\n- Paid for any additional work done`,
+    // Remove markdown bolding and simplify formatting.
+    a: `Yes — you can move hosting at any time after your 6‑month contract ends, provided you have:\n\n- Purchased the site’s code/design at fair market value\n- Paid for any additional work done`,
   },
 ];
 
@@ -98,13 +109,22 @@ export default function Faq() {
       <Accordion type="single" collapsible className="mt-10">
         {faqs.map((f, i) => (
           <AccordionItem key={i} value={`item-${i}`}>
-            <AccordionTrigger>{f.q}</AccordionTrigger>
+            {/* Ensure FAQ headings align left on mobile by adding a text-left class */}
+            <AccordionTrigger className="text-left">{f.q}</AccordionTrigger>
             <AccordionContent>
               <p className="text-muted-foreground">{f.a}</p>
             </AccordionContent>
           </AccordionItem>
         ))}
       </Accordion>
+
+      {/* Call‑to‑action asking visitors to reach out if they have unanswered questions */}
+      <div className="mt-12 text-muted-foreground">
+        Got any other questions?{' '}
+        <Link to="/contact" className="underline">
+          Ask here and we'll get back to you.
+        </Link>
+      </div>
     </div>
   );
 }
