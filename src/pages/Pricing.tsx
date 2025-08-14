@@ -195,7 +195,7 @@ export default function PricingPage() {
       .catch(() => {
         // Fallback: if fetch fails we show a short placeholder
         setTermsText(
-          "AllDoneSites Master Subscription Agreement could not be loaded. Please visit our website to read the latest terms."
+          "All Done Sites Subscription Agreement could not be loaded. Please visit our website to read the latest terms."
         );
       });
   }, []);
@@ -545,13 +545,13 @@ export default function PricingPage() {
         <Dialog open={showTerms} onOpenChange={(open) => setShowTerms(open)}>
           <DialogContent className="max-w-2xl sm:max-w-3xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Master Subscription Agreement</DialogTitle>
+            <DialogTitle className="text-xl sm:text-2xl font-bold">All Done Sites Subscription Agreement</DialogTitle>
               <DialogDescription>
                 Please review the agreement below. You must accept the terms before proceeding to payment.
               </DialogDescription>
             </DialogHeader>
             {/* Terms text scrollable area */}
-            <div className="mt-4 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed space-y-4 max-h-[50vh] pr-4">
+            <div className="mt-4 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed space-y-3 max-h-[50vh] pr-4">
               {termsText || "Loading…"}
             </div>
             {/* Acceptance checkbox */}
@@ -564,7 +564,7 @@ export default function PricingPage() {
                 className="mt-1 h-4 w-4 border rounded"
               />
               <label htmlFor="termsCheckbox" className="text-sm leading-snug">
-                I have read, understood, and agree to be bound by the Master Subscription Agreement.
+                I have read, understood and agree to be bound by the All Done Sites Subscription Agreement.
               </label>
             </div>
             <DialogFooter className="mt-6">
