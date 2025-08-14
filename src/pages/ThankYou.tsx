@@ -60,6 +60,13 @@ export default function ThankYou() {
     }
   }
 
+  // Compute the public URL for the PDF subscription agreement.  We use
+  // import.meta.env.BASE_URL so that the link works correctly when the
+  // site is served from a subdirectory (e.g. GitHub Pages).  The file
+  // lives in the `public` folder and will be copied to the root of
+  // the built site during the build.
+  const agreementHref = `${import.meta.env.BASE_URL ?? "/"}AllDoneSites_Subscription_Agreement.pdf`;
+
   return (
     <div className="container py-16" id="thank-you">
       <Seo
@@ -75,6 +82,18 @@ export default function ThankYou() {
         )}
         <p className="mt-2 text-muted-foreground">
           Please share a couple of details to help us get started.
+        </p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Need a copy of the agreement? You can download our All&nbsp;Done&nbsp;Sites&nbsp;Subscription&nbsp;Agreement as a PDF&nbsp;
+          <a
+            href={agreementHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline"
+          >
+            here
+          </a>
+          .
         </p>
       </header>
 
