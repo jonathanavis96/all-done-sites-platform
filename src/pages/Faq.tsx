@@ -1,6 +1,10 @@
 import Seo from "@/components/Seo";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
+// FAQ content. The first two questions remain unchanged, while the rest reflect
+// updated policies around ownership, cancellation, hosting, SEO and more. Each
+// entry defines a question (`q`) and its answer (`a`). Answers can contain
+// markdown-like line breaks for lists.
 const faqs = [
   {
     q: "How fast can you launch my website?",
@@ -12,11 +16,59 @@ const faqs = [
   },
   {
     q: "Do I own the website?",
-    a: "Yes, you own your content and branding. While you subscribe, we manage hosting and maintenance for you.",
+    a: `No — while you own **your branding, logo, and content**, the website design, code, and infrastructure remain our property.\n\nIf you wish to leave our service, we can offer you the option to **purchase the website** at:\n- Fair market value\n- Plus the cost of any additional work done\n\nPricing is discussed individually for each site.`,
   },
   {
     q: "Can I cancel anytime?",
-    a: "Absolutely. Your subscription is month-to-month. We’ll help with a smooth handoff if you choose to move hosting.",
+    a: `Our standard agreement is a **minimum 6‑month commitment**.\n\n- **Introductory 1‑month trial** (by invitation) → You can cancel after that month without further charges.\n- **Standard plan** → You may cancel early but must still pay the remaining months of your 6‑month term.`,
+  },
+  {
+    q: "What happens if I cancel?",
+    a: "We’ll help with a smooth transition of your content and branding. If you choose to purchase the site, we’ll prepare all files and assets for you after payment.",
+  },
+  {
+    q: "What happens if I stop paying the subscription?",
+    a: `1. Site remains online for **30 days**.\n2. Backup is kept for a **further 3 months**.\n3. If no payment is received after that period → **Site is permanently deleted**.`,
+  },
+  {
+    q: "Do you handle hosting and maintenance?",
+    a: "Yes — hosting, updates, and security are included in your subscription while you are an active client.",
+  },
+  {
+    q: "How much input will I have in the design?",
+    a: "The process is collaborative. You’ll receive drafts to review and can request changes before the site goes live.",
+  },
+  {
+    q: "What if I don’t have all my content ready?",
+    a: "We can start the design using placeholder text and images until you provide your real content.",
+  },
+  {
+    q: "Do you write content for me?",
+    a: "Yes — we offer copywriting as an additional service for an extra fee.",
+  },
+  {
+    q: "Are seasonal promotions or event updates included?",
+    a: "No — these are considered larger updates and will be quoted separately.",
+  },
+  {
+    q: "Do you provide SEO optimisation?",
+    a: `Yes — all our plans include SEO, but the level depends on your subscription:\n\n- **Starter Plan** → Basic SEO setup for launch.\n- **Business Plan** → Solid SEO optimisation for good search visibility, but without ongoing analytics or performance enhancements.\n- **Premium Plan** → Enhanced SEO with ongoing analytics, reporting, and performance improvements.`,
+  },
+  {
+    q: "Can you connect my website to social media?",
+    a: "Yes — we can link your site to your social media accounts and embed certain feeds if required.",
+  },
+  {
+    q: "What happens if my site gets hacked or goes down?",
+    a: "We have backup, monitoring, and security measures in place. In the rare case something goes wrong, we’ll restore your site and investigate the cause.",
+  },
+  {
+    q: "Do you work with businesses outside South Africa?",
+    a: "Yes — we handle international clients and charge in their local currency.",
+  },
+  {
+    q: "Can I move my site to a different host later?",
+    a: `Yes — you can move hosting at any time after your **6‑month contract ends**, provided you have:\n\n- Purchased the site’s code/design at fair market value\n- Paid for any additional work done`,
   },
 ];
 
@@ -35,7 +87,7 @@ export default function Faq() {
     <div className="container py-16">
       <Seo
         title="FAQ | All Done Sites"
-        description="Answers about turnaround time, updates, ownership, and cancellations for our website subscription service."
+        description="Answers about launch timelines, ownership, cancellations, hosting, SEO, and more for our website subscription service."
         jsonLd={jsonLd}
       />
       <header className="max-w-2xl">
