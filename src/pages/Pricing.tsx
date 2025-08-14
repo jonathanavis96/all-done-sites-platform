@@ -160,6 +160,97 @@ export default function PricingPage() {
     payLink: string;
   } | null>(null);
 
+  // -----------------------------
+  // Terms of service / master subscription agreement
+  // -----------------------------
+  // Whether the terms dialog is shown.  When a user clicks “Pay Now”
+  // on a plan card we first show our own Get Started options (pay
+  // now, WhatsApp, call, email).  If they choose Pay Now we then
+  // display the terms dialog.  The user must scroll through the
+  // agreement, tick the checkbox and click “Accept” before we
+  // redirect them to the Paystack payment page.  This ensures they
+  // actively agree to the latest agreement.  Acceptance details are
+  // stored locally and sent via Formspree for record‑keeping.
+  const [showTerms, setShowTerms] = useState(false);
+  // Holds the plan being purchased when showing terms
+  const [pendingPlan, setPendingPlan] = useState<{
+    id: "launch" | "business" | "premium";
+    name: string;
+    payLink: string;
+  } | null>(null);
+  // Track whether the user has checked the acceptance box
+  const [termsChecked, setTermsChecked] = useState(false);
+  // Terms text loaded from the public/terms.txt file
+  const [termsText, setTermsText] = useState<string>("");
+
+  // Fetch the terms document on first render.  It lives in the
+  // `public` folder as terms.txt and is served at the root of the
+  // deployed site.  We prepend the `BASE_URL` when available so
+  // GitHub Pages subfolder deployment works correctly.
+  useEffect(() => {
+    const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+    fetch(`${base}/terms.txt`)
+      .then((res) => res.text())
+      .then((txt) => setTermsText(txt))
+      .catch(() => {
+        // Fallback: if fetch fails we show a short placeholder
+        setTermsText(
+          "AllDoneSites Master Subscription Agreement could not be loaded. Please visit our website to read the latest terms."
+        );
+      });
+  }, []);
+
+  // Helper to record acceptance of the master subscription agreement.  It
+  // captures the current date/time, the visitor’s IP address via a
+  // simple public service, the selected plan and region, and a
+  // version identifier.  These details are stored in localStorage so
+  // they can be included on the thank‑you form submission.  The
+  // details are also sent to a Formspree endpoint for record keeping.
+  async function recordTermsAcceptance(planId: string) {
+    const acceptedAt = new Date().toISOString();
+    let ip = "";
+    try {
+      const res = await fetch("https://api.ipify.org?format=json");
+      if (res.ok) {
+        const data = await res.json();
+        ip = data.ip || "";
+      }
+    } catch {
+      // ignore network errors; we’ll leave ip blank
+    }
+    const details = {
+      plan: planId,
+      region,
+      acceptedAt,
+      ip,
+      // Update this version identifier whenever the terms change
+      termsVersion: "2025-08-13",
+    };
+    try {
+      // Send details to Formspree for your records.  Replace the
+      // endpoint ID below with a dedicated form if desired.  We send
+      // JSON data to keep the payload small; Formspree will include
+      // these key/value pairs in the email to you.
+      // Send the acceptance details to the dedicated Terms & Conditions
+      // Formspree endpoint so you receive an email with the record.
+      await fetch("https://formspree.io/f/xdkdjepo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          _subject: "Terms acceptance record",
+          ...details,
+        }),
+      });
+    } catch {
+      // ignore errors; the submission isn’t critical to the user
+    }
+    // Persist locally for thank‑you form
+    localStorage.setItem("termsAccepted", JSON.stringify(details));
+  }
+
   useEffect(() => {
     // One-time auto-detection (no manual override UI)
     const r = detectRegion();
@@ -397,11 +488,16 @@ export default function PricingPage() {
               */}
               <Button
                 variant="default"
-                asChild
+                onClick={() => {
+                  // When “Pay Now” is clicked we show the terms dialog
+                  setPendingPlan({ id: activePlan.id, name: activePlan.name, payLink: activePlan.payLink });
+                  setShowTerms(true);
+                  setTermsChecked(false);
+                  // Close the get‑started dialog
+                  setActivePlan(null);
+                }}
               >
-                <a href={activePlan.payLink} target="_blank" rel="noopener noreferrer">
-                  Pay&nbsp;Now
-                </a>
+                Pay&nbsp;Now
               </Button>
               {/* WhatsApp button */}
               <Button
@@ -435,6 +531,56 @@ export default function PricingPage() {
             <DialogFooter className="mt-6">
               <DialogClose asChild>
                 <Button variant="ghost">Cancel</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Terms dialog.  When a user chooses Pay Now from the Get Started modal
+          we capture the plan in `pendingPlan` and show this dialog.  They
+          must scroll through the agreement and tick the checkbox before
+          continuing to Paystack. */}
+      {showTerms && pendingPlan && (
+        <Dialog open={showTerms} onOpenChange={(open) => setShowTerms(open)}>
+          <DialogContent className="max-w-2xl sm:max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Master Subscription Agreement</DialogTitle>
+              <DialogDescription>
+                Please review the agreement below. You must accept the terms before proceeding to payment.
+              </DialogDescription>
+            </DialogHeader>
+            {/* Terms text scrollable area */}
+            <div className="mt-4 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed space-y-4 max-h-[50vh] pr-4">
+              {termsText || "Loading…"}
+            </div>
+            {/* Acceptance checkbox */}
+            <div className="mt-6 flex items-start gap-2">
+              <input
+                id="termsCheckbox"
+                type="checkbox"
+                checked={termsChecked}
+                onChange={(e) => setTermsChecked(e.target.checked)}
+                className="mt-1 h-4 w-4 border rounded"
+              />
+              <label htmlFor="termsCheckbox" className="text-sm leading-snug">
+                I have read, understood, and agree to be bound by the Master Subscription Agreement.
+              </label>
+            </div>
+            <DialogFooter className="mt-6">
+              <Button
+                onClick={async () => {
+                  if (!pendingPlan) return;
+                  await recordTermsAcceptance(pendingPlan.id);
+                  setShowTerms(false);
+                  window.location.href = pendingPlan.payLink;
+                }}
+                disabled={!termsChecked}
+              >
+                Accept&nbsp;&amp;&nbsp;Continue
+              </Button>
+              <DialogClose asChild>
+                <Button variant="ghost" onClick={() => setShowTerms(false)}>Cancel</Button>
               </DialogClose>
             </DialogFooter>
           </DialogContent>

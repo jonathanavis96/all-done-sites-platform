@@ -101,6 +101,30 @@ export default function ThankYou() {
         <input type="hidden" name="_subject" value="All Done Sites — Subscriber onboarding" />
         <input type="text" name="_gotcha" className="hidden" tabIndex={-1} autoComplete="off" />
 
+        {/* Include terms acceptance details if present.  These are
+            populated when the user accepted the Master Subscription
+            Agreement during checkout.  We read them from
+            localStorage.  They are optional and will be blank if the
+            terms were not presented or accepted yet. */}
+        {(() => {
+          try {
+            const stored = localStorage.getItem("termsAccepted");
+            if (!stored) return null;
+            const details = JSON.parse(stored);
+            return (
+              <>
+                <input type="hidden" name="termsAcceptedAt" value={details.acceptedAt || ""} />
+                <input type="hidden" name="termsIP" value={details.ip || ""} />
+                <input type="hidden" name="termsPlan" value={details.plan || plan} />
+                <input type="hidden" name="termsRegion" value={details.region || region} />
+                <input type="hidden" name="termsVersion" value={details.termsVersion || ""} />
+              </>
+            );
+          } catch {
+            return null;
+          }
+        })()}
+
         <Button
           type="submit"
           size="lg"
