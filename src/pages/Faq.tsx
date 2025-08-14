@@ -27,7 +27,7 @@ const faqs = [
   {
     q: "Can I cancel anytime?",
     // Describe the minimum commitment and trial period without markdown bolding.
-    a: `Our standard agreement is a minimum 6‑month commitment.\n\n- Introductory 1‑month trial (by invitation) → You can cancel after that month without further charges.\n- Standard plan → You may cancel early but must still pay the remaining months of your 6‑month term.`,
+    a: `Our standard agreement is a minimum 6‑month commitment.\n\nIntroductory 1‑month trial (by invitation) → You can cancel after that month without further charges.\nStandard plan → You may cancel early but must still pay the remaining months of your 6‑month term.`,
   },
   {
     q: "What happens if I cancel?",
@@ -62,7 +62,7 @@ const faqs = [
   {
     q: "Do you provide SEO optimisation?",
     // Explain SEO levels without markdown bolding.
-    a: `Yes — all our plans include SEO, but the level depends on your subscription:\n\n- Starter Plan → Basic SEO setup for launch.\n- Business Plan → Solid SEO optimisation for good search visibility, but without ongoing analytics or performance enhancements.\n- Premium Plan → Enhanced SEO with ongoing analytics, reporting and performance improvements.`,
+    a: `Yes — all our plans include SEO, but the level depends on your subscription:\n\nStarter Plan → Basic SEO setup for launch.\nBusiness Plan → Solid SEO optimisation for good search visibility, but without ongoing analytics or performance enhancements.\nPremium Plan → Enhanced SEO with ongoing analytics, reporting and performance improvements.`,
   },
   {
     q: "Can you connect my website to social media?",
@@ -79,7 +79,7 @@ const faqs = [
   {
     q: "Can I move my site to a different host later?",
     // Remove markdown bolding and simplify formatting.
-    a: `Yes — you can move hosting at any time after your 6‑month contract ends, provided you have:\n\n- Purchased the site’s code/design at fair market value\n- Paid for any additional work done`,
+    a: `Yes — you can move hosting at any time after your 6‑month contract ends, provided you have:\n\nPurchased the site’s code/design at fair market value\nPaid for any additional work done`,
   },
 ];
 
@@ -112,7 +112,8 @@ export default function Faq() {
             {/* Ensure FAQ headings align left on mobile by adding a text-left class */}
             <AccordionTrigger className="text-left">{f.q}</AccordionTrigger>
             <AccordionContent>
-              <p className="text-muted-foreground">{f.a}</p>
+              {/* Preserve newline characters within answers so lists appear on separate lines */}
+              <p className="text-muted-foreground whitespace-pre-line">{f.a}</p>
             </AccordionContent>
           </AccordionItem>
         ))}
