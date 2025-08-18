@@ -354,7 +354,7 @@ export default function PricingPage() {
     <>
       <Seo
         title="Pricing — All Done Sites"
-        description="Simple, subscription-first website packages. No big upfront cost. Pick Launch, Business, or Premium with hosting, SSL, backups, and monthly updates included."
+        description="Get a modern website and enterprise-level email for one monthly fee. Hosting, SSL, backups, and updates included. Launch, Business, or Premium."
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "ProductCollection",
