@@ -1,7 +1,7 @@
 import Seo from "@/components/Seo";
 
 // Replace JPEG mockups with optimized WebP images
-import plumber from "@/assets/portfolio/plumber.webp";
+import reachright from "@/assets/portfolio/reachright.webp";
 import electrician from "@/assets/portfolio/electrician.webp";
 import salon from "@/assets/portfolio/salon.webp";
 import consultant from "@/assets/portfolio/consultancy.webp";
@@ -10,8 +10,9 @@ import fitness from "@/assets/portfolio/fitness.webp";
 
 const items = [
   {
-    src: plumber,
-    alt: "Plumbing website mockup – clean professional layout",
+    src: reachright,
+    alt: "ReachRight Marketing – modern digital marketing design",
+    link: "https://jonathanavis96.github.io/reachright-marketing",
   },
   {
     src: electrician,
@@ -44,14 +45,45 @@ export default function Portfolio() {
       />
       <header className="max-w-2xl">
         <h1 className="text-3xl font-bold">Recent work & examples</h1>
-        <p className="mt-2 text-muted-foreground">Designs tailored for service businesses — fast, clear, and easy to update.</p>
+        <p className="mt-2 text-muted-foreground">
+          Designs tailored for service businesses — fast, clear, and easy to update.
+        </p>
       </header>
 
       <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {items.map((it) => (
-          <figure key={it.alt} className="group rounded-lg border overflow-hidden">
-            <img src={it.src} alt={it.alt} loading="lazy" width={768} height={512} className="aspect-[3/2] object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-            <figcaption className="p-3 text-sm text-muted-foreground">{it.alt}</figcaption>
+          <figure
+            key={it.alt}
+            className="group rounded-lg border overflow-hidden"
+          >
+            {it.link ? (
+              <a
+                href={it.link}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img
+                  src={it.src}
+                  alt={it.alt}
+                  loading="lazy"
+                  width={768}
+                  height={512}
+                  className="aspect-[3/2] object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                />
+              </a>
+            ) : (
+              <img
+                src={it.src}
+                alt={it.alt}
+                loading="lazy"
+                width={768}
+                height={512}
+                className="aspect-[3/2] object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              />
+            )}
+            <figcaption className="p-3 text-sm text-muted-foreground">
+              {it.alt}
+            </figcaption>
           </figure>
         ))}
       </div>
