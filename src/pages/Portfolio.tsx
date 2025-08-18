@@ -119,9 +119,6 @@ export default function Portfolio() {
                   >
                     {it.alt}
                     <span className="sr-only">(opens in a new tab)</span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                      — our live site
-                    </span>
                   </a>
                 ) : (
                   it.alt
