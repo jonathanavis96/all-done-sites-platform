@@ -55,11 +55,17 @@ export default function Index() {
               aria-hidden="true"
             />
 
-            {/* Heading */}
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-              Your website, done for you
+            {/* Heading (mobile: keep “Your website, done for you” on one line) */}
+            <h2 className="font-bold tracking-tight mb-4 leading-tight">
+              <span className="block text-3xl sm:text-4xl md:text-5xl">
+                <span className="whitespace-nowrap">
+                  Your website, done for&nbsp;you
+                </span>
+              </span>
               <br />
-              <span className="inline-block">— for one monthly fee</span>
+              <span className="inline-block text-3xl sm:text-4xl md:text-5xl">
+                — for one monthly fee
+              </span>
             </h2>
 
             <p className="text-lg text-muted-foreground mb-8">
@@ -131,7 +137,7 @@ export default function Index() {
       <section className="container py-16">
         <div className="text-center mb-10">
           <h2 className="text-2xl md:text-3xl font-semibold">Everything included</h2>
-        <p className="text-muted-foreground mt-2">Simple, transparent, and designed to save you time.</p>
+          <p className="text-muted-foreground mt-2">Simple, transparent, and designed to save you time.</p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {[
