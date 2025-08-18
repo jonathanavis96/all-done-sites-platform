@@ -377,7 +377,7 @@ export default function PricingPage() {
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Simple monthly pricing</h1>
           <p className="mt-3 text-muted-foreground">
-            No big upfront fees. Hosting, SSL, backups, and monthly updates included.
+            No big upfront fees. Hosting, SSL, automated backups, professional enterprise-grade email, and monthly updates included.
           </p>
         </header>
 
@@ -439,6 +439,11 @@ export default function PricingPage() {
           ))}
         </div>
 
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Need more? Additional professional mailboxes can be added at 
+          <strong> R40/month each</strong>.
+        </p>
+        
         {/* Custom / Enterprise */}
         <div className="mt-10 rounded-2xl border bg-card p-6 shadow-sm">
           <h3 className="text-lg font-medium">Custom / Enterprise</h3>
