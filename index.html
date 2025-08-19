@@ -41,8 +41,10 @@
 
     <!-- Preload hero assets -->
     <link rel="preload" as="image" href="/hero-poster.png" />
-    <!-- (Optional) Some browsers honor this; safe to include -->
-    <link rel="preload" as="video" href="/hero.mp4" />
+
+    <!-- Preload video (background/hero) -->
+    <!-- Use fetch for broader support, with type and crossorigin for best practice -->
+    <link rel="preload" as="fetch" href="/hero.mp4" type="video/mp4" crossorigin="anonymous" />
 
     <title>All Done Sites</title>
   </head>
