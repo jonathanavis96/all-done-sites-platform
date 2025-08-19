@@ -9,6 +9,22 @@ export default function Index() {
   // Base path so assets work on GitHub Pages (subfolder) and locally
   const base = import.meta.env.BASE_URL || "/";
 
+  // Preload the hero poster only on the home route
+  useEffect(() => {
+    const href = `${base}hero-poster.png`;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = href;
+    // Optional: only preload on larger screens (uncomment if desired)
+    // link.media = "(min-width: 768px)";
+    document.head.appendChild(link);
+    return () => {
+      // Clean up when navigating away so Chrome doesn't warn on other routes
+      if (link.parentNode) link.parentNode.removeChild(link);
+    };
+  }, [base]);
+
   // Force the card video to autoplay once metadata is ready (mobile-friendly)
   const cardVideoRef = useRef<HTMLVideoElement | null>(null);
   useEffect(() => {
@@ -39,8 +55,6 @@ export default function Index() {
         jsonLd={jsonLd}
       />
 
-      {/* ===== Removed the top headline/CTA hero section here ===== */}
-
       {/* First content section: gradient ONLY behind left column; video in right card */}
       <section className="relative overflow-hidden">
         <div className="container py-12 md:py-20 grid md:grid-cols-2 gap-10 items-center">
@@ -55,7 +69,7 @@ export default function Index() {
               aria-hidden="true"
             />
 
-            {/* Heading (mobile: keep “Your website, done for you” on one line) */}
+            {/* Heading */}
             <h2 className="font-bold tracking-tight mb-4 leading-tight">
               <span className="block text-3xl sm:text-4xl md:text-5xl">
                 <span className="whitespace-nowrap">
@@ -73,14 +87,11 @@ export default function Index() {
               monthly subscription so you can focus on your business.
             </p>
 
-            {/* Buttons under the sentence */}
+            {/* Buttons */}
             <div className="mb-8 flex flex-col sm:flex-row gap-4">
-              {/* Get Started — match top-right gradient (variant=hero) */}
               <Button asChild size="lg" variant="hero" className="rounded-2xl">
                 <NavLink to="/pricing">Get Started</NavLink>
               </Button>
-
-              {/* See how it works — outline with green hover */}
               <Button
                 asChild
                 size="lg"
@@ -108,7 +119,7 @@ export default function Index() {
             </div>
           </div>
 
-          {/* RIGHT: video card (no gradients) */}
+          {/* RIGHT: video card */}
           <div className="md:justify-self-end w-full max-w-xl">
             <div className="relative rounded-xl border bg-card p-6 shadow-sm">
               <video
@@ -137,7 +148,7 @@ export default function Index() {
       <section className="container py-16">
         <div className="text-center mb-10">
           <h2 className="text-2xl md:text-3xl font-semibold">Everything included</h2>
-          <p className="text-muted-foreground mt-2">Simple, transparent, and designed to save you time.</p>
+        <p className="text-muted-foreground mt-2">Simple, transparent, and designed to save you time.</p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {[
