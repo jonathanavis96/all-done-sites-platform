@@ -19,7 +19,7 @@ const items: Item[] = [
   {
     src: reachright,
     alt: "ReachRight Marketing – modern digital marketing design",
-    link: "https://jonathanavis96.github.io/reachright-marketing",
+    link: "https://reachrightmarketing.com/",
     live: true,
   },
   {
