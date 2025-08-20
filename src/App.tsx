@@ -17,6 +17,10 @@ import ContactEnterprise from "./pages/ContactEnterprise";
 import NotFound from "./pages/NotFound";
 import ThankYou from "./pages/ThankYou";
 
+// ⬇️ New pages
+import Terms from "./pages/Terms";
+import TermsFull from "./pages/TermsFull";
+
 const queryClient = new QueryClient();
 
 export default function App() {
@@ -35,7 +39,12 @@ export default function App() {
               <Route path="/faq" element={<Faq />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/contact-enterprise" element={<ContactEnterprise />} />
-            <Route path="/thank-you" element={<ThankYou />} />
+              <Route path="/thank-you" element={<ThankYou />} />
+
+              {/* Terms pages */}
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/terms/full" element={<TermsFull />} />
+
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
