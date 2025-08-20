@@ -20,6 +20,7 @@ import ThankYou from "./pages/ThankYou";
 // ⬇️ New pages
 import Terms from "./pages/Terms";
 import TermsFull from "./pages/TermsFull";
+import Privacy from "./pages/Privacy";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ export default function App() {
               {/* Terms pages */}
               <Route path="/terms" element={<Terms />} />
               <Route path="/terms/full" element={<TermsFull />} />
+              <Route path="/privacy" element={<Privacy />} />
 
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
