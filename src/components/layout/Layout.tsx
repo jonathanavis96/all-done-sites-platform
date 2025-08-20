@@ -142,10 +142,6 @@ export const SiteFooter = () => {
             Cancellation Policy
           </NavLink>
           <span className="text-muted-foreground">|</span>
-          <NavLink to="/terms" className="text-muted-foreground hover:text-foreground">
-            Terms &amp; Policies
-          </NavLink>
-          <span className="text-muted-foreground">|</span>
           <NavLink to="/terms/full" className="text-muted-foreground hover:text-foreground">
             Subscription Agreement
           </NavLink>
