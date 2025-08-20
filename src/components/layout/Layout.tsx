@@ -78,7 +78,12 @@ export const SiteHeader = () => {
           <DrawerHeader className="flex items-center justify-between px-4 py-2">
             <DrawerTitle className="text-lg font-semibold">Menu</DrawerTitle>
             <DrawerClose asChild>
-              <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} aria-label="Close menu">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close menu"
+              >
                 <X />
               </Button>
             </DrawerClose>
@@ -125,7 +130,6 @@ export const SiteFooter = () => {
         </p>
 
         {/* Footer nav with policy links */}
-        {/* Footer nav with policy links */}
         <nav className="flex flex-wrap items-center justify-center gap-2 text-sm">
           <NavLink to="/faq" className="text-muted-foreground hover:text-foreground">
             FAQ
@@ -151,14 +155,16 @@ export const SiteFooter = () => {
             Subscription Agreement
           </NavLink>
         </nav>
+      </div>
+    </footer>
+  );
+};
 
 export default function Layout({ children }: { children?: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <SiteHeader />
-      <main className="flex-1">
-        {children || <Outlet />}
-      </main>
+      <main className="flex-1">{children || <Outlet />}</main>
       <SiteFooter />
     </div>
   );
