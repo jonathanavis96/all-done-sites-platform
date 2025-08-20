@@ -312,12 +312,6 @@ export default function TermsFull() {
           registered post to the addresses on the Order.
         </p>
       </section>
-
-      <footer className="mt-12 border-t pt-6 text-sm text-gray-500">
-        <p>
-          Content based on your provided All Done Sites Master Subscription Agreement PDF. :contentReference[oaicite:0]{index=0}
-        </p>
-      </footer>
     </div>
   );
 }
