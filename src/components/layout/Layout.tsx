@@ -123,9 +123,32 @@ export const SiteFooter = () => {
         <p className="text-sm text-muted-foreground">
           © {new Date().getFullYear()} All Done Sites. All rights reserved.
         </p>
-        <nav className="flex gap-4 text-sm">
-          <NavLink to="/faq" className="text-muted-foreground hover:text-foreground">FAQ</NavLink>
-          <NavLink to="/contact" className="text-muted-foreground hover:text-foreground">Contact</NavLink>
+
+        {/* Footer nav with policy links */}
+        <nav className="flex flex-wrap items-center justify-center gap-2 text-sm">
+          <NavLink to="/faq" className="text-muted-foreground hover:text-foreground">
+            FAQ
+          </NavLink>
+          <span className="text-muted-foreground">|</span>
+          <NavLink to="/contact" className="text-muted-foreground hover:text-foreground">
+            Contact
+          </NavLink>
+          <span className="text-muted-foreground">|</span>
+          <NavLink to="/terms#refund-policy" className="text-muted-foreground hover:text-foreground">
+            Refund Policy
+          </NavLink>
+          <span className="text-muted-foreground">|</span>
+          <NavLink to="/terms#cancellation-policy" className="text-muted-foreground hover:text-foreground">
+            Cancellation Policy
+          </NavLink>
+          <span className="text-muted-foreground">|</span>
+          <NavLink to="/terms" className="text-muted-foreground hover:text-foreground">
+            Terms &amp; Policies
+          </NavLink>
+          <span className="text-muted-foreground">|</span>
+          <NavLink to="/terms/full" className="text-muted-foreground hover:text-foreground">
+            Subscription Agreement
+          </NavLink>
         </nav>
       </div>
     </footer>
