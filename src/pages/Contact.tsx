@@ -62,8 +62,8 @@ export default function Contact() {
   const isEnterprise = selectedPlan.toLowerCase() === "enterprise" || decodedSubject.toLowerCase().includes("enterprise");
   // Choose the appropriate Formspree endpoint
   const formEndpoint = isEnterprise
-    ? "https://formspree.io/f/meoznyeg"
-    : "https://formspree.io/f/manbvoja";
+    ? "https://formspree.io/f/xblaryol"
+    : "https://formspree.io/f/mnnbavdj";
 
   // Compute the email subject for the Formspree submission.  We prioritise an
   // explicit subject query, then derive one from the selected plan, and
