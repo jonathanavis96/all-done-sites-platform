@@ -232,7 +232,7 @@ export default function PricingPage() {
       // these key/value pairs in the email to you.
       // Send the acceptance details to the dedicated Terms & Conditions
       // Formspree endpoint so you receive an email with the record.
-      await fetch("https://formspree.io/f/xdkdjepo", {
+      await fetch("https://formspree.io/f/mwpneboe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
