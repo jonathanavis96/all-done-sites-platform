@@ -58,7 +58,7 @@ const PAYSTACK_PAGES: Record<RegionKey, { launch: string; business: string; prem
     premium: `${PAYSTACK_BASE}alldonesites-premium-us`,
   },
   ZA: {
-    launch: `${PAYSTACK_BASE}alldonesites-launch-za`,
+    launch: `${PAYSTACK_BASE}r10-test`,
     business: `${PAYSTACK_BASE}alldonesites-business-za`,
     premium: `${PAYSTACK_BASE}alldonesites-premium-za`,
   },
