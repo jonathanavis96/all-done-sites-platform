@@ -15,7 +15,7 @@ export default function ContactEnterprise() {
   const { toast } = useToast();
   const [status, setStatus] = React.useState<"idle" | "sending">("idle");
   // For the enterprise form we always use the enterprise endpoint.
-  const formEndpoint = "https://formspree.io/f/meoznyeg";
+  const formEndpoint = "https://formspree.io/f/xblaryol";
   // The selected plan is hard-coded to enterprise.
   const selectedPlan = "enterprise";
   // Compute the subject for the enterprise form.
