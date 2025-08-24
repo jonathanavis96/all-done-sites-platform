@@ -354,11 +354,12 @@ export default function PricingPage() {
       <Seo
         title="Pricing — All Done Sites"
         description="Get a modern website and enterprise-level email for one monthly fee. Hosting, SSL, backups, and updates included. Launch, Business, or Premium."
+        canonical="https://alldonesites.com/pricing"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "ProductCollection",
           name: "All Done Sites Plans",
-          url: typeof window !== "undefined" ? window.location.href : "https://example.com/pricing",
+          url: "https://alldonesites.com/pricing",
           hasOfferCatalog: {
             "@type": "OfferCatalog",
             name: "Website plans",
@@ -371,6 +372,7 @@ export default function PricingPage() {
           },
         }}
       />
+
 
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
         <header className="mb-8 text-center">
