@@ -1,2 +1,18 @@
-<!doctype html>
-<meta http-equiv="refresh" content="0; url=/all-done-sites-platform/">
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Redirecting…</title>
+    <meta http-equiv="refresh" content="0; url=/" />
+    <script>
+      // spa-github-pages: https://github.com/rafgraph/spa-github-pages
+      (function(l) {
+        var segmentCount = 0; // root domain hosting → 0
+        var path = l.pathname.slice(1).split('/').slice(segmentCount);
+        var search = l.search ? l.search.slice(1).replace(/&/g, '~and~') : '';
+        l.replace('/?' + (path.join('/') || '') + (search ? '&' + search : '') + l.hash);
+      }(window.location));
+    </script>
+  </head>
+  <body>Redirecting…</body>
+</html>
