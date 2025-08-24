@@ -41,7 +41,7 @@ export default function ThankYou() {
     }
 
     try {
-      const res = await fetch("https://formspree.io/f/xpwlbglb", {
+      const res = await fetch("https://formspree.io/f/mrbazkqg", {
         method: "POST",
         body: data,
         headers: { Accept: "application/json" },
