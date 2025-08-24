@@ -40,34 +40,33 @@ const REGION_CURRENCY: Record<RegionKey, { symbol: string; code: string }> = {
 // These URLs point to Paystack payment pages for each region and tier.  Each
 // region defaults to its own set of links, with OTHER falling back to the US
 // pages.  When users click “Pay Now” on the pricing cards the correct page
-// for their detected region and selected tier is opened.  See the README or
-// pricing notes for more details.
+const PAYSTACK_BASE = "https://paystack.com/pay/";
 const PAYSTACK_PAGES: Record<RegionKey, { launch: string; business: string; premium: string }> = {
-  ZA: {
-    launch: "https://paystack.com/pay/vwmef9qepw",
-    business: "https://paystack.com/pay/2vckz2kpat",
-    premium: "https://paystack.com/pay/3k1lj5lg7q",
-  },
-  US: {
-    launch: "https://paystack.com/pay/bv9n4t60qh",
-    business: "https://paystack.com/pay/0o8-4eh5xd",
-    premium: "https://paystack.com/pay/x90og4i8e8",
+  EU: {
+    launch: `${PAYSTACK_BASE}alldonesites-launch-eu`,
+    business: `${PAYSTACK_BASE}alldonesites-business-eu`,
+    premium: `${PAYSTACK_BASE}alldonesites-premium-eu`,
   },
   UK: {
-    launch: "https://paystack.com/pay/rgzuk08ran",
-    business: "https://paystack.com/pay/6ex8hpa7ad",
-    premium: "https://paystack.com/pay/q30qlmtqq-",
+    launch: `${PAYSTACK_BASE}alldonesites-launch-uk`,
+    business: `${PAYSTACK_BASE}alldonesites-business-uk`,
+    premium: `${PAYSTACK_BASE}alldonesites-premium-uk`,
   },
-  EU: {
-    launch: "https://paystack.com/pay/lh7ae1u8-t",
-    business: "https://paystack.com/pay/axfspb03tv",
-    premium: "https://paystack.com/pay/rpmvma15mk",
+  US: {
+    launch: `${PAYSTACK_BASE}alldonesites-launch-us`,
+    business: `${PAYSTACK_BASE}alldonesites-business-us`,
+    premium: `${PAYSTACK_BASE}alldonesites-premium-us`,
+  },
+  ZA: {
+    launch: `${PAYSTACK_BASE}alldonesites-launch-za`,
+    business: `${PAYSTACK_BASE}alldonesites-business-za`,
+    premium: `${PAYSTACK_BASE}alldonesites-premium-za`,
   },
   OTHER: {
     // Fallback to US links for visitors outside supported regions
-    launch: "https://paystack.com/pay/bv9n4t60qh",
-    business: "https://paystack.com/pay/0o8-4eh5xd",
-    premium: "https://paystack.com/pay/x90og4i8e8",
+    launch: `${PAYSTACK_BASE}alldonesites-launch-us`,
+    business: `${PAYSTACK_BASE}alldonesites-business-us`,
+    premium: `${PAYSTACK_BASE}alldonesites-premium-us`,
   },
 };
 
