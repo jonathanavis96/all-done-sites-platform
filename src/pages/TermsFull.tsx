@@ -7,7 +7,7 @@ export default function TermsFull() {
     <div className="max-w-4xl mx-auto px-6 py-12 leading-relaxed">
       <header className="mb-8">
         <h1 className="text-3xl font-bold">All Done Sites — Master Subscription Agreement</h1>
-        <p className="text-sm text-gray-500 mt-2">Last updated: August 2025</p>
+        <p className="text-sm text-gray-500 mt-2">Last updated: August 25, 2025</p>
         <p className="mt-6">
           <Link to="/terms" className="text-blue-600 hover:underline">
             ← Back to Terms & Policies (summary)
@@ -19,8 +19,8 @@ export default function TermsFull() {
       <section id="snapshot" className="mb-10">
         <h2 className="text-2xl font-semibold mb-3">Plain-English Snapshot</h2>
         <p>
-          This is the one agreement you sign with All Done Sites for our subscription website service. It
-          covers ownership, payments, support, SEO, cancellation, transfer/buyout, and liability.
+          This Agreement covers your subscription website service. It includes ownership, payments, support,
+          SEO, cancellation, transfer/buyout, and liability.
         </p>
       </section>
 
@@ -135,8 +135,8 @@ export default function TermsFull() {
         <p>
           Client will (i) provide Branding and Content, accurate business information, and timely feedback/
           approvals; (ii) warrant it owns or has rights to all supplied Content and Branding; and (iii) comply
-          with applicable laws, including privacy and marketing laws (e.g., POPIA). Client is responsible for
-          the accuracy and legality of all Content.
+          with applicable laws, including privacy and marketing laws (e.g., POPIA, GDPR where relevant).
+          Client is responsible for the accuracy and legality of all Content.
         </p>
       </section>
 
@@ -170,7 +170,7 @@ export default function TermsFull() {
         <h2 className="text-xl font-semibold mb-2">6. SEO Levels</h2>
         <p>
           <strong>Starter Plan</strong> — Basic SEO setup for launch. <strong>Business Plan</strong> — Solid SEO optimisation for
-          good search visibility, without ongoing analytics or performance enhancements. <strong>Premium Plan</strong> —
+          good search visibility, without ongoing analytics or performance enhancements. <strong>Premium Plan</strong> — 
           Enhanced SEO with ongoing analytics, reporting, and performance improvements. No specific rankings
           are guaranteed.
         </p>
@@ -235,13 +235,23 @@ export default function TermsFull() {
       {/* 12 */}
       <section id="s12" className="mb-8">
         <h2 className="text-xl font-semibold mb-2">12. Content Standards; Compliance; Data Protection</h2>
-        <p>
+        <p className="mb-2">
           Client is solely responsible for all Content and for maintaining lawful privacy and terms pages where
-          applicable. Client must comply with marketing and privacy laws (including POPIA) when collecting
-          personal information. To the extent Provider processes personal information on Client’s behalf,
-          Provider acts as an operator under POPIA and will process such data only on Client’s lawful instructions.
+          applicable. Client must comply with marketing and privacy laws (including POPIA, GDPR, or other applicable
+          laws) when collecting personal information.
+        </p>
+        <p className="mb-2">
+          Provider uses Google Analytics 4 (GA4) with Consent Mode v2 by default. In the EEA/UK, analytics and advertising
+          cookies are only set if end users give consent via a banner. Outside the EEA/UK, analytics is enabled by default
+          but users may still opt out using the tools provided in the Privacy Policy.
+        </p>
+        <p>
+          If Client requests different tracking, cookie, or analytics settings on their own domain, Provider will cooperate
+          subject to legal and technical feasibility. Such configuration is deemed <strong>Additional Work</strong> and will
+          incur an extra monthly fee, quoted and agreed before implementation.
         </p>
       </section>
+
 
       {/* 13 */}
       <section id="s13" className="mb-8">
