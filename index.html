@@ -8,6 +8,9 @@
       content="All Done Sites — hassle-free websites for a simple monthly fee. We build, host, and maintain your site."
     />
 
+    <!-- ✅ Preload LCP poster so the browser prioritizes it -->
+    <link rel="preload" as="image" href="/hero-poster.webp" fetchpriority="high" />
+
     <!-- Favicon & Icons -->
     <!-- Modern browsers prefer SVG -->
     <link rel="icon" href="/logo-bimi.svg" type="image/svg+xml" />
@@ -27,7 +30,6 @@
 
     <!-- Safari pinned tab (optional, for monochrome version of the SVG) -->
     <link rel="mask-icon" href="/logo-bimi.svg" color="#0ea5e9" />
-
 
     <!-- Open Graph -->
     <meta property="og:title" content="All Done Sites" />
