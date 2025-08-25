@@ -2,6 +2,7 @@ import { ReactNode, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, Phone, X } from "lucide-react";
+import { useAnalytics } from "@/hooks/useAnalytics"; // 👈 GA4 hook
 
 // Import Drawer components for mobile navigation
 import {
@@ -164,6 +165,8 @@ export const SiteFooter = () => {
 };
 
 export default function Layout({ children }: { children?: ReactNode }) {
+  useAnalytics(); // 👈 Hook for GA4 tracking
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <SiteHeader />
