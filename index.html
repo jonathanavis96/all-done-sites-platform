@@ -39,14 +39,31 @@
     <meta name="twitter:description" content="Your website, done for you — for one monthly fee." />
     <meta name="twitter:image" content="https://alldonesites.com/og1200x630_v2.jpg" />
 
-    <!--  GA4 -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SKZZXTSMN1"></script>
+    <!-- ================================
+         Consent Mode v2 defaults (deny)
+         MUST be before GA/gtag/GTM
+    ================================= -->
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
+      function gtag(){ dataLayer.push(arguments); }
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        analytics_storage: 'denied',
+        functionality_storage: 'denied',
+        personalization_storage: 'denied',
+        security_storage: 'granted',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied'
+      });
+    </script>
+
+    <!-- GA4 (plain gtag). If you later move to GTM, replace this with the GTM snippet. -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SKZZXTSMN1"></script>
+    <script>
       gtag('js', new Date());
       gtag('config', 'G-SKZZXTSMN1');
-      // gtag('config', 'G-SKZZXTSMN1', { 'anonymize_ip': true }); // optional privacy tweak
+      // Optional:
+      // gtag('config', 'G-SKZZXTSMN1', { anonymize_ip: true });
     </script>
 
     <!-- Theme color for mobile browsers -->
@@ -68,5 +85,109 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- ===========================================
+         Free geo + minimal banner wired to Consent
+         EU/UK -> show banner
+         Elsewhere (incl. ZA) -> auto-grant, no banner
+    ============================================ -->
+    <script>
+      (function () {
+        const EU_UK = new Set([
+          'AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE',
+          'IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE','IS','LI','NO','GB'
+        ]);
+        const CHOICE_KEY = 'consent.choice.v1'; // store only explicit choices
+
+        // Re-apply saved explicit choice
+        try {
+          const saved = localStorage.getItem(CHOICE_KEY);
+          if (saved === 'granted') {
+            gtag('consent','update',{
+              ad_storage:'granted', analytics_storage:'granted',
+              functionality_storage:'granted', personalization_storage:'granted',
+              ad_user_data:'granted', ad_personalization:'granted'
+            });
+            return;
+          }
+          if (saved === 'denied') {
+            gtag('consent','update',{
+              ad_storage:'denied', analytics_storage:'denied',
+              functionality_storage:'denied', personalization_storage:'denied',
+              ad_user_data:'denied', ad_personalization:'denied'
+            });
+            return;
+          }
+        } catch (e) {}
+
+        function showBanner() {
+          function mount() {
+            if (document.getElementById('consent-banner')) return;
+            const bar = document.createElement('div');
+            bar.id = 'consent-banner';
+            bar.setAttribute('role','dialog');
+            bar.setAttribute('aria-live','polite');
+            bar.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:2147483647;background:#111;color:#fff;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;padding:14px";
+            bar.innerHTML = `
+              <div style="max-width:960px;margin:0 auto;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+                <div style="flex:1;min-width:260px">
+                  We use cookies for analytics to improve our site.
+                  <a href="/privacy" style="color:#9cf;text-decoration:underline">Learn more</a>.
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button id="consent-deny" style="background:#333;border:1px solid #555;color:#fff;padding:8px 12px;border-radius:6px;cursor:pointer">Deny</button>
+                  <button id="consent-accept" style="background:#0ea5e9;border:0;color:#fff;padding:8px 12px;border-radius:6px;cursor:pointer">Accept</button>
+                </div>
+              </div>`;
+            document.body.appendChild(bar);
+
+            document.getElementById('consent-accept').onclick = function () {
+              gtag('consent','update',{
+                ad_storage:'granted', analytics_storage:'granted',
+                functionality_storage:'granted', personalization_storage:'granted',
+                ad_user_data:'granted', ad_personalization:'granted'
+              });
+              try { localStorage.setItem(CHOICE_KEY,'granted'); } catch(e){}
+              bar.remove();
+            };
+            document.getElementById('consent-deny').onclick = function () {
+              gtag('consent','update',{
+                ad_storage:'denied', analytics_storage:'denied',
+                functionality_storage:'denied', personalization_storage:'denied',
+                ad_user_data:'denied', ad_personalization:'denied'
+              });
+              try { localStorage.setItem(CHOICE_KEY,'denied'); } catch(e){}
+              bar.remove();
+            };
+          }
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', mount);
+          } else {
+            mount();
+          }
+        }
+
+        // Geo: show banner only for EU/UK; otherwise grant (no persistence)
+        fetch('https://ipapi.co/json/')
+          .then(r => r.ok ? r.json() : Promise.reject())
+          .then(loc => {
+            const cc = (loc && loc.country_code) || 'ZZ';
+            if (EU_UK.has(cc)) {
+              showBanner(); // ask for consent in EU/UK
+            } else {
+              // Outside EU/UK -> grant for this page view (do not persist)
+              gtag('consent','update',{
+                ad_storage:'granted', analytics_storage:'granted',
+                functionality_storage:'granted', personalization_storage:'granted',
+                ad_user_data:'granted', ad_personalization:'granted'
+              });
+            }
+          })
+          .catch(() => {
+            // If geo fails, safest fallback = show banner
+            showBanner();
+          });
+      })();
+    </script>
   </body>
 </html>
