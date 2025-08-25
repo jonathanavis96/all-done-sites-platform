@@ -32,9 +32,12 @@ export const SiteHeader = () => {
           aria-label="All Done Sites Home"
         >
           <img
-            src={`${base}logo.png`}
+            src={`${base}logo-bimi.svg`}
             alt="All Done Sites Logo"
-            className="h-8 w-8 rounded-md object-contain"
+            className="h-8 w-8 object-contain"
+            width={32}
+            height={32}
+            decoding="async"
           />
           <span className="text-lg font-semibold">All Done Sites</span>
         </NavLink>
