@@ -2,7 +2,14 @@
 import React, { useEffect, useRef } from "react";
 import Seo from "@/components/Seo";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Rocket, Shield, Smartphone, Sparkles, Timer } from "lucide-react";
+import {
+  CheckCircle2,
+  Rocket,
+  Shield,
+  Smartphone,
+  Sparkles,
+  Timer,
+} from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 export default function Index() {
@@ -72,17 +79,24 @@ export default function Index() {
             />
 
             {/* Heading (single H1) */}
+            <Seo
+              title="Hassle-Free Website Subscription for SMEs | All Done Sites"
+              description="We design, host, and maintain your site for one simple monthly fee. No upfront costs—just fast setup, pro support, and ongoing updates."
+            />
             <h1 className="font-bold tracking-tight mb-4 leading-tight">
-              <span className="block text-3xl sm:text-4xl md:text-5xl">
-                <span className="whitespace-nowrap">Your website, done for&nbsp;you</span>
+              <span className="block text-3xl sm:text-4xl md:text-5xl whitespace-nowrap">
+                Your website, done for&nbsp;you
               </span>
               <br />
-              <span className="inline-block text-3xl sm:text-4xl md:text-5xl">— for one monthly fee</span>
+              <span className="inline-block text-3xl sm:text-4xl md:text-5xl whitespace-nowrap">
+                — for one monthly fee
+              </span>
             </h1>
 
             <p className="text-lg text-muted-foreground mb-8">
-              We design, host, maintain, and update your site. No upfront costs—just a friendly monthly
-              subscription so you can focus on your business.
+              We design, host, maintain, and update your site. No upfront
+              costs—just a friendly monthly subscription so you can focus on
+              your business.
             </p>
 
             {/* Buttons */}
@@ -145,16 +159,32 @@ export default function Index() {
       {/* Features summary */}
       <section className="container py-16">
         <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-semibold">Everything included</h2>
-          <p className="text-muted-foreground mt-2">Simple, transparent, and designed to save you time.</p>
+          <h1 className="text-2xl md:text-3xl font-semibold">
+            Everything included
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Simple, transparent, and designed to save you time.
+          </p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {[
-            { title: "One simple monthly fee", desc: "No surprises. Cancel anytime." },
-            { title: "Hosting, maintenance, updates", desc: "We handle it all so you don’t have to." },
-            { title: "1 free small update/month", desc: "Keep content fresh without extra charges." },
+            {
+              title: "One simple monthly fee",
+              desc: "No surprises. Cancel anytime.",
+            },
+            {
+              title: "Hosting, maintenance, updates",
+              desc: "We handle it all so you don’t have to.",
+            },
+            {
+              title: "1 free small update/month",
+              desc: "Keep content fresh without extra charges.",
+            },
           ].map((f, i) => (
-            <div key={i} className="rounded-lg border p-6 hover:shadow-md transition-shadow">
+            <div
+              key={i}
+              className="rounded-lg border p-6 hover:shadow-md transition-shadow"
+            >
               <h3 className="font-medium mb-2">{f.title}</h3>
               <p className="text-sm text-muted-foreground">{f.desc}</p>
             </div>

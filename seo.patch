@@ -1,0 +1,84 @@
+--- a/src/pages/Index.tsx
++++ b/src/pages/Index.tsx
+@@
++import Seo from "@/components/Seo";
+@@
++      <Seo
++        title="Hassle-Free Website Subscription for SMEs | All Done Sites"
++        description="We design, host, and maintain your site for one simple monthly fee. No upfront costs—just fast setup, pro support, and ongoing updates."
++      />
+@@
+-      <h2 className="text-3xl md:text-4xl font-bold mb-6">Your website, done for you — for one monthly fee</h2>
++      <h1 className="text-3xl md:text-4xl font-bold mb-6">Your website, done for you — for one monthly fee</h1>
+
+--- a/src/pages/Pricing.tsx
++++ b/src/pages/Pricing.tsx
+@@
++import Seo from "@/components/Seo";
+@@
+-      <h2 className="text-3xl md:text-4xl font-bold mb-6">Pricing</h2>
++      <Seo
++        title="Pricing & Plans | All Done Sites Monthly Website Packages"
++        description="Choose a simple monthly plan that includes design, hosting, maintenance, and support. Transparent pricing with no surprises."
++      />
++      <h1 className="text-3xl md:text-4xl font-bold mb-6">Pricing &amp; Plans</h1>
+
+--- a/src/pages/Faq.tsx
++++ b/src/pages/Faq.tsx
+@@
++import Seo from "@/components/Seo";
+@@
+-      <h2 className="text-3xl md:text-4xl font-bold mb-6">FAQ</h2>
++      <Seo
++        title="FAQ | All Done Sites Website Subscriptions Explained"
++        description="Answers to setup time, hosting, email, support, and cancellations. See how our monthly website model works."
++      />
++      <h1 className="text-3xl md:text-4xl font-bold mb-6">FAQ</h1>
+
+--- a/src/pages/Portfolio.tsx
++++ b/src/pages/Portfolio.tsx
+@@
++import Seo from "@/components/Seo";
+@@
+-      <h2 className="text-3xl md:text-4xl font-bold mb-6">Recent work & examples</h2>
++      <Seo
++        title="Portfolio | Recent Websites by All Done Sites"
++        description="Browse real client sites built and maintained by our team. See styles, features, and results."
++      />
++      <h1 className="text-3xl md:text-4xl font-bold mb-6">Portfolio</h1>
+
+--- a/src/pages/ContactEnterprise.tsx
++++ b/src/pages/ContactEnterprise.tsx
+@@
++import Seo from "@/components/Seo";
+@@
+-      <h2 className="text-3xl md:text-4xl font-bold mb-6">Enterprise & Custom Websites</h2>
++      <Seo
++        title="Enterprise & Custom Websites | Talk to All Done Sites"
++        description="Need a custom build, integrations, or advanced support? Tell us about your project and we’ll propose the right plan."
++      />
++      <h1 className="text-3xl md:text-4xl font-bold mb-6">Enterprise &amp; Custom Websites</h1>
+
+--- a/src/pages/HowItWorks.tsx
++++ b/src/pages/HowItWorks.tsx
+@@
++import Seo from "@/components/Seo";
+@@
+-      <h2 className="text-3xl md:text-4xl font-bold mb-6">How It Works</h2>
++      <Seo
++        title="How It Works | From Brief to Live Site with All Done Sites"
++        description="Simple process: brief, design, launch, and ongoing updates—all in one monthly subscription. No upfront fees."
++      />
++      <h1 className="text-3xl md:text-4xl font-bold mb-6">How It Works</h1>
+
+--- a/src/pages/Contact.tsx
++++ b/src/pages/Contact.tsx
+@@
++import Seo from "@/components/Seo";
+@@
+-      <h2 className="text-3xl md:text-4xl font-bold mb-6">Contact</h2>
++      <Seo
++        title="Contact | Talk to All Done Sites"
++        description="Have a question about plans, billing, or support? Send us a message and we’ll get back to you fast."
++      />
++      <h1 className="text-3xl md:text-4xl font-bold mb-6">Contact</h1>
