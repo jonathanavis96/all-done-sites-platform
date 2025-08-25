@@ -138,7 +138,7 @@ export default function Index() {
                 ref={cardVideoRef}
                 className="aspect-[4/3] rounded-lg object-cover"
                 src={`${base}hero.mp4`}
-                poster={`${base}hero-poster.png`}
+                poster={`${base}hero-poster.webp`}
                 autoPlay
                 loop
                 muted
