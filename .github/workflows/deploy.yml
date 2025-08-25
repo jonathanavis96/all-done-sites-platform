@@ -1,4 +1,5 @@
 name: Deploy to GitHub Pages
+
 on:
   push:
     branches: [ main ]
@@ -12,16 +13,50 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: npm ci
-      - run: npm run build
-      - run: ls -la dist
-      - run: cp dist/index.html dist/404.html
-      - uses: actions/upload-pages-artifact@v3
+          # Built-in npm cache (faster, fewer registry hits)
+          cache: "npm"
+          cache-dependency-path: |
+            package-lock.json
+
+      - name: Configure npm retries & optional auth
+        run: |
+          # Retry/backoff so transient 429s don't fail the job
+          {
+            echo "fund=false"
+            echo "audit=false"
+            echo "fetch-retries=5"
+            echo "fetch-retry-factor=2"
+            echo "fetch-retry-mintimeout=2000"
+            echo "fetch-retry-maxtimeout=60000"
+          } >> ~/.npmrc
+
+          # OPTIONAL: authenticate to reduce rate-limiting (add NPM_TOKEN in repo settings → Secrets → Actions)
+          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          fi
+
+      - name: Install deps (ci)
+        run: npm ci --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: List dist
+        run: ls -la dist
+
+      - name: GH Pages SPA 404 fallback
+        run: cp dist/index.html dist/404.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
