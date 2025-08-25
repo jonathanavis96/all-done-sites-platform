@@ -10,17 +10,13 @@ export default function Contact() {
   const { toast } = useToast();
   const [status, setStatus] = React.useState<"idle" | "sending">("idle");
 
-  // Inspect the current URL query parameters to determine if this is an
-  // enterprise enquiry.  When the subject includes the word "enterprise"
-  // we route submissions to a dedicated Formspree endpoint and prefill
-  // the hidden _subject field accordingly.  Otherwise we use the default
-  // contact endpoint and subject.
+  // Inspect the current URL query parameters to determine if this is an enterprise enquiry.
   const location = useLocation();
   const params = React.useMemo(() => new URLSearchParams(location.search), [location.search]);
   const rawSubject = params.get("subject") || "";
-  // Extract a plan identifier (launch, business, premium, enterprise) from the query.
   const planParam = params.get("plan") || "";
-  // decode any + signs and percent encoding
+
+  // Decode subject
   const decodedSubject = React.useMemo(() => {
     try {
       return decodeURIComponent(rawSubject.replace(/\+/g, " "));
@@ -28,47 +24,32 @@ export default function Contact() {
       return rawSubject;
     }
   }, [rawSubject]);
-  // Try to derive a plan identifier from the `subject` query for backward
-  // compatibility.  Subjects are usually formatted like "Launch Plan Enquiry".
+
+  // Derive plan id from subject (e.g. "Launch Plan Enquiry")
   const subjectPlan = React.useMemo(() => {
     const match = decodedSubject.match(/^(Launch|Business|Premium|Enterprise)/i);
     return match ? match[0].toLowerCase() : "";
   }, [decodedSubject]);
-  // State for the selected plan.  If a `plan` query parameter is present
-  // initialise with that value; otherwise fall back to the derived
-  // subject-based plan; if neither is present the user can choose one.
+
   const [selectedPlan, setSelectedPlan] = React.useState<string>(planParam || subjectPlan);
 
-  // Update the selected plan when the URL parameters change.  We only
-  // override the plan when no value has been chosen yet to avoid
-  // overriding the user’s manual selection from the dropdown.  Without
-  // this effect the initial state is set once and won’t respond to
-  // subsequent updates, which caused the plan dropdown to remain
-  // unselected when arriving via a `subject` query parameter.
+  // Update selected plan once if URL params change and user hasn't chosen manually
   React.useEffect(() => {
     const initial = planParam || subjectPlan;
-    if (initial && !selectedPlan) {
-      setSelectedPlan(initial);
-    }
-    // We intentionally omit `selectedPlan` from the dependency array
-    // because we only want to update when `planParam` or `subjectPlan`
-    // changes as a result of navigation, not when the user manually
-    // selects a plan.
+    if (initial && !selectedPlan) setSelectedPlan(initial);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planParam, subjectPlan]);
-  // Determine whether this enquiry is for an enterprise plan.  We treat a
-  // selected plan of "enterprise" as enterprise, otherwise we fall back to
-  // inspecting the subject query for the word "enterprise".
-  const isEnterprise = selectedPlan.toLowerCase() === "enterprise" || decodedSubject.toLowerCase().includes("enterprise");
-  // Choose the appropriate Formspree endpoint
+
+  // Enterprise detection
+  const isEnterprise =
+    selectedPlan.toLowerCase() === "enterprise" || decodedSubject.toLowerCase().includes("enterprise");
+
+  // Formspree endpoint selection
   const formEndpoint = isEnterprise
     ? "https://formspree.io/f/xblaryol"
     : "https://formspree.io/f/mnnbavdj";
 
-  // Compute the email subject for the Formspree submission.  We prioritise an
-  // explicit subject query, then derive one from the selected plan, and
-  // finally fall back to a generic new enquiry subject.  This memoised
-  // computation updates when either `decodedSubject` or `selectedPlan` changes.
+  // Compute email subject
   const computedSubject = React.useMemo(() => {
     if (decodedSubject) return decodedSubject;
     if (selectedPlan) {
@@ -88,7 +69,7 @@ export default function Contact() {
     // Honeypot field for spam bots
     const gotcha = (data.get("_gotcha") as string) || "";
     if (gotcha.trim() !== "") {
-      toast({ title: "Thanks!", description: "We’ll get back to you shortly." });
+      toast({ title: "Thanks!", description: "We'll get back to you shortly." });
       setStatus("idle");
       form.reset();
       return;
@@ -102,7 +83,7 @@ export default function Contact() {
       });
 
       if (res.ok) {
-        toast({ title: "Thanks!", description: "We’ll get back to you within one business day." });
+        toast({ title: "Thanks!", description: "We'll get back to you within one business day." });
         form.reset();
       } else {
         toast({ title: "Error", description: "Something went wrong. Please try again." });
@@ -117,16 +98,16 @@ export default function Contact() {
   return (
     <div className="container py-16" id="contact">
       <Seo
-        title="Contact | All Done Sites"
-        description="Get in touch to start your hassle-free website subscription. Book a call or send us a message."
+        title="Let's Build Your Website | All Done Sites"
+        description="Have questions about plans, billing, or support? Send us a message and we'll get back to you fast to help you get online."
       />
+
       <header className="max-w-2xl">
         <h1 className="text-3xl font-bold">Let’s build your website</h1>
         <p className="mt-2 text-muted-foreground">
           Tell us about your business and we’ll reach out shortly.
         </p>
       </header>
-
 
       <form onSubmit={onSubmit} className="mt-8 grid md:grid-cols-2 gap-6">
         <div className="space-y-4">
@@ -150,17 +131,10 @@ export default function Contact() {
           </div>
           <div>
             <label className="text-sm font-medium">Phone</label>
-            <Input
-              name="phone"
-              type="tel"
-              placeholder="(555) 000-0000"
-              disabled={status === "sending"}
-            />
+            <Input name="phone" type="tel" placeholder="(555) 000-0000" disabled={status === "sending"} />
           </div>
 
-          {/* Plan selection: if a plan was provided in the URL then display it as
-              read‑only; otherwise show a dropdown for the user to pick one.  This
-              helps us understand which package the user is interested in. */}
+          {/* Plan selection */}
           <div>
             <label className="text-sm font-medium">Plan</label>
             {selectedPlan ? (
@@ -170,7 +144,6 @@ export default function Contact() {
                   readOnly
                   className="cursor-not-allowed"
                 />
-                {/* preserve the plan value in a hidden field so it is submitted with the form */}
                 <input type="hidden" name="plan" value={selectedPlan} />
               </>
             ) : (
@@ -191,6 +164,7 @@ export default function Contact() {
             )}
           </div>
         </div>
+
         <div className="flex flex-col">
           <label className="text-sm font-medium">Message</label>
           <Textarea
@@ -200,11 +174,8 @@ export default function Contact() {
             required
             disabled={status === "sending"}
           />
-          {/*
-            Hidden subject field: when a subject query parameter is present it
-            pre‑fills this value so our email includes the plan or enterprise
-            intent.  Otherwise it defaults to a generic enquiry subject.
-          */}
+
+          {/* Hidden fields */}
           <input type="hidden" name="_subject" value={computedSubject} />
           <input type="text" name="_gotcha" className="hidden" tabIndex={-1} autoComplete="off" />
 

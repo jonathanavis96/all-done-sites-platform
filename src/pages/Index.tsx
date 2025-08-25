@@ -2,7 +2,14 @@
 import React, { useEffect, useRef } from "react";
 import Seo from "@/components/Seo";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Rocket, Shield, Smartphone, Sparkles, Timer } from "lucide-react";
+import {
+  CheckCircle2,
+  Rocket,
+  Shield,
+  Smartphone,
+  Sparkles,
+  Timer,
+} from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 export default function Index() {
@@ -16,11 +23,8 @@ export default function Index() {
     link.rel = "preload";
     link.as = "image";
     link.href = href;
-    // Optional: only preload on larger screens (uncomment if desired)
-    // link.media = "(min-width: 768px)";
     document.head.appendChild(link);
     return () => {
-      // Clean up when navigating away so Chrome doesn't warn on other routes
       if (link.parentNode) link.parentNode.removeChild(link);
     };
   }, [base]);
@@ -32,7 +36,11 @@ export default function Index() {
     if (!v) return;
     v.muted = true; // required for autoplay on iOS
     const tryPlay = async () => {
-      try { await v.play(); } catch { /* ignore; poster remains until user interacts */ }
+      try {
+        await v.play();
+      } catch {
+        /* ignore; poster remains until user interacts */
+      }
     };
     if (v.readyState >= 2) tryPlay();
     else v.addEventListener("loadeddata", tryPlay, { once: true });
@@ -45,13 +53,14 @@ export default function Index() {
     url: typeof window !== "undefined" ? window.location.origin : "",
     slogan: "Your website, done for you — for one monthly fee",
     sameAs: [],
+    logo: "/favicon.png",
   };
 
   return (
     <div>
       <Seo
-        title="All Done Sites | Hassle-free website subscription"
-        description="We build, host, and maintain your business website for one simple monthly fee. No upfront cost, fast turnaround, SEO-friendly designs."
+        title="Hassle-Free Website Subscription for SMEs | All Done Sites"
+        description="We design, host, and maintain your site for one simple monthly fee. No upfront costs—just fast setup, pro support, and ongoing updates."
         jsonLd={jsonLd}
       />
 
@@ -69,22 +78,25 @@ export default function Index() {
               aria-hidden="true"
             />
 
-            {/* Heading */}
-            <h2 className="font-bold tracking-tight mb-4 leading-tight">
-              <span className="block text-3xl sm:text-4xl md:text-5xl">
-                <span className="whitespace-nowrap">
-                  Your website, done for&nbsp;you
-                </span>
+            {/* Heading (single H1) */}
+            <Seo
+              title="Hassle-Free Website Subscription for SMEs | All Done Sites"
+              description="We design, host, and maintain your site for one simple monthly fee. No upfront costs—just fast setup, pro support, and ongoing updates."
+            />
+            <h1 className="font-bold tracking-tight mb-4 leading-tight">
+              <span className="block text-3xl sm:text-4xl md:text-5xl whitespace-nowrap">
+                Your website, done for&nbsp;you
               </span>
               <br />
-              <span className="inline-block text-3xl sm:text-4xl md:text-5xl">
+              <span className="inline-block text-3xl sm:text-4xl md:text-5xl whitespace-nowrap">
                 — for one monthly fee
               </span>
-            </h2>
+            </h1>
 
             <p className="text-lg text-muted-foreground mb-8">
-              We design, host, maintain, and update your site. No upfront costs. Just a friendly
-              monthly subscription so you can focus on your business.
+              We design, host, maintain, and update your site. No upfront
+              costs—just a friendly monthly subscription so you can focus on
+              your business.
             </p>
 
             {/* Buttons */}
@@ -147,16 +159,32 @@ export default function Index() {
       {/* Features summary */}
       <section className="container py-16">
         <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-semibold">Everything included</h2>
-        <p className="text-muted-foreground mt-2">Simple, transparent, and designed to save you time.</p>
+          <h1 className="text-2xl md:text-3xl font-semibold">
+            Everything included
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Simple, transparent, and designed to save you time.
+          </p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {[
-            { title: "One simple monthly fee", desc: "No surprises. Cancel anytime." },
-            { title: "Hosting, maintenance, updates", desc: "We handle it all so you don’t have to." },
-            { title: "1 free small update/month", desc: "Keep content fresh without extra charges." },
+            {
+              title: "One simple monthly fee",
+              desc: "No surprises. Cancel anytime.",
+            },
+            {
+              title: "Hosting, maintenance, updates",
+              desc: "We handle it all so you don’t have to.",
+            },
+            {
+              title: "1 free small update/month",
+              desc: "Keep content fresh without extra charges.",
+            },
           ].map((f, i) => (
-            <div key={i} className="rounded-lg border p-6 hover:shadow-md transition-shadow">
+            <div
+              key={i}
+              className="rounded-lg border p-6 hover:shadow-md transition-shadow"
+            >
               <h3 className="font-medium mb-2">{f.title}</h3>
               <p className="text-sm text-muted-foreground">{f.desc}</p>
             </div>

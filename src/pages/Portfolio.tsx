@@ -48,11 +48,11 @@ export default function Portfolio() {
   return (
     <div className="container py-16">
       <Seo
-        title="Portfolio | All Done Sites"
-        description="A selection of modern, mobile-friendly small business website designs built to convert."
+        title="Portfolio | Recent Websites by All Done Sites"
+        description="Browse real client websites we design and maintain. See styles, features, and results built for speed, clarity, and conversions."
       />
       <header className="max-w-2xl">
-        <h1 className="text-3xl font-bold">Recent work & examples</h1>
+        <h1 className="text-3xl font-bold">Recent work &amp; examples</h1>
         <p className="mt-2 text-muted-foreground">
           Designs tailored for service businesses — fast, clear, and easy to update.
         </p>
@@ -60,8 +60,7 @@ export default function Portfolio() {
 
       <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {items.map((it) => {
-          const figureClasses =
-            "group relative rounded-lg border overflow-hidden";
+          const figureClasses = "group relative rounded-lg border overflow-hidden";
 
           const imgEl = (
             <img
