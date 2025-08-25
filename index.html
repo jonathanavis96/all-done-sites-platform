@@ -12,23 +12,14 @@
     <link rel="preload" as="image" href="/hero-poster.webp" fetchpriority="high" />
 
     <!-- Favicon & Icons -->
-    <!-- Modern browsers prefer SVG -->
     <link rel="icon" href="/logo-bimi.svg" type="image/svg+xml" />
-
-    <!-- Fallback ICO/PNG for legacy browsers -->
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-
-    <!-- Apple & Android -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" sizes="192x192" href="/android-chrome-192x192.png" />
     <link rel="icon" sizes="512x512" href="/android-chrome-512x512.png" />
-
-    <!-- PWA manifest -->
     <link rel="manifest" href="/site.webmanifest" />
-
-    <!-- Safari pinned tab (optional, for monochrome version of the SVG) -->
     <link rel="mask-icon" href="/logo-bimi.svg" color="#0ea5e9" />
 
     <!-- Open Graph -->
@@ -48,6 +39,16 @@
     <meta name="twitter:description" content="Your website, done for you — for one monthly fee." />
     <meta name="twitter:image" content="https://alldonesites.com/og1200x630_v2.jpg" />
 
+    <!--  GA4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SKZZXTSMN1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-SKZZXTSMN1');
+      // gtag('config', 'G-SKZZXTSMN1', { 'anonymize_ip': true }); // optional privacy tweak
+    </script>
+
     <!-- Theme color for mobile browsers -->
     <meta name="theme-color" content="#ffffff" />
 
@@ -66,7 +67,6 @@
 
   <body>
     <div id="root"></div>
-    <!-- Vite will replace this with bundled assets -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
