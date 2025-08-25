@@ -6,12 +6,13 @@ export default function Hero() {
       <video
         className="absolute inset-0 w-full h-full object-cover"
         src={`${base}hero.mp4`}
-        poster={`${base}hero-poster.png`}
+        poster={`${base}hero-poster.webp`}
         autoPlay
         muted
         loop
         playsInline
         preload="metadata"
+        fetchpriority="high"
       />
     </header>
   );
