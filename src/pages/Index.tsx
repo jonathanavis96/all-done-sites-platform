@@ -18,7 +18,7 @@ export default function Index() {
 
   // Preload the hero poster only on the home route
   useEffect(() => {
-    const href = `${base}hero-poster.png`;
+    const href = `${base}hero-poster.webp`;
     const link = document.createElement("link");
     link.rel = "preload";
     link.as = "image";
