@@ -4,7 +4,7 @@ const path = require('path');
 
 const pages = [
   ['src/pages/Index.tsx', {
-    title: 'Hassle-Free Website Subscription for SMEs | All Done Sites',
+    title: 'All Done Sites | Hassle-Free Website Subscription for SMEs',
     desc: 'We design, host, and maintain your site for one simple monthly fee. No upfront costs—just fast setup, pro support, and ongoing updates.'
   }],
   ['src/pages/Pricing.tsx', {
