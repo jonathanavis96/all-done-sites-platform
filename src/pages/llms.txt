@@ -1,0 +1,17 @@
+# LLMs.txt for alldonesites.com
+# This file communicates AI usage preferences for website content.
+# Placement: https://alldonesites.com/llms.txt
+
+User-agent: *
+Allow: /summaries
+Disallow: /training
+Disallow: /datasets
+Disallow: /fine-tuning
+
+# Policy:
+# - Generative AI systems may summarize AllDoneSites content for end-users,
+#   provided proper attribution or linking is included where possible.
+# - Content may NOT be used for model training, fine-tuning,
+#   dataset creation, or long-term storage without explicit permission.
+# - Commercial use of AllDoneSites content in AI products is strictly prohibited
+#   unless licensed directly.
