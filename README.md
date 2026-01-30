@@ -1,3 +1,49 @@
+# All Done Sites
+
+This repository contains:
+
+- `website/`: the production website (Vite + React + TypeScript)
+- `workers/`, `cortex/`, `brain/`, `skills/`: agent infrastructure and knowledge base
+
+## Website development
+
+You can run the website either from `website/` directly, or from repo root using wrapper scripts.
+
+Install deps in `website/` once:
+
+```bash
+cd website
+npm install
+```
+
+Then you can run dev either way.
+
+From `website/`:
+
+```bash
+npm run dev
+```
+
+From repo root (wrapper script):
+
+```bash
+npm run dev
+```
+
+Build (also generates static pages for deep links on GitHub Pages):
+
+```bash
+npm run build
+```
+
+See `website/README.md` for more.
+
+---
+
+# Legacy Lovable README
+
+The content below is preserved from the original Lovable bootstrap.
+
 # Welcome to your Lovable project
 
 ## Project info
