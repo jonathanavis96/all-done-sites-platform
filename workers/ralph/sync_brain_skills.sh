@@ -3,7 +3,7 @@
 #
 # Why:
 # - RovoDev cannot read files outside the workspace.
-# - This project vendors Brain knowledge at ./brain/skills/.
+# - This project vendors Brain knowledge at ./skills/.
 # - This script refreshes that snapshot.
 #
 # Usage:
@@ -67,7 +67,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-DEST="$ROOT/brain/skills"
+DEST="$ROOT/skills"
 
 source_skills=""
 upstream_dir="$ROOT/brain_upstream"
@@ -115,7 +115,6 @@ if [[ "$DRY_RUN" == "true" ]]; then
 fi
 
 info "Refreshing vendored brain skills: $DEST"
-mkdir -p "$ROOT/brain"
 rm -rf "$DEST"
 cp -R "$source_skills" "$DEST"
 info "Done"

@@ -1,0 +1,54 @@
+# Gap Backlog (Auto-maintained by Claude)
+
+Rules:
+- Each entry is a missing brain capability discovered during work.
+- If a similar entry exists, **UPDATE it** (don't duplicate).
+- Include evidence (paths, filenames, brief snippets, or observations).
+- Priority:
+  - P0 = blocks work / repeatedly causes failure
+  - P1 = high leverage / recurring
+  - P2 = nice-to-have
+
+---
+
+## Backlog Items
+
+<!-- Add new entries below this line using the format:
+
+### YYYY-MM-DD — <Suggested Skill Name>
+- **Type:** Knowledge / Procedure / Tooling / Pattern / Debugging / Reference
+- **Why useful:** <1–2 lines>
+- **When triggered:** <what you were trying to do>
+- **Evidence:** <paths, filenames, snippets, observations>
+- **Priority:** P0 / P1 / P2
+- **Status:** Identified / Promoted to SKILL_BACKLOG / Done
+
+-->
+
+### 2026-01-18 — Bash Terminal Control with tput
+- **Type:** Tooling / Knowledge
+- **Why useful:** Prevents screen flashing/blanking during display refreshes in interactive bash scripts
+- **When triggered:** Implementing cursor positioning for top-anchored display in current_ralph_tasks.sh (task P4A.1)
+- **Evidence:**
+  - Used `tput cup 0 0` to move cursor to top-left without clearing screen
+  - Used `tput ed` to clear from cursor to end of screen
+  - Pattern: Replace `clear` command with `tput cup 0 0 && tput ed` for flicker-free updates
+  - Other useful commands: `tput cup $row $col`, `tput el` (clear line), `tput sc/rc` (save/restore cursor)
+- **Priority:** P2
+- **Status:** Reviewed - Keep as reference
+- **Review notes (2026-01-18):** Does not meet "recurring" criteria. Very specialized for interactive terminal scripts. Only 2 monitor scripts in brain repo use this. Low reuse potential. Keep as reference in GAP_BACKLOG for future monitor script work.
+
+### 2026-01-18 — Bash Associative Arrays for Caching
+- **Type:** Knowledge / Pattern
+- **Why useful:** Improves performance by avoiding repeated expensive operations (parsing, computation) on immutable data
+- **When triggered:** Implementing completed task caching in current_ralph_tasks.sh (task P4A.2)
+- **Evidence:**
+  - Used `declare -A COMPLETED_CACHE` to create associative array for key-value storage
+  - Generated cache keys using `md5sum`: `cache_key=$(echo -n "$data" | md5sum | cut -d' ' -f1)`
+  - Checked cache: `if [[ -n "${CACHE[$key]}" ]]; then echo "${CACHE[$key]}"; fi`
+  - Stored values: `CACHE[$key]="$value"`
+  - Pattern useful for caching parsed data, computed results, or any immutable lookups
+  - Current use case: Cache completed task display strings to skip title generation on refresh
+- **Priority:** P2
+- **Status:** Reviewed - Keep as reference
+- **Review notes (2026-01-18):** Does not meet "recurring" criteria. General caching patterns already documented in skills/domains/caching-patterns.md. This is a bash-specific implementation detail with low reuse potential. Keep as reference for bash caching needs.
