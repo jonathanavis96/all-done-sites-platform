@@ -1,0 +1,12 @@
+# Non-cacheable tools configuration
+# Tools listed here will not be cached by the Ralph loop
+# One tool name per line, comments start with #
+
+# Git operations that modify state
+git push
+git commit
+git fetch
+
+# Tools that always need fresh execution
+acli rovodev run
+opencode run

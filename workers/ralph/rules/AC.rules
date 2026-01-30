@@ -1,0 +1,259 @@
+# Ralph Acceptance Criteria Rules - [PROJECT_NAME]
+# Auto-verified by ralph verifier.sh
+#
+# Format:
+# [CHECK_ID]
+# mode=auto|manual
+# gate=block|warn|ignore
+# desc="Description"
+# cmd="shell command"
+# expect_stdout="exact match" OR expect_stdout_regex="pattern"
+# expect_exit=0
+# instructions="For manual checks"
+#
+# NOTE: Commands run from the ralph/ directory (where verifier.sh lives)
+#       Use relative paths: ../src/, ../bin/, ../config/, etc.
+
+# ============================================================
+# STRUCTURE CHECKS
+# [REPLACE: Add checks for your project's required directories]
+# ============================================================
+
+[Structure.Dirs.1]
+mode=auto
+gate=block
+desc="src/ directory exists at project root (NOT ralph/src/)"
+cmd="test -d ../src && echo yes"
+expect_stdout=yes
+
+[Structure.Dirs.2]
+mode=auto
+gate=block
+desc="bin/ directory exists at project root (NOT ralph/bin/)"
+cmd="test -d ../bin && echo yes"
+expect_stdout=yes
+
+[Structure.Dirs.3]
+mode=auto
+gate=block
+desc="config/ directory exists"
+cmd="test -d ../config && echo yes"
+expect_stdout=yes
+
+[Structure.Dirs.4]
+mode=auto
+gate=block
+desc="docs/ directory exists"
+cmd="test -d ../docs && echo yes"
+expect_stdout=yes
+
+# [REPLACE: Add project-specific directory checks, e.g., drivers/]
+# [Structure.Dirs.5]
+# mode=auto
+# gate=block
+# desc="drivers/ directory exists"
+# cmd="test -d ../drivers && echo yes"
+# expect_stdout=yes
+
+[Structure.Gitignore.1]
+mode=auto
+gate=block
+desc=".gitignore exists"
+cmd="test -f ../.gitignore && echo yes"
+expect_stdout=yes
+
+# ============================================================
+# SYNTAX VALIDATION
+# [REPLACE: Add checks for your project's languages]
+# ============================================================
+
+[Syntax.Bash.1]
+mode=auto
+gate=block
+desc="All bin/*.sh scripts pass bash -n syntax check"
+cmd="for f in ../bin/*.sh; do [ -f \"$f\" ] && bash -n \"$f\" || exit 1; done && echo pass"
+expect_stdout=pass
+
+[Syntax.JSON.1]
+mode=auto
+gate=block
+desc="config/*.json files are valid JSON"
+cmd="for f in ../config/*.json; do [ -f \"$f\" ] && jq '.' \"$f\" >/dev/null || exit 1; done && echo valid"
+expect_stdout=valid
+
+# [REPLACE: Add language-specific checks]
+# [Syntax.Python.1]
+# mode=auto
+# gate=block
+# desc="All src/*.py files pass Python syntax check"
+# cmd="for f in ../src/*.py; do [ -f \"$f\" ] && python3 -m py_compile \"$f\" || exit 1; done && echo pass"
+# expect_stdout=pass
+
+# [Syntax.TypeScript.1]
+# mode=auto
+# gate=block
+# desc="TypeScript compiles without errors"
+# cmd="cd .. && npm run type-check && echo pass"
+# expect_stdout=pass
+
+# ============================================================
+# CODE STANDARDS
+# [REPLACE: Add checks for your project's coding standards]
+# ============================================================
+
+[Standards.Shebang.1]
+mode=auto
+gate=block
+desc="All shell scripts have proper shebang"
+cmd="for f in ../bin/*.sh; do head -1 \"$f\" | grep -q '#!/usr/bin/env bash' || exit 1; done && echo pass"
+expect_stdout=pass
+
+[Standards.StrictMode.1]
+mode=auto
+gate=block
+desc="All shell scripts use set -euo pipefail"
+cmd="for f in ../bin/*.sh; do grep -q 'set -euo pipefail' \"$f\" || exit 1; done && echo pass"
+expect_stdout=pass
+
+[Standards.Permissions.1]
+mode=auto
+gate=block
+desc="All bin/*.sh scripts are executable"
+cmd="find ../bin/ -name '*.sh' ! -perm -111 | wc -l | xargs"
+expect_stdout=0
+
+# ============================================================
+# SECURITY CHECKS
+# [REPLACE: Add security checks relevant to your project]
+# ============================================================
+
+[Security.NoHardcodedSecrets.1]
+mode=auto
+gate=block
+desc="No hardcoded passwords in scripts"
+cmd="grep -rn 'password\\s*=\\s*[\"'\\''\"'\\''']' ../bin/ ../src/ --include='*.sh' --include='*.py' 2>/dev/null | wc -l | xargs"
+expect_stdout=0
+
+[Security.NoHardcodedTokens.1]
+mode=auto
+gate=block
+desc="No hardcoded API tokens in scripts"
+cmd="grep -rn 'api_token\\s*=\\s*[\"'\\''\"'\\''']' ../bin/ ../src/ --include='*.sh' --include='*.py' 2>/dev/null | wc -l | xargs"
+expect_stdout=0
+
+# ============================================================
+# DOCUMENTATION
+# ============================================================
+
+[Docs.README.1]
+mode=auto
+gate=block
+desc="README.md exists"
+cmd="test -f ../README.md && echo yes"
+expect_stdout=yes
+
+[Docs.NEURONS.1]
+mode=auto
+gate=block
+desc="ralph/NEURONS.md exists"
+cmd="test -f NEURONS.md && echo yes"
+expect_stdout=yes
+
+[Docs.THOUGHTS.1]
+mode=auto
+gate=block
+desc="ralph/THOUGHTS.md exists"
+cmd="test -f THOUGHTS.md && echo yes"
+expect_stdout=yes
+
+# ============================================================
+# PROTECTED FILE INTEGRITY (Anti-Cheat)
+# Prevents "edit the judge" attacks
+# ============================================================
+
+[Protected.1]
+mode=auto
+gate=warn
+desc="loop.sh differs from baseline (allowed in projects)"
+cmd="sha256sum loop.sh | cut -d' ' -f1 | diff -q - .verify/loop.sha256 >/dev/null 2>&1 && echo match || echo mismatch"
+expect_stdout=match
+
+[Protected.2]
+mode=auto
+gate=warn
+desc="verifier.sh differs from baseline (allowed in projects)"
+cmd="sha256sum verifier.sh | cut -d' ' -f1 | diff -q - .verify/verifier.sha256 >/dev/null 2>&1 && echo match || echo mismatch"
+expect_stdout=match
+
+[Protected.3]
+mode=auto
+gate=warn
+desc="PROMPT.md differs from baseline (allowed in projects)"
+cmd="sha256sum PROMPT.md | cut -d' ' -f1 | diff -q - .verify/prompt.sha256 >/dev/null 2>&1 && echo match || echo mismatch"
+expect_stdout=match
+
+# ============================================================
+# VERIFIER META-INTEGRITY
+# ============================================================
+
+[VerifyMeta.1]
+mode=auto
+gate=block
+desc="Verifier run_id.txt exists and is non-empty"
+cmd="test -s .verify/run_id.txt && echo OK || echo FAIL"
+expect_stdout=OK
+
+# ============================================================
+# MANUAL CHECKS
+# [REPLACE: Add manual verification steps for your project]
+# ============================================================
+
+[Manual.Integration.1]
+mode=manual
+gate=warn
+desc="Core integration tested manually"
+instructions="Run main workflow end-to-end and verify expected behavior"
+
+# ============================================================
+# PROJECT-SPECIFIC CHECKS
+# [REPLACE: Add checks specific to your project's domain]
+# ============================================================
+
+# Example for a web project:
+# [Project.Build.1]
+# mode=auto
+# gate=block
+# desc="Project builds successfully"
+# cmd="cd .. && npm run build && echo pass"
+# expect_stdout=pass
+
+# Example for tests:
+# [Project.Tests.1]
+# mode=auto
+# gate=block
+# desc="All tests pass"
+# cmd="cd .. && npm test && echo pass"
+# expect_stdout=pass
+
+
+[Lint.Markdownlint.AGENTS]
+mode=auto
+gate=warn
+desc=AGENTS.md passes markdownlint (if installed)
+cmd=bash -c 'command -v markdownlint &>/dev/null && markdownlint AGENTS.md 2>&1 | head -10 || echo "ok (markdownlint not installed)"'
+expect_stdout_regex=(^$|ok|AGENTS\.md)
+
+[Lint.Markdownlint.NEURONS]
+mode=auto
+gate=warn
+desc=NEURONS.md passes markdownlint (if installed)
+cmd=bash -c 'command -v markdownlint &>/dev/null && markdownlint NEURONS.md 2>&1 | head -10 || echo "ok (markdownlint not installed)"'
+expect_stdout_regex=(^$|ok|NEURONS\.md)
+
+[Lint.Markdownlint.THOUGHTS]
+mode=auto
+gate=warn
+desc=THOUGHTS.md passes markdownlint (if installed)
+cmd=bash -c 'command -v markdownlint &>/dev/null && markdownlint THOUGHTS.md 2>&1 | head -10 || echo "ok (markdownlint not installed)"'
+expect_stdout_regex=(^$|ok|THOUGHTS\.md)
+
