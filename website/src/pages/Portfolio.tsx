@@ -2,11 +2,13 @@ import Seo from "@/components/Seo";
 
 // Portfolio images
 import reachright from "@/assets/portfolio/reachright.webp";
-import electrician from "@/assets/portfolio/electrician.webp";
+
+import deeneSocial from "@/assets/portfolio/deenesocial.webp";
+import jacquiHowles from "@/assets/portfolio/jacquichowles.webp";
+
 import salon from "@/assets/portfolio/salon.webp";
 import consultant from "@/assets/portfolio/consultancy.webp";
 import cafe from "@/assets/portfolio/cafe.webp";
-import fitness from "@/assets/portfolio/fitness.webp";
 
 type Item = {
   src: string;
@@ -16,31 +18,37 @@ type Item = {
 };
 
 const items: Item[] = [
+  // Requested ordering (top-left -> bottom-right):
+  // ReachRight. Deene Social. JacquiHowles. Cafe. Consultancy. Hairsalon.
   {
     src: reachright,
-    alt: "ReachRight Marketing – modern digital marketing design",
-    link: "https://reachrightmarketing.com/",
+    alt: "ReachRight Marketing – Bold, modern, marketing design",
+    link: "https://reachrightmarketing.com/", 
     live: true,
   },
   {
-    src: electrician,
-    alt: "Electrician website mockup – bold service layout",
+    src: deeneSocial,
+    alt: "Deene Social – Clean, minimal, premium design",
+    link: "https://deenesocial.com/", 
+    live: true,
   },
   {
-    src: salon,
-    alt: "Hair salon website mockup – airy minimalist style",
-  },
-  {
-    src: consultant,
-    alt: "Consultancy website mockup – modern professional design",
+    src: jacquiHowles,
+    alt: "Jacqui Chowles – Therapist, warm, inviting, grounded",
+    link: "https://jacquichowles.com/", 
+    live: true,
   },
   {
     src: cafe,
     alt: "Cafe website mockup – cozy and inviting visuals",
   },
   {
-    src: fitness,
-    alt: "Fitness website mockup – energetic gym theme",
+    src: consultant,
+    alt: "Consultancy website mockup – modern professional design",
+  },
+  {
+    src: salon,
+    alt: "Hair salon website mockup – airy minimalist style",
   },
 ];
 
