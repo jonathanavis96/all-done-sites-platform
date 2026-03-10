@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# discord-post - Send messages to Discord webhook with automatic chunking
+#
+# Usage:
+#   echo "message" | discord-post [OPTIONS]
+#   discord-post --file FILE [OPTIONS]
+#
+# Options:
+#   --file FILE         Read input from file instead of stdin
+#   --max-length N      Override max message length (default: 1900, or DISCORD_MAX_LENGTH)
+#   --dry-run           Print payload(s) without sending
+#   --help              Show this help message
+#
+# Environment:
+#   DISCORD_WEBHOOK_URL    Discord webhook URL (required unless --dry-run)
+#   DISCORD_MAX_LENGTH     Max chars per message (optional; default: 1900)
+#
+# Features:
+#   - Chunks messages at <= max length (default 1900; safety margin from 2000 limit)
+#   - Prefers splitting on newline boundaries for readability
+#   - Non-blocking: exits 0 if webhook fails OR webhook is missing
+
+usage() {
+  sed -n '3,22p' "$0" | sed 's/^# //' | sed 's/^#//'
+  exit 0
+}
+
+DRY_RUN=false
+INPUT_FILE=""
+MAX_LENGTH="${DISCORD_MAX_LENGTH:-1900}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    --file)
+      INPUT_FILE="$2"
+      shift 2
+      ;;
+    --max-length)
+      MAX_LENGTH="$2"
+      shift 2
+      ;;
+    --help)
+      usage
+      ;;
+    *)
+      echo "Error: Unknown option '$1'" >&2
+      echo "Run 'discord-post --help' for usage" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if ! [[ "$MAX_LENGTH" =~ ^[0-9]+$ ]] || [[ "$MAX_LENGTH" -lt 1 ]]; then
+  echo "Error: --max-length must be a positive integer" >&2
+  exit 1
+fi
+
+# Read input
+if [[ -n "$INPUT_FILE" ]]; then
+  if [[ ! -f "$INPUT_FILE" ]]; then
+    echo "Error: File not found: $INPUT_FILE" >&2
+    exit 1
+  fi
+  MESSAGE=$(cat "$INPUT_FILE")
+else
+  MESSAGE=$(cat)
+fi
+
+# Missing webhook is non-fatal (observability helper should never break callers)
+if [[ "$DRY_RUN" == "false" ]] && [[ -z "${DISCORD_WEBHOOK_URL:-}" ]]; then
+  echo "Warning: DISCORD_WEBHOOK_URL not set; skipping Discord post" >&2
+  exit 0
+fi
+
+# Split MESSAGE into CHUNKS, preferring newline boundaries.
+# If an individual line exceeds MAX_LENGTH, it is hard-split.
+readarray -d '' -t CHUNKS < <(
+  printf '%s' "$MESSAGE" | awk -v max="$MAX_LENGTH" '
+  function flush() {
+    if (buf_len > 0) {
+      printf "%s\0", buf
+      buf = ""
+      buf_len = 0
+    }
+  }
+  function emit_hard_split(line,    part) {
+    while (length(line) > max) {
+      part = substr(line, 1, max)
+      printf "%s\0", part
+      line = substr(line, max + 1)
+    }
+    return line
+  }
+  BEGIN {
+    buf = ""
+    buf_len = 0
+  }
+  {
+    line = $0
+
+    # Hard split very long single lines.
+    if (length(line) > max) {
+      flush()
+      line = emit_hard_split(line)
+      if (length(line) == 0) next
+    }
+
+    add_len = length(line) + 1  # + newline
+
+    if (buf_len > 0 && (buf_len + add_len) > max) {
+      flush()
+    }
+
+    buf = buf line "\n"
+    buf_len += add_len
+  }
+  END { flush() }
+  '
+)
+
+CHUNK_COUNT=${#CHUNKS[@]}
+for i in "${!CHUNKS[@]}"; do
+  CHUNK="${CHUNKS[$i]}"
+
+  if [[ $CHUNK_COUNT -gt 1 ]]; then
+    CONTENT="[Part $((i + 1))/$CHUNK_COUNT]\n\n${CHUNK}"
+  else
+    CONTENT="${CHUNK}"
+  fi
+
+  # Escape JSON safely
+  CONTENT=$(printf "%b" "$CONTENT" | jq -Rs .)
+  PAYLOAD="{\"content\": ${CONTENT}}"
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "=== DRY RUN: Chunk $((i + 1))/$CHUNK_COUNT ==="
+    echo "$PAYLOAD" | jq .
+    continue
+  fi
+
+  # Send to Discord (non-blocking)
+  if ! curl -s -X POST \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" \
+    "${DISCORD_WEBHOOK_URL}" >/dev/null 2>&1; then
+    echo "Warning: Failed to send chunk $((i + 1))/$CHUNK_COUNT to Discord" >&2
+  fi
+
+  # Rate limit protection: small delay between chunks
+  if [[ $((i + 1)) -lt $CHUNK_COUNT ]]; then
+    sleep 0.05
+  fi
+done
+
+exit 0
