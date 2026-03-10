@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# cortex/cortex-alldonesites.bash - Interactive chat with Cortex for All Done Sites
+# cortex/cortex-alldonesites.bash - Interactive chat with Cortex for All Done Sites via Claude Code
+#
+# Legacy Rovo Dev version: cortex/rovodev/cortex-alldonesites.bash
 
 set -euo pipefail
 
@@ -22,36 +24,35 @@ readonly YELLOW='\033[1;33m'
 readonly NC='\033[0m'
 
 echo -e "${CYAN}========================================${NC}"
-echo -e "${CYAN}🧠 Cortex Interactive Chat${NC}"
+echo -e "${CYAN}Cortex Interactive Chat (Claude Code)${NC}"
 echo -e "${CYAN}   All Done Sites${NC}"
 echo -e "${CYAN}========================================${NC}"
 echo ""
 
 usage() {
-  echo "Usage: bash cortex/cortex-alldonesites.bash [OPTIONS]"
-  echo ""
-  echo "Cortex Interactive Chat - Direct conversation with the project manager."
-  echo ""
-  echo "Options:"
-  echo "  --help, -h           Show this help"
-  echo "  --model MODEL        Override model (gpt52, codex, opus, sonnet, auto)"
-  echo ""
+  cat <<EOF
+Usage: bash cortex/cortex-alldonesites.bash [OPTIONS]
 
-  echo "Examples:"
-  echo "  bash cortex/cortex-alldonesites.bash              # Start chat"
-  echo "  bash cortex/cortex-alldonesites.bash --model opus # Chat with specific model"
-  echo ""
-  echo "Use this for:"
-  echo "  - Asking questions about the project"
-  echo "  - Getting guidance on tasks"
-  echo "  - Discussing design decisions"
-  echo "  - Quick consultations"
-  echo ""
-  echo "For automated planning: bash cortex/one-shot.sh"
-  echo "To run Ralph (execution): bash loop.sh"
+Cortex Interactive Chat - All Done Sites project manager via Claude Code.
+
+Options:
+  --help, -h           Show this help
+  --model MODEL        Override model (opus, sonnet, haiku)
+  --design             Start in design-only audit mode
+
+Examples:
+  bash cortex/cortex-alldonesites.bash                    # Start chat
+  bash cortex/cortex-alldonesites.bash --model sonnet     # Chat with Sonnet (less quota)
+
+For legacy Rovo Dev runtime: bash cortex/rovodev/cortex-alldonesites.bash
+
+EOF
 }
 
-MODEL_ARG="gpt52" # Default to GPT-5.2 for Cortex
+# Defaults
+MODEL_ARG=""
+DESIGN_MODE="false"
+SKIP_PERMISSIONS="true"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -63,6 +64,10 @@ while [[ $# -gt 0 ]]; do
       MODEL_ARG="${2:-}"
       shift 2
       ;;
+    --design)
+      DESIGN_MODE="true"
+      shift
+      ;;
     *)
       echo "Unknown: $1" >&2
       usage
@@ -71,54 +76,62 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-RESOLVED_MODEL=""
-case "$MODEL_ARG" in
-  opus) RESOLVED_MODEL="anthropic.claude-opus-4-5-20251101-v1:0" ;;
-  gpt52 | gpt-5.2 | gpt5.2) RESOLVED_MODEL="gpt-5.2" ;;
-  codex | gpt-5.2-codex) RESOLVED_MODEL="gpt-5.2-codex" ;;
-  sonnet) RESOLVED_MODEL="anthropic.claude-sonnet-4-5-20250929-v1:0" ;;
-  auto) RESOLVED_MODEL="" ;;
-  *) RESOLVED_MODEL="$MODEL_ARG" ;;
-esac
-
-echo ""
-echo -e "${YELLOW}Generating context snapshot...${NC}"
-echo ""
-SNAPSHOT_OUTPUT=$(bash "${SCRIPT_DIR}/snapshot.sh")
-
-# Build system prompt with project context
-NEURONS_CONTENT=""
-if [[ -f "${PROJECT_ROOT}/NEURONS.md" ]]; then
-  NEURONS_CONTENT=$(cat "${PROJECT_ROOT}/NEURONS.md")
-elif [[ -f "${PROJECT_ROOT}/workers/ralph/NEURONS.md" ]]; then
-  NEURONS_CONTENT=$(cat "${PROJECT_ROOT}/workers/ralph/NEURONS.md")
-elif [[ -f "${PROJECT_ROOT}/workers/NEURONS.md" ]]; then
-  NEURONS_CONTENT=$(cat "${PROJECT_ROOT}/workers/NEURONS.md")
-else
-  NEURONS_CONTENT="# NEURONS.md not found\n\nCreate it (or generate it) to give Cortex a repo map."
+# Model resolution for Claude Code
+CLAUDE_MODEL_FLAG=""
+if [[ -n "$MODEL_ARG" ]]; then
+  case "$MODEL_ARG" in
+    opus | opus46 | opus-4-6)
+      CLAUDE_MODEL_FLAG="--model claude-opus-4-6"
+      ;;
+    sonnet | sonnet46 | sonnet-4-6)
+      CLAUDE_MODEL_FLAG="--model claude-sonnet-4-6"
+      ;;
+    haiku | haiku45 | haiku-4-5)
+      CLAUDE_MODEL_FLAG="--model claude-haiku-4-5-20251001"
+      ;;
+    *)
+      CLAUDE_MODEL_FLAG="--model $MODEL_ARG"
+      ;;
+  esac
 fi
 
-CORTEX_SYSTEM_PROMPT=$(
-  cat <<EOF
+echo ""
+
+# Run cleanup before generating context (reduces token usage)
+if [[ -x "${SCRIPT_DIR}/cleanup_cortex_plan.sh" ]]; then
+  echo -e "${YELLOW}Running plan cleanup...${NC}"
+  if bash "${SCRIPT_DIR}/cleanup_cortex_plan.sh" 2>/dev/null; then
+    echo -e "${GREEN}Plan cleanup complete${NC}"
+  else
+    echo -e "${YELLOW}Plan cleanup skipped (no completed tasks)${NC}"
+  fi
+  echo ""
+fi
+
+# Optional design-only prompt injection
+DESIGN_PROMPT_BLOCK=""
+if [[ "$DESIGN_MODE" == "true" ]]; then
+  DESIGN_PROMPT_BLOCK="
+
+---
+
+# Design-Only Mode
+
+You are starting Cortex in **design-only audit mode**.
+
+- Do **not** implement code changes.
+- Produce a structured audit report and a phased plan.
+"
+fi
+
+# Build the system prompt - lean injection (snapshot fetched on demand)
+SYSTEM_PROMPT=$(cat <<EOF
 $(cat "${SCRIPT_DIR}/AGENTS.md")
 
 ---
 
-${NEURONS_CONTENT}
-
----
-
 $(cat "${SCRIPT_DIR}/CORTEX_SYSTEM_PROMPT.md")
-
----
-
-$(cat "${SCRIPT_DIR}/THOUGHTS.md")
-
----
-
-# Current Repository State
-
-${SNAPSHOT_OUTPUT}
+${DESIGN_PROMPT_BLOCK}
 
 ---
 
@@ -138,51 +151,49 @@ You are now in **chat mode**. The user wants to have a direct conversation with 
 - Be conversational and helpful
 - Wait for user input and respond naturally
 
-**To run Ralph (execution):** User runs \`bash loop.sh\` from project root
+**To run Ralph (execution):** User runs \`bash workers/ralph/loop.sh\` from project root
 
 The user will now type their questions. Engage in a natural conversation.
 EOF
 )
 
 echo -e "${CYAN}========================================${NC}"
-echo -e "${CYAN}Starting Cortex Chat...${NC}"
+echo -e "${CYAN}Starting Cortex Chat via Claude Code...${NC}"
 echo -e "${CYAN}========================================${NC}"
 echo ""
-echo -e "${GREEN}💬 You can now chat with Cortex!${NC}"
-echo -e "${GREEN}📋 Cortex has full context of the All Done Sites project.${NC}"
-echo -e "${GREEN}🚪 Type 'exit' or press Ctrl+C to end the session.${NC}"
+echo -e "${GREEN}You can now chat with Cortex!${NC}"
+echo -e "${GREEN}Cortex has full context of the All Done Sites project.${NC}"
+echo -e "${GREEN}Type 'exit' or press Ctrl+C to end the session.${NC}"
 echo ""
 
-CONFIG_FILE="/tmp/cortex_config_$$_$(date +%s).yml"
+# Build Claude Code command
+CLAUDE_CMD="claude"
 
-cat >"$CONFIG_FILE" <<EOF
-version: 1
-agent:
-  additionalSystemPrompt: |
-$(while IFS= read -r line; do
-  echo "    $line"
-done <<<"$CORTEX_SYSTEM_PROMPT")
-  streaming: true
-  temperature: 0.3
-EOF
-
-if [[ -n "$RESOLVED_MODEL" ]]; then
-  echo "  modelId: ${RESOLVED_MODEL}" >>"$CONFIG_FILE"
-else
-  echo "  modelId: auto" >>"$CONFIG_FILE"
+if [[ -n "$CLAUDE_MODEL_FLAG" ]]; then
+  CLAUDE_CMD="$CLAUDE_CMD $CLAUDE_MODEL_FLAG"
 fi
 
-LOGFIRE_DISABLE=1 acli rovodev run --config-file "$CONFIG_FILE" --yolo
+if [[ "$SKIP_PERMISSIONS" == "true" ]]; then
+  CLAUDE_CMD="$CLAUDE_CMD --dangerously-skip-permissions"
+fi
+
+# Write system prompt to temp file
+PROMPT_FILE=$(mktemp /tmp/cortex_alldonesites_prompt_XXXXXX.md)
+echo "$SYSTEM_PROMPT" > "$PROMPT_FILE"
+
+# Launch Claude Code with system prompt
+$CLAUDE_CMD --system-prompt "$(cat "$PROMPT_FILE")"
 EXIT_CODE=$?
 
-rm -f "$CONFIG_FILE"
+# Cleanup
+rm -f "$PROMPT_FILE"
 
 echo ""
 echo -e "${CYAN}========================================${NC}"
 if [[ $EXIT_CODE -eq 0 ]]; then
-  echo -e "${GREEN}✓ Chat session ended${NC}"
+  echo -e "${GREEN}Chat session ended${NC}"
 else
-  echo -e "${YELLOW}⚠ Chat session ended with code ${EXIT_CODE}${NC}"
+  echo -e "${YELLOW}Chat session ended with code ${EXIT_CODE}${NC}"
 fi
 echo -e "${CYAN}========================================${NC}"
 
