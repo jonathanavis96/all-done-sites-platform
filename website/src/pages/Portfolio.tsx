@@ -5,10 +5,10 @@ import reachright from "@/assets/portfolio/reachright.webp";
 
 import deeneSocial from "@/assets/portfolio/deenesocial.webp";
 import jacquiHowles from "@/assets/portfolio/jacquichowles.webp";
+import rankSentinel from "@/assets/portfolio/ranksentinel.webp";
 
 import salon from "@/assets/portfolio/salon.webp";
 import consultant from "@/assets/portfolio/consultancy.webp";
-import cafe from "@/assets/portfolio/cafe.webp";
 
 type Item = {
   src: string;
@@ -35,14 +35,16 @@ const items: Item[] = [
   {
     src: jacquiHowles,
     alt: "Jacqui Chowles – Therapist, warm, inviting, grounded",
-    link: "https://jacquichowles.com/", 
+    link: "https://jacquichowles.com/",
     live: true,
   },
   {
-    src: cafe,
-    alt: "Cafe website mockup – cozy and inviting visuals",
+    src: rankSentinel,
+    alt: "RankSentinel – Low-noise SEO monitoring platform",
+    link: "https://ranksentinel.co/",
+    live: true,
   },
-  {
+{
     src: consultant,
     alt: "Consultancy website mockup – modern professional design",
   },
