@@ -8,7 +8,7 @@ import jacquiHowles from "@/assets/portfolio/jacquichowles.webp";
 import rankSentinel from "@/assets/portfolio/ranksentinel.webp";
 
 import salon from "@/assets/portfolio/salon.webp";
-import consultant from "@/assets/portfolio/consultancy.webp";
+import pcQuanti from "@/assets/portfolio/pcquanti.webp";
 
 type Item = {
   src: string;
@@ -19,7 +19,7 @@ type Item = {
 
 const items: Item[] = [
   // Requested ordering (top-left -> bottom-right):
-  // ReachRight. Deene Social. JacquiHowles. Cafe. Consultancy. Hairsalon.
+  // ReachRight. Deene Social. JacquiHowles. RankSentinel. PC Quanti. Hairsalon.
   {
     src: reachright,
     alt: "ReachRight Marketing – Bold, modern, marketing design",
@@ -40,13 +40,15 @@ const items: Item[] = [
   },
   {
     src: rankSentinel,
-    alt: "RankSentinel – Low-noise SEO monitoring platform",
+    alt: "RankSentinel – Sharp, focused, technical SaaS design",
     link: "https://ranksentinel.co/",
     live: true,
   },
-{
-    src: consultant,
-    alt: "Consultancy website mockup – modern professional design",
+  {
+    src: pcQuanti,
+    alt: "PC Quanti – Dark, structured, corporate engineering design",
+    link: "https://pcquanti.co.za/",
+    live: true,
   },
   {
     src: salon,
