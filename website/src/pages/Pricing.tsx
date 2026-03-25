@@ -227,7 +227,7 @@ export default function PricingPage() {
           "Hosting, SSL & automated backups",
           "1 small update per month included",
           "Search-friendly website setup",
-          "2 professional mailboxes @yourdomain included",
+          "2 professional mailbox aliases @yourdomain included",
         ],
         payLink: PAYSTACK_PAGES[region].launch,
       },
@@ -242,7 +242,7 @@ export default function PricingPage() {
           "Custom branding & styling",
           "2 small updates per month included",
           "Priority response window",
-          "6 professional mailboxes @yourdomain included",
+          "6 professional mailbox aliases @yourdomain included",
         ],
         payLink: PAYSTACK_PAGES[region].business,
       },
@@ -257,7 +257,7 @@ export default function PricingPage() {
           "Advanced sections & interactive components",
           "3 small updates + 1 normal update per month",
           "Priority support & faster turnaround",
-          "14 professional mailboxes @yourdomain included",
+          "14 professional mailbox aliases @yourdomain included",
         ],
         highlight: true,
         badge: "Most Popular",
@@ -357,7 +357,7 @@ export default function PricingPage() {
         </div>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          Need more? Additional professional mailboxes can be added at <strong>R40/month each</strong>.
+          Need separate accounts? Separate professional mailboxes can be added at <strong>R40/month each</strong>.
         </p>
 
         {/* Custom / Enterprise */}
