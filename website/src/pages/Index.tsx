@@ -396,7 +396,7 @@ export default function Index() {
       {/* ===== hero ===== */}
       <section className="hero">
         <div className="wrap herogrid">
-          <div className="reveal">
+          <div>
             <span className="eyebrow">Done-for-you websites</span>
             <h1 className="h1">
               Your website,
@@ -426,7 +426,7 @@ export default function Index() {
             </div>
             <div className="hero-ai"><span className="cyandot" />Built to be found by AI, not just Google.</div>
           </div>
-          <div className="reveal-fade heroframe-wrap">
+          <div className="heroframe-wrap">
             <div className="frame clickable" data-url="https://pcquanti.co.za">
               <div className="fbar">
                 <Lights />
