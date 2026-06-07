@@ -38,6 +38,19 @@ const heroPreload = [
   .join("\n  ");
 
 let template = fs.readFileSync(distIndex, "utf-8");
+
+// Inline the app CSS so the homepage has no render-blocking stylesheet request
+// (saves ~300ms of FCP/LCP on mobile). Other routes keep the external <link>.
+const cssLink = template.match(/<link[^>]*rel="stylesheet"[^>]*href="(\/assets\/index-[^"]+\.css)"[^>]*>/i);
+if (cssLink) {
+  const cssFsPath = path.join(root, "dist", cssLink[1]);
+  if (fs.existsSync(cssFsPath)) {
+    const css = fs.readFileSync(cssFsPath, "utf-8");
+    template = template.replace(cssLink[0], `<style>${css}</style>`);
+    console.log(`  inlined ${Math.round(css.length / 1024)}KB of CSS (no render-blocking stylesheet)`);
+  }
+}
+
 // Drop the template's <title> (the rendered one from <Seo> is better) and inject
 // the rendered head (title + JSON-LD + hero preload) just before </head>.
 template = template.replace(/<title>[\s\S]*?<\/title>/i, "");
