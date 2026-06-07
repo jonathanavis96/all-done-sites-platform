@@ -85,13 +85,34 @@
       });
     </script>
 
-    <!-- GA4 (plain gtag). If you later move to GTM, replace this with the GTM snippet. -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SKZZXTSMN1"></script>
+    <!-- GA4 (plain gtag). The gtag.js SCRIPT is loaded off the critical path
+         (on first interaction, or shortly after load) so it doesn't slow first
+         paint. The dataLayer commands below queue immediately and are processed
+         as soon as the script loads, so the pageview still fires. -->
     <script>
       gtag('js', new Date());
       gtag('config', 'G-SKZZXTSMN1');
-      // Optional:
-      // gtag('config', 'G-SKZZXTSMN1', { anonymize_ip: true });
+      (function () {
+        var loaded = false;
+        function loadGA() {
+          if (loaded) return; loaded = true;
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=G-SKZZXTSMN1';
+          document.head.appendChild(s);
+        }
+        var evts = ['scroll', 'keydown', 'pointerdown', 'touchstart', 'click'];
+        function onFirst() {
+          evts.forEach(function (e) { window.removeEventListener(e, onFirst); });
+          loadGA();
+        }
+        evts.forEach(function (e) { window.addEventListener(e, onFirst, { passive: true, once: true }); });
+        // Fallback so passive visitors are still counted shortly after load.
+        window.addEventListener('load', function () {
+          if ('requestIdleCallback' in window) { requestIdleCallback(loadGA, { timeout: 3000 }); }
+          else { setTimeout(loadGA, 2500); }
+        });
+      })();
     </script>
 
     <!-- Theme color for mobile browsers -->

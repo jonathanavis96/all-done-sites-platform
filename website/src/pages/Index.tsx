@@ -27,6 +27,7 @@ import {
 import "@/styles/home.css";
 
 import pcquantiFull from "@/assets/portfolio/pcquanti-full.webp";
+import pcquantiFullSm from "@/assets/portfolio/pcquanti-full-sm.webp";
 import ranksentinelImg from "@/assets/portfolio/ranksentinel.webp";
 import pcquantiImg from "@/assets/portfolio/pcquanti.webp";
 import reachrightImg from "@/assets/portfolio/reachright.webp";
@@ -250,44 +251,57 @@ export default function Index() {
     root.querySelectorAll("[data-count]").forEach((el) => countIO.observe(el));
     cleanups.push(() => countIO.disconnect());
 
-    // subtle cursor 3D tilt on cards
-    root.querySelectorAll<HTMLElement>(".tilt").forEach((card) => {
-      const move = (e: MouseEvent) => {
-        const r = card.getBoundingClientRect();
-        const px = (e.clientX - r.left) / r.width - 0.5;
-        const py = (e.clientY - r.top) / r.height - 0.5;
-        card.style.transform =
-          "perspective(800px) rotateX(" + (-py * 8).toFixed(2) + "deg) rotateY(" + (px * 8).toFixed(2) + "deg) translateY(-6px) scale(1.02)";
-      };
-      const leave = () => {
-        card.style.transform = "";
-      };
-      card.addEventListener("mousemove", move);
-      card.addEventListener("mouseleave", leave);
-      cleanups.push(() => {
-        card.removeEventListener("mousemove", move);
-        card.removeEventListener("mouseleave", leave);
-      });
-    });
+    // Cursor tilt + magnetic buttons are mouse-only flourishes. Skip them on
+    // touch devices, and wire them at idle so they never compete with load.
+    const wireHoverEffects = () => {
+      if (!window.matchMedia || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
 
-    // magnetic CTA buttons
-    root.querySelectorAll<HTMLElement>(".btn").forEach((b) => {
-      const move = (e: MouseEvent) => {
-        const r = b.getBoundingClientRect();
-        const x = (e.clientX - (r.left + r.width / 2)) / r.width;
-        const y = (e.clientY - (r.top + r.height / 2)) / r.height;
-        b.style.transform = "translate(" + (x * 14).toFixed(1) + "px," + (y * 10).toFixed(1) + "px) scale(1.06)";
-      };
-      const leave = () => {
-        b.style.transform = "";
-      };
-      b.addEventListener("mousemove", move);
-      b.addEventListener("mouseleave", leave);
-      cleanups.push(() => {
-        b.removeEventListener("mousemove", move);
-        b.removeEventListener("mouseleave", leave);
+      // subtle cursor 3D tilt on cards
+      root.querySelectorAll<HTMLElement>(".tilt").forEach((card) => {
+        const move = (e: MouseEvent) => {
+          const r = card.getBoundingClientRect();
+          const px = (e.clientX - r.left) / r.width - 0.5;
+          const py = (e.clientY - r.top) / r.height - 0.5;
+          card.style.transform =
+            "perspective(800px) rotateX(" + (-py * 8).toFixed(2) + "deg) rotateY(" + (px * 8).toFixed(2) + "deg) translateY(-6px) scale(1.02)";
+        };
+        const leave = () => {
+          card.style.transform = "";
+        };
+        card.addEventListener("mousemove", move);
+        card.addEventListener("mouseleave", leave);
+        cleanups.push(() => {
+          card.removeEventListener("mousemove", move);
+          card.removeEventListener("mouseleave", leave);
+        });
       });
-    });
+
+      // magnetic CTA buttons
+      root.querySelectorAll<HTMLElement>(".btn").forEach((b) => {
+        const move = (e: MouseEvent) => {
+          const r = b.getBoundingClientRect();
+          const x = (e.clientX - (r.left + r.width / 2)) / r.width;
+          const y = (e.clientY - (r.top + r.height / 2)) / r.height;
+          b.style.transform = "translate(" + (x * 14).toFixed(1) + "px," + (y * 10).toFixed(1) + "px) scale(1.06)";
+        };
+        const leave = () => {
+          b.style.transform = "";
+        };
+        b.addEventListener("mousemove", move);
+        b.addEventListener("mouseleave", leave);
+        cleanups.push(() => {
+          b.removeEventListener("mousemove", move);
+          b.removeEventListener("mouseleave", leave);
+        });
+      });
+    };
+    const ric: (cb: () => void) => number =
+      (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback ||
+      ((cb: () => void) => window.setTimeout(cb, 200));
+    const cic: (id: number) => void =
+      (window as unknown as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback || window.clearTimeout;
+    const idleId = ric(wireHoverEffects);
+    cleanups.push(() => cic(idleId));
 
     // live-site preview modal
     const modal = root.querySelector<HTMLElement>("#vmodal");
@@ -419,7 +433,10 @@ export default function Index() {
                 <span className="u">pcquanti.co.za</span>
               </div>
               <button className="expand" title="Open preview" type="button">⤢</button>
-              <img src={pcquantiFull} alt="PC Quanti website preview" decoding="async" />
+              <picture>
+                <source media="(max-width: 860px)" srcSet={pcquantiFullSm} type="image/webp" />
+                <img src={pcquantiFull} alt="PC Quanti website preview" decoding="async" />
+              </picture>
             </div>
           </div>
         </div>

@@ -26,12 +26,16 @@ console.log("\n🧩 Prerendering the homepage...\n");
 const { render } = await import(pathToFileURL(serverEntry).href);
 const { html, head } = render("/");
 
-// Preload the hero image (the LCP candidate) — grab its hashed URL from the
-// rendered markup so it starts downloading immediately.
-const heroMatch = html.match(/src="(\/assets\/pcquanti-full-[^"]+\.webp)"/);
-const heroPreload = heroMatch
-  ? `<link rel="preload" as="image" href="${heroMatch[1]}" fetchpriority="high">`
-  : "";
+// Preload the hero image (the LCP candidate) per viewport so it starts
+// downloading immediately: the full image on desktop, the small one on mobile.
+const heroFull = (html.match(/src="(\/assets\/pcquanti-full-(?!sm-)[^"]+\.webp)"/) || [])[1];
+const heroSm = (html.match(/(\/assets\/pcquanti-full-sm-[^"]+\.webp)/) || [])[1];
+const heroPreload = [
+  heroFull ? `<link rel="preload" as="image" href="${heroFull}" media="(min-width:861px)" fetchpriority="high">` : "",
+  heroSm ? `<link rel="preload" as="image" href="${heroSm}" media="(max-width:860px)" fetchpriority="high">` : "",
+]
+  .filter(Boolean)
+  .join("\n  ");
 
 let template = fs.readFileSync(distIndex, "utf-8");
 // Drop the template's <title> (the rendered one from <Seo> is better) and inject
