@@ -45,11 +45,35 @@ const routes = [
     description: 'Get in touch with All Done Sites. Let\'s discuss your website needs and how we can help your business grow online.',
     ogTitle: 'Contact Us - All Done Sites'
   },
-  { 
-    path: 'contact-enterprise', 
-    title: 'Enterprise Contact', 
+  {
+    path: 'contact-enterprise',
+    title: 'Enterprise Contact',
     description: 'Contact All Done Sites for enterprise solutions. Manage multiple websites with dedicated support and custom solutions.',
     ogTitle: 'Enterprise Solutions - All Done Sites'
+  },
+  {
+    path: 'thank-you',
+    title: 'Thank You',
+    description: 'Thanks for getting in touch with All Done Sites. We will reply within one business day.',
+    ogTitle: 'Thank You - All Done Sites'
+  },
+  {
+    path: 'terms',
+    title: 'Terms',
+    description: 'All Done Sites terms of service, including our refund and cancellation policies.',
+    ogTitle: 'Terms - All Done Sites'
+  },
+  {
+    path: 'terms/full',
+    title: 'Subscription Agreement',
+    description: 'The full All Done Sites website subscription agreement.',
+    ogTitle: 'Subscription Agreement - All Done Sites'
+  },
+  {
+    path: 'privacy',
+    title: 'Privacy Policy',
+    description: 'How All Done Sites collects, uses, and protects your personal information.',
+    ogTitle: 'Privacy Policy - All Done Sites'
   }
 ];
 
