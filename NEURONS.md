@@ -4,12 +4,18 @@
 
 **Project Name:** All Done Sites  
 **Repository:** alldonesites  
-**Work Branch:** alldonesites-work  
+**Work Branch:** main  
 **Tech Stack:** React, TypeScript, Vite, shadcn-ui, Tailwind CSS
 
 ## Purpose
 
 A website showcasing completed projects and portfolio work, built with modern React and TypeScript.
+
+## Agent Model
+
+A single agent — **Cortex** — plans and builds this repo directly in Claude Code.
+The former "Ralph" autonomous executor was retired on 2026-06-07 and is frozen
+under `archive/workers/` (never modify). Legacy Rovo Dev lives under `*/rovodev/`.
 
 ## Key Components
 

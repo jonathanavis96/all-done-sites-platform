@@ -3,7 +3,8 @@
 This repository contains:
 
 - `website/`: the production website (Vite + React + TypeScript)
-- `workers/`, `cortex/`, `brain/`, `skills/`: agent infrastructure and knowledge base
+- `cortex/`, `brain/`, `skills/`: agent (Cortex) docs and knowledge base
+- `archive/`: frozen legacy runtimes (retired Ralph executor) — never modify
 
 ## Website development
 

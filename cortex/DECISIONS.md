@@ -1,14 +1,39 @@
-# DECISIONS.md - {{PROJECT_NAME}}
+# DECISIONS.md - All Done Sites
 
-**Purpose:** Architectural decisions and conventions for {{PROJECT_NAME}}
+**Purpose:** Architectural decisions and conventions for All Done Sites
 
-**Last updated:** {{TIMESTAMP}}
+**Last updated:** 2026-06-07 12:05:00
 
 ---
 
 ## Active Decisions
 
-(No decisions yet - project just bootstrapped)
+### DEC-2026-06-07-001: Retire Ralph; Cortex is the single planner+builder
+
+**Date:** 2026-06-07 12:05:00
+
+**Decision:** Move from the two-agent model (Cortex plans, Ralph executes an
+autonomous loop) to a single-agent model where Cortex both plans and implements
+directly inside Claude Code.
+
+**Rationale:**
+
+- The autonomous Ralph loop added overhead (task contracts, verifier, THUNK log)
+  that is unnecessary for a small marketing/portfolio site.
+- Working directly in Claude Code is faster and simpler for the current scope.
+- Alternatives considered: keep the loop (rejected — too heavy), delete Ralph
+  outright (rejected — lose reference/history). Chose to archive instead.
+
+**Implementation:**
+
+- `workers/` moved to `archive/workers/` (frozen, never modified).
+- Core docs rewritten: `cortex/CORTEX_SYSTEM_PROMPT.md`, `cortex/AGENTS.md`,
+  `CLAUDE.md`, `NEURONS.md`, `README.md`, `cortex/THOUGHTS.md`.
+- `archive/README.md` explains the frozen runtime.
+
+**Impact:** Simpler workflow; one agent owns plan → build → verify. The
+`skills/` knowledge base still references Ralph patterns and is kept as-is
+(useful generic knowledge); only core operating docs were updated.
 
 ---
 

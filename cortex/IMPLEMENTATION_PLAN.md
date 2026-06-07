@@ -1,65 +1,45 @@
-# Cortex Implementation Plan - {{PROJECT_NAME}}
+# Cortex Implementation Plan — All Done Sites
 
-**Status:** Planning mode  
+**Status:** Active (single-agent: Cortex plans and builds)  
 **Branch:** `main`  
-**Last Updated:** {{TIMESTAMP}} (by Cortex)
+**Last Updated:** 2026-06-07 12:05:00 (by Cortex)
 
 ## Mission
 
-From `THOUGHTS.md`: {{PROJECT_PURPOSE}}
+From `THOUGHTS.md`: maintain and grow the All Done Sites marketing/portfolio
+website — fast, clear, conversion-focused, deployed to GitHub Pages.
 
-## Current Status
+## How work happens
 
-### ✅ Completed Phases
+Cortex plans and implements directly in Claude Code. There is no separate
+executor loop. For each piece of work:
 
-(None yet - project just bootstrapped)
-
-### 📊 Progress Summary
-
-- **Completed:** 0 tasks
-- **Pending:** TBD (Cortex to plan)
-- **Verifier:** Not yet run
-- **Maintenance:** Initial setup
-
----
-
-## Active Task Contracts
-
-### Phase 0: Bootstrap Verification
-
-- [ ] **0.1** Verify Ralph loop is operational
-  - **Goal:** Ensure Ralph can execute basic tasks
-  - **Context:** Fresh project setup, need to validate infrastructure
-  - **AC:**
-    - [ ] Run `bash loop.sh` completes without errors
-    - [ ] Verifier runs and produces `.verify/latest.txt`
-    - [ ] workers/ralph/THUNK.md created with first entry
-  - **If Blocked:** Check loop.sh syntax, verifier rules, file permissions
-
-- [ ] **0.2** Document project structure in NEURONS.md
-  - **Goal:** Validate and refine NEURONS.md generated structure
-  - **Context:** Generated NEURONS.md may need project-specific adjustments
-  - **AC:**
-    - [ ] All directories in "Directory Structure" exist or are planned
-    - [ ] Key files are documented with purpose
-    - [ ] Tech-specific guidance is accurate
-  - **If Blocked:** Refer to project idea file for intended structure
+1. Plan the change here (atomic, verifiable steps).
+2. Implement it in `website/`.
+3. Verify with `npm run build` (and `npm run lint`); check screenshots for
+   visual/portfolio work.
+4. Commit with a conventional message; log durable decisions in `DECISIONS.md`.
 
 ---
 
-### Phase 1: Core Setup
+## Recently Completed
 
-(Tasks to be added by Cortex based on project goals)
-
----
-
-## Notes for Ralph
-
-- This is your first project with Cortex management
-- Check `cortex/THOUGHTS.md` for strategic context
-- Tasks will be synced from `workers/workers/IMPLEMENTATION_PLAN.md` automatically
-- Focus on one task per iteration (atomic completion)
+- [x] **Add AI Focus to portfolio (live)** — `aifocus.work`, with live badge.
+- [x] **Add Baobab Wines to portfolio (WIP)** — preview link, "In progress" badge.
+- [x] **Capture 3:2 hero screenshots** for both via Playwright.
+- [x] **Retire Ralph** — archived `workers/` → `archive/workers/`; rewrote core
+  docs to the single-agent model.
 
 ---
 
-**Next Planning Session:** After Phase 0 complete
+## Active / Upcoming
+
+(No active tasks. Add atomic steps here as new work is planned.)
+
+---
+
+## Notes
+
+- Verify before claiming done: `npm run build` must succeed.
+- Keep `NEURONS.md`, `CLAUDE.md`, and `THOUGHTS.md` in sync with reality.
+- Never modify `archive/` or `*/rovodev/` (frozen legacy runtimes).
