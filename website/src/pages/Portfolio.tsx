@@ -7,14 +7,16 @@ import deeneSocial from "@/assets/portfolio/deenesocial.webp";
 import jacquiHowles from "@/assets/portfolio/jacquichowles.webp";
 import rankSentinel from "@/assets/portfolio/ranksentinel.webp";
 
-import salon from "@/assets/portfolio/salon.webp";
 import pcQuanti from "@/assets/portfolio/pcquanti.webp";
+import aifocus from "@/assets/portfolio/aifocus.webp";
+import baobabWines from "@/assets/portfolio/baobabwines.webp";
 
 type Item = {
   src: string;
   alt: string;
   link?: string;
   live?: boolean; // highlight as a real, live site
+  wip?: boolean; // work-in-progress preview (not yet finished)
 };
 
 const items: Item[] = [
@@ -51,8 +53,16 @@ const items: Item[] = [
     live: true,
   },
   {
-    src: salon,
-    alt: "Hair salon website mockup – airy minimalist style",
+    src: aifocus,
+    alt: "AIfocus – Sleek, modern AI-tools review platform for academics",
+    link: "https://aifocus.work/",
+    live: true,
+  },
+  {
+    src: baobabWines,
+    alt: "Baobab Wines – Premium South African wine importer (in progress)",
+    link: "https://jonathanavis96.github.io/baobab-wines/",
+    wip: true,
   },
 ];
 
@@ -103,14 +113,21 @@ export default function Portfolio() {
                     </span>
                   )}
 
+                  {/* In-progress badge (work currently being built) */}
+                  {it.wip && (
+                    <span className="absolute top-3 right-3 z-10 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-medium text-white shadow-sm">
+                      In progress
+                    </span>
+                  )}
+
                   {imgEl}
 
-                  {/* Stronger hover CTA overlay for the live site */}
-                  {it.live && (
+                  {/* Stronger hover CTA overlay for linked sites */}
+                  {(it.live || it.wip) && (
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                       <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
                       <span className="relative z-10 rounded-md bg-background/90 px-3 py-1.5 text-sm font-medium shadow">
-                        View live site →
+                        {it.wip ? "Preview (in progress) →" : "View live site →"}
                       </span>
                     </div>
                   )}
@@ -120,13 +137,13 @@ export default function Portfolio() {
               )}
 
               <figcaption className="p-3 text-sm text-muted-foreground">
-                {it.live && it.link ? (
+                {it.link && (it.live || it.wip) ? (
                   <a
                     href={it.link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 font-medium hover:underline"
-                    aria-label={`${it.alt} (our live site)`}
+                    aria-label={`${it.alt} (${it.wip ? "preview, in progress" : "our live site"})`}
                   >
                     {it.alt}
                     <span className="sr-only">(opens in a new tab)</span>
