@@ -26,11 +26,18 @@ console.log("\n🧩 Prerendering the homepage...\n");
 const { render } = await import(pathToFileURL(serverEntry).href);
 const { html, head } = render("/");
 
+// Preload the hero image (the LCP candidate) — grab its hashed URL from the
+// rendered markup so it starts downloading immediately.
+const heroMatch = html.match(/src="(\/assets\/pcquanti-full-[^"]+\.webp)"/);
+const heroPreload = heroMatch
+  ? `<link rel="preload" as="image" href="${heroMatch[1]}" fetchpriority="high">`
+  : "";
+
 let template = fs.readFileSync(distIndex, "utf-8");
 // Drop the template's <title> (the rendered one from <Seo> is better) and inject
-// the rendered head (title + JSON-LD) just before </head>.
+// the rendered head (title + JSON-LD + hero preload) just before </head>.
 template = template.replace(/<title>[\s\S]*?<\/title>/i, "");
-template = template.replace("</head>", `${head}\n  </head>`);
+template = template.replace("</head>", `${heroPreload}\n  ${head}\n  </head>`);
 // Inject the rendered app markup into #root for instant paint + hydration.
 template = template.replace('<div id="root"></div>', `<div id="root">${html}</div>`);
 
