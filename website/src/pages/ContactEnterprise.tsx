@@ -83,12 +83,12 @@ export default function ContactEnterprise() {
             Call us&nbsp;+27&nbsp;82&nbsp;222&nbsp;7457
           </a>
           <a
-            href="https://wa.me/27765864469"
+            href="https://wa.me/27822227457"
             className="inline-flex items-center rounded-lg border border-primary px-4 py-2 text-primary hover:bg-primary/5"
             target="_blank"
             rel="noopener noreferrer"
           >
-            WhatsApp us&nbsp;+27&nbsp;76&nbsp;586&nbsp;4469
+            WhatsApp us&nbsp;+27&nbsp;82&nbsp;222&nbsp;7457
           </a>
         </div>
       </div>

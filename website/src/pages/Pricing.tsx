@@ -406,7 +406,7 @@ export default function PricingPage() {
               </Button>
               {/* WhatsApp */}
               <Button variant="outline" asChild>
-                <a href="https://wa.me/27765864469" target="_blank" rel="noopener noreferrer">
+                <a href="https://wa.me/27822227457" target="_blank" rel="noopener noreferrer">
                   WhatsApp&nbsp;us
                 </a>
               </Button>
