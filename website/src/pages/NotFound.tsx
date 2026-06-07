@@ -1,5 +1,7 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import Seo from "@/components/Seo";
+import { PageShell } from "@/components/redesign/RedesignChrome";
 
 export default function NotFound() {
   const location = useLocation();
@@ -9,19 +11,17 @@ export default function NotFound() {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-2">404</h1>
-        <p className="text-xl text-muted-foreground mb-6">Oops! Page not found</p>
-
-        {/* Use Link so it respects the router basename (/all-done-sites-platform/) */}
-        <Link
-          to="/"
-          className="inline-flex items-center justify-center rounded-md border bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-        >
-          Return to Home
-        </Link>
+    <PageShell>
+      <Seo
+        title="Page not found | All Done Sites"
+        description="The page you were looking for doesn't exist or may have moved."
+      />
+      <div className="notfound">
+        <div className="big">404</div>
+        <h1>This page wandered off.</h1>
+        <p>The page you were looking for doesn't exist or may have moved. Let's get you back on track.</p>
+        <Link to="/" className="btn lg">Back to home</Link>
       </div>
-    </div>
+    </PageShell>
   );
 }

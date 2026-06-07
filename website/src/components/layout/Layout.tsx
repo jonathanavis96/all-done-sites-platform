@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, Phone, X } from "lucide-react";
 import { useAnalytics } from "@/hooks/useAnalytics"; // 👈 GA4 hook
@@ -167,11 +167,18 @@ export const SiteFooter = () => {
 export default function Layout({ children }: { children?: ReactNode }) {
   useAnalytics(); // 👈 Hook for GA4 tracking
 
+  // Every page is now on the new chrome (redesigned pages render their own
+  // nav + footer; the old standalone routes redirect to the homepage). The old
+  // shared header/footer is no longer used by any route.
+  const OLD_CHROME_ROUTES = new Set<string>();
+  const { pathname } = useLocation();
+  const useOldChrome = OLD_CHROME_ROUTES.has(pathname);
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <SiteHeader />
+      {useOldChrome && <SiteHeader />}
       <main className="flex-1">{children || <Outlet />}</main>
-      <SiteFooter />
+      {useOldChrome && <SiteFooter />}
     </div>
   );
 }

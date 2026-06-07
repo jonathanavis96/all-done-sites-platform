@@ -18,7 +18,7 @@ const faqs = [
   },
   {
     q: "Can I cancel anytime?",
-    a: `Our standard agreement is a minimum 6-month commitment.\n\nIntroductory 1-month trial (by invitation) → You can cancel after that month without further charges.\nStandard plan → You may cancel early but must still pay the remaining months of your 6-month term.`,
+    a: `Our standard plan runs on a 12-month term. After that you can cancel, and the website becomes yours to keep or move.\n\nIntroductory 1-month trial (by invitation) → You can cancel after that month without further charges.\nStandard plan → You may cancel early but must still pay the remaining months of your 12-month term.`,
   },
   {
     q: "What happens if I cancel?",
@@ -50,7 +50,11 @@ const faqs = [
   },
   {
     q: "Do you provide SEO optimisation?",
-    a: `Yes — all our plans include SEO, but the level depends on your subscription:\n\nStarter Plan → Basic SEO setup for launch.\nBusiness Plan → Solid SEO optimisation for good search visibility, but without ongoing analytics or performance enhancements.\nPremium Plan → Enhanced SEO with ongoing analytics, reporting and performance improvements.`,
+    a: `Yes — all our plans include SEO, but the level depends on your subscription:\n\nStarter Plan → Basic SEO setup for launch.\nBusiness Plan → Solid SEO optimisation for good search visibility, but without ongoing analytics or performance enhancements.\nPremium Plan → Enhanced SEO with ongoing analytics, reporting and performance improvements.\n\nWe also build every site to be found and referenced by AI assistants and AI search, not just traditional search engines.`,
+  },
+  {
+    q: "Can my website be found and referenced by AI assistants?",
+    a: "Yes. We build every site with clean, well-structured, clearly written content and schema markup, so it can be indexed and referenced by AI assistants and AI search, like ChatGPT, Claude, Perplexity and Google's AI overviews, not just traditional search engines.",
   },
   {
     q: "Can you connect my website to social media?",
@@ -66,7 +70,7 @@ const faqs = [
   },
   {
     q: "Can I move my site to a different host later?",
-    a: `Yes — you can move hosting at any time after your 6-month contract ends, provided you have:\n\nPurchased the site's code/design at fair market value\nPaid for any additional work done`,
+    a: `Yes — after your first 12 months, the site's code and files can be transferred to you, so you can move hosting and keep the site (any outstanding additional work would be settled first).\n\nIf you'd like to move earlier, during the term, you can buy out the site's code/design at fair market value plus any additional work done.`,
   },
 ];
 

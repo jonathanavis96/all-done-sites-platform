@@ -178,7 +178,7 @@ export default function PricingPage() {
       region,
       acceptedAt,
       ip,
-      termsVersion: "2025-08-13",
+      termsVersion: "2026-06-07",
     };
     try {
       await fetch("https://formspree.io/f/mwpneboe", {
