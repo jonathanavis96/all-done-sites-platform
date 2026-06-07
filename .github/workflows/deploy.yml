@@ -68,7 +68,9 @@ jobs:
             echo "Building legacy (previous site) at /old ..."
             cd legacy-src/website
             npm ci --no-audit --no-fund
-            VITE_BASE=/old/ npm run build
+            # legacy's vite.config hardcodes base "/", so force the base via CLI
+            npx vite build --base=/old/
+            node scripts/generate-static-pages.js
             mkdir -p "$GITHUB_WORKSPACE/website/dist/old"
             cp -r dist/. "$GITHUB_WORKSPACE/website/dist/old/"
             echo "Legacy site built into dist/old:"
