@@ -5,16 +5,19 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { lazy, Suspense } from "react";
 
 import Layout from "@/components/layout/Layout";
 import { ScrollToHash } from "@/components/redesign/RedesignChrome";
-import Index from "./pages/Index";
-import ContactEnterprise from "./pages/ContactEnterprise";
-import NotFound from "./pages/NotFound";
-import ThankYou from "./pages/ThankYou";
-import Terms from "./pages/Terms";
-import TermsFull from "./pages/TermsFull";
-import Privacy from "./pages/Privacy";
+import Index from "./pages/Index"; // homepage stays eager (it's the landing page)
+
+// Secondary pages are code-split so they don't weigh down the homepage bundle.
+const ContactEnterprise = lazy(() => import("./pages/ContactEnterprise"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const ThankYou = lazy(() => import("./pages/ThankYou"));
+const Terms = lazy(() => import("./pages/Terms"));
+const TermsFull = lazy(() => import("./pages/TermsFull"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 
 const queryClient = new QueryClient();
 
@@ -27,6 +30,7 @@ export default function App() {
         <HelmetProvider>
           <ScrollToHash />
           <Layout>
+            <Suspense fallback={null}>
             <Routes>
               <Route path="/" element={<Index />} />
 
@@ -51,6 +55,7 @@ export default function App() {
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </Layout>
         </HelmetProvider>
       </TooltipProvider>

@@ -417,7 +417,7 @@ export default function Index() {
                 <span className="u">pcquanti.co.za</span>
               </div>
               <button className="expand" title="Open preview" type="button">⤢</button>
-              <img src={pcquantiFull} alt="PC Quanti website preview" />
+              <img src={pcquantiFull} alt="PC Quanti website preview" fetchPriority="high" decoding="async" />
             </div>
           </div>
         </div>
@@ -525,7 +525,7 @@ export default function Index() {
                 <Lights />
                 <span className="u">ranksentinel.co</span>
               </div>
-              <img src={ranksentinelImg} alt="RankSentinel website preview" />
+              <img src={ranksentinelImg} alt="RankSentinel website preview" loading="lazy" decoding="async" />
             </div>
             <div className="fbody">
               <div className="lab">Featured project</div>
