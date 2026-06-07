@@ -87,7 +87,9 @@ export default function Index() {
   const [submitting, setSubmitting] = useState(false);
 
   // region-aware pricing + Paystack terms-acceptance flow
-  const [region, setRegion] = useState<RegionKey>("OTHER");
+  // Default to ZA (primary market) so the prerendered HTML shows rand pricing;
+  // the client re-detects the real region on mount.
+  const [region, setRegion] = useState<RegionKey>("ZA");
   const [terms, setTerms] = useState<{ id: PlanId; name: string; payLink: string } | null>(null);
   const [termsChecked, setTermsChecked] = useState(false);
   const [termsText, setTermsText] = useState("");
@@ -417,7 +419,7 @@ export default function Index() {
                 <span className="u">pcquanti.co.za</span>
               </div>
               <button className="expand" title="Open preview" type="button">⤢</button>
-              <img src={pcquantiFull} alt="PC Quanti website preview" fetchPriority="high" decoding="async" />
+              <img src={pcquantiFull} alt="PC Quanti website preview" decoding="async" />
             </div>
           </div>
         </div>

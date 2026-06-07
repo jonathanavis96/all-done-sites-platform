@@ -1,7 +1,6 @@
 // src/App.tsx
 import { Toaster } from "@/components/ui/toaster";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { HelmetProvider } from "react-helmet-async";
 import { lazy, Suspense } from "react";
 
 import Layout from "@/components/layout/Layout";
@@ -16,9 +15,12 @@ const Terms = lazy(() => import("./pages/Terms"));
 const TermsFull = lazy(() => import("./pages/TermsFull"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 
+// Router and HelmetProvider are supplied by the entry points (main.tsx for the
+// browser, entry-server.tsx for build-time prerendering), so App can be rendered
+// in both contexts.
 export default function App() {
   return (
-    <HelmetProvider>
+    <>
       <Toaster />
       <ScrollToHash />
       <Layout>
@@ -49,6 +51,6 @@ export default function App() {
           </Routes>
         </Suspense>
       </Layout>
-    </HelmetProvider>
+    </>
   );
 }
