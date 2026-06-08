@@ -118,7 +118,10 @@ html { scroll-behavior: smooth; }
 
 /* ---- how it works ---- */
 .adsx .steps { margin-top: 48px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; position: relative; }
-.adsx .progress { position: absolute; top: 23px; left: 8%; right: 8%; height: 3px; border-radius: 3px; background: rgba(15, 23, 42, .08); overflow: hidden; }
+/* track runs from the centre of number 01 (16px pad + 24px half-circle = 40px)
+   to the centre of number 04, so fill fraction maps 1:1 onto the 4 columns:
+   step i pops when fill reaches i/3 of the bar -> delays 0 / .97s / 1.93s / 2.9s */
+.adsx .progress { position: absolute; top: 23px; left: 40px; right: calc(25% - 40px); height: 3px; border-radius: 3px; background: rgba(15, 23, 42, .08); overflow: hidden; }
 .adsx .progress .fill { position: absolute; left: 0; top: 0; height: 100%; width: 0; background: var(--ads-acg); transition: width 2.9s linear; }
 .adsx .steps.play .progress .fill { width: 100%; }
 .adsx .step { position: relative; padding: 0 16px; opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
@@ -173,8 +176,11 @@ html { scroll-behavior: smooth; }
 
 /* ---- client marquee ---- */
 .adsx .marq { margin-top: 36px; overflow: hidden; border-top: 1px solid var(--ads-line); border-bottom: 1px solid var(--ads-line); padding: 16px 0; -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
-.adsx .marq .track { display: flex; gap: 46px; width: max-content; animation: ads-scroll 24s linear infinite; }
-.adsx .marq span { font-family: var(--ads-disp); font-weight: 600; font-size: 15px; color: #aab3c2; white-space: nowrap; }
+/* spacing via trailing margin (not flex `gap`) so EVERY item — including the
+   last of each copy — carries 46px. That makes translateX(-50%) land exactly
+   one copy-width, looping seamlessly instead of jumping half a gap each cycle. */
+.adsx .marq .track { display: flex; width: max-content; animation: ads-scroll 24s linear infinite; }
+.adsx .marq span { font-family: var(--ads-disp); font-weight: 600; font-size: 15px; color: #aab3c2; white-space: nowrap; margin-right: 46px; }
 @keyframes ads-scroll { to { transform: translateX(-50%); } }
 
 /* ---- pricing ---- */

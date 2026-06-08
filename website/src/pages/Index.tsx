@@ -473,23 +473,23 @@ export default function Index() {
           <h2 className="h2 reveal">You barely lift a finger.</h2>
           <div className="steps">
             <div className="progress"><div className="fill" /></div>
-            <div className="step" style={{ transitionDelay: ".2s" }}>
-              <div className="num" style={{ transitionDelay: ".2s" }}>01</div>
+            <div className="step" style={{ transitionDelay: "0s" }}>
+              <div className="num" style={{ transitionDelay: "0s" }}>01</div>
               <h3>Tell us about your business</h3>
               <p>A quick chat about what you do and the look you want.</p>
             </div>
-            <div className="step" style={{ transitionDelay: "1.05s" }}>
-              <div className="num" style={{ transitionDelay: "1.05s" }}>02</div>
+            <div className="step" style={{ transitionDelay: ".97s" }}>
+              <div className="num" style={{ transitionDelay: ".97s" }}>02</div>
               <h3>We design and build it</h3>
               <p>We create a fast, modern, mobile-friendly site and show you a draft.</p>
             </div>
-            <div className="step" style={{ transitionDelay: "1.9s" }}>
-              <div className="num" style={{ transitionDelay: "1.9s" }}>03</div>
+            <div className="step" style={{ transitionDelay: "1.93s" }}>
+              <div className="num" style={{ transitionDelay: "1.93s" }}>03</div>
               <h3>You review and approve</h3>
               <p>Ask for changes until you love it, then give it the go-ahead.</p>
             </div>
-            <div className="step" style={{ transitionDelay: "2.75s" }}>
-              <div className="num" style={{ transitionDelay: "2.75s" }}>04</div>
+            <div className="step" style={{ transitionDelay: "2.9s" }}>
+              <div className="num" style={{ transitionDelay: "2.9s" }}>04</div>
               <h3>We launch and look after it</h3>
               <p>Hosting, security and updates are all handled for you.</p>
             </div>
