@@ -388,7 +388,7 @@ export default function Index() {
     <div className="adsx" ref={rootRef}>
       <Seo
         title="Hassle-Free Website Subscription for SMEs | All Done Sites"
-        description="We design, host, and maintain your site for one simple monthly fee. Built to be found by Google and AI assistants. No upfront cost, just fast setup and ongoing support."
+        description="All Done Sites builds, hosts and maintains fast, custom-coded websites for South African small businesses, for one simple monthly fee with no big upfront cost. No WordPress, built to be found by Google and AI."
         jsonLd={[orgJsonLd, localBizJsonLd, faqJsonLd]}
       />
 
