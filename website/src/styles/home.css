@@ -14,9 +14,9 @@
   --ads-line2: #EEF1F5;
   --ads-tx: #0F172A;
   --ads-bd: #475569;
-  --ads-mut: #8A94A6;
+  --ads-mut: #6B7280;
   --ads-ac: #0EA5E9;
-  --ads-acd: #0284C7;
+  --ads-acd: #0277B5;
   --ads-acg: linear-gradient(92deg, #0B82CC, #11A6E6);
   --ads-glow: rgba(14, 165, 233, .12);
   --ads-sh: 0 1px 2px rgba(15, 23, 42, .04), 0 10px 30px -14px rgba(15, 23, 42, .18);
@@ -180,7 +180,7 @@ html { scroll-behavior: smooth; }
    last of each copy — carries 46px. That makes translateX(-50%) land exactly
    one copy-width, looping seamlessly instead of jumping half a gap each cycle. */
 .adsx .marq .track { display: flex; width: max-content; animation: ads-scroll 24s linear infinite; }
-.adsx .marq span { font-family: var(--ads-disp); font-weight: 600; font-size: 15px; color: #aab3c2; white-space: nowrap; margin-right: 46px; }
+.adsx .marq span { font-family: var(--ads-disp); font-weight: 600; font-size: 15px; color: var(--ads-mut); white-space: nowrap; margin-right: 46px; }
 @keyframes ads-scroll { to { transform: translateX(-50%); } }
 
 /* ---- pricing ---- */
