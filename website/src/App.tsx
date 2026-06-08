@@ -6,6 +6,10 @@ import { lazy, Suspense } from "react";
 import Layout from "@/components/layout/Layout";
 import { ScrollToHash } from "@/components/redesign/RedesignChrome";
 import Index from "./pages/Index"; // homepage stays eager (it's the landing page)
+// Guides are eager so they render during build-time prerender (renderToString does
+// not resolve React.lazy, which would otherwise prerender an empty shell).
+import GuidesIndex from "./pages/GuidesIndex";
+import GuideArticle from "./pages/GuideArticle";
 
 // Secondary pages are code-split so they don't weigh down the homepage bundle.
 const ContactEnterprise = lazy(() => import("./pages/ContactEnterprise"));
@@ -42,6 +46,10 @@ export default function App() {
             <Route path="/terms" element={<Terms />} />
             <Route path="/terms/full" element={<TermsFull />} />
             <Route path="/privacy" element={<Privacy />} />
+
+            {/* Content / SEO guides */}
+            <Route path="/guides" element={<GuidesIndex />} />
+            <Route path="/guides/:slug" element={<GuideArticle />} />
 
             {/* The /new preview path is retired post-cutover; send it home. */}
             <Route path="/new/*" element={<Navigate to="/" replace />} />

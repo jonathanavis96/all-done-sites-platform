@@ -44,6 +44,7 @@ export function RedesignNav() {
             <Link to="/#how">How it works</Link>
             <Link to="/#pf">Portfolio</Link>
             <Link to="/#pricing">Pricing</Link>
+            <Link to="/guides">Guides</Link>
             <Link to="/#faq">FAQ</Link>
           </div>
           <Link to="/#getquote" className="btn">Get a quote</Link>
@@ -80,6 +81,7 @@ export function RedesignFooter() {
             <Link to="/#how">How it works</Link>
             <Link to="/#pf">Portfolio</Link>
             <Link to="/#pricing">Pricing</Link>
+            <Link to="/guides">Guides</Link>
             <Link to="/#faq">FAQ</Link>
           </div>
           <div className="col">

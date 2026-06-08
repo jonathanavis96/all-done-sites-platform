@@ -2,11 +2,47 @@
 
 **Purpose:** Architectural decisions and conventions for All Done Sites
 
-**Last updated:** 2026-06-07 12:05:00
+**Last updated:** 2026-06-08 04:10:00
 
 ---
 
 ## Active Decisions
+
+### DEC-2026-06-08-001: /guides is a data-driven, prerendered content section
+
+**Date:** 2026-06-08 04:10:00
+
+**Decision:** Build the SEO/AEO `/guides` section as a single data module
+(`website/src/content/guides.tsx`) consumed by a `GuidesIndex` page and a dynamic
+`GuideArticle` (`/guides/:slug`), with each guide route prerendered to its own
+`dist/guides/.../index.html` (content + Article + FAQPage JSON-LD baked in).
+
+**Rationale:**
+
+- One source of truth (typed blocks + FAQs) drives the rendered article, the
+  JSON-LD, the index cards, and the sitemap/llms entries — no duplication.
+- Prerendering puts the article text + structured data in the raw HTML for search
+  engines and AI crawlers that do not run JS (the whole point of the section).
+- Reuses existing patterns (`PageShell`, `Seo`, `.adsx`/`.legal` styles), so it
+  fits the redesigned site rather than inventing new chrome.
+
+**Implementation:**
+
+- `entry-server.tsx` extended: returns `headFull` (title + meta + canonical +
+  JSON-LD) and exports `prerenderRoutes`; `scripts/prerender.js` loops those,
+  stripping template default meta so guide pages get page-specific, deduped head.
+  Homepage prerender path left untouched (no perf regression).
+- Guides wired into nav + footer, `public/sitemap.xml`, `public/llms.txt`.
+
+**Impact / gotcha:** Prerendered routes MUST be eager imports in `App.tsx` —
+`renderToString` does not resolve `React.lazy` (it renders the Suspense null
+fallback), so a lazy guide route prerenders an empty shell. Making the two guide
+pages eager moved the homepage main chunk 104KB → 117KB gz (+13KB). Accepted
+because hydration is deferred and the hero is preloaded, so the extra JS is off
+the critical path (FCP/LCP unaffected). If perf needs it later, split SSR-eager /
+client-lazy.
+
+---
 
 ### DEC-2026-06-07-001: Retire Ralph; Cortex is the single planner+builder
 
