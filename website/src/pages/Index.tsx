@@ -406,7 +406,7 @@ export default function Index() {
               <span className="acc">done for you.</span>
             </h1>
             <p className="lede">
-              We design it, host it, and look after it for you, for one simple monthly fee. We build it free to start, and you barely lift a finger.
+              We design it, host it, and look after it for you, for one simple monthly fee. We build it free to start, and you barely lift a finger. Every site is custom-coded for speed, never built on WordPress or page builders.
             </p>
             <div className="ctarow">
               <a href="#getquote" className="btn lg">Get my free quote</a>
@@ -528,6 +528,10 @@ export default function Index() {
             <div className="cell reveal" style={{ transitionDelay: ".3s" }}>
               <h3>Pro email included</h3>
               <p>Mailboxes at your domain.</p>
+            </div>
+            <div className="cell wide reveal" style={{ transitionDelay: ".36s" }}>
+              <h3>Custom-coded, not WordPress</h3>
+              <p>Every site is hand-coded, with no page builders or plugin bloat. That means fast load times, strong security, and clean code that Google and AI assistants can read easily.</p>
             </div>
           </div>
         </div>
