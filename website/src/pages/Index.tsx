@@ -97,17 +97,19 @@ export default function Index() {
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => setRegion(detectRegion()), []);
-  useEffect(() => {
-    const b = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-    fetch(`${b}/terms.txt`)
-      .then((r) => r.text())
-      .then(setTermsText)
-      .catch(() => setTermsText("The agreement could not be loaded. Please see the Terms page."));
-  }, []);
 
+  // Load the agreement text lazily, only when a plan's terms modal is opened
+  // (keeps terms.txt off the initial critical path).
   function openTerms(id: PlanId, name: string) {
     setTerms({ id, name, payLink: PAYSTACK_PAGES[region][id] });
     setTermsChecked(false);
+    if (!termsText) {
+      const b = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+      fetch(`${b}/terms.txt`)
+        .then((r) => r.text())
+        .then(setTermsText)
+        .catch(() => setTermsText("The agreement could not be loaded. Please see the Terms page."));
+    }
   }
   async function acceptTerms() {
     if (!terms) return;

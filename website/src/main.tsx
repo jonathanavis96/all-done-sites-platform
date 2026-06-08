@@ -15,9 +15,25 @@ const tree = (
   </HelmetProvider>
 )
 
-// If the page was prerendered at build time, hydrate it; otherwise mount fresh.
+// If the page was prerendered at build time, DEFER hydration so the static
+// content paints first (much faster FCP/LCP on mobile). We hydrate on the first
+// user interaction, when the browser goes idle, or after a short timeout —
+// whichever comes first. Otherwise (no prerender) mount immediately.
 if (root.hasChildNodes()) {
-  hydrateRoot(root, tree)
+  let hydrated = false
+  const evts = ["pointerdown", "keydown", "scroll", "touchstart"] as const
+  const cleanup = () => evts.forEach((e) => window.removeEventListener(e, run))
+  function run() {
+    if (hydrated) return
+    hydrated = true
+    cleanup()
+    hydrateRoot(root, tree)
+  }
+  evts.forEach((e) => window.addEventListener(e, run, { passive: true }))
+  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void })
+    .requestIdleCallback
+  if (ric) ric(run, { timeout: 1800 })
+  else setTimeout(run, 1200)
 } else {
   createRoot(root).render(tree)
 }
