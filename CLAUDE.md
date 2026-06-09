@@ -55,3 +55,35 @@ alldonesites/
 - **Git commits:** Conventional messages (`feat:`, `fix:`, `chore:`, `refactor:`, `docs:`)
 - **Verify before done:** Run `npm run build` and `npm run lint`
 - **Frozen archives:** Never modify any `archive/` or `*/rovodev/` folder or file
+
+## Client Sites & Off-site Footprint
+
+> Durable rules. Credentials, listing IDs, and the canonical NAP live in the
+> Obsidian vault note `Projects/AllDoneSites.md` (private) — never commit secrets
+> to this file.
+
+- **Client sites are separate repos** under `github.com/jonathanavis96`, not in
+  this repo. Each is its own site with its own stack/deploy. Current map:
+  - PC Quanti -> `pc_quanti` (Next static export, GH Pages)
+  - ReachRight -> `reachright-marketing` (Vite SPA, GH Pages)
+  - Deene Social -> `deene-social-presence` (Vite SPA, GH Pages, `website/`)
+  - AI Focus (aifocus.work) -> `alan-breitler-affiliate-site` (Astro; Cloudflare
+    Pages @ aifocus.work + GH Pages; repo name is leftover template)
+  - Jacqui Chowles -> `jacqui-website` (Astro, GH Pages, `website/`)
+  - Baobab Wines -> `baobab-wines` (Next.js + TinaCMS, GH Pages; live domain
+    currently Squarespace)
+  - RankSentinel -> `ranksentinel` (Next static export)
+- **House default for client sites:** a discreet footer credit "Built and
+  maintained by All Done Sites" -> `https://alldonesites.com` (dofollow, muted,
+  matched to each site's own accent colour — not a fixed colour). Legal cover =
+  the Credit/Attribution clause in the Master Agreement + `terms.txt`.
+- **RankSentinel deploy gotcha:** its marketing site is served from a **VPS**
+  (nginx docroot `website/out`) off the **`vps` branch**, NOT `main`/GH Pages
+  (Pages is disabled there, so the GH Action 404s). To publish: edit on `vps`,
+  then on the VPS `git pull && cd website && npm run build`.
+- **Email:** `hello@alldonesites.com` is a **Zoho** mailbox (MX -> zoho.com), not
+  Google Workspace. Directory/business accounts use the `alldonesites@gmail.com`
+  Google account.
+- **Browser/automation:** use the Playwright MCP browser signed in as
+  `alldonesites@gmail.com` (authuser=1) for directory/business work; for plain
+  screenshots use isolated headless Chrome (per global `CLAUDE.md`).
