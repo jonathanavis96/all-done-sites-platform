@@ -36,7 +36,7 @@ export function RedesignNav() {
     <nav>
       <div className="wrap navinner">
         <a href={base} className="brand" onClick={onBrand} aria-label="All Done Sites home">
-          <img src={`${base}logo.png`} alt="All Done Sites" width={32} height={32} />
+          <img src={`${base}logo.png`} alt="" width={32} height={32} />
           <b>All Done Sites</b>
         </a>
         <div className="navright">
@@ -67,8 +67,8 @@ export function RedesignFooter() {
       <div className="wrap">
         <div className="fcols">
           <div className="col" style={{ maxWidth: "260px" }}>
-            <a href={base} className="brand" style={{ marginBottom: "12px" }} onClick={onBrand}>
-              <img src={`${base}logo.png`} alt="All Done Sites" width={32} height={32} />
+            <a href={base} className="brand" style={{ marginBottom: "12px" }} onClick={onBrand} aria-label="All Done Sites home">
+              <img src={`${base}logo.png`} alt="" width={32} height={32} />
               <b style={{ fontSize: "16px" }}>All Done Sites</b>
             </a>
             <p style={{ fontSize: "13px" }}>
@@ -77,7 +77,7 @@ export function RedesignFooter() {
             </p>
           </div>
           <div className="col">
-            <h5>Product</h5>
+            <div className="ftitle">Product</div>
             <Link to="/#how">How it works</Link>
             <Link to="/#pf">Portfolio</Link>
             <Link to="/#pricing">Pricing</Link>
@@ -85,13 +85,13 @@ export function RedesignFooter() {
             <Link to="/#faq">FAQ</Link>
           </div>
           <div className="col">
-            <h5>Company</h5>
+            <div className="ftitle">Company</div>
             <Link to="/#getquote">Contact</Link>
             <Link to="/privacy">Privacy</Link>
             <Link to="/terms">Terms</Link>
           </div>
           <div className="col">
-            <h5>Get in touch</h5>
+            <div className="ftitle">Get in touch</div>
             <a href={`mailto:${EMAIL}`}>{EMAIL}</a>
             <a href={PHONE_TEL}>{PHONE_DISPLAY}</a>
             <a href={WHATSAPP} target="_blank" rel="noopener noreferrer">WhatsApp us</a>
