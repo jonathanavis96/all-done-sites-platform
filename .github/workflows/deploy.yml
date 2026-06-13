@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy to Cloudflare Pages
 
 on:
   push:
@@ -7,11 +7,9 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -45,7 +43,7 @@ jobs:
             echo "fetch-retry-maxtimeout=60000"
           } >> ~/.npmrc
 
-          # OPTIONAL: authenticate to reduce rate-limiting (add NPM_TOKEN in repo settings → Secrets → Actions)
+          # OPTIONAL: authenticate to reduce rate-limiting (add NPM_TOKEN in repo settings -> Secrets -> Actions)
           if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
             echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
           fi
@@ -79,17 +77,11 @@ jobs:
             echo "No legacy branch checked out; skipping /old archive."
           fi
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      # Deploy the built output (root site + /old archive) to Cloudflare Pages.
+      # Replaces the previous GitHub Pages deploy (migrated 2026-06-13).
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
         with:
-          path: website/dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy website/dist --project-name=alldonesites --branch=main
