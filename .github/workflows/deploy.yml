@@ -79,9 +79,11 @@ jobs:
 
       # Deploy the built output (root site + /old archive) to Cloudflare Pages.
       # Replaces the previous GitHub Pages deploy (migrated 2026-06-13).
+      # Use npx (not cloudflare/wrangler-action, which auto-detects the repo's
+      # bun.lockb and fails because bun isn't on the runner).
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy website/dist --project-name=alldonesites --branch=main
+        working-directory: website
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 pages deploy dist --project-name=alldonesites --branch=main
