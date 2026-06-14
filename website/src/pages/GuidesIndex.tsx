@@ -16,7 +16,7 @@ export default function GuidesIndex() {
     itemListElement: guides.map((g, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      url: `${SITE}/guides/${g.slug}`,
+      url: `${SITE}/guides/${g.slug}/`,
       name: g.title,
     })),
   };
@@ -30,7 +30,7 @@ export default function GuidesIndex() {
       <Seo
         title="Website Guides for South African Businesses | All Done Sites"
         description="Honest, practical guides on website cost, hosting, build times and getting your first small business website in South Africa."
-        canonical={`${SITE}/guides`}
+        canonical={`${SITE}/guides/`}
         image={OG_IMAGE}
         jsonLd={itemListSchema}
       />

@@ -1,0 +1,18 @@
+# Homepage-anchor routes — folded into the homepage in the redesign (App.tsx
+# uses <Navigate> to the matching #anchor). Server-side 301 so Google and other
+# crawlers consolidate them into the homepage instead of crawling empty SPA
+# shells (previously these showed as "Discovered – currently not indexed").
+# Both the no-slash and trailing-slash forms are covered.
+/how-it-works    /#how       301
+/how-it-works/   /#how       301
+/pricing         /#pricing   301
+/pricing/        /#pricing   301
+/portfolio       /#pf        301
+/portfolio/      /#pf        301
+/faq             /#faq       301
+/faq/            /#faq       301
+/contact         /#getquote  301
+/contact/        /#getquote  301
+
+# Retired redesign-preview path
+/new/*           /           301

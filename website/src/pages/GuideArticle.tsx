@@ -60,7 +60,9 @@ export default function GuideArticle() {
   // Unknown slug: send back to the guides index (valid slugs are prerendered).
   if (!guide) return <Navigate to="/guides" replace />;
 
-  const url = `${SITE}/guides/${guide.slug}`;
+  // Trailing slash to match the URL Cloudflare Pages actually serves
+  // (it 308-redirects the no-slash form to the directory form).
+  const url = `${SITE}/guides/${guide.slug}/`;
   const toc = guide.blocks.filter((b): b is { h2: string } => "h2" in b).map((b) => b.h2);
   const related = guide.relatedSlugs.map((s) => getGuide(s)).filter(Boolean) as NonNullable<
     ReturnType<typeof getGuide>

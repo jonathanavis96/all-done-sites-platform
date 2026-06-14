@@ -69,7 +69,10 @@ function stripTemplateMeta(htmlStr) {
     .replace(/<title>[\s\S]*?<\/title>/i, "")
     .replace(/<meta[^>]*name="description"[^>]*>/i, "")
     .replace(/<meta[^>]*property="og:[^"]*"[^>]*>/gi, "")
-    .replace(/<meta[^>]*name="twitter:[^"]*"[^>]*>/gi, "");
+    .replace(/<meta[^>]*name="twitter:[^"]*"[^>]*>/gi, "")
+    // Drop the template's homepage canonical so it can't leak onto sub-pages;
+    // the page-specific canonical comes from <Seo> via headFull.
+    .replace(/<link[^>]*rel="canonical"[^>]*>/gi, "");
 }
 
 for (const route of prerenderRoutes) {
@@ -87,6 +90,34 @@ for (const route of prerenderRoutes) {
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, "index.html"), out);
   console.log(`✓ ${route} (${html.length.toLocaleString()} chars)`);
+}
+
+// ---- sitemap.xml ------------------------------------------------------------
+// Single source of truth for indexable URLs: homepage + every prerendered route
+// (the guides index + each guide), all in the trailing-slash form Cloudflare
+// Pages actually serves. Generated here so the sitemap can never drift from the
+// real routes, and never advertises a URL that redirects.
+{
+  const SITE = "https://alldonesites.com";
+  const today = new Date().toISOString().slice(0, 10);
+  const toUrl = (route) => {
+    if (route === "/") return `${SITE}/`;
+    const clean = route.replace(/^\//, "").replace(/\/$/, "");
+    return `${SITE}/${clean}/`;
+  };
+  const entries = ["/", ...prerenderRoutes].map((r) => {
+    const loc = toUrl(r);
+    const priority = r === "/" ? "1.0" : r === "/guides" ? "0.8" : "0.7";
+    const changefreq = r === "/" ? "weekly" : "monthly";
+    return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+  });
+  const xml =
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    `${entries.join("\n")}\n` +
+    `</urlset>\n`;
+  fs.writeFileSync(path.join(distDir, "sitemap.xml"), xml);
+  console.log(`✓ sitemap.xml (${entries.length} URLs)`);
 }
 
 console.log("\n✅ Prerender complete.\n");

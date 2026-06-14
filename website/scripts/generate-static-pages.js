@@ -1,9 +1,19 @@
 #!/usr/bin/env node
 
 /**
- * Generate static HTML pages for each route
- * This ensures GitHub Pages returns HTTP 200 for deep links (SEO requirement)
- * Runs after `vite build` to create route/index.html files
+ * Generate static HTML pages for the standalone utility/legal routes.
+ *
+ * This runs after `vite build` and writes a `route/index.html` for each entry
+ * below so Cloudflare Pages returns HTTP 200 (with the right <title>/meta) for
+ * those deep links.
+ *
+ * IMPORTANT — do NOT add the homepage-anchor routes here (how-it-works, pricing,
+ * portfolio, faq, contact). Those are client-side <Navigate> redirects to
+ * homepage anchors in App.tsx, and they are 301-redirected server-side via
+ * `public/_redirects`. Emitting standalone shells for them produced "zombie"
+ * pages that Google reported as "Discovered – currently not indexed".
+ *
+ * The homepage ("/") and /guides/* are handled by prerender.js (real content).
  */
 
 import fs from 'fs';
@@ -13,38 +23,12 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
 
-// Define all routes from sitemap that need static pages
+const SITE = 'https://alldonesites.com';
+
+// Real standalone routes (utility / legal). These are genuine pages, not
+// homepage anchors. Canonical URLs use a trailing slash to match the directory
+// form Cloudflare Pages actually serves.
 const routes = [
-  { 
-    path: 'how-it-works', 
-    title: 'How It Works', 
-    description: 'Learn how All Done Sites builds, hosts, and maintains your professional website for one simple monthly fee.',
-    ogTitle: 'How It Works - All Done Sites'
-  },
-  { 
-    path: 'pricing', 
-    title: 'Pricing', 
-    description: 'Simple, transparent pricing for your website. One monthly fee covers everything - design, hosting, maintenance, and updates.',
-    ogTitle: 'Pricing - All Done Sites'
-  },
-  { 
-    path: 'portfolio', 
-    title: 'Portfolio', 
-    description: 'See examples of professional websites we\'ve built for small businesses across various industries.',
-    ogTitle: 'Portfolio - All Done Sites'
-  },
-  { 
-    path: 'faq', 
-    title: 'FAQ', 
-    description: 'Frequently asked questions about All Done Sites - website design, hosting, maintenance, and our subscription model.',
-    ogTitle: 'FAQ - All Done Sites'
-  },
-  { 
-    path: 'contact', 
-    title: 'Contact', 
-    description: 'Get in touch with All Done Sites. Let\'s discuss your website needs and how we can help your business grow online.',
-    ogTitle: 'Contact Us - All Done Sites'
-  },
   {
     path: 'contact-enterprise',
     title: 'Enterprise Contact',
@@ -92,66 +76,74 @@ const indexHtml = fs.readFileSync(indexPath, 'utf-8');
 routes.forEach(route => {
   const routeDir = path.join(distDir, route.path);
   fs.mkdirSync(routeDir, { recursive: true });
-  
+
+  // Canonical/OG URL for this route — trailing slash to match what Cloudflare serves.
+  const canonicalUrl = `${SITE}/${route.path}/`;
+
   // Update meta tags for this specific route
   let html = indexHtml;
-  
+
   // Update title
   html = html.replace(
-    /<title>.*?<\/title>/i, 
+    /<title>.*?<\/title>/i,
     `<title>${route.title} | All Done Sites</title>`
   );
-  
+
   // Update description
   html = html.replace(
     /<meta name="description" content="[^"]*"/i,
     `<meta name="description" content="${route.description}"`
   );
-  
+
   // Update Open Graph URL
   html = html.replace(
     /<meta property="og:url" content="[^"]*"/i,
-    `<meta property="og:url" content="https://alldonesites.com/${route.path}"`
+    `<meta property="og:url" content="${canonicalUrl}"`
   );
-  
+
   // Update Open Graph title
   html = html.replace(
     /<meta property="og:title" content="[^"]*"/i,
     `<meta property="og:title" content="${route.ogTitle}"`
   );
-  
+
   // Update Open Graph description
   html = html.replace(
     /<meta property="og:description" content="[^"]*"/i,
     `<meta property="og:description" content="${route.description}"`
   );
-  
+
   // Update Twitter title
   html = html.replace(
     /<meta name="twitter:title" content="[^"]*"/i,
     `<meta name="twitter:title" content="${route.ogTitle}"`
   );
-  
+
   // Update Twitter description
   html = html.replace(
     /<meta name="twitter:description" content="[^"]*"/i,
     `<meta name="twitter:description" content="${route.description}"`
   );
-  
-  // Add canonical URL if not present
-  if (!html.includes('<link rel="canonical"')) {
+
+  // Set the canonical to THIS route (always replace; the template now carries a
+  // homepage canonical that must not leak onto sub-pages).
+  if (/<link rel="canonical"[^>]*>/i.test(html)) {
+    html = html.replace(
+      /<link rel="canonical"[^>]*>/i,
+      `<link rel="canonical" href="${canonicalUrl}" />`
+    );
+  } else {
     const headCloseTag = html.indexOf('</head>');
-    html = html.slice(0, headCloseTag) + 
-           `    <link rel="canonical" href="https://alldonesites.com/${route.path}" />\n` +
+    html = html.slice(0, headCloseTag) +
+           `    <link rel="canonical" href="${canonicalUrl}" />\n` +
            html.slice(headCloseTag);
   }
-  
+
   // Write the customized HTML to route/index.html
   const outputPath = path.join(routeDir, 'index.html');
   fs.writeFileSync(outputPath, html);
-  
-  console.log(`✓ Created /${route.path}/index.html`);
+
+  console.log(`✓ Created /${route.path}/index.html (canonical ${canonicalUrl})`);
 });
 
-console.log('\n✅ Static pages generated successfully!');
-console.log(`   GitHub Pages will now return HTTP 200 for all routes.\n`);
+console.log('\n✅ Static pages generated successfully!\n');

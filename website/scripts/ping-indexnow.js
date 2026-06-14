@@ -13,6 +13,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "..", "public");
+const distDir = path.join(__dirname, "..", "dist");
 const HOST = "alldonesites.com";
 
 // Find the IndexNow key file: a 32-hex-char .txt in public/.
@@ -23,8 +24,8 @@ if (!keyFile) {
 }
 const key = keyFile.replace(/\.txt$/, "");
 
-// Pull URLs from the sitemap.
-const sitemap = fs.readFileSync(path.join(publicDir, "sitemap.xml"), "utf-8");
+// Pull URLs from the generated sitemap (written into dist/ by prerender.js).
+const sitemap = fs.readFileSync(path.join(distDir, "sitemap.xml"), "utf-8");
 const urlList = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
 if (!urlList.length) {
   console.error("❌ No <loc> URLs found in sitemap.xml.");
