@@ -2,14 +2,14 @@
 
 ## Overview
 
-All Done Sites is a website project built with Vite, React, and TypeScript using shadcn/ui components. The website is deployed via GitHub Pages with a custom domain (CNAME).
+All Done Sites is a website project built with Vite, React, and TypeScript using shadcn/ui components. The website is deployed to **Cloudflare Pages** (migrated off GitHub Pages 2026-06-13) on the custom domain `alldonesites.com`.
 
 ## Tech Stack
 
 - **Framework:** Vite + React + TypeScript
 - **UI:** shadcn/ui, Tailwind CSS
-- **Deploy:** GitHub Pages (static build to `dist/`)
-- **Domain:** Custom CNAME
+- **Deploy:** **Cloudflare Pages** (project `alldonesites`). `.github/workflows/deploy.yml` builds the root site + the `legacy` branch at `/old`, then `npx wrangler pages deploy website/dist --project-name=alldonesites` on push to `main`. Repo secrets `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (Jonathanavis96 CF account `1f95f998…`). DNS for `alldonesites.com` is on Cloudflare; apex + `www` are CNAME → `alldonesites.pages.dev`. (GitHub Pages retired as the deploy target — old Pages site is dormant.)
+- **Domain:** `alldonesites.com` (+ `www`) — custom domains on the Pages project
 
 ## Key Files
 
