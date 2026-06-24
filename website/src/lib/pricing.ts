@@ -60,6 +60,24 @@ export const PRICES: Record<RegionKey, Record<PlanId, number>> = {
   OTHER: { launch: 89, business: 229, premium: 389 },
 };
 
+/** Monthly price for an extra professional mailbox alias, by region. */
+export const MAILBOX_PRICE: Record<RegionKey, number> = {
+  ZA: 40,
+  US: 3,
+  UK: 3,
+  EU: 3,
+  OTHER: 3,
+};
+
+/** Typical upfront agency quote we beat, by region (rounded marketing anchor). */
+export const OLD_WAY_QUOTE: Record<RegionKey, string> = {
+  ZA: "R30k",
+  US: "$5k+",
+  UK: "£4k+",
+  EU: "€5k+",
+  OTHER: "$5k+",
+};
+
 export const TERMS_VERSION = "2026-06-07";
 
 export function detectRegion(): RegionKey {

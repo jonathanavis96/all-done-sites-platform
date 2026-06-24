@@ -19,6 +19,8 @@ import {
   REGION_LABELS,
   REGION_ORDER,
   PRICES,
+  MAILBOX_PRICE,
+  OLD_WAY_QUOTE,
   PAYSTACK_PAGES,
   detectRegion,
   formatAmount,
@@ -141,7 +143,7 @@ export default function Index() {
     logo: "/favicon.png",
     telephone: "+27 82 222 7457",
     email: "hello@alldonesites.com",
-    priceRange: "R799 to R3600 per month",
+    priceRange: `${formatAmount(region, PRICES[region].launch)} to ${formatAmount(region, PRICES[region].premium)} per month`,
     description:
       "Done-for-you websites for South African small businesses on one simple monthly fee. We design, build, host, maintain and update your site, with no upfront cost.",
     serviceType: "Website design, hosting and maintenance subscription",
@@ -422,7 +424,7 @@ export default function Index() {
                 <div className="l">average load time</div>
               </div>
               <div className="stat">
-                <div className="n">R0</div>
+                <div className="n">{formatAmount(region, 0)}</div>
                 <div className="l">to build your site</div>
               </div>
             </div>
@@ -458,7 +460,7 @@ export default function Index() {
       <section className="sec prob">
         <div className="wrap reveal">
           <span className="eyebrow kicker">The old way is broken</span>
-          <div className="oldway">R30k quotes. 3-month builds. Then you maintain it yourself.</div>
+          <div className="oldway">{OLD_WAY_QUOTE[region]} quotes. 3-month builds. Then you maintain it yourself.</div>
           <div className="flip">There's <span className="acc">a better way.</span></div>
           <p className="lead2">
             Traditional agencies charge a fortune up front, take months, and hand you a site you are then stuck updating yourself. We flipped it: we build your site for free, then run it for you on a flat monthly fee and keep it fast and up to date.
@@ -507,7 +509,7 @@ export default function Index() {
               <span className="eyebrow">Simple and predictable</span>
               <h3 style={{ fontSize: "24px", marginTop: "14px" }}>One monthly fee</h3>
               <p style={{ marginTop: "8px", fontSize: "14px" }}>Design, hosting, security, email and updates, all in one subscription. No big bill to get started.</p>
-              <div className="big-n">from R799<span style={{ fontSize: "15px", color: "var(--ads-mut)" }}>/mo</span></div>
+              <div className="big-n">from {formatAmount(region, PRICES[region].launch)}<span style={{ fontSize: "15px", color: "var(--ads-mut)" }}>/mo</span></div>
             </div>
             <div className="cell reveal" style={{ transitionDelay: ".06s" }}>
               <h3>Hosting &amp; security</h3>
@@ -644,7 +646,7 @@ export default function Index() {
             </div>
             <Link to="/contact-enterprise" className="btn">Talk to us</Link>
           </div>
-          <p className="pricenote">Free build to get started. Hosting, SSL, backups and pro email included. Need separate mailboxes? Add professional mailbox aliases at R40/month each.</p>
+          <p className="pricenote">Free build to get started. Hosting, SSL, backups and pro email included. Need separate mailboxes? Add professional mailbox aliases at {formatAmount(region, MAILBOX_PRICE[region])}/month each.</p>
         </div>
       </section>
 
