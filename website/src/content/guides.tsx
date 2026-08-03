@@ -31,7 +31,6 @@ export interface Guide {
   intro: string;
   blocks: GuideBlock[];
   faqs: GuideFaq[];
-  relatedSlugs: string[];
 }
 
 /** Last content review date, used for sitemap lastmod + Article dateModified. */
@@ -88,7 +87,7 @@ export const guides: Guide[] = [
         "Upfront build: you pay a large once-off fee, then handle (and pay for) hosting, updates and maintenance separately. Bigger initial outlay, more admin afterwards.",
         "Monthly subscription: a smaller, predictable fee each month that bundles design, hosting, security, email, updates and support. No big bill to start, and someone else keeps it running.",
       ] },
-      { p: "For many small businesses the monthly model is easier to budget for, especially when starting out. You can read a fuller comparison in our guide on [monthly vs upfront website cost](/guides/monthly-vs-upfront-website-cost)." },
+      { p: "For many small businesses the monthly model is easier to budget for, especially when starting out. You can read a fuller comparison in our guide on [monthly vs upfront website cost](/guides/monthly-vs-upfront-website-cost/)." },
       { h2: "How a done-for-you monthly model works" },
       { p: "All Done Sites uses the subscription approach. We design and build your site for free to start, then host, secure and update it for one simple monthly fee. Every site is custom hand-coded, not built on WordPress or a page builder, so it stays fast and secure with fewer running costs over time. There is no large upfront bill, and the recurring costs above are bundled in rather than billed separately." },
       { p: "Plans start at R799 a month for a single-page site, with Business at R2,200 and Premium at R3,600 for larger sites. Every plan includes fast secure hosting, SSL, automated backups, a mobile-friendly build, professional email at your domain, monthly content updates and SEO. See the full breakdown on the [pricing page](/#pricing)." },
@@ -104,7 +103,6 @@ export const guides: Guide[] = [
       { q: "Why is a monthly subscription often better than paying upfront?", a: "A monthly model removes the large initial bill and bundles hosting, security, email, updates and support into one predictable fee, which is easier to budget for and means someone else keeps the site running." },
       { q: "Do I own my website if I pay monthly?", a: "With All Done Sites, yes. After the first 12 months the site's code and files can be transferred to you, so you can keep or move the site and are never locked in." },
     ],
-    relatedSlugs: ["monthly-vs-upfront-website-cost", "whats-included-in-website-hosting-and-maintenance"],
   },
 
   {
@@ -133,7 +131,7 @@ export const guides: Guide[] = [
       { p: "WordPress needs regular updates to its core, theme and plugins, and those updates can occasionally clash and break something, so the site needs ongoing attention. A custom-coded site has far less to update and fewer moving parts to go wrong." },
       { p: "The trade-off is editing. WordPress lets you log in and change content yourself, if you are comfortable doing it and willing to maintain the site. A custom-coded site is usually changed by the developer, which is exactly why done-for-you services include those changes for you." },
       { h2: "Cost over time" },
-      { p: "WordPress software is free, but the real costs are hosting, premium themes or plugins, and a developer's time for updates and fixes. A custom-coded site is paid for either as a build or as a subscription that bundles the upkeep. When you add up the ongoing costs, the gap is often smaller than it first looks. There is a fuller breakdown in our guide on [how much a website costs in South Africa](/guides/how-much-does-a-website-cost-in-south-africa)." },
+      { p: "WordPress software is free, but the real costs are hosting, premium themes or plugins, and a developer's time for updates and fixes. A custom-coded site is paid for either as a build or as a subscription that bundles the upkeep. When you add up the ongoing costs, the gap is often smaller than it first looks. There is a fuller breakdown in our guide on [how much a website costs in South Africa](/guides/how-much-does-a-website-cost-in-south-africa/)." },
       { h2: "SEO and AI readability" },
       { p: "Search engines and AI assistants read your page's code. Clean, lightweight, well-structured code is easy for them to crawl, understand and cite, and it gives you full control over headings, schema markup and page structure. Heavier, plugin-generated markup can get in the way. This is a genuine advantage of a well-built custom-coded site." },
       { callout: { title: "When WordPress is still the right call", body: "WordPress earns its place if you want to write and manage a busy blog yourself, you depend on a specific plugin or integration, or you run a complex membership or large e-commerce site and have someone to maintain it. In those cases its flexibility is worth the extra weight and upkeep." } },
@@ -149,7 +147,6 @@ export const guides: Guide[] = [
       { q: "Is WordPress cheaper than a custom-coded site?", a: "WordPress software is free, but the real costs are hosting, premium plugins or themes, and a developer's time for updates and fixes. Once those are added in, a bundled subscription is often comparable or cheaper." },
       { q: "Does Google prefer custom-coded or WordPress sites?", a: "Google does not favour the technology. It rewards fast, well-structured, secure pages. Clean custom code makes those easier to achieve, but a well-built WordPress site can also rank well." },
     ],
-    relatedSlugs: ["how-much-does-a-website-cost-in-south-africa", "whats-included-in-website-hosting-and-maintenance"],
   },
 
   {
@@ -212,7 +209,6 @@ export const guides: Guide[] = [
       { q: "Is a website worth it for a very small business?", a: "For most small businesses, yes. With a monthly plan from R799, you get a professional, secure site without a large upfront cost, plus hosting, updates and domain email included." },
       { q: "How long does it take to get a website if I only have social media now?", a: "Typically 7 to 14 days. You can keep using your social pages as normal while we design and build the site, then link everything together once it is live." },
     ],
-    relatedSlugs: ["how-to-get-a-website-for-your-small-business", "how-much-does-a-website-cost-in-south-africa"],
   },
 
   {
@@ -249,7 +245,7 @@ export const guides: Guide[] = [
         "Content changes, new pages and ongoing SEO",
         "Professional email at your domain",
       ] },
-      { p: "A monthly model is built the other way around. With [our plans](/#pricing) the build is free to start, and design, fast secure hosting, SSL, automated backups, professional email, monthly content updates and SEO are all included in one fee. You can see exactly [what hosting and maintenance covers](/guides/whats-included-in-website-hosting-and-maintenance) so there are no surprises later." },
+      { p: "A monthly model is built the other way around. With [our plans](/#pricing) the build is free to start, and design, fast secure hosting, SSL, automated backups, professional email, monthly content updates and SEO are all included in one fee. You can see exactly [what hosting and maintenance covers](/guides/whats-included-in-website-hosting-and-maintenance/) so there are no surprises later." },
       { h2: "Total cost of ownership over a few years" },
       { p: "Compare the true cost over three to five years, not just day one. With an upfront build, add hosting, an SSL certificate, backups, plugin and security updates, and a developer's time whenever something needs changing. Those costs are real whether you pay them in cash or in your own hours." },
       { p: "With a monthly plan, everything is in the fee. Launch is R799 a month, Business is R2,200 a month and Premium is R3,600 a month. Over a few years a do-it-yourself upfront site that you maintain well can be cheaper. The catch is the words maintain well. Most owners do not, and that changes the maths." },
@@ -276,7 +272,6 @@ export const guides: Guide[] = [
       { q: "Can I switch from monthly to owning the site later?", a: "Yes. After 12 months the code and files can be transferred to you, so you are free to take the site elsewhere or host it yourself if your needs change." },
       { q: "Which model is better for a brand new business?", a: "For most new businesses with tight cash flow and no in-house tech skills, a monthly plan is the lower-risk start. An upfront build suits you better if you have the capital and the skills to maintain it." },
     ],
-    relatedSlugs: ["how-much-does-a-website-cost-in-south-africa", "whats-included-in-website-hosting-and-maintenance"],
   },
 
   {
@@ -316,7 +311,7 @@ export const guides: Guide[] = [
       { p: "There are three common routes, and the right one depends on your time, budget and confidence. Here is an honest look at each." },
       { p: "DIY website builder (such as Wix, Squarespace or WordPress): cheapest in cash terms and you keep full control. The trade-off is time. Expect to spend many hours learning the tools, and you remain responsible for hosting, security, backups and updates forever." },
       { p: "Hire a freelancer or agency: you get a custom build and expert input. Costs vary widely and are usually a larger upfront fee. Quality and aftercare differ a lot between providers, so check past work and ask clearly who handles updates once the site is live." },
-      { p: "Done-for-you service: someone designs, builds, hosts and maintains the site for you, often for a monthly fee rather than a big upfront cost. You save time and avoid the technical side, with less hands-on control than DIY. [All Done Sites](/#how) works this way, and its sites are custom hand-coded rather than built on WordPress or page builders, which keeps them fast and secure (see [custom-coded vs WordPress](/guides/custom-coded-vs-wordpress-website)). Compare the [monthly versus upfront approaches](/guides/monthly-vs-upfront-website-cost) before deciding." },
+      { p: "Done-for-you service: someone designs, builds, hosts and maintains the site for you, often for a monthly fee rather than a big upfront cost. You save time and avoid the technical side, with less hands-on control than DIY. [All Done Sites](/#how) works this way, and its sites are custom hand-coded rather than built on WordPress or page builders, which keeps them fast and secure (see [custom-coded vs WordPress](/guides/custom-coded-vs-wordpress-website/)). Compare the [monthly versus upfront approaches](/guides/monthly-vs-upfront-website-cost/) before deciding." },
       { h2: "Step 5: Build and review" },
       { p: "Whichever route you choose, the build turns your goal and content into real pages. If you are doing it yourself, start from a template close to your industry and replace the placeholder text and images with your own." },
       { p: "Review the draft on both a phone and a computer. Most South African visitors will arrive on a phone, so check that text is readable, buttons are easy to tap, and your contact details and main action are obvious. Ask a friend or customer to try it and tell you what is confusing." },
@@ -346,7 +341,6 @@ export const guides: Guide[] = [
       { q: "Can I move my website elsewhere later?", a: "Yes. You should always own your domain. With All Done Sites, the site itself can be transferred to you after 12 months if you ever want to take it elsewhere." },
       { q: "Do you build websites on WordPress?", a: "No. All Done Sites builds every website with custom, hand-written code rather than WordPress, Wix or page builders. That keeps sites fast, lightweight and secure, with no plugin bloat, and the team handles any changes for you as part of the monthly plan." },
     ],
-    relatedSlugs: ["how-much-does-a-website-cost-in-south-africa", "how-long-does-it-take-to-build-a-website"],
   },
 
   {
@@ -416,7 +410,6 @@ export const guides: Guide[] = [
       { q: "Does a bigger site always take longer?", a: "Usually, yes. More pages, an online shop or custom features add build and testing time. The structure and number of pages are a bigger factor than the design itself." },
       { q: "What do I need to have ready before we start?", a: "A short description of your business, your main services or products, your prices, your logo if you have one, and a few photos. The more of this you have ready, the faster your site comes together." },
     ],
-    relatedSlugs: ["how-to-get-a-website-for-your-small-business", "whats-included-in-website-hosting-and-maintenance"],
   },
 
   {
@@ -468,7 +461,7 @@ export const guides: Guide[] = [
       { callout: { title: "Neglect is silent", body: "The expensive part of a neglected site is rarely the fix. It is the customers who quietly gave up because a page was down, slow or broken, and never told you." } },
       { h2: "Managed versus do-it-yourself" },
       { p: "You can host and maintain a site yourself. It means choosing a host, installing updates, taking backups, renewing your .co.za domain, watching for outages and fixing things when they break. It is doable, but it takes time and some technical confidence, and small jobs are easy to put off." },
-      { p: "A managed, done-for-you approach hands all of that to someone else for a set monthly fee. You ask for a change, it gets done. The trade-off is the monthly cost against the hours and stress of doing it yourself. For most owners who would rather run their business, managed wins. If you are weighing the money side, see [monthly versus upfront website cost](/guides/monthly-vs-upfront-website-cost)." },
+      { p: "A managed, done-for-you approach hands all of that to someone else for a set monthly fee. You ask for a change, it gets done. The trade-off is the monthly cost against the hours and stress of doing it yourself. For most owners who would rather run their business, managed wins. If you are weighing the money side, see [monthly versus upfront website cost](/guides/monthly-vs-upfront-website-cost/)." },
       { h2: "What a monthly done-for-you plan covers" },
       { p: "With All Done Sites, hosting and maintenance come bundled into one simple monthly fee. There is no large upfront build cost. Your site is built free to start, then kept running on a subscription. Every plan includes the same core." },
       { ul: [
@@ -488,12 +481,120 @@ export const guides: Guide[] = [
       { q: "Are backups really included?", a: "Yes. Automated backups run regularly, so if something goes wrong a recent copy of your site can be restored quickly. You do not need to remember to do anything." },
       { q: "Can I move my site elsewhere later?", a: "Yes. After 12 months on a plan, the site's code and files can be transferred to you, so you are never locked in. If you have questions, you can reach us on WhatsApp or call +27 82 222 7457, or email hello@alldonesites.com." },
     ],
-    relatedSlugs: ["monthly-vs-upfront-website-cost", "how-much-does-a-website-cost-in-south-africa"],
   },
 ];
 
 export function getGuide(slug: string | undefined): Guide | undefined {
   return guides.find((g) => g.slug === slug);
+}
+
+/* ---------------------------------------------------------------------------
+ * Related guides.
+ *
+ * These used to be hand-picked pairs per guide, which left the inbound links
+ * badly uneven: some guides were linked from four siblings, others from one.
+ * Internal links are the main crawl signal we control, and Google had never
+ * fetched several of these pages, so an evenly linked set matters more than
+ * hand-tuned pairs.
+ *
+ * The guides are first arranged into a ring, each one followed by the most
+ * topically similar guide still unplaced. Every guide then links to the next
+ * RELATED_COUNT guides around the ring. Because the ring is a single cycle,
+ * every guide ends up with exactly RELATED_COUNT outbound links AND exactly
+ * RELATED_COUNT inbound ones — that balance is a property of the shape, so it
+ * cannot drift as guides are added or removed.
+ * ------------------------------------------------------------------------- */
+
+const RELATED_COUNT = 3;
+
+/** Words too common across these guides to signal that two are related. */
+const STOP_WORDS = new Set([
+  "website",
+  "websites",
+  "site",
+  "sites",
+  "your",
+  "you",
+  "what",
+  "does",
+  "with",
+  "that",
+  "this",
+  "from",
+  "have",
+  "much",
+  "business",
+  "small",
+  "south",
+  "africa",
+  "african",
+]);
+
+function keywords(guide: Guide): Set<string> {
+  return new Set(
+    `${guide.title} ${guide.summary}`
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((word) => word.length > 3 && !STOP_WORDS.has(word))
+  );
+}
+
+/** Shared category counts for more than any single shared word. */
+function similarity(a: Guide, b: Guide): number {
+  const wordsA = keywords(a);
+  const wordsB = keywords(b);
+  let shared = 0;
+  wordsA.forEach((word) => {
+    if (wordsB.has(word)) shared += 1;
+  });
+  return (a.category === b.category ? 3 : 0) + shared;
+}
+
+/**
+ * Order the guides into a ring, greedily following each guide with the most
+ * similar one not yet placed. Ties keep the authored order, so the result is
+ * deterministic and the same on the server and the client.
+ */
+function ringOrder(list: Guide[]): Guide[] {
+  const remaining = list.slice(1);
+  const ring = list.slice(0, 1);
+
+  while (remaining.length > 0) {
+    const current = ring[ring.length - 1];
+    let bestIndex = 0;
+    let bestScore = -1;
+    remaining.forEach((candidate, index) => {
+      const score = similarity(current, candidate);
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    });
+    ring.push(remaining.splice(bestIndex, 1)[0]);
+  }
+
+  return ring;
+}
+
+const relatedSlugsBySlug: Record<string, string[]> = (() => {
+  const ring = ringOrder(guides);
+  const total = ring.length;
+  const count = Math.min(RELATED_COUNT, Math.max(total - 1, 0));
+
+  const map: Record<string, string[]> = {};
+  ring.forEach((guide, index) => {
+    map[guide.slug] = Array.from(
+      { length: count },
+      (_, step) => ring[(index + step + 1) % total].slug
+    );
+  });
+  return map;
+})();
+
+/** The guides to show under "Related guides", newest linking rules applied. */
+export function getRelatedSlugs(slug: string): string[] {
+  return relatedSlugsBySlug[slug] ?? [];
 }
 
 const LINK_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
