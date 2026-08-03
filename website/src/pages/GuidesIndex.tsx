@@ -37,7 +37,7 @@ export default function GuidesIndex() {
 
       <div className="guidegrid">
         {guides.map((g) => (
-          <Link to={`/guides/${g.slug}`} className="guidecard" key={g.slug}>
+          <Link to={`/guides/${g.slug}/`} className="guidecard" key={g.slug}>
             <span className="eyebrow kicker">{g.category}</span>
             <h2>{g.title}</h2>
             <p>{g.summary}</p>

@@ -7,6 +7,7 @@ import {
   GUIDES_UPDATED,
   GuideBlock,
   getGuide,
+  getRelatedSlugs,
   renderInline,
   stripInline,
 } from "@/content/guides";
@@ -58,15 +59,15 @@ export default function GuideArticle() {
   const guide = getGuide(slug);
 
   // Unknown slug: send back to the guides index (valid slugs are prerendered).
-  if (!guide) return <Navigate to="/guides" replace />;
+  if (!guide) return <Navigate to="/guides/" replace />;
 
   // Trailing slash to match the URL Cloudflare Pages actually serves
   // (it 308-redirects the no-slash form to the directory form).
   const url = `${SITE}/guides/${guide.slug}/`;
   const toc = guide.blocks.filter((b): b is { h2: string } => "h2" in b).map((b) => b.h2);
-  const related = guide.relatedSlugs.map((s) => getGuide(s)).filter(Boolean) as NonNullable<
-    ReturnType<typeof getGuide>
-  >[];
+  const related = getRelatedSlugs(guide.slug)
+    .map((s) => getGuide(s))
+    .filter(Boolean) as NonNullable<ReturnType<typeof getGuide>>[];
 
   const articleSchema = {
     "@context": "https://schema.org",
@@ -171,7 +172,7 @@ export default function GuideArticle() {
               <h2>Related guides</h2>
               <div className="guide-related-grid">
                 {related.map((r) => (
-                  <Link to={`/guides/${r.slug}`} className="guide-related-card" key={r.slug}>
+                  <Link to={`/guides/${r.slug}/`} className="guide-related-card" key={r.slug}>
                     <span className="eyebrow kicker">{r.category}</span>
                     <span className="grtitle">{r.title}</span>
                   </Link>
@@ -181,7 +182,7 @@ export default function GuideArticle() {
           )}
 
           <p className="guide-back">
-            <Link to="/guides">← All guides</Link>
+            <Link to="/guides/">← All guides</Link>
           </p>
         </article>
       </div>
