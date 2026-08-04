@@ -31,13 +31,30 @@ From repo root (wrapper script):
 npm run dev
 ```
 
-Build (also generates static pages for deep links on GitHub Pages):
+Build (also prerenders static pages so deep links resolve without client-side routing):
 
 ```bash
 npm run build
 ```
 
 See `website/README.md` for more.
+
+## Deployment
+
+The site deploys to **Cloudflare Pages** (project `alldonesites`) on every push to
+`main`. `.github/workflows/deploy.yml` builds the root site plus the `legacy`
+branch at `/old`, then publishes `website/dist` with `wrangler pages deploy`.
+`alldonesites.com` and `www` are custom domains on that Pages project.
+
+GitHub Pages was retired as the deploy target on 2026-06-13; the leftover `CNAME`
+and `website/public/404.html` are not load-bearing.
+
+## Conventions
+
+- Verify before claiming done: `npm run build` and `npm run lint` must both pass.
+- Conventional commit messages (`feat:`, `fix:`, `chore:`, `refactor:`, `docs:`).
+- Never modify anything under `archive/` or `*/rovodev/` — those are frozen
+  legacy runtimes, kept for reference only.
 
 ---
 

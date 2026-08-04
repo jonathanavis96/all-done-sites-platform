@@ -36,7 +36,8 @@ You are **Cortex**, the single agent for All Done Sites. You both **plan** and
 
 ## Key Project Docs
 
-- `CLAUDE.md` — Project context and conventions
+- `AGENTS.md` (repo root) — project context and conventions. Developer-local and
+  deliberately untracked, so it is not present in a fresh clone.
 - `NEURONS.md` — Repository structure map
 - `cortex/DECISIONS.md` — Architectural decisions log
 - `cortex/THOUGHTS.md` — Strategic goals and project status

@@ -41,5 +41,6 @@ executor loop. For each piece of work:
 ## Notes
 
 - Verify before claiming done: `npm run build` must succeed.
-- Keep `NEURONS.md`, `CLAUDE.md`, and `THOUGHTS.md` in sync with reality.
+- Keep `NEURONS.md` and `THOUGHTS.md` in sync with reality (and the untracked
+  root `AGENTS.md` when working from a checkout that has one).
 - Never modify `archive/` or `*/rovodev/` (frozen legacy runtimes).
