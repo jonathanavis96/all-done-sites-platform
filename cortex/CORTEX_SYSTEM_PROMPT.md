@@ -40,7 +40,8 @@
 - `cortex/IMPLEMENTATION_PLAN.md` — the plan
 - `cortex/THOUGHTS.md` — strategic context
 - `cortex/DECISIONS.md` — project decisions
-- `NEURONS.md`, `CLAUDE.md`, `README.md` — keep docs in sync with reality
+- `NEURONS.md`, `README.md` — keep docs in sync with reality (and the untracked
+  root `AGENTS.md` when working from a checkout that has one)
 
 ## What You Do NOT Modify
 
