@@ -27,7 +27,9 @@ dist-ssr
 *.sln
 *.sw?
 
-# Local AI agent instructions and state — kept out of this public repo
-CLAUDE.md
-AGENTS.md
-.claude/
+# Local AI agent instructions and state — kept out of this public repo.
+# Anchored to the repository root on purpose: cortex/ and archive/ contain
+# tracked AGENTS.md files, and an unanchored pattern would match those too.
+/CLAUDE.md
+/AGENTS.md
+/.claude/
