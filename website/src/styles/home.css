@@ -383,6 +383,12 @@ html { scroll-behavior: smooth; }
 .adsx .guide-body h2 { margin-top: 34px; scroll-margin-top: 90px; }
 .adsx .guide-body h3 { font-size: 16px; }
 
+/* In-article images. height:auto keeps the aspect ratio when the intrinsic
+   width/height attributes are set (they reserve the space, preventing shift). */
+.adsx .content-figure { margin: 26px 0; }
+.adsx .content-figure img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--ads-line); box-shadow: var(--ads-sh); }
+.adsx .content-figure figcaption { margin-top: 10px; font-size: 13px; line-height: 1.5; color: var(--ads-bd); text-align: center; }
+
 /* FAQs */
 .adsx .guide-faqs { margin-top: 40px; border-top: 1px solid var(--ads-line); padding-top: 8px; }
 .adsx .guide-faqs .qa { margin-top: 20px; }

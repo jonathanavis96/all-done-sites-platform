@@ -13,7 +13,8 @@
  * `public/_redirects`. Emitting standalone shells for them produced "zombie"
  * pages that Google reported as "Discovered – currently not indexed".
  *
- * The homepage ("/") and /guides/* are handled by prerender.js (real content).
+ * The homepage ("/"), /guides/* and /articles/* are handled by prerender.js
+ * (real content).
  */
 
 import fs from 'fs';

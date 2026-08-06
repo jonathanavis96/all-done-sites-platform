@@ -4,6 +4,7 @@ import { StaticRouter } from "react-router-dom/server";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import { guides } from "./content/guides";
+import { articles } from "./content/articles";
 
 /**
  * Render a route to static HTML for build-time prerendering.
@@ -31,8 +32,19 @@ export function render(url: string): { html: string; head: string; headFull: str
   return { html, head, headFull };
 }
 
-/** Routes (besides "/") to prerender into their own dist/<route>/index.html. */
+/**
+ * Routes (besides "/") to prerender into their own dist/<route>/index.html.
+ * This list also drives sitemap.xml (see scripts/prerender.js), so a route only
+ * belongs here if it is a real, indexable page.
+ *
+ * The articles index is deliberately withheld while the collection is empty:
+ * prerendering it would put a "nothing here yet" page in the sitemap, which is
+ * exactly the thin-content shell that got the old anchor routes reported as
+ * "Discovered – currently not indexed". Publishing the first article brings the
+ * index and that article in together.
+ */
 export const prerenderRoutes: string[] = [
   "/guides",
   ...guides.map((g) => `/guides/${g.slug}`),
+  ...(articles.length > 0 ? ["/articles", ...articles.map((a) => `/articles/${a.slug}`)] : []),
 ];

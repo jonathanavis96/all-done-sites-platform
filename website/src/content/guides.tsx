@@ -2,23 +2,17 @@
 //
 // Each guide is authored as structured data (no JSX in the content) so the same
 // objects power: the rendered article, the Article + FAQPage JSON-LD, the guides
-// index cards, the sitemap and llms.txt entries. Paragraph/list strings may use a
-// tiny markdown-style inline link, [text](/path), which renderInline() turns into
-// a router <Link> (internal) or <a> (external); stripInline() flattens it to plain
-// text for structured data.
+// index cards, the sitemap and llms.txt entries. Block/FAQ shapes and the inline
+// markdown-link helpers live in content/shared.tsx, shared with other content
+// collections (e.g. content/articles.tsx) so there is exactly one definition of
+// what an article body looks like.
 
-import { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { ContentBlock, ContentFaq, renderInline, stripInline } from "./shared";
 
-export type GuideBlock =
-  | { h2: string }
-  | { h3: string }
-  | { p: string }
-  | { ul: string[] }
-  | { ol: string[] }
-  | { callout: { title?: string; body: string } };
+export type GuideBlock = ContentBlock;
+export type GuideFaq = ContentFaq;
 
-export type GuideFaq = { q: string; a: string };
+export { renderInline, stripInline };
 
 export interface Guide {
   slug: string;
@@ -595,41 +589,4 @@ const relatedSlugsBySlug: Record<string, string[]> = (() => {
 /** The guides to show under "Related guides", newest linking rules applied. */
 export function getRelatedSlugs(slug: string): string[] {
   return relatedSlugsBySlug[slug] ?? [];
-}
-
-const LINK_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
-
-/** Turn [text](/path) markdown into router <Link>s (internal) or <a>s (external). */
-export function renderInline(text: string): ReactNode {
-  const out: ReactNode[] = [];
-  let last = 0;
-  let key = 0;
-  let m: RegExpExecArray | null;
-  LINK_RE.lastIndex = 0;
-  while ((m = LINK_RE.exec(text)) !== null) {
-    if (m.index > last) out.push(text.slice(last, m.index));
-    const label = m[1];
-    const href = m[2];
-    if (href.startsWith("/")) {
-      out.push(
-        <Link key={key++} to={href}>
-          {label}
-        </Link>
-      );
-    } else {
-      out.push(
-        <a key={key++} href={href} target="_blank" rel="noopener noreferrer">
-          {label}
-        </a>
-      );
-    }
-    last = LINK_RE.lastIndex;
-  }
-  if (last < text.length) out.push(text.slice(last));
-  return out.length === 1 ? out[0] : out;
-}
-
-/** Flatten [text](/path) markdown to plain text, for JSON-LD / meta. */
-export function stripInline(text: string): string {
-  return text.replace(LINK_RE, "$1");
 }
