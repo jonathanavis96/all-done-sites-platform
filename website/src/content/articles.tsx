@@ -25,13 +25,13 @@ export interface Article {
   category: string;
   readMins: number;
   intro: string;
+  /** ISO date (YYYY-MM-DD) the article first went live; Article datePublished. */
+  publishedAt: string;
+  /** ISO date (YYYY-MM-DD) of the last content review; Article dateModified. */
+  updatedAt: string;
   blocks: ArticleBlock[];
   faqs: ArticleFaq[];
 }
-
-/** Last content review date, used for sitemap lastmod + Article dateModified. */
-export const ARTICLES_UPDATED = "2026-08-04";
-export const ARTICLES_PUBLISHED = "2026-08-04";
 
 export const articles: Article[] = [];
 

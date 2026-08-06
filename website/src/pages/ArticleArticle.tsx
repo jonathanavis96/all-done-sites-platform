@@ -2,7 +2,7 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
-import { ARTICLES_PUBLISHED, ARTICLES_UPDATED, getArticle, getRelatedSlugs } from "@/content/articles";
+import { getArticle, getRelatedSlugs } from "@/content/articles";
 import ContentBlockView from "@/components/ContentBlockView";
 import { absoluteImage, headingId, imageSrcs, stripInline } from "@/content/shared";
 import "@/styles/home.css";
@@ -36,8 +36,8 @@ export default function ArticleArticle() {
     headline: article.title,
     description: stripInline(article.description),
     inLanguage: "en-ZA",
-    datePublished: ARTICLES_PUBLISHED,
-    dateModified: ARTICLES_UPDATED,
+    datePublished: article.publishedAt,
+    dateModified: article.updatedAt,
     author: { "@type": "Organization", name: "All Done Sites", url: SITE },
     publisher: {
       "@type": "Organization",
@@ -71,7 +71,7 @@ export default function ArticleArticle() {
         <span className="guide-meta">
           <span className="mono">{article.readMins} min read</span>
           <span aria-hidden="true"> · </span>
-          <span className="mono">Updated {ARTICLES_UPDATED}</span>
+          <span className="mono">Updated {article.updatedAt}</span>
         </span>
       }
     >
