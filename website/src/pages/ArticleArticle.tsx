@@ -4,7 +4,8 @@ import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import { getArticle, getRelatedSlugs } from "@/content/articles";
 import ContentBlockView from "@/components/ContentBlockView";
-import { absoluteImage, headingId, imageSrcs, stripInline } from "@/content/shared";
+import ArticleNav from "@/components/ArticleNav";
+import { absoluteImage, imageSrcs, stripInline } from "@/content/shared";
 import "@/styles/home.css";
 
 const SITE = "https://alldonesites.com";
@@ -87,18 +88,7 @@ export default function ArticleArticle() {
         <article className="legal guide-body">
           <p className="intro">{article.intro}</p>
 
-          {toc.length > 2 && (
-            <nav className="toc" aria-label="On this page">
-              <h3>On this page</h3>
-              <ol>
-                {toc.map((h) => (
-                  <li key={h}>
-                    <a href={`#${headingId(h)}`}>{h}</a>
-                  </li>
-                ))}
-              </ol>
-            </nav>
-          )}
+          <ArticleNav toc={toc} />
 
           {article.blocks.map((block, i) => (
             <ContentBlockView key={i} block={block} />
