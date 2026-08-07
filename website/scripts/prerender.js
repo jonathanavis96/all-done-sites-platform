@@ -107,7 +107,8 @@ for (const route of prerenderRoutes) {
   };
   const entries = ["/", ...prerenderRoutes].map((r) => {
     const loc = toUrl(r);
-    const priority = r === "/" ? "1.0" : r === "/guides" ? "0.8" : "0.7";
+    const isIndex = r === "/guides" || r === "/articles";
+    const priority = r === "/" ? "1.0" : isIndex ? "0.8" : "0.7";
     const changefreq = r === "/" ? "weekly" : "monthly";
     return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
   });
