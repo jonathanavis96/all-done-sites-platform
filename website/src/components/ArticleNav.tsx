@@ -1,6 +1,6 @@
 // src/components/ArticleNav.tsx
 import { useRef } from "react";
-import { headingId } from "@/content/shared";
+import { headingId, stripInline } from "@/content/shared";
 
 interface ArticleNavProps {
   toc: string[];
@@ -33,8 +33,12 @@ export default function ArticleNav({ toc }: ArticleNavProps) {
           }}
         >
           {toc.map((h) => (
+            // Flattened, not rendered: the heading itself may carry emphasis,
+            // but a <strong> inside a table-of-contents link would compete with
+            // the nav's own styling for no reader benefit. headingId() still
+            // gets the raw string, so this anchor matches the id on the heading.
             <li key={h}>
-              <a href={`#${headingId(h)}`}>{h}</a>
+              <a href={`#${headingId(h)}`}>{stripInline(h)}</a>
             </li>
           ))}
         </ol>

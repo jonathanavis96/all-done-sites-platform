@@ -7,6 +7,7 @@ import {
   GUIDES_UPDATED,
   getGuide,
   getRelatedSlugs,
+  renderInline,
   stripInline,
 } from "@/content/guides";
 import ContentBlockView from "@/components/ContentBlockView";
@@ -61,7 +62,7 @@ export default function GuideArticle() {
     "@type": "FAQPage",
     mainEntity: guide.faqs.map((f) => ({
       "@type": "Question",
-      name: f.q,
+      name: stripInline(f.q),
       acceptedAnswer: { "@type": "Answer", text: stripInline(f.a) },
     })),
   };
@@ -80,7 +81,7 @@ export default function GuideArticle() {
     >
       <Seo
         title={guide.metaTitle}
-        description={guide.description}
+        description={stripInline(guide.description)}
         canonical={url}
         image={OG_IMAGE}
         jsonLd={[articleSchema, faqSchema]}
@@ -88,7 +89,7 @@ export default function GuideArticle() {
 
       <div className="guide-layout">
         <article className="legal guide-body">
-          <p className="intro">{guide.intro}</p>
+          <p className="intro">{renderInline(guide.intro)}</p>
 
           <ArticleNav toc={toc} />
 
@@ -101,8 +102,8 @@ export default function GuideArticle() {
               <h2 id="faqs">Frequently asked questions</h2>
               {guide.faqs.map((f) => (
                 <div className="qa" key={f.q}>
-                  <h3>{f.q}</h3>
-                  <p>{f.a}</p>
+                  <h3>{renderInline(f.q)}</h3>
+                  <p>{renderInline(f.a)}</p>
                 </div>
               ))}
             </section>

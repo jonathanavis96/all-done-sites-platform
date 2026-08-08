@@ -5,7 +5,7 @@ import { PageShell } from "@/components/redesign/RedesignChrome";
 import { getArticle, getRelatedSlugs } from "@/content/articles";
 import ContentBlockView from "@/components/ContentBlockView";
 import ArticleNav from "@/components/ArticleNav";
-import { absoluteImage, imageSrcs, stripInline } from "@/content/shared";
+import { absoluteImage, imageSrcs, renderInline, stripInline } from "@/content/shared";
 import "@/styles/home.css";
 
 const SITE = "https://alldonesites.com";
@@ -58,7 +58,7 @@ export default function ArticleArticle() {
           "@type": "FAQPage",
           mainEntity: article.faqs.map((f) => ({
             "@type": "Question",
-            name: f.q,
+            name: stripInline(f.q),
             acceptedAnswer: { "@type": "Answer", text: stripInline(f.a) },
           })),
         }
@@ -78,7 +78,7 @@ export default function ArticleArticle() {
     >
       <Seo
         title={article.metaTitle}
-        description={article.description}
+        description={stripInline(article.description)}
         canonical={url}
         image={OG_IMAGE}
         jsonLd={faqSchema ? [articleSchema, faqSchema] : articleSchema}
@@ -86,7 +86,7 @@ export default function ArticleArticle() {
 
       <div className="guide-layout">
         <article className="legal guide-body">
-          <p className="intro">{article.intro}</p>
+          <p className="intro">{renderInline(article.intro)}</p>
 
           <ArticleNav toc={toc} />
 
@@ -99,8 +99,8 @@ export default function ArticleArticle() {
               <h2 id="faqs">Frequently asked questions</h2>
               {article.faqs.map((f) => (
                 <div className="qa" key={f.q}>
-                  <h3>{f.q}</h3>
-                  <p>{f.a}</p>
+                  <h3>{renderInline(f.q)}</h3>
+                  <p>{renderInline(f.a)}</p>
                 </div>
               ))}
             </section>

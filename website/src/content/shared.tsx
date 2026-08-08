@@ -11,6 +11,12 @@
 // underscores, no inline code, no strikethrough. Every construct added here
 // is one the content generator has to be taught and the content gates have
 // to be taught to measure, so it stays link + bold + italic only.
+//
+// Every string a reader sees goes through renderInline(), and every string a
+// crawler sees goes through stripInline(). Those two sets have to stay in
+// step: a field rendered raw but stripped for JSON-LD puts literal asterisks
+// on the page and clean text in the structured data, which is exactly the
+// disagreement between visible and machine-readable content to avoid.
 
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
@@ -57,16 +63,40 @@ export type ContentTable = { headers: string[]; rows: string[][] };
 export type ContentFaq = { q: string; a: string };
 
 // One alternative per construct, tried in this order at every position:
-//   1. [label](href)         -- captures label in group 1, href in group 2
-//   2. **bold text**         -- captures the inner text in group 3
-//   3. *italic text*         -- captures the inner text in group 4
+//   1. [label](href)         -- label in group 1, href in group 2
+//   2. **bold text**         -- opening boundary in group 3, inner text in 4
+//   3. *italic text*         -- opening boundary in group 5, inner text in 6
 // Bold is listed before italic so "**bold**" resolves as one <strong> rather
 // than an empty <em> hugging a "*bold*" leftover -- if italic were tried
 // first it would happily match the inner "*bold*" and strand the outer pair
-// of asterisks as literal text. The inner-content groups reject a leading or
-// trailing space and any nested "*", so "R5 * 3" (one asterisk, no partner)
-// and a sentence trailing off with a lone "*" never pair up into emphasis;
-// a delimiter with nothing to close it on the same string just stays literal.
+// of asterisks as literal text.
+//
+// An emphasis run may only OPEN at the start of the string or straight after
+// whitespace, "(" or "[". That restriction is the whole defence against the
+// asterisk's other job in prose: the footnote marker. This content is pricing
+// copy, and a marker is glued to the end of a word -- so in
+//
+//     Includes hosting*, domain*, and email.
+//
+// both asterisks have a partner on the same string, and both are preceded by a
+// letter. Without the boundary rule the pair matches and the rendered sentence
+// reads "Includes hosting, domain, and email." -- the markers are DELETED, not
+// merely decorated, so the pointer to the "*Prices exclude VAT" line below is
+// gone from the page, from <meta description> and from the JSON-LD at once.
+// Requiring a leading space/paren/bracket makes every such marker literal,
+// because a footnote marker is never preceded by a space.
+//
+// It is NOT enough that the inner text rejects a leading or trailing space.
+// That rule alone saves "R799* a month. *Prices exclude VAT." (the space after
+// the first marker stops it opening) but not the comma-separated form above,
+// which is why the boundary is spelled out separately here.
+//
+// The boundary is a captured group rather than a lookbehind on purpose. This
+// RegExp is constructed at render time, so an engine that cannot parse it
+// throws instead of degrading -- and a SyntaxError here takes out the entire
+// article body. Lookbehind needs Safari 16.4+ (March 2023), which is younger
+// than plenty of phones still reading this site, so the boundary is consumed
+// and re-emitted by the two callers below instead.
 //
 // This is exported as a source string, not a compiled RegExp: renderInline
 // recurses to parse the content it captures (a link label may hide **bold**,
@@ -76,8 +106,8 @@ export type ContentFaq = { q: string; a: string };
 // call before the outer loop reads it back.
 const TOKEN_SOURCE =
   "\\[([^\\]]+)\\]\\(([^)]+)\\)" +
-  "|\\*\\*([^\\s*](?:[^*]*[^\\s*])?)\\*\\*" +
-  "|\\*([^\\s*](?:[^*]*[^\\s*])?)\\*(?!\\*)";
+  "|(^|[\\s([])\\*\\*([^\\s*](?:[^*]*[^\\s*])?)\\*\\*" +
+  "|(^|[\\s([])\\*([^\\s*](?:[^*]*[^\\s*])?)\\*(?!\\*)";
 
 /**
  * Turn the article inline vocabulary -- [text](/path) links, **bold**,
@@ -93,7 +123,15 @@ export function renderInline(text: string): ReactNode {
   let key = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    if (m.index > last) out.push(text.slice(last, m.index));
+    // The emphasis alternatives consume their opening boundary -- the space or
+    // "(" that proves the run is not a footnote marker glued to a word -- so it
+    // has to be put back. It is concatenated onto the preceding literal chunk
+    // rather than pushed as its own node: two adjacent strings in one React
+    // array are serialised with a "<!-- -->" separator between them, and that
+    // marker would land in the prerendered HTML of every emphasised sentence.
+    const boundary = m[3] ?? m[5] ?? "";
+    const literal = text.slice(last, m.index) + boundary;
+    if (literal) out.push(literal);
     if (m[1] !== undefined) {
       const href = m[2];
       const children = renderInline(m[1]);
@@ -108,10 +146,10 @@ export function renderInline(text: string): ReactNode {
           </a>
         )
       );
-    } else if (m[3] !== undefined) {
-      out.push(<strong key={key++}>{renderInline(m[3])}</strong>);
     } else if (m[4] !== undefined) {
-      out.push(<em key={key++}>{renderInline(m[4])}</em>);
+      out.push(<strong key={key++}>{renderInline(m[4])}</strong>);
+    } else if (m[6] !== undefined) {
+      out.push(<em key={key++}>{renderInline(m[6])}</em>);
     }
     last = re.lastIndex;
   }
@@ -122,10 +160,13 @@ export function renderInline(text: string): ReactNode {
 /** Flatten the article inline vocabulary to plain text, for JSON-LD / meta. */
 export function stripInline(text: string): string {
   const re = new RegExp(TOKEN_SOURCE, "g");
-  return text.replace(re, (_match, label, _href, bold, italic) => {
+  return text.replace(re, (_match, label, _href, boldOpen, bold, italicOpen, italic) => {
     if (label !== undefined) return stripInline(label);
-    if (bold !== undefined) return stripInline(bold);
-    if (italic !== undefined) return stripInline(italic);
+    // The opening boundary is re-emitted for the same reason renderInline puts
+    // it back: it is the separating whitespace, not part of the emphasis. Drop
+    // it and "cost you **more** later" would flatten to "cost youmore later".
+    if (bold !== undefined) return boldOpen + stripInline(bold);
+    if (italic !== undefined) return italicOpen + stripInline(italic);
     return _match;
   });
 }

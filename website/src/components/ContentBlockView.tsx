@@ -11,8 +11,14 @@
 import { ContentBlock, headingId, renderInline, stripInline } from "@/content/shared";
 
 export default function ContentBlockView({ block }: { block: ContentBlock }) {
-  if ("h2" in block) return <h2 id={headingId(block.h2)}>{block.h2}</h2>;
-  if ("h3" in block) return <h3>{block.h3}</h3>;
+  // Headings run through renderInline like every other block. Bold inside a
+  // heading is a far more natural thing to type than a link inside one, and a
+  // heading that rendered its markup literally would put raw asterisks in the
+  // largest text on the page. headingId() is deliberately fed the RAW string:
+  // its [^\w\s-] strip already removes the delimiters, so the slug -- and the
+  // nav anchor pointing at it -- is identical either way.
+  if ("h2" in block) return <h2 id={headingId(block.h2)}>{renderInline(block.h2)}</h2>;
+  if ("h3" in block) return <h3>{renderInline(block.h3)}</h3>;
   if ("p" in block) return <p>{renderInline(block.p)}</p>;
   if ("ul" in block)
     return (
@@ -33,7 +39,7 @@ export default function ContentBlockView({ block }: { block: ContentBlock }) {
   if ("callout" in block)
     return (
       <div className="callout">
-        {block.callout.title && <h3>{block.callout.title}</h3>}
+        {block.callout.title && <h3>{renderInline(block.callout.title)}</h3>}
         <p>{renderInline(block.callout.body)}</p>
       </div>
     );
