@@ -416,6 +416,25 @@ html { scroll-behavior: smooth; }
 .adsx .content-figure img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--ads-line); box-shadow: var(--ads-sh); }
 .adsx .content-figure figcaption { margin-top: 10px; font-size: 13px; line-height: 1.5; color: var(--ads-bd); text-align: center; }
 
+/* In-article tables. The wrapper -- not the page -- is what scrolls: a table
+   wider than the viewport (common on a phone) must slide inside its own box,
+   never push the article body sideways. */
+.adsx .content-table { margin: 26px 0; overflow-x: auto; border: 1px solid var(--ads-line); border-radius: 14px; box-shadow: var(--ads-sh); }
+.adsx .content-table:focus-visible { outline: 2px solid var(--ads-tx); outline-offset: 2px; }
+.adsx .content-table table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+/* `vertical-align: top` matters once cells wrap: the default `middle` centres a
+   one-word cell against a seven-line one, so nothing in the row lines up and
+   the column you scan down is the one that drifts furthest. */
+.adsx .content-table th, .adsx .content-table td { padding: 12px 16px; text-align: left; line-height: 1.5; vertical-align: top; }
+/* Only the header row refuses to wrap. Body cells hold sentences, and `nowrap`
+   on them defeats the `width: 100%` above: the table's intrinsic width becomes
+   the sum of its longest sentences, so it overflows the wrapper on a desktop
+   viewport that had room to spare. */
+.adsx .content-table thead th { white-space: nowrap; background: var(--ads-soft); color: var(--ads-tx); font-family: var(--ads-disp); font-weight: 700; font-size: 12.5px; letter-spacing: .01em; border-bottom: 1px solid var(--ads-line); }
+.adsx .content-table tbody td { color: var(--ads-bd); border-bottom: 1px solid var(--ads-line2); }
+.adsx .content-table tbody tr:last-child td { border-bottom: none; }
+.adsx .content-table tbody tr:nth-child(even) td { background: var(--ads-soft); }
+
 /* FAQs */
 .adsx .guide-faqs { margin-top: 40px; border-top: 1px solid var(--ads-line); padding-top: 8px; }
 .adsx .guide-faqs .qa { margin-top: 20px; }
