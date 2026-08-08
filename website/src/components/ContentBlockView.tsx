@@ -49,12 +49,24 @@ export default function ContentBlockView({ block }: { block: ContentBlock }) {
   if ("table" in block) {
     const { headers, rows } = block.table;
     return (
-      <div className="content-table">
+      // Focusable and labelled because the wrapper is what scrolls. Chrome and
+      // Firefox make a scroll container keyboard-reachable on their own; Safari
+      // does not, so without tabIndex a narrow-viewport reader on Safari cannot
+      // reach the columns that are off-screen. The name comes from the headers
+      // rather than a fixed string, since not every table is a comparison.
+      <div
+        className="content-table"
+        tabIndex={0}
+        role="region"
+        aria-label={headers.filter(Boolean).join(", ") || "Table"}
+      >
         <table>
           <thead>
             <tr>
               {headers.map((h, i) => (
-                <th key={i}>{renderInline(h)}</th>
+                <th key={i} scope="col">
+                  {renderInline(h)}
+                </th>
               ))}
             </tr>
           </thead>
