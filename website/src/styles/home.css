@@ -422,7 +422,10 @@ html { scroll-behavior: smooth; }
 .adsx .content-table { margin: 26px 0; overflow-x: auto; border: 1px solid var(--ads-line); border-radius: 14px; box-shadow: var(--ads-sh); }
 .adsx .content-table:focus-visible { outline: 2px solid var(--ads-tx); outline-offset: 2px; }
 .adsx .content-table table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.adsx .content-table th, .adsx .content-table td { padding: 12px 16px; text-align: left; line-height: 1.5; }
+/* `vertical-align: top` matters once cells wrap: the default `middle` centres a
+   one-word cell against a seven-line one, so nothing in the row lines up and
+   the column you scan down is the one that drifts furthest. */
+.adsx .content-table th, .adsx .content-table td { padding: 12px 16px; text-align: left; line-height: 1.5; vertical-align: top; }
 /* Only the header row refuses to wrap. Body cells hold sentences, and `nowrap`
    on them defeats the `width: 100%` above: the table's intrinsic width becomes
    the sum of its longest sentences, so it overflows the wrapper on a desktop

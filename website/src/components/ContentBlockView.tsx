@@ -8,7 +8,7 @@
 // It lives here rather than beside the shapes in content/shared.tsx because a
 // module that exports both components and plain helpers breaks Fast Refresh.
 
-import { ContentBlock, headingId, renderInline } from "@/content/shared";
+import { ContentBlock, headingId, renderInline, stripInline } from "@/content/shared";
 
 export default function ContentBlockView({ block }: { block: ContentBlock }) {
   if ("h2" in block) return <h2 id={headingId(block.h2)}>{block.h2}</h2>;
@@ -53,12 +53,14 @@ export default function ContentBlockView({ block }: { block: ContentBlock }) {
       // Firefox make a scroll container keyboard-reachable on their own; Safari
       // does not, so without tabIndex a narrow-viewport reader on Safari cannot
       // reach the columns that are off-screen. The name comes from the headers
-      // rather than a fixed string, since not every table is a comparison.
+      // rather than a fixed string, since not every table is a comparison --
+      // stripped, because a header may carry link syntax that renders fine in
+      // the cell but would be read out as raw punctuation in the label.
       <div
         className="content-table"
         tabIndex={0}
         role="region"
-        aria-label={headers.filter(Boolean).join(", ") || "Table"}
+        aria-label={headers.filter(Boolean).map(stripInline).join(", ") || "Table"}
       >
         <table>
           <thead>
