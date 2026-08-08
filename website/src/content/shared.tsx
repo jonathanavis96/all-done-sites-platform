@@ -4,9 +4,13 @@
 // items as structured data using these same block/FAQ shapes, so there is one
 // definition of "what an article body looks like" no matter how many
 // collections the site grows to. Paragraph/list strings may use a tiny
-// markdown-style inline link, [text](/path), which renderInline() turns into
-// a router <Link> (internal) or <a> (external); stripInline() flattens it to
-// plain text for structured data.
+// markdown-style inline vocabulary -- [text](/path) links, **bold**, and
+// *italic* -- which renderInline() turns into a router <Link> (internal) or
+// <a> (external) plus <strong>/<em>; stripInline() flattens all of it to
+// plain text for structured data. That vocabulary is deliberately small: no
+// underscores, no inline code, no strikethrough. Every construct added here
+// is one the content generator has to be taught and the content gates have
+// to be taught to measure, so it stays link + bold + italic only.
 
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
@@ -52,41 +56,78 @@ export type ContentTable = { headers: string[]; rows: string[][] };
 
 export type ContentFaq = { q: string; a: string };
 
-const LINK_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
+// One alternative per construct, tried in this order at every position:
+//   1. [label](href)         -- captures label in group 1, href in group 2
+//   2. **bold text**         -- captures the inner text in group 3
+//   3. *italic text*         -- captures the inner text in group 4
+// Bold is listed before italic so "**bold**" resolves as one <strong> rather
+// than an empty <em> hugging a "*bold*" leftover -- if italic were tried
+// first it would happily match the inner "*bold*" and strand the outer pair
+// of asterisks as literal text. The inner-content groups reject a leading or
+// trailing space and any nested "*", so "R5 * 3" (one asterisk, no partner)
+// and a sentence trailing off with a lone "*" never pair up into emphasis;
+// a delimiter with nothing to close it on the same string just stays literal.
+//
+// This is exported as a source string, not a compiled RegExp: renderInline
+// recurses to parse the content it captures (a link label may hide **bold**,
+// bold/italic content may hide a [link]), and a regex literal re-evaluated
+// inside a function body is a fresh object per call, but a single shared
+// module-level RegExp would have its `lastIndex` clobbered by the recursive
+// call before the outer loop reads it back.
+const TOKEN_SOURCE =
+  "\\[([^\\]]+)\\]\\(([^)]+)\\)" +
+  "|\\*\\*([^\\s*](?:[^*]*[^\\s*])?)\\*\\*" +
+  "|\\*([^\\s*](?:[^*]*[^\\s*])?)\\*(?!\\*)";
 
-/** Turn [text](/path) markdown into router <Link>s (internal) or <a>s (external). */
+/**
+ * Turn the article inline vocabulary -- [text](/path) links, **bold**,
+ * *italic* -- into React nodes: router <Link>s (internal href) or <a>s
+ * (external), <strong>, <em>. All three interleave in one tokenising pass,
+ * in any order, and nest inside one another (a link label may contain
+ * **bold**; **bold** may wrap a [link]).
+ */
 export function renderInline(text: string): ReactNode {
+  const re = new RegExp(TOKEN_SOURCE, "g");
   const out: ReactNode[] = [];
   let last = 0;
   let key = 0;
   let m: RegExpExecArray | null;
-  LINK_RE.lastIndex = 0;
-  while ((m = LINK_RE.exec(text)) !== null) {
+  while ((m = re.exec(text)) !== null) {
     if (m.index > last) out.push(text.slice(last, m.index));
-    const label = m[1];
-    const href = m[2];
-    if (href.startsWith("/")) {
+    if (m[1] !== undefined) {
+      const href = m[2];
+      const children = renderInline(m[1]);
       out.push(
-        <Link key={key++} to={href}>
-          {label}
-        </Link>
+        href.startsWith("/") ? (
+          <Link key={key++} to={href}>
+            {children}
+          </Link>
+        ) : (
+          <a key={key++} href={href} target="_blank" rel="noopener noreferrer">
+            {children}
+          </a>
+        )
       );
-    } else {
-      out.push(
-        <a key={key++} href={href} target="_blank" rel="noopener noreferrer">
-          {label}
-        </a>
-      );
+    } else if (m[3] !== undefined) {
+      out.push(<strong key={key++}>{renderInline(m[3])}</strong>);
+    } else if (m[4] !== undefined) {
+      out.push(<em key={key++}>{renderInline(m[4])}</em>);
     }
-    last = LINK_RE.lastIndex;
+    last = re.lastIndex;
   }
   if (last < text.length) out.push(text.slice(last));
   return out.length === 1 ? out[0] : out;
 }
 
-/** Flatten [text](/path) markdown to plain text, for JSON-LD / meta. */
+/** Flatten the article inline vocabulary to plain text, for JSON-LD / meta. */
 export function stripInline(text: string): string {
-  return text.replace(LINK_RE, "$1");
+  const re = new RegExp(TOKEN_SOURCE, "g");
+  return text.replace(re, (_match, label, _href, bold, italic) => {
+    if (label !== undefined) return stripInline(label);
+    if (bold !== undefined) return stripInline(bold);
+    if (italic !== undefined) return stripInline(italic);
+    return _match;
+  });
 }
 
 /** Slug for an h2, so the on-this-page nav can link to it. */
