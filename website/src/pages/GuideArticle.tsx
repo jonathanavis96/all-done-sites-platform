@@ -10,7 +10,8 @@ import {
   stripInline,
 } from "@/content/guides";
 import ContentBlockView from "@/components/ContentBlockView";
-import { absoluteImage, headingId, imageSrcs } from "@/content/shared";
+import ArticleNav from "@/components/ArticleNav";
+import { absoluteImage, imageSrcs } from "@/content/shared";
 import "@/styles/home.css";
 
 const SITE = "https://alldonesites.com";
@@ -89,18 +90,7 @@ export default function GuideArticle() {
         <article className="legal guide-body">
           <p className="intro">{guide.intro}</p>
 
-          {toc.length > 2 && (
-            <nav className="toc" aria-label="On this page">
-              <h3>On this page</h3>
-              <ol>
-                {toc.map((h) => (
-                  <li key={h}>
-                    <a href={`#${headingId(h)}`}>{h}</a>
-                  </li>
-                ))}
-              </ol>
-            </nav>
-          )}
+          <ArticleNav toc={toc} />
 
           {guide.blocks.map((block, i) => (
             <ContentBlockView key={i} block={block} />

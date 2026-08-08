@@ -7,6 +7,18 @@
    ============================================================================ */
 
 :root {
+  /* Heights of the two stacked sticky bars on an article page. The site nav is
+     .navinner's 64px plus its 1px bottom border; the in-article "Jump to a
+     section" bar sticks directly beneath it. Both are declared here because
+     three separate rules depend on them -- the article nav's `top`, its open
+     list's max-height, and the scroll-margin-top that keeps a jumped-to heading
+     clear of both. Hardcoding them separately is how those values drift apart.
+     --ads-tocbar is the summary bar's measured rendered height (padding +
+     line-height), not a guess -- the scroll-margin calc depends on it matching
+     reality, so re-measure and update it if the summary's font-size or padding
+     ever changes. */
+  --ads-navh: 65px;
+  --ads-tocbar: 52px;
   --ads-bg: #FBFCFD;
   --ads-surface: #FFFFFF;
   --ads-soft: #F4F7FA;
@@ -304,9 +316,21 @@ html { scroll-behavior: smooth; }
 .adsx .callout { border: 1px solid var(--ads-line); background: linear-gradient(160deg, #F3FAFE, #fff); border-radius: 16px; padding: 20px 22px; margin: 22px 0; box-shadow: var(--ads-sh); }
 .adsx .callout h3 { margin-bottom: 8px; font-size: 15px; }
 .adsx .callout p, .adsx .callout li { font-size: 13.5px; color: var(--ads-bd); }
-.adsx .toc { border: 1px solid var(--ads-line); background: var(--ads-surface); border-radius: 16px; padding: 18px 22px; margin: 22px 0 30px; box-shadow: var(--ads-sh); }
-.adsx .toc h3 { font-family: var(--ads-disp); font-size: 14px; margin-bottom: 10px; color: var(--ads-tx); }
-.adsx .toc ol { margin: 0 0 0 20px; display: flex; flex-direction: column; gap: 5px; }
+/* ⚠ `position` and `z-index` are set explicitly to override `.adsx nav` (which
+   makes EVERY nav in the page sticky at top:0). Without this the article nav
+   sticks to the same 0 offset as the site header and the two overlap. It sticks
+   just below the header instead, on a lower z-index so the header always wins. */
+.adsx .toc { position: sticky; top: var(--ads-navh); z-index: 40; border: 1px solid var(--ads-line); background: var(--ads-surface); border-radius: 16px; margin: 22px 0 30px; box-shadow: var(--ads-sh); overflow: hidden; backdrop-filter: none; }
+.adsx .toc summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; list-style: none; cursor: pointer; padding: 14px 22px; min-height: var(--ads-tocbar); box-sizing: border-box; font-family: var(--ads-disp); font-weight: 600; font-size: 14px; color: var(--ads-tx); user-select: none; background: var(--ads-surface); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.adsx .toc summary::-webkit-details-marker { display: none; }
+.adsx .toc summary::after { content: "+"; flex: none; font-size: 18px; line-height: 1; color: var(--ads-acd); }
+.adsx .toc summary:hover { background: var(--ads-soft); }
+.adsx .toc details[open] summary::after { content: "\2212"; }
+.adsx .toc details[open] summary { border-bottom: 1px solid var(--ads-line); }
+/* ⚠ The open list must never fill the viewport -- that was the original bug. It
+   is capped to what is left below the two sticky bars and scrolls internally, so
+   an article with many headings opens a scrollable menu rather than a wall. */
+.adsx .toc ol { margin: 0; padding: 16px 22px 18px 42px; display: flex; flex-direction: column; gap: 5px; max-height: calc(100dvh - var(--ads-navh) - var(--ads-tocbar) - 40px); overflow-y: auto; overscroll-behavior: contain; background: var(--ads-surface); }
 .adsx .toc a { font-size: 13px; color: var(--ads-acd); text-decoration: none; }
 .adsx .toc a:hover { text-decoration: underline; }
 
@@ -380,8 +404,11 @@ html { scroll-behavior: smooth; }
 .adsx .guide-meta { display: inline-flex; align-items: center; gap: 2px; }
 .adsx .guide-body { max-width: 760px; }
 .adsx .guide-body .intro { font-size: 17px; line-height: 1.6; color: var(--ads-tx); margin-bottom: 6px; }
-.adsx .guide-body h2 { margin-top: 34px; scroll-margin-top: 90px; }
-.adsx .guide-body h3 { font-size: 16px; }
+/* Jumped-to headings must clear BOTH sticky bars (site nav + article nav), or
+   the heading you asked for lands underneath them. Derived from the same two
+   vars the bars themselves use, plus breathing room. */
+.adsx .guide-body h2 { margin-top: 34px; scroll-margin-top: calc(var(--ads-navh) + var(--ads-tocbar) + 20px); }
+.adsx .guide-body h3 { font-size: 16px; scroll-margin-top: calc(var(--ads-navh) + var(--ads-tocbar) + 20px); }
 
 /* In-article images. height:auto keeps the aspect ratio when the intrinsic
    width/height attributes are set (they reserve the space, preventing shift). */
