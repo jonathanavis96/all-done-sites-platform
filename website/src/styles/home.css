@@ -416,6 +416,17 @@ html { scroll-behavior: smooth; }
 .adsx .content-figure img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--ads-line); box-shadow: var(--ads-sh); }
 .adsx .content-figure figcaption { margin-top: 10px; font-size: 13px; line-height: 1.5; color: var(--ads-bd); text-align: center; }
 
+/* In-article tables. The wrapper -- not the page -- is what scrolls: a table
+   wider than the viewport (common on a phone) must slide inside its own box,
+   never push the article body sideways. */
+.adsx .content-table { margin: 26px 0; overflow-x: auto; border: 1px solid var(--ads-line); border-radius: 14px; box-shadow: var(--ads-sh); }
+.adsx .content-table table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.adsx .content-table th, .adsx .content-table td { padding: 12px 16px; text-align: left; line-height: 1.5; white-space: nowrap; }
+.adsx .content-table thead th { background: var(--ads-soft); color: var(--ads-tx); font-family: var(--ads-disp); font-weight: 700; font-size: 12.5px; letter-spacing: .01em; border-bottom: 1px solid var(--ads-line); }
+.adsx .content-table tbody td { color: var(--ads-bd); border-bottom: 1px solid var(--ads-line2); }
+.adsx .content-table tbody tr:last-child td { border-bottom: none; }
+.adsx .content-table tbody tr:nth-child(even) td { background: var(--ads-soft); }
+
 /* FAQs */
 .adsx .guide-faqs { margin-top: 40px; border-top: 1px solid var(--ads-line); padding-top: 8px; }
 .adsx .guide-faqs .qa { margin-top: 20px; }

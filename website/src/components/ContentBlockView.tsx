@@ -46,5 +46,30 @@ export default function ContentBlockView({ block }: { block: ContentBlock }) {
       </figure>
     );
   }
+  if ("table" in block) {
+    const { headers, rows } = block.table;
+    return (
+      <div className="content-table">
+        <table>
+          <thead>
+            <tr>
+              {headers.map((h, i) => (
+                <th key={i}>{renderInline(h)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i}>
+                {row.map((cell, j) => (
+                  <td key={j}>{renderInline(cell)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
   return null;
 }

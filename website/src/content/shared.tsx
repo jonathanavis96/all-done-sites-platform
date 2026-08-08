@@ -18,7 +18,8 @@ export type ContentBlock =
   | { ul: string[] }
   | { ol: string[] }
   | { callout: { title?: string; body: string } }
-  | { img: ContentImage };
+  | { img: ContentImage }
+  | { table: ContentTable };
 
 /**
  * An image inside an article body.
@@ -36,6 +37,18 @@ export type ContentImage = {
   width?: number;
   height?: number;
 };
+
+/**
+ * A table inside an article body.
+ *
+ * `headers` and `rows` are both required, and both plain string grids —
+ * no per-cell alignment, no colspans, no optional caption. A comparison
+ * table only needs the data; the rest is presentation the renderer already
+ * owns, and every field left unpopulated is a field someone has to notice
+ * is dead before they can trust the shape again. Every row is expected to
+ * have the same length as `headers`; the renderer does not pad or truncate.
+ */
+export type ContentTable = { headers: string[]; rows: string[][] };
 
 export type ContentFaq = { q: string; a: string };
 

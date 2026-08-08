@@ -58,6 +58,15 @@ export const guides: Guide[] = [
       ] },
       { h2: "Typical price ranges in South Africa" },
       { p: "These are hedged, real-world ranges. Treat them as a guide, not a quote, because every project differs." },
+      { table: {
+        headers: ["Route", "Typical price", "Best for", "Watch out for"],
+        rows: [
+          ["DIY website builder", "R150–R600 / month", "Tight budgets and a willingness to build it yourself", "The hours you spend learning, building and fixing it"],
+          ["Freelancer", "R5,000–R25,000 once-off", "A straightforward small-business site", "Support can be hard to arrange once they move on"],
+          ["Agency", "R20,000–R80,000+ once-off", "Bigger brands that want a full team behind the build", "The most expensive route, often more than a small business needs"],
+          ["Done-for-you monthly (All Done Sites)", "From R799 / month", "No big upfront bill, with hosting and updates handled for you", "A recurring monthly fee instead of one lump sum"],
+        ],
+      } },
       { h3: "DIY website builders" },
       { p: "Platforms like Wix, Squarespace or WordPress let you build it yourself. Subscriptions often run from around R150 to R600 a month, plus your time. They are cheap on paper, but the cost shows up in the hours you spend learning, building and fixing things instead of running your business." },
       { h3: "Freelancers" },
