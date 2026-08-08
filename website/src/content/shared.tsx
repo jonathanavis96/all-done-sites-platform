@@ -17,6 +17,14 @@
 // step: a field rendered raw but stripped for JSON-LD puts literal asterisks
 // on the page and clean text in the structured data, which is exactly the
 // disagreement between visible and machine-readable content to avoid.
+//
+// ⚠ `title`, `metaTitle` and `summary` are OUTSIDE the vocabulary -- they are
+// plain text, passed raw to every consumer. That is consistent today, so there
+// is no divergence, but they are the next fields a content generator reaches
+// for: `title` alone is displayed in the <h1> AND emitted as Article.headline
+// and ItemList.name, so the day one of them carries a `**` the asterisks show
+// up in the largest text on the page and in the structured data at once. Add
+// them to renderInline/stripInline before allowing markup in them, never after.
 
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
@@ -85,8 +93,25 @@ export type ContentFaq = { q: string; a: string };
 // reads "Includes hosting, domain, and email." -- the markers are DELETED, not
 // merely decorated, so the pointer to the "*Prices exclude VAT" line below is
 // gone from the page, from <meta description> and from the JSON-LD at once.
-// Requiring a leading space/paren/bracket makes every such marker literal,
-// because a footnote marker is never preceded by a space.
+// Requiring a leading space/paren/bracket makes every WORD-GLUED marker
+// literal, because a marker attached to the end of a word is never preceded by
+// a space.
+//
+// ⚠ That is the exact guarantee, and it is narrower than "footnote markers are
+// safe". A marker at the START of a sentence -- the disclaimer's own marker --
+// IS preceded by a space, so it can still open a run and pair with a later
+// word-glued one. Confirmed:
+//
+//     "*Prices exclude VAT. Plans start at R799*."
+//        -> "Prices exclude VAT. Plans start at R799."
+//
+// Both markers deleted, in the render and the strip alike. The reverse order,
+// "Plans start at R799* a month. *Prices exclude VAT.", is safe -- so it is
+// disclaimer-FIRST, in the same string, that collapses. No boundary rule can
+// reject this without also rejecting a legitimate sentence-initial *italic*,
+// and CommonMark resolves it the same way, so it is inherent ambiguity rather
+// than a defect here. Keep a disclaimer sentence in its own string, or out of
+// a string that also carries a glued marker.
 //
 // It is NOT enough that the inner text rejects a leading or trailing space.
 // That rule alone saves "R799* a month. *Prices exclude VAT." (the space after
