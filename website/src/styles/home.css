@@ -12,9 +12,13 @@
      section" bar sticks directly beneath it. Both are declared here because
      three separate rules depend on them -- the article nav's `top`, its open
      list's max-height, and the scroll-margin-top that keeps a jumped-to heading
-     clear of both. Hardcoding them separately is how those values drift apart. */
+     clear of both. Hardcoding them separately is how those values drift apart.
+     --ads-tocbar is the summary bar's measured rendered height (padding +
+     line-height), not a guess -- the scroll-margin calc depends on it matching
+     reality, so re-measure and update it if the summary's font-size or padding
+     ever changes. */
   --ads-navh: 65px;
-  --ads-tocbar: 46px;
+  --ads-tocbar: 52px;
   --ads-bg: #FBFCFD;
   --ads-surface: #FFFFFF;
   --ads-soft: #F4F7FA;
@@ -316,8 +320,8 @@ html { scroll-behavior: smooth; }
    makes EVERY nav in the page sticky at top:0). Without this the article nav
    sticks to the same 0 offset as the site header and the two overlap. It sticks
    just below the header instead, on a lower z-index so the header always wins. */
-.adsx .toc { position: sticky; top: var(--ads-navh); z-index: 40; border: 1px solid var(--ads-line); background: var(--ads-surface); border-radius: 16px; margin: 22px 0 30px; box-shadow: var(--ads-sh); overflow: hidden; }
-.adsx .toc summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; list-style: none; cursor: pointer; padding: 14px 22px; min-height: var(--ads-tocbar); box-sizing: border-box; font-family: var(--ads-disp); font-weight: 600; font-size: 14px; color: var(--ads-tx); user-select: none; background: var(--ads-surface); }
+.adsx .toc { position: sticky; top: var(--ads-navh); z-index: 40; border: 1px solid var(--ads-line); background: var(--ads-surface); border-radius: 16px; margin: 22px 0 30px; box-shadow: var(--ads-sh); overflow: hidden; backdrop-filter: none; }
+.adsx .toc summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; list-style: none; cursor: pointer; padding: 14px 22px; min-height: var(--ads-tocbar); box-sizing: border-box; font-family: var(--ads-disp); font-weight: 600; font-size: 14px; color: var(--ads-tx); user-select: none; background: var(--ads-surface); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .adsx .toc summary::-webkit-details-marker { display: none; }
 .adsx .toc summary::after { content: "+"; flex: none; font-size: 18px; line-height: 1; color: var(--ads-acd); }
 .adsx .toc summary:hover { background: var(--ads-soft); }
@@ -326,7 +330,7 @@ html { scroll-behavior: smooth; }
 /* ⚠ The open list must never fill the viewport -- that was the original bug. It
    is capped to what is left below the two sticky bars and scrolls internally, so
    an article with many headings opens a scrollable menu rather than a wall. */
-.adsx .toc ol { margin: 0; padding: 16px 22px 18px 42px; display: flex; flex-direction: column; gap: 5px; max-height: calc(100vh - var(--ads-navh) - var(--ads-tocbar) - 40px); overflow-y: auto; overscroll-behavior: contain; background: var(--ads-surface); }
+.adsx .toc ol { margin: 0; padding: 16px 22px 18px 42px; display: flex; flex-direction: column; gap: 5px; max-height: calc(100dvh - var(--ads-navh) - var(--ads-tocbar) - 40px); overflow-y: auto; overscroll-behavior: contain; background: var(--ads-surface); }
 .adsx .toc a { font-size: 13px; color: var(--ads-acd); text-decoration: none; }
 .adsx .toc a:hover { text-decoration: underline; }
 
