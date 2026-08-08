@@ -72,7 +72,9 @@ export type ContentFaq = { q: string; a: string };
 // of asterisks as literal text.
 //
 // An emphasis run may only OPEN at the start of the string or straight after
-// whitespace, "(" or "[". That restriction is the whole defence against the
+// whitespace, "(" or "[" -- optionally with one opening quote in between, so
+// that A "**done-for-you**" site emphasises rather than showing its asterisks.
+// That restriction is the whole defence against the
 // asterisk's other job in prose: the footnote marker. This content is pricing
 // copy, and a marker is glued to the end of a word -- so in
 //
@@ -91,6 +93,19 @@ export type ContentFaq = { q: string; a: string };
 // the first marker stops it opening) but not the comma-separated form above,
 // which is why the boundary is spelled out separately here.
 //
+// The optional quote is deliberately only honoured when the quote ITSELF sits
+// at an opening position -- i.e. the sequence is space-then-quote, never
+// word-then-quote. A bare quote in the class would re-open the same deletion
+// bug one step along, because a footnote marker can follow a CLOSING quote:
+//
+//     He said "hello"*, and "goodbye"*.
+//
+// there the first "*" is preceded by a quote, the pair would match, and both
+// markers would vanish. Requiring the quote to be preceded by whitespace or
+// "(" keeps that string literal while still emphasising a quoted phrase.
+// Straight and curly quotes are both accepted; the closing curly quotes are
+// not in the class, as they can only ever appear at the wrong end.
+//
 // The boundary is a captured group rather than a lookbehind on purpose. This
 // RegExp is constructed at render time, so an engine that cannot parse it
 // throws instead of degrading -- and a SyntaxError here takes out the entire
@@ -104,10 +119,11 @@ export type ContentFaq = { q: string; a: string };
 // inside a function body is a fresh object per call, but a single shared
 // module-level RegExp would have its `lastIndex` clobbered by the recursive
 // call before the outer loop reads it back.
+const EMPHASIS_OPEN = "(?:^|[\\s([])[\"'\\u201C\\u2018]?";
 const TOKEN_SOURCE =
   "\\[([^\\]]+)\\]\\(([^)]+)\\)" +
-  "|(^|[\\s([])\\*\\*([^\\s*](?:[^*]*[^\\s*])?)\\*\\*" +
-  "|(^|[\\s([])\\*([^\\s*](?:[^*]*[^\\s*])?)\\*(?!\\*)";
+  "|(" + EMPHASIS_OPEN + ")\\*\\*([^\\s*](?:[^*]*[^\\s*])?)\\*\\*" +
+  "|(" + EMPHASIS_OPEN + ")\\*([^\\s*](?:[^*]*[^\\s*])?)\\*(?!\\*)";
 
 /**
  * Turn the article inline vocabulary -- [text](/path) links, **bold**,
