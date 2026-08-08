@@ -14,9 +14,16 @@ export default function ContentBlockView({ block }: { block: ContentBlock }) {
   // Headings run through renderInline like every other block. Bold inside a
   // heading is a far more natural thing to type than a link inside one, and a
   // heading that rendered its markup literally would put raw asterisks in the
-  // largest text on the page. headingId() is deliberately fed the RAW string:
-  // its [^\w\s-] strip already removes the delimiters, so the slug -- and the
-  // nav anchor pointing at it -- is identical either way.
+  // largest text on the page. headingId() is deliberately fed the RAW string,
+  // and ArticleNav must feed it the RAW string too, or the anchors stop
+  // matching. For emphasis the two are interchangeable -- [^\w\s-] removes the
+  // delimiters either way. ⚠ For a LINK they are not: [^\w\s-] strips the
+  // brackets but leaves the href in the slug, so
+  //   headingId("See [pricing](/pricing) now")             -> see-pricingpricing-now
+  //   headingId(stripInline("See [pricing](/pricing) now")) -> see-pricing-now
+  // Both call sites currently pass raw, so they agree and every published
+  // anchor is stable. Switching only one of them would silently break the nav
+  // on any heading containing a link.
   if ("h2" in block) return <h2 id={headingId(block.h2)}>{renderInline(block.h2)}</h2>;
   if ("h3" in block) return <h3>{renderInline(block.h3)}</h3>;
   if ("p" in block) return <p>{renderInline(block.p)}</p>;
