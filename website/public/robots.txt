@@ -40,5 +40,7 @@ Allow: /
 
 User-agent: *
 Allow: /
+# Client documents live at unlisted paths and are not for search results.
+Disallow: /clients/
 
 Sitemap: https://alldonesites.com/sitemap.xml
