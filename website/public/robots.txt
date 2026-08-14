@@ -1,46 +1,63 @@
+# /clients/ holds unlisted client documents and is excluded from every group
+# below. A crawler obeys only the MOST SPECIFIC group that matches its name,
+# so a Disallow in the wildcard group alone would not apply to Googlebot or
+# any other agent named here.
+
 User-agent: Googlebot
 Allow: /
+Disallow: /clients/
 
 User-agent: Bingbot
 Allow: /
+Disallow: /clients/
 
 User-agent: Twitterbot
 Allow: /
+Disallow: /clients/
 
 User-agent: facebookexternalhit
 Allow: /
+Disallow: /clients/
 
 # AI assistants and AI search are welcome to read and reference our content
 User-agent: GPTBot
 Allow: /
+Disallow: /clients/
 
 User-agent: OAI-SearchBot
 Allow: /
+Disallow: /clients/
 
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /clients/
 
 User-agent: ClaudeBot
 Allow: /
+Disallow: /clients/
 
 User-agent: Claude-Web
 Allow: /
+Disallow: /clients/
 
 User-agent: anthropic-ai
 Allow: /
+Disallow: /clients/
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /clients/
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /clients/
 
 User-agent: Applebot-Extended
 Allow: /
+Disallow: /clients/
 
 User-agent: *
 Allow: /
-# Client documents live at unlisted paths and are not for search results.
 Disallow: /clients/
 
 Sitemap: https://alldonesites.com/sitemap.xml
