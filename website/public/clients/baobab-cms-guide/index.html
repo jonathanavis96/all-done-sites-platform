@@ -297,7 +297,12 @@
   function setActive(){
     var best=null,bt=Infinity;
     secs.forEach(function(s){var t=s.getBoundingClientRect().top-80;if(t<=0&&Math.abs(t)<bt){bt=Math.abs(t);best=s;}});
-    if(!best)best=secs[0];var id='#'+best.id;
+    if(!best)best=secs[0];
+    // At the very bottom the last section's top may never cross the line, so it
+    // could never become active. Snap to it once the page cannot scroll further.
+    var h=document.documentElement;
+    if(h.scrollHeight-h.clientHeight-h.scrollTop<=2)best=secs[secs.length-1];
+    var id='#'+best.id;
     navlinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')===id);});
     var at=document.querySelector('.topnav a.active'); if(at&&at.scrollIntoView)at.scrollIntoView({block:'nearest',inline:'center'});
   }
