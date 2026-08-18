@@ -99,10 +99,16 @@ html { scroll-behavior: smooth; }
 .adsx .fbar { display: flex; align-items: center; gap: 7px; padding: 12px 14px; background: var(--ads-soft); border-bottom: 1px solid var(--ads-line); }
 .adsx .fbar .d { width: 10px; height: 10px; border-radius: 50%; }
 .adsx .fbar .u { margin-left: 10px; font-family: var(--ads-mono); font-size: 11px; color: #7c879a; background: #fff; padding: 6px 12px; border-radius: 7px; flex: 1; border: 1px solid var(--ads-line); }
-/* hero preview: gentle ping-pong with pauses. Hold ~2s at the top, pan slowly
-   to the bottom (~10s, roughly 35% of the original speed), hold ~2s, pan back
-   up (~10s), and loop. 24s total cycle. */
-.adsx .frame img { display: block; width: 100%; height: 344px; object-fit: cover; object-position: 50% 0%; animation: ads-panimg 24s ease-in-out infinite; }
+/* hero preview: gentle ping-pong with pauses. Hold at the top, pan slowly to
+   the bottom, hold, pan back up, and loop.
+   The duration is tied to how tall the screenshot is. `object-fit: cover` means
+   the travel distance is (rendered image height - 344px), so a taller capture
+   scrolls proportionally faster at a fixed duration. When the Baobab capture
+   went from a 5,134px crop to the full 12,998px page, the travel in the 536px
+   frame went from 2,408px to 6,623px — so the cycle went from 24s to 66s to
+   hold the pan at the same ~240px/s it has always been. Re-derive this if the
+   hero screenshot is ever replaced with one of a different aspect ratio. */
+.adsx .frame img { display: block; width: 100%; height: 344px; object-fit: cover; object-position: 50% 0%; animation: ads-panimg 66s ease-in-out infinite; }
 @keyframes ads-panimg {
   0%, 8.33% { object-position: 50% 0%; }
   50%, 58.33% { object-position: 50% 100%; }

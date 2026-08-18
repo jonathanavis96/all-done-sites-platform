@@ -28,8 +28,16 @@ import {
 } from "@/lib/pricing";
 import "@/styles/home.css";
 
-import baobabwinesFull from "@/assets/portfolio/baobabwines-full.webp";
-import baobabwinesFullSm from "@/assets/portfolio/baobabwines-full-sm.webp";
+// The hero frame scrolls the whole Baobab homepage, which is 12,998px tall at
+// 1000px wide. Rendered, that frame is only 536px across from 1280px viewports
+// up, 472px around 1015px, and ~92vw once the layout stacks below 860px — so
+// the full-width capture was several times more pixels than any screen asks
+// for. These are the same capture downscaled; the browser picks by viewport
+// and pixel density (see the srcset/sizes on the <picture> below).
+import baobabwinesFull400 from "@/assets/portfolio/baobabwines-full-400.webp";
+import baobabwinesFull560 from "@/assets/portfolio/baobabwines-full-560.webp";
+import baobabwinesFull640 from "@/assets/portfolio/baobabwines-full-640.webp";
+import baobabwinesFull800 from "@/assets/portfolio/baobabwines-full-800.webp";
 import ranksentinelImg from "@/assets/portfolio/ranksentinel.webp";
 import pcquantiImg from "@/assets/portfolio/pcquanti.webp";
 import reachrightImg from "@/assets/portfolio/reachright.webp";
@@ -438,8 +446,20 @@ export default function Index() {
               </div>
               <button className="expand" title="Open preview" type="button">⤢</button>
               <picture>
-                <source media="(max-width: 860px)" srcSet={baobabwinesFullSm} type="image/webp" />
-                <img src={baobabwinesFull} alt="Baobab Wines website preview" decoding="async" />
+                {/* Stacked layout: the frame is ~92vw, and capped at 640w so a
+                    high-density phone is not made to pull the 800w file. */}
+                <source
+                  media="(max-width: 860px)"
+                  type="image/webp"
+                  sizes="92vw"
+                  srcSet={`${baobabwinesFull400} 400w, ${baobabwinesFull560} 560w, ${baobabwinesFull640} 640w`}
+                />
+                <source
+                  type="image/webp"
+                  sizes="(max-width: 1279px) 47vw, 536px"
+                  srcSet={`${baobabwinesFull400} 400w, ${baobabwinesFull560} 560w, ${baobabwinesFull800} 800w`}
+                />
+                <img src={baobabwinesFull560} alt="Baobab Wines website preview" decoding="async" />
               </picture>
             </div>
           </div>
