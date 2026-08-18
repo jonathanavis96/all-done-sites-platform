@@ -58,12 +58,12 @@ type Project = {
 };
 
 const PROJECTS: Project[] = [
-  { img: pcquantiImg, url: "https://pcquanti.co.za", host: "pcquanti.co.za", name: "PC Quanti", status: "live", label: "Live", delay: ".05s" },
-  { img: reachrightImg, url: "https://reachrightmarketing.com", host: "reachrightmarketing.com", name: "ReachRight", status: "live", label: "Live", delay: ".1s" },
-  { img: deenesocialImg, url: "https://deenesocial.com", host: "deenesocial.com", name: "Deene Social", status: "live", label: "Live", delay: ".15s" },
-  { img: aifocusImg, url: "https://aifocus.work", host: "aifocus.work", name: "AI Focus", status: "live", label: "Live", delay: ".2s" },
+  { img: ranksentinelImg, url: "https://ranksentinel.co", host: "ranksentinel.co", name: "RankSentinel", status: "live", label: "Live", delay: ".05s" },
+  { img: pcquantiImg, url: "https://pcquanti.co.za", host: "pcquanti.co.za", name: "PC Quanti", status: "live", label: "Live", delay: ".1s" },
+  { img: aifocusImg, url: "https://aifocus.work", host: "aifocus.work", name: "AI Focus", status: "live", label: "Live", delay: ".15s" },
+  { img: deenesocialImg, url: "https://deenesocial.com", host: "deenesocial.com", name: "Deene Social", status: "live", label: "Live", delay: ".2s" },
   { img: jacquichowlesImg, url: "https://jacquichowles.com", host: "jacquichowles.com", name: "Jacqui Chowles", status: "live", label: "Live", delay: ".25s" },
-  { img: baobabwinesImg, url: "https://jonathanavis96.github.io/baobab-wines/", host: "baobab-wines", name: "Baobab Wines", status: "soon", label: "Launching soon", delay: ".3s" },
+  { img: reachrightImg, url: "https://reachrightmarketing.com", host: "reachrightmarketing.com", name: "ReachRight", status: "live", label: "Live", delay: ".3s" },
 ];
 
 const FAQS: { q: string; a: string }[] = [
@@ -546,27 +546,27 @@ export default function Index() {
           <h2 className="h2 reveal">Real sites. Real businesses.</h2>
           <p className="lead2 reveal">Click any project to open the live site right here, scroll and click around inside it, or open it full screen.</p>
 
-          <div className="feature reveal-fade tilt" data-url="https://ranksentinel.co">
+          <div className="feature reveal-fade tilt" data-url="https://baobabwines.com">
             <div className="fimg">
               <div className="cbar">
                 <Lights />
-                <span className="u">ranksentinel.co</span>
+                <span className="u">baobabwines.com</span>
               </div>
-              <img src={ranksentinelImg} alt="RankSentinel website preview" loading="lazy" decoding="async" />
+              <img src={baobabwinesImg} alt="Baobab Wines website preview" loading="lazy" decoding="async" />
             </div>
             <div className="fbody">
-              <div className="lab">Featured project</div>
-              <h3>RankSentinel</h3>
-              <p>A sharp, technical SaaS site for an SEO rank-tracking tool. Fast, focused, and built to convert sign-ups.</p>
+              <div className="lab">Most recent project</div>
+              <h3>Baobab Wines</h3>
+              <p>An editorial site for a South African wine importer in the USA, with a full producer catalogue, trade tools, and content the team edits themselves.</p>
               <div className="tags">
-                <span className="tag">SaaS</span>
-                <span className="tag">Technical</span>
-                <span className="tag">Conversion</span>
+                <span className="tag">Editorial</span>
+                <span className="tag">Wine &amp; trade</span>
+                <span className="tag">Client-editable</span>
               </div>
               <div className="frow">
                 <span className="status"><span className="sd live" />Live site</span>
                 <span className="ghost">Open preview ⤢</span>
-                <a href="https://ranksentinel.co" target="_blank" rel="noopener noreferrer" className="ghost" onClick={(e) => e.stopPropagation()}>Open live ↗</a>
+                <a href="https://baobabwines.com" target="_blank" rel="noopener noreferrer" className="ghost" onClick={(e) => e.stopPropagation()}>Open live ↗</a>
               </div>
             </div>
           </div>
@@ -594,7 +594,7 @@ export default function Index() {
           <div className="marq">
             <div className="track">
               {[0, 1].map((dup) =>
-                ["ReachRight", "Deene Social", "Jacqui Chowles", "RankSentinel", "PC Quanti", "AI Focus", "Baobab Wines"].map((n) => (
+                ["Baobab Wines", "RankSentinel", "PC Quanti", "AI Focus", "Deene Social", "Jacqui Chowles", "ReachRight"].map((n) => (
                   <span key={`${dup}-${n}`}>{n}</span>
                 ))
               )}
