@@ -644,7 +644,7 @@ export default function Index() {
               <h3>Custom / Enterprise</h3>
               <p>For bigger or bespoke projects (e-commerce, bookings, integrations), we scope a tailored monthly plan.</p>
             </div>
-            <Link to="/contact-enterprise" className="btn">Talk to us</Link>
+            <Link to="/contact-enterprise/" className="btn">Talk to us</Link>
           </div>
           <p className="pricenote">Free build to get started. Hosting, SSL, backups and pro email included. Need separate mailboxes? Add professional mailbox aliases at {formatAmount(region, MAILBOX_PRICE[region])}/month each.</p>
         </div>

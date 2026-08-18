@@ -3,16 +3,22 @@
 # crawlers consolidate them into the homepage instead of crawling empty SPA
 # shells (previously these showed as "Discovered – currently not indexed").
 # Both the no-slash and trailing-slash forms are covered.
-/how-it-works    /#how       301
-/how-it-works/   /#how       301
-/pricing         /#pricing   301
-/pricing/        /#pricing   301
-/portfolio       /#pf        301
-/portfolio/      /#pf        301
-/faq             /#faq       301
-/faq/            /#faq       301
-/contact         /#getquote  301
-/contact/        /#getquote  301
+#
+# The target is the bare homepage, with no #fragment. A fragment is never sent
+# to the server, so a crawler resolves "/pricing -> /#pricing" as a redirect to
+# "/" anyway; spelling it out keeps the redirect target unambiguous in Search
+# Console and avoids a target that looks like it differs from the canonical
+# homepage when it does not.
+/how-it-works    /   301
+/how-it-works/   /   301
+/pricing         /   301
+/pricing/        /   301
+/portfolio       /   301
+/portfolio/      /   301
+/faq             /   301
+/faq/            /   301
+/contact         /   301
+/contact/        /   301
 
 # Retired redesign-preview path
-/new/*           /           301
+/new/*           /   301

@@ -61,7 +61,7 @@ export default function Terms() {
             Payment processing is handled by <strong>Paystack</strong>; we do not store full card details on our servers.
           </p>
           <p>
-            For the full details, see our <Link to="/privacy">Privacy Policy</Link>.
+            For the full details, see our <Link to="/privacy/">Privacy Policy</Link>.
           </p>
         </section>
 
@@ -97,7 +97,7 @@ export default function Terms() {
           <h2>Full Subscription Agreement</h2>
           <p>
             The above policies are a summary. For the complete legal framework, read our{" "}
-            <Link to="/terms/full">Full Subscription Agreement</Link>.
+            <Link to="/terms/full/">Full Subscription Agreement</Link>.
           </p>
         </section>
       </div>

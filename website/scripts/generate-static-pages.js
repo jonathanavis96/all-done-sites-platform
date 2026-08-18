@@ -40,7 +40,11 @@ const routes = [
     path: 'thank-you',
     title: 'Thank You',
     description: 'Thanks for getting in touch with All Done Sites. We will reply within one business day.',
-    ogTitle: 'Thank You - All Done Sites'
+    ogTitle: 'Thank You - All Done Sites',
+    // Post-payment confirmation. It has no search value, and leaving it
+    // indexable is what puts it in Search Console's "Crawled – currently not
+    // indexed" bucket. `follow` so the footer links are still crawled.
+    noindex: true
   },
   {
     path: 'terms',
@@ -95,6 +99,14 @@ routes.forEach(route => {
     /<meta name="description" content="[^"]*"/i,
     `<meta name="description" content="${route.description}"`
   );
+
+  // Keep flow-only pages out of the index
+  if (route.noindex) {
+    html = html.replace(
+      /<\/head>/i,
+      '  <meta name="robots" content="noindex, follow">\n</head>'
+    );
+  }
 
   // Update Open Graph URL
   html = html.replace(

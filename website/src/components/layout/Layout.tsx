@@ -143,19 +143,19 @@ export const SiteFooter = () => {
             Contact
           </NavLink>
           <span className="text-muted-foreground">|</span>
-          <NavLink to="/terms#refund-policy" className="text-muted-foreground hover:text-foreground">
+          <NavLink to="/terms/#refund-policy" className="text-muted-foreground hover:text-foreground">
             Refund Policy
           </NavLink>
           <span className="text-muted-foreground">|</span>
-          <NavLink to="/terms#cancellation-policy" className="text-muted-foreground hover:text-foreground">
+          <NavLink to="/terms/#cancellation-policy" className="text-muted-foreground hover:text-foreground">
             Cancellation Policy
           </NavLink>
           <span className="text-muted-foreground">|</span>
-          <NavLink to="/privacy" className="text-muted-foreground hover:text-foreground">
+          <NavLink to="/privacy/" className="text-muted-foreground hover:text-foreground">
             Privacy Policy
           </NavLink>
           <span className="text-muted-foreground">|</span>
-          <NavLink to="/terms/full" className="text-muted-foreground hover:text-foreground">
+          <NavLink to="/terms/full/" className="text-muted-foreground hover:text-foreground">
             Subscription Agreement
           </NavLink>
         </nav>

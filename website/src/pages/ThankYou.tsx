@@ -61,6 +61,7 @@ export default function ThankYou() {
       <Seo
         title="Thank You | All Done Sites"
         description="Thanks for subscribing. Provide a few details so we can start building your site."
+        noindex
       />
       <div className="pageform">
         <div className="confirm">
