@@ -14,6 +14,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # prerender.js derives each sitemap entry's <lastmod> from the last
+          # commit that touched the file the route's content lives in. The
+          # default depth-1 clone has no such history, so every lookup missed
+          # and silently fell back to the build date — which is exactly the
+          # "everything changed today, every deploy" signal the change was
+          # meant to stop sending Google.
+          fetch-depth: 0
 
       - name: Checkout legacy branch (for /old archive of the previous site)
         uses: actions/checkout@v4
