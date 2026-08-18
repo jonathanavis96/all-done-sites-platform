@@ -217,26 +217,80 @@
           }
         }
 
-        // Geo: show banner only for EU/UK; otherwise grant (no persistence)
-        fetch('https://ipapi.co/json/')
-          .then(r => r.ok ? r.json() : Promise.reject())
-          .then(loc => {
-            const cc = (loc && loc.country_code) || 'ZZ';
-            if (EU_UK.has(cc)) {
-              showBanner(); // ask for consent in EU/UK
-            } else {
-              // Outside EU/UK -> grant for this page view (do not persist)
-              gtag('consent','update',{
-                ad_storage:'granted', analytics_storage:'granted',
-                functionality_storage:'granted', personalization_storage:'granted',
-                ad_user_data:'granted', ad_personalization:'granted'
+        // Geo: show the banner only for EU/UK; otherwise grant for this page
+        // view (never persisted — only an explicit click is stored).
+        //
+        // This used to fetch ipapi.co inline, which put a third-party request
+        // on the critical path of every page load — PageSpeed measured it as
+        // the longest chain on the page, 538ms. Two changes fix that without
+        // changing the consent behaviour at all:
+        //
+        //   1. The country is cached for 30 days, so a returning visitor never
+        //      calls out again.
+        //   2. On a cache miss the call waits until the browser is idle after
+        //      load, so it cannot delay first paint. Nothing downstream needs
+        //      it sooner: consent defaults to denied, and gtag.js is itself
+        //      deferred to first interaction (see above), so the grant still
+        //      lands before anything can be measured.
+        const GEO_KEY = 'consent.geo.v1';
+        const GEO_TTL = 30 * 24 * 60 * 60 * 1000;
+
+        function applyGeo(cc) {
+          if (EU_UK.has(cc)) {
+            showBanner(); // ask for consent in EU/UK
+          } else {
+            gtag('consent','update',{
+              ad_storage:'granted', analytics_storage:'granted',
+              functionality_storage:'granted', personalization_storage:'granted',
+              ad_user_data:'granted', ad_personalization:'granted'
+            });
+          }
+        }
+
+        let cachedCc = null;
+        try {
+          const raw = localStorage.getItem(GEO_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.cc && Date.now() - parsed.at < GEO_TTL) cachedCc = parsed.cc;
+          }
+        } catch (e) {}
+
+        if (cachedCc) {
+          applyGeo(cachedCc);
+        } else {
+          const lookup = function () {
+            fetch('https://ipapi.co/json/')
+              .then(r => r.ok ? r.json() : Promise.reject())
+              .then(loc => {
+                const cc = (loc && loc.country_code) || 'ZZ';
+                try { localStorage.setItem(GEO_KEY, JSON.stringify({ cc: cc, at: Date.now() })); } catch (e) {}
+                applyGeo(cc);
+              })
+              .catch(() => {
+                // If geo fails, the safest fallback is to ask.
+                showBanner();
               });
-            }
-          })
-          .catch(() => {
-            // If geo fails, safest fallback = show banner
-            showBanner();
+          };
+          let started = false;
+          const start = function () {
+            if (started) return; started = true;
+            lookup();
+          };
+          const schedule = function () {
+            if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2000 });
+            else setTimeout(start, 1200);
+          };
+          if (document.readyState === 'complete') schedule();
+          else window.addEventListener('load', schedule, { once: true });
+          // gtag.js also loads on first interaction, so a visitor who scrolls
+          // within the first second could otherwise get their first hit sent
+          // while consent is still at the default deny. Race the lookup against
+          // the same events so the grant is in flight by then.
+          ['scroll', 'keydown', 'pointerdown', 'touchstart', 'click'].forEach(function (e) {
+            window.addEventListener(e, start, { passive: true, once: true });
           });
+        }
       })();
     </script>
   </body>

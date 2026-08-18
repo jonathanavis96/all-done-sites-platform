@@ -36,15 +36,29 @@ import "@/styles/home.css";
 // and pixel density (see the srcset/sizes on the <picture> below).
 import baobabwinesFull400 from "@/assets/portfolio/baobabwines-full-400.webp";
 import baobabwinesFull560 from "@/assets/portfolio/baobabwines-full-560.webp";
-import baobabwinesFull640 from "@/assets/portfolio/baobabwines-full-640.webp";
+import baobabwinesFull400m from "@/assets/portfolio/baobabwines-full-400-m.webp";
+import baobabwinesFull560m from "@/assets/portfolio/baobabwines-full-560-m.webp";
 import baobabwinesFull800 from "@/assets/portfolio/baobabwines-full-800.webp";
-import ranksentinelImg from "@/assets/portfolio/ranksentinel.webp";
-import pcquantiImg from "@/assets/portfolio/pcquanti.webp";
-import reachrightImg from "@/assets/portfolio/reachright.webp";
-import deenesocialImg from "@/assets/portfolio/deenesocial.webp";
-import aifocusImg from "@/assets/portfolio/aifocus.webp";
-import jacquichowlesImg from "@/assets/portfolio/jacquichowles.webp";
-import baobabwinesImg from "@/assets/portfolio/baobabwines.webp";
+// Portfolio card + feature images: the 1200x1400 masters (kept in the repo as
+// the source for regeneration) are cropped to the top slice that .cimg/.fimg
+// actually shows (16:10 for cards, the feature box's measured aspect for the
+// feature tile) and resized to the rendered sizes measured in the browser —
+// see the srcset/sizes below. Never point <img> at the masters directly.
+import ranksentinelFeature400 from "@/assets/portfolio/ranksentinel-feature-400.webp";
+import ranksentinelFeature800 from "@/assets/portfolio/ranksentinel-feature-800.webp";
+import ranksentinelFeature1200 from "@/assets/portfolio/ranksentinel-feature-1200.webp";
+import pcquantiCard360 from "@/assets/portfolio/pcquanti-card-360.webp";
+import pcquantiCard720 from "@/assets/portfolio/pcquanti-card-720.webp";
+import reachrightCard360 from "@/assets/portfolio/reachright-card-360.webp";
+import reachrightCard720 from "@/assets/portfolio/reachright-card-720.webp";
+import deenesocialCard360 from "@/assets/portfolio/deenesocial-card-360.webp";
+import deenesocialCard720 from "@/assets/portfolio/deenesocial-card-720.webp";
+import aifocusCard360 from "@/assets/portfolio/aifocus-card-360.webp";
+import aifocusCard720 from "@/assets/portfolio/aifocus-card-720.webp";
+import jacquichowlesCard360 from "@/assets/portfolio/jacquichowles-card-360.webp";
+import jacquichowlesCard720 from "@/assets/portfolio/jacquichowles-card-720.webp";
+import baobabwinesCard360 from "@/assets/portfolio/baobabwines-card-360.webp";
+import baobabwinesCard720 from "@/assets/portfolio/baobabwines-card-720.webp";
 
 // Three macOS-style traffic-light dots used in browser chrome bars.
 const Lights = () => (
@@ -55,8 +69,13 @@ const Lights = () => (
   </>
 );
 
+// A card image ships as two widths (360w/720w, 16:10 crop of the master) so
+// the <img> can pick the right one via srcset — see the `sizes` attribute
+// on the card <img> below for the matching layout math.
+type CardImg = { src: string; srcSet: string };
+
 type Project = {
-  img: string;
+  img: CardImg;
   url: string;
   host: string;
   name: string;
@@ -66,12 +85,12 @@ type Project = {
 };
 
 const PROJECTS: Project[] = [
-  { img: baobabwinesImg, url: "https://baobabwines.com", host: "baobabwines.com", name: "Baobab Wines", status: "live", label: "Live", delay: ".05s" },
-  { img: pcquantiImg, url: "https://pcquanti.co.za", host: "pcquanti.co.za", name: "PC Quanti", status: "live", label: "Live", delay: ".1s" },
-  { img: aifocusImg, url: "https://aifocus.work", host: "aifocus.work", name: "AI Focus", status: "live", label: "Live", delay: ".15s" },
-  { img: deenesocialImg, url: "https://deenesocial.com", host: "deenesocial.com", name: "Deene Social", status: "live", label: "Live", delay: ".2s" },
-  { img: jacquichowlesImg, url: "https://jacquichowles.com", host: "jacquichowles.com", name: "Jacqui Chowles", status: "live", label: "Live", delay: ".25s" },
-  { img: reachrightImg, url: "https://reachrightmarketing.com", host: "reachrightmarketing.com", name: "ReachRight", status: "live", label: "Live", delay: ".3s" },
+  { img: { src: baobabwinesCard720, srcSet: `${baobabwinesCard360} 360w, ${baobabwinesCard720} 720w` }, url: "https://baobabwines.com", host: "baobabwines.com", name: "Baobab Wines", status: "live", label: "Live", delay: ".05s" },
+  { img: { src: pcquantiCard720, srcSet: `${pcquantiCard360} 360w, ${pcquantiCard720} 720w` }, url: "https://pcquanti.co.za", host: "pcquanti.co.za", name: "PC Quanti", status: "live", label: "Live", delay: ".1s" },
+  { img: { src: aifocusCard720, srcSet: `${aifocusCard360} 360w, ${aifocusCard720} 720w` }, url: "https://aifocus.work", host: "aifocus.work", name: "AI Focus", status: "live", label: "Live", delay: ".15s" },
+  { img: { src: deenesocialCard720, srcSet: `${deenesocialCard360} 360w, ${deenesocialCard720} 720w` }, url: "https://deenesocial.com", host: "deenesocial.com", name: "Deene Social", status: "live", label: "Live", delay: ".2s" },
+  { img: { src: jacquichowlesCard720, srcSet: `${jacquichowlesCard360} 360w, ${jacquichowlesCard720} 720w` }, url: "https://jacquichowles.com", host: "jacquichowles.com", name: "Jacqui Chowles", status: "live", label: "Live", delay: ".25s" },
+  { img: { src: reachrightCard720, srcSet: `${reachrightCard360} 360w, ${reachrightCard720} 720w` }, url: "https://reachrightmarketing.com", host: "reachrightmarketing.com", name: "ReachRight", status: "live", label: "Live", delay: ".3s" },
 ];
 
 const FAQS: { q: string; a: string }[] = [
@@ -366,14 +385,39 @@ export default function Index() {
     const sb = document.createElement("div");
     sb.className = "ads-scrollbar";
     document.body.appendChild(sb);
-    const onScroll = () => {
-      const h = document.documentElement.scrollHeight - window.innerHeight;
-      sb.style.width = (h > 0 ? (window.scrollY / h) * 100 : 0) + "%";
+    // Reading scrollHeight inside the scroll handler forced a layout on every
+    // frame (PageSpeed attributed ~64ms of forced reflow to it). The document
+    // height only changes on resize or a content change, so measure it there
+    // instead and keep the handler to a single write, batched into rAF.
+    let docRange = 0;
+    const measure = () => {
+      docRange = document.documentElement.scrollHeight - window.innerHeight;
     };
+    let ticking = false;
+    const paint = () => {
+      ticking = false;
+      sb.style.width = (docRange > 0 ? (window.scrollY / docRange) * 100 : 0) + "%";
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(paint);
+    };
+    const onResize = () => {
+      measure();
+      onScroll();
+    };
+    measure();
+    paint();
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
+    window.addEventListener("resize", onResize, { passive: true });
+    // Late-loading images and fonts change the page height after mount.
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(onResize) : null;
+    ro?.observe(document.documentElement);
     cleanups.push(() => {
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      ro?.disconnect();
       sb.remove();
     });
 
@@ -446,13 +490,17 @@ export default function Index() {
               </div>
               <button className="expand" title="Open preview" type="button">⤢</button>
               <picture>
-                {/* Stacked layout: the frame is ~92vw, and capped at 640w so a
-                    high-density phone is not made to pull the 800w file. */}
+                {/* Stacked layout: the frame is ~92vw (~359 CSS px on a
+                    390px phone). Mobile gets its own q50 encodes and stops at
+                    560w, so a DPR-2 phone tops out at 176 KB instead of the
+                    271 KB 640w file. The image is a slow decorative pan, so
+                    ~1.5x density is indistinguishable at q50 while desktop
+                    keeps the sharper q68 encodes below. */}
                 <source
                   media="(max-width: 860px)"
                   type="image/webp"
                   sizes="92vw"
-                  srcSet={`${baobabwinesFull400} 400w, ${baobabwinesFull560} 560w, ${baobabwinesFull640} 640w`}
+                  srcSet={`${baobabwinesFull400m} 400w, ${baobabwinesFull560m} 560w`}
                 />
                 <source
                   type="image/webp"
@@ -572,7 +620,14 @@ export default function Index() {
                 <Lights />
                 <span className="u">ranksentinel.co</span>
               </div>
-              <img src={ranksentinelImg} alt="RankSentinel website preview" loading="lazy" decoding="async" />
+              <img
+                src={ranksentinelFeature1200}
+                srcSet={`${ranksentinelFeature400} 400w, ${ranksentinelFeature800} 800w, ${ranksentinelFeature1200} 1200w`}
+                sizes="(max-width: 860px) calc(100vw - 56px), 645px"
+                alt="RankSentinel website preview"
+                loading="lazy"
+                decoding="async"
+              />
             </div>
             <div className="fbody">
               <div className="lab">Featured project</div>
@@ -600,7 +655,13 @@ export default function Index() {
                 </div>
                 <button className="expand" title="Open preview" type="button">⤢</button>
                 <div className="cimg">
-                  <img src={p.img} alt={`${p.name} website preview`} loading="lazy" />
+                  <img
+                    src={p.img.src}
+                    srcSet={p.img.srcSet}
+                    sizes="(max-width: 520px) 90vw, (max-width: 860px) 45vw, 341px"
+                    alt={`${p.name} website preview`}
+                    loading="lazy"
+                  />
                 </div>
                 <div className="cmeta">
                   <h4>{p.name}</h4>
