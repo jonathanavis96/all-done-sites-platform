@@ -272,12 +272,24 @@
                 showBanner();
               });
           };
+          let started = false;
+          const start = function () {
+            if (started) return; started = true;
+            lookup();
+          };
           const schedule = function () {
-            if ('requestIdleCallback' in window) requestIdleCallback(lookup, { timeout: 2000 });
-            else setTimeout(lookup, 1200);
+            if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2000 });
+            else setTimeout(start, 1200);
           };
           if (document.readyState === 'complete') schedule();
           else window.addEventListener('load', schedule, { once: true });
+          // gtag.js also loads on first interaction, so a visitor who scrolls
+          // within the first second could otherwise get their first hit sent
+          // while consent is still at the default deny. Race the lookup against
+          // the same events so the grant is in flight by then.
+          ['scroll', 'keydown', 'pointerdown', 'touchstart', 'click'].forEach(function (e) {
+            window.addEventListener(e, start, { passive: true, once: true });
+          });
         }
       })();
     </script>
