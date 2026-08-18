@@ -10,6 +10,13 @@ interface SeoProps {
    * If omitted, we compute a sensible default: <origin>/<base>/og.png
    */
   image?: string;
+  /**
+   * Keep the page out of search results. Use for pages that exist only as a
+   * step in a flow (payment confirmation, client-only documents) — they are
+   * crawlable but have no search value, and leaving them indexable is what
+   * produces "Crawled – currently not indexed" noise in Search Console.
+   */
+  noindex?: boolean;
 }
 
 /** Normalize spa-github-pages URLs:
@@ -37,7 +44,7 @@ function normalizeCanonical(raw: string): string {
   }
 }
 
-export default function Seo({ title, description, canonical, jsonLd, image }: SeoProps) {
+export default function Seo({ title, description, canonical, jsonLd, image, noindex }: SeoProps) {
   // 1) Decide canonical: explicit prop wins; else compute from window.location
   let computedCanonical = canonical;
   if (!computedCanonical && typeof window !== "undefined") {
@@ -66,6 +73,7 @@ export default function Seo({ title, description, canonical, jsonLd, image }: Se
       {/* Basic SEO */}
       <title>{title}</title>
       <meta name="description" content={description} />
+      {noindex && <meta name="robots" content="noindex, follow" />}
       {computedCanonical && <link rel="canonical" href={computedCanonical} />}
 
       {/* Open Graph (lightweight, no overkill) */}

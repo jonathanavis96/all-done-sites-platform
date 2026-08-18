@@ -15,7 +15,7 @@ export default function TermsFull() {
         description="The full All Done Sites website subscription agreement."
       />
       <div className="legal">
-        <Link to="/terms" className="backlink">← Back to Terms &amp; Policies (summary)</Link>
+        <Link to="/terms/" className="backlink">← Back to Terms &amp; Policies (summary)</Link>
 
         <section id="snapshot">
           <h2>Plain-English Snapshot</h2>

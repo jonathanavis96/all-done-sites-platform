@@ -28,8 +28,8 @@ import {
 } from "@/lib/pricing";
 import "@/styles/home.css";
 
-import pcquantiFull from "@/assets/portfolio/pcquanti-full.webp";
-import pcquantiFullSm from "@/assets/portfolio/pcquanti-full-sm.webp";
+import baobabwinesFull from "@/assets/portfolio/baobabwines-full.webp";
+import baobabwinesFullSm from "@/assets/portfolio/baobabwines-full-sm.webp";
 import ranksentinelImg from "@/assets/portfolio/ranksentinel.webp";
 import pcquantiImg from "@/assets/portfolio/pcquanti.webp";
 import reachrightImg from "@/assets/portfolio/reachright.webp";
@@ -58,12 +58,12 @@ type Project = {
 };
 
 const PROJECTS: Project[] = [
-  { img: pcquantiImg, url: "https://pcquanti.co.za", host: "pcquanti.co.za", name: "PC Quanti", status: "live", label: "Live", delay: ".05s" },
-  { img: reachrightImg, url: "https://reachrightmarketing.com", host: "reachrightmarketing.com", name: "ReachRight", status: "live", label: "Live", delay: ".1s" },
-  { img: deenesocialImg, url: "https://deenesocial.com", host: "deenesocial.com", name: "Deene Social", status: "live", label: "Live", delay: ".15s" },
-  { img: aifocusImg, url: "https://aifocus.work", host: "aifocus.work", name: "AI Focus", status: "live", label: "Live", delay: ".2s" },
+  { img: baobabwinesImg, url: "https://baobabwines.com", host: "baobabwines.com", name: "Baobab Wines", status: "live", label: "Live", delay: ".05s" },
+  { img: pcquantiImg, url: "https://pcquanti.co.za", host: "pcquanti.co.za", name: "PC Quanti", status: "live", label: "Live", delay: ".1s" },
+  { img: aifocusImg, url: "https://aifocus.work", host: "aifocus.work", name: "AI Focus", status: "live", label: "Live", delay: ".15s" },
+  { img: deenesocialImg, url: "https://deenesocial.com", host: "deenesocial.com", name: "Deene Social", status: "live", label: "Live", delay: ".2s" },
   { img: jacquichowlesImg, url: "https://jacquichowles.com", host: "jacquichowles.com", name: "Jacqui Chowles", status: "live", label: "Live", delay: ".25s" },
-  { img: baobabwinesImg, url: "https://jonathanavis96.github.io/baobab-wines/", host: "baobab-wines", name: "Baobab Wines", status: "soon", label: "Launching soon", delay: ".3s" },
+  { img: reachrightImg, url: "https://reachrightmarketing.com", host: "reachrightmarketing.com", name: "ReachRight", status: "live", label: "Live", delay: ".3s" },
 ];
 
 const FAQS: { q: string; a: string }[] = [
@@ -431,15 +431,15 @@ export default function Index() {
             <div className="hero-ai"><span className="cyandot" />Built to be found by AI, not just Google.</div>
           </div>
           <div className="heroframe-wrap">
-            <div className="frame clickable" data-url="https://pcquanti.co.za">
+            <div className="frame clickable" data-url="https://baobabwines.com">
               <div className="fbar">
                 <Lights />
-                <span className="u">pcquanti.co.za</span>
+                <span className="u">baobabwines.com</span>
               </div>
               <button className="expand" title="Open preview" type="button">⤢</button>
               <picture>
-                <source media="(max-width: 860px)" srcSet={pcquantiFullSm} type="image/webp" />
-                <img src={pcquantiFull} alt="PC Quanti website preview" decoding="async" />
+                <source media="(max-width: 860px)" srcSet={baobabwinesFullSm} type="image/webp" />
+                <img src={baobabwinesFull} alt="Baobab Wines website preview" decoding="async" />
               </picture>
             </div>
           </div>
@@ -594,7 +594,7 @@ export default function Index() {
           <div className="marq">
             <div className="track">
               {[0, 1].map((dup) =>
-                ["ReachRight", "Deene Social", "Jacqui Chowles", "RankSentinel", "PC Quanti", "AI Focus", "Baobab Wines"].map((n) => (
+                ["Baobab Wines", "RankSentinel", "PC Quanti", "AI Focus", "Deene Social", "Jacqui Chowles", "ReachRight"].map((n) => (
                   <span key={`${dup}-${n}`}>{n}</span>
                 ))
               )}
@@ -644,7 +644,7 @@ export default function Index() {
               <h3>Custom / Enterprise</h3>
               <p>For bigger or bespoke projects (e-commerce, bookings, integrations), we scope a tailored monthly plan.</p>
             </div>
-            <Link to="/contact-enterprise" className="btn">Talk to us</Link>
+            <Link to="/contact-enterprise/" className="btn">Talk to us</Link>
           </div>
           <p className="pricenote">Free build to get started. Hosting, SSL, backups and pro email included. Need separate mailboxes? Add professional mailbox aliases at {formatAmount(region, MAILBOX_PRICE[region])}/month each.</p>
         </div>

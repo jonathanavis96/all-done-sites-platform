@@ -87,8 +87,8 @@ export function RedesignFooter() {
           <div className="col">
             <div className="ftitle">Company</div>
             <Link to="/#getquote">Contact</Link>
-            <Link to="/privacy">Privacy</Link>
-            <Link to="/terms">Terms</Link>
+            <Link to="/privacy/">Privacy</Link>
+            <Link to="/terms/">Terms</Link>
           </div>
           <div className="col">
             <div className="ftitle">Get in touch</div>

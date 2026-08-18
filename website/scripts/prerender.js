@@ -15,6 +15,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
+import { execFileSync } from "child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
@@ -100,6 +101,35 @@ for (const route of prerenderRoutes) {
 {
   const SITE = "https://alldonesites.com";
   const today = new Date().toISOString().slice(0, 10);
+
+  // lastmod must reflect when the content actually changed, not when we last
+  // deployed. Stamping every URL with today's date on every build teaches
+  // Google to ignore the field entirely, which is the opposite of what we want
+  // for guides and articles we need recrawled promptly. Take the date from the
+  // last commit that touched the file the route's content comes from.
+  const contentFileFor = (route) => {
+    if (route.startsWith("/guides")) return "src/content/guides.tsx";
+    if (route.startsWith("/articles")) return "src/content/articles.tsx";
+    return "src/pages/Index.tsx";
+  };
+  const lastmodCache = new Map();
+  const lastmodFor = (route) => {
+    const file = contentFileFor(route);
+    if (!lastmodCache.has(file)) {
+      let date = today;
+      try {
+        date =
+          execFileSync("git", ["log", "-1", "--format=%cs", "--", file], {
+            cwd: root,
+            encoding: "utf8",
+          }).trim() || today;
+      } catch {
+        // not a git checkout (or git missing) — fall back to the build date
+      }
+      lastmodCache.set(file, date);
+    }
+    return lastmodCache.get(file);
+  };
   const toUrl = (route) => {
     if (route === "/") return `${SITE}/`;
     const clean = route.replace(/^\//, "").replace(/\/$/, "");
@@ -110,7 +140,7 @@ for (const route of prerenderRoutes) {
     const isIndex = r === "/guides" || r === "/articles";
     const priority = r === "/" ? "1.0" : isIndex ? "0.8" : "0.7";
     const changefreq = r === "/" ? "weekly" : "monthly";
-    return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+    return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmodFor(r)}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
   });
   const xml =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
