@@ -12,6 +12,7 @@ import {
 } from "@/content/guides";
 import ContentBlockView from "@/components/ContentBlockView";
 import ArticleNav from "@/components/ArticleNav";
+import { useLocalPrices } from "@/hooks/useLocalPrices";
 import { absoluteImage, imageSrcs } from "@/content/shared";
 import "@/styles/home.css";
 
@@ -21,6 +22,9 @@ const OG_IMAGE = `${SITE}/og1200x630_v2.jpg`;
 export default function GuideArticle() {
   const { slug } = useParams();
   const guide = getGuide(slug);
+
+  // Show readers outside the rand an approximate price in their own currency.
+  useLocalPrices("article.guide-body", slug);
 
   // Unknown slug: send back to the guides index (valid slugs are prerendered).
   if (!guide) return <Navigate to="/guides/" replace />;
