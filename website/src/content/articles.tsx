@@ -111,6 +111,94 @@ export const articles: Article[] = [
       },
     ],
   },
+  {
+    slug: "what-does-a-website-cost-in-south-africa",
+    title: "What Does a Website Cost in South Africa?",
+    metaTitle: "What Does a Website Cost in South Africa? | All Done Sites",
+    description:
+      "A basic South African website costs R5,590 to R15,000 once-off, custom sites from R16,900. See monthly hosting, quote breakdowns and city-by-city pricing.",
+    summary:
+      "Once-off and monthly website costs in South Africa, by site type, quote inclusions and city, from basic to custom builds.",
+    category: "Pricing",
+    readMins: 9,
+    intro:
+      "A basic small-business website in South Africa costs **R5,590** to **R15,000** once-off for a template build, and a fully custom site runs from **R16,900** upward. That is the number most people search for, but it is only the starting figure. What you actually pay depends on whether you want a brochure site or an online shop. It also depends on what a quote bundles in beyond the design, and on what hosting and maintenance add every month after launch. This article walks through each of those, band by band, so you know what a fair quote looks like before you ask for one.",
+    publishedAt: "2026-09-04",
+    updatedAt: "2026-09-04",
+    blocks: [
+      { h2: "The short answer: what a website costs in South Africa" },
+      { p: "A basic small-business site in South Africa costs roughly **R5,590** to **R15,000** once-off for a template build. A fully custom site runs from **R16,900** up to **R40,000** or more for a large, multi-page build. That once-off fee is only part of the picture. Hosting typically adds **R89** to **R499** a month, and a .co.za domain carries a small annual registration fee on top." },
+      { h3: "If you would rather pay monthly" },
+      { p: "If you would rather not carry a big once-off fee, [monthly website plans](/guides/monthly-vs-upfront-website-cost/) start at **R799** a month here. That bundles the build, hosting and a working site into one payment instead of a separate quote for each piece." },
+      { p: "These are hedged, real-world ranges. Where your site lands depends on how many pages you need, whether you are selling products, and how much of the design and copy you can supply yourself. The breakdown below covers build cost by site type, what a typical quote actually includes, ongoing monthly costs, and whether your city changes the price at all." },
+      { h2: "Website design cost by type of site, from basic to online shop" },
+      { p: "The template and custom bands above are the starting point for a brochure site. Beyond that, the type of site changes the number a lot." },
+      { p: "An online shop costs more than a brochure site, because it has to handle products, a cart and a payment gateway. Expect roughly **R7,580** to **R20,000** once-off for a standard South African online shop. Budget or DIY-tier suppliers advertise startup stores from around **R4,500**, below the standard band and not comparable to a built store. A large catalogue with custom features can run to **R80,000** or beyond." },
+      { p: "A wedding website is the other end of the scale. It is usually a single page with your date, venue and an RSVP form, so a paid build sits at or below the bottom of the template band, around **R5,590** or less. Plenty of couples skip a designer entirely and use a free DIY builder, which is a reasonable choice for a site that only has to work for a few months." },
+      { p: "At the top end, a fully custom web application is built from scratch rather than assembled from a template, and those are commonly quoted well into six figures. That is a different product to a small-business brochure or shop site, and most local businesses do not need one." },
+      { p: "Instead of a once-off fee, a [monthly plan](/guides/monthly-vs-upfront-website-cost/) spreads the build over the subscription, so the build, hosting and upkeep arrive as one payment. The tiers are set out in the monthly costs section below." },
+      { h2: "What you are actually paying for in a web design quote" },
+      { p: "A web design quote is not one line item. It usually bundles design, build, content setup and a launch check, and each of those moves the price within the bands covered in the section above." },
+      { ul: [
+        "**Design and layout:** how your pages look and how a visitor moves through them, from homepage to contact form.",
+        "**Development:** the actual build, whether that is a template configured to your business or a fully custom site coded from scratch.",
+        "**Content setup:** loading your text, images and product details so the site is ready to publish, not a shell you still have to fill in yourself.",
+        "**Testing and launch:** checking the site works on phones and different browsers before it goes live.",
+      ] },
+      { p: "A template build sits at the lower end of a quote because most of the design work is already done. A custom build costs more because every screen is designed and coded for your business specifically. That is why it sits in the custom band above rather than the template one." },
+      { p: "Two quotes for the \"same\" site can differ a lot if one includes content setup and testing and the other does not. Ask what is actually included before comparing the number at the top." },
+      { h2: "Monthly costs: what a website costs in South Africa per month" },
+      { p: "A website costs money every month even after the once-off build is paid. Hosting typically runs **R89** to **R499** a month, and a .co.za domain registration usually falls between **R150** and **R300** a year." },
+      { p: "Maintenance is the cost most quotes leave out. A small-business site typically needs **R500** to **R1,500** a month for basic updates and support. Agencies handling more involved work - security patching, backups, content changes - typically run into the thousands a month for a fuller retainer." },
+      { p: "Add those up. Even a template-built site on the cheapest hosting carries a real monthly cost once maintenance is included, and a fuller retainer costs several times that." },
+      { p: "A [monthly plan](/guides/monthly-vs-upfront-website-cost/) prices that stack up front. Launch starts at **R799** a month, Business at **R2,200**, and Premium at **R3,600**, so you know the full monthly figure before you commit." },
+      { callout: {
+        title: "Short answer",
+        body: "budget R89-R499 a month for hosting, and R500-R1,500 for basic upkeep. A full agency retainer runs into the thousands, on top of a once-off build. A bundled monthly plan folds both into a single fee.",
+      } },
+      { h2: "Does location change the price? Cape Town, Johannesburg and Durban compared" },
+      { p: "No. Most South African web designers and agencies work remotely and quote the same price whether you are in Cape Town, Johannesburg, Durban, or a small town in between. The template and custom bands above hold wherever you are based. Hosting and a .co.za domain are not local services either, so those costs do not shift by city." },
+      { p: "What can change is who you end up talking to. Cape Town and Johannesburg have more agencies to choose from, which makes it easier to get several quotes and compare them properly. Smaller centres sometimes have fewer local options, but that pushes you toward remote designers, not toward higher prices." },
+      { p: "The one place location genuinely matters is if you want in-person meetings. An agency in your own city can visit your business, which suits some owners better than a video call. That is a preference, not a cost difference: paying more for a local firm buys convenience, not a better website." },
+      { h2: "How to compare quotes and keep the cost of creating a website down" },
+      { p: "Ask every designer for the same brief so the quotes are actually comparable: pages needed, whether you are supplying copy and images, and what happens after launch. A quote that leaves out hosting or maintenance looks cheaper than one that includes it, not better." },
+      { p: "Get at least three quotes in writing, and check what each one covers beyond the build itself. As set out in the monthly costs section above, hosting typically runs **R89** to **R499** a month. A .co.za domain adds its annual registration fee on top of whatever the build itself costs." },
+      { ul: [
+        "**Scope:** how many pages, and whether product listings or a booking form push it toward the custom end.",
+        "**Content:** who writes the copy and supplies the images changes both price and timeline.",
+        "**Support:** ask what happens if something breaks after handover, and whether that is included or billed separately.",
+      ] },
+      { p: "Run that same checklist over a [monthly plan](/guides/monthly-vs-upfront-website-cost/) and the three tiers priced above already answer every line of it." },
+      { p: "A once-off build is never the whole cost. Hosting, a domain, and ongoing maintenance keep running every month after the site goes live, and a quote that skips those looks cheaper than one that does not. Whether you pay a bigger fee upfront or spread the cost into a monthly plan, what you are buying is the same site. The difference is how and when you pay for it, and a bundled plan removes the separate hosting and maintenance invoices. Location does not move the number either. A designer in Cape Town, Johannesburg or a small town charges roughly the same, so choose on quality and clarity of scope rather than proximity." },
+      { p: "All Done Sites builds and maintains exactly this kind of small-business website. That means no chasing three separate suppliers for design, hosting and upkeep. Get in touch to talk through what your site needs." },
+    ],
+    faqs: [
+      {
+        q: "How much does a basic website cost in South Africa?",
+        a: "A basic template-built site typically costs **R5,590** to **R15,000** once-off, covering design, build and content setup for a standard small-business brochure site.",
+      },
+      {
+        q: "How much does a custom website cost in South Africa?",
+        a: "A fully custom site starts at **R16,900** and can run to **R40,000** or more for a large, multi-page build with custom integrations.",
+      },
+      {
+        q: "How much does an online shop cost in South Africa?",
+        a: "A standard South African online store costs roughly **R7,580** to **R20,000** once-off, and large custom catalogues run to **R80,000** or beyond. Cheaper DIY-tier startup stores are advertised below that band, but they are not comparable to a built store.",
+      },
+      {
+        q: "What does a website cost per month in South Africa?",
+        a: "Budget **R89** to **R499** a month for hosting, and **R500** to **R1,500** a month for basic upkeep, on top of whatever the once-off build cost. A full agency retainer runs into the thousands a month. A bundled monthly plan folds both into one payment instead.",
+      },
+      {
+        q: "Does it cost more to hire a web designer in Cape Town or Johannesburg than elsewhere?",
+        a: "No. Most South African designers work remotely and charge the same regardless of city. Paying more for a local firm buys in-person meetings, not a better website.",
+      },
+      {
+        q: "What is included in a typical web design quote?",
+        a: "A quote usually bundles design and layout, development, content setup, and testing before launch. Ask what each quote actually covers before comparing the headline number.",
+      },
+    ],
+  },
 ];
 
 export function getArticle(slug: string | undefined): Article | undefined {
