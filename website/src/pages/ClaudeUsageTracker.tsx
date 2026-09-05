@@ -104,10 +104,12 @@ export default function ClaudeUsageTracker() {
 
   const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
   const h = data ? headline(data) : null;
-  const stale = data ? Date.now() - new Date(data.generated_at).getTime() > 3 * 86400e3 : false;
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
+  // The stale flag depends on the clock, so it is also decided after mount, never in the prerender.
+  const [stale, setStale] = useState(false);
   useEffect(() => {
+    setStale(data ? Date.now() - new Date(data.generated_at).getTime() > 3 * 86400e3 : false);
     setLocalTime(
       data?.last_sample_at
         ? new Date(data.last_sample_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
