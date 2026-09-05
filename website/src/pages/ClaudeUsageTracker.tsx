@@ -17,6 +17,9 @@ import {
 } from "@/lib/claudeUsage";
 import "@/styles/home.css";
 import "@/styles/claude-usage.css";
+// Build-time snapshot so the prerendered HTML carries real figures; the fetch below refreshes it.
+import initialJson from "../../public/data/claude-usage.json";
+const initialData = initialJson as unknown as UsageJson;
 
 const SITE = "https://alldonesites.com";
 
@@ -79,7 +82,7 @@ function Chart({
 }
 
 export default function ClaudeUsageTracker() {
-  const [data, setData] = useState<UsageJson | null>(null);
+  const [data, setData] = useState<UsageJson | null>(initialData);
   const [failed, setFailed] = useState(false);
   const [plan, setPlan] = useState<Plan>("max20");
   const [model, setModel] = useState("claude-sonnet-5");
@@ -207,7 +210,7 @@ export default function ClaudeUsageTracker() {
             <div className="sub">
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window
             </div>
-            <Chart points={seriesFor(data, plan, model)} change={data.last_change} />
+            <Chart points={seriesFor(data, plan, model)} change={data.last_change?.model === model ? data.last_change : null} />
           </section>
         )}
 
@@ -279,7 +282,7 @@ export default function ClaudeUsageTracker() {
         </section>
 
         <p className="sub" style={{ textAlign: "center", padding: "24px 0 8px" }}>
-          All Done Sites measures before it claims. Want a site that does the same? <a href="/#contact">Get in touch</a>
+          All Done Sites measures before it claims. Want a site that does the same? <a href="/#getquote">Get in touch</a>
         </p>
       </div>
     </PageShell>
