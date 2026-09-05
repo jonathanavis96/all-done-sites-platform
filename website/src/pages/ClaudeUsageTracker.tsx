@@ -146,7 +146,7 @@ export default function ClaudeUsageTracker() {
               <div className="sentence">
                 On{" "}
                 <span className="sel">
-                  <select value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
+                  <select aria-label="Plan" value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
                     {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => (
                       <option key={p} value={p}>{PLAN_LABELS[p]}</option>
                     ))}
@@ -154,7 +154,7 @@ export default function ClaudeUsageTracker() {
                 </span>
                 , running{" "}
                 <span className="sel">
-                  <select value={model} onChange={(e) => setModel(e.target.value)}>
+                  <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
                     {Object.keys(data.rates).map((m) => (
                       <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
                     ))}
@@ -162,7 +162,7 @@ export default function ClaudeUsageTracker() {
                 </span>{" "}
                 at{" "}
                 <span className="sel">
-                  <select value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
+                  <select aria-label="Effort" value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
                     {EFFORTS.map((e) => (
                       <option key={e} value={e}>{e}</option>
                     ))}
