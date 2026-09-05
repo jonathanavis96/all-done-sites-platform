@@ -215,8 +215,8 @@ export default function ClaudeUsageTracker() {
           <section>
             <h2>Plan comparison</h2>
             <div className="sub">
-              {MODEL_LABELS[model] ?? model} at {effort} effort. Max 20x is measured; Max 5x uses the ratio observed at the
-              August plan change; Pro is scaled 1:5 from Max 5x.
+              {MODEL_LABELS[model] ?? model} at {effort} effort. Max 20x is measured; Pro and Max 5x are scaled from it by
+              Anthropic's published 1:5:20 ratios.
             </div>
             <table>
               <thead>
