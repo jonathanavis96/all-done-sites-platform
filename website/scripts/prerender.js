@@ -110,6 +110,7 @@ for (const route of prerenderRoutes) {
   const contentFileFor = (route) => {
     if (route.startsWith("/guides")) return "src/content/guides.tsx";
     if (route.startsWith("/articles")) return "src/content/articles.tsx";
+    if (route === "/claude-usage-tracker") return "public/data/claude-usage.json";
     return "src/pages/Index.tsx";
   };
   const lastmodCache = new Map();
@@ -139,7 +140,7 @@ for (const route of prerenderRoutes) {
     const loc = toUrl(r);
     const isIndex = r === "/guides" || r === "/articles";
     const priority = r === "/" ? "1.0" : isIndex ? "0.8" : "0.7";
-    const changefreq = r === "/" ? "weekly" : "monthly";
+    const changefreq = r === "/" ? "weekly" : r === "/claude-usage-tracker" ? "daily" : "monthly";
     return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmodFor(r)}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
   });
   const xml =

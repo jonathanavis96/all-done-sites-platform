@@ -105,10 +105,18 @@ export default function ClaudeUsageTracker() {
   const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
   const h = data ? headline(data) : null;
   const stale = data ? Date.now() - new Date(data.generated_at).getTime() > 3 * 86400e3 : false;
-  const localTime = data?.last_sample_at
-    ? new Date(data.last_sample_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : null;
-  const unavailable = failed || (data !== null && r === null);
+  // Localise only after mount: the prerender must emit the same text the first client render produces.
+  const [localTime, setLocalTime] = useState<string | null>(null);
+  useEffect(() => {
+    setLocalTime(
+      data?.last_sample_at
+        ? new Date(data.last_sample_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        : null,
+    );
+  }, [data]);
+  const sampleTime = localTime ? `${localTime} local` : data?.last_sample_at ? `${data.last_sample_at.slice(11, 16)} UTC` : null;
+  // A failed refresh is not fatal while the build-time snapshot is still usable.
+  const unavailable = (failed && data === null) || (data !== null && r === null);
 
   return (
     <PageShell>
@@ -141,7 +149,7 @@ export default function ClaudeUsageTracker() {
               <i />
               <span>Measured daily from a real account</span>
               <em className="dot">·</em>
-              <span>last sample {localTime} local</span>
+              <span>last sample {sampleTime}</span>
             </div>
           )}
           {!unavailable && data && r && (
