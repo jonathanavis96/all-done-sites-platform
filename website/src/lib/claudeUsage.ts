@@ -26,8 +26,9 @@ const WINDOWS_PER_WEEK = 28;
 
 export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort) {
   const rate = j.rates[model];
+  if (!rate) return null; // no probe data for this model yet: the page shows its unavailable state
   const tokensPerWindow = rate.tokens_per_window * j.plan_ratios[plan];
-  const split = Object.fromEntries(CLASSES.map((c) => [c, tokensPerWindow * (rate.split[c] ?? 0)])) as Record<TokenClass, number>;
+  const split = Object.fromEntries(CLASSES.map((c) => [c, tokensPerWindow * (rate.split?.[c] ?? 0)])) as Record<TokenClass, number>;
   const perTask = j.effort[model]?.[effort] ?? NaN;
   const tasksPerWindow = tokensPerWindow / perTask;
   const prices = j.api_price_per_mtok[model];
@@ -45,7 +46,8 @@ export function fmtDate(iso: string): string {
 export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "flat" } {
   const c = j.last_change;
   if (!c) {
-    const first = Object.values(j.history).flat().map((h) => h.date).sort()[0];
+    const first = Object.values(j.history ?? {}).flat().map((h) => h.date).sort()[0];
+    if (!first) return { text: "Anthropic hasn't changed Claude's limits since we started measuring.", tone: "flat" };
     return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
   }
   return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(c.date)}.`, tone: c.direction === "increased" ? "up" : "down" };

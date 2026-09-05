@@ -56,3 +56,9 @@ describe("seriesFor", () => {
     expect(s[1]).toEqual({ date: "2026-09-05", value: 10_500_000, interpolated: false });
   });
 });
+
+it("does not throw on a missing model or an empty history", () => {
+  expect(compute(J, "max20", "claude-nonexistent", "high")).toBeNull();
+  const empty = { ...J, last_change: null, history: {} };
+  expect(headline(empty).tone).toBe("flat");
+});
