@@ -44,6 +44,7 @@ export function render(url: string): { html: string; head: string; headFull: str
  * index and that article in together.
  */
 export const prerenderRoutes: string[] = [
+  "/claude-usage-tracker",
   "/guides",
   ...guides.map((g) => `/guides/${g.slug}`),
   ...(articles.length > 0 ? ["/articles", ...articles.map((a) => `/articles/${a.slug}`)] : []),

@@ -13,6 +13,7 @@ import GuidesIndex from "./pages/GuidesIndex";
 import GuideArticle from "./pages/GuideArticle";
 import ArticlesIndex from "./pages/ArticlesIndex";
 import ArticleArticle from "./pages/ArticleArticle";
+import ClaudeUsageTracker from "./pages/ClaudeUsageTracker";
 
 // Secondary pages are code-split so they don't weigh down the homepage bundle.
 const ContactEnterprise = lazy(() => import("./pages/ContactEnterprise"));
@@ -53,6 +54,7 @@ export default function App() {
             {/* Content / SEO guides */}
             <Route path="/guides" element={<GuidesIndex />} />
             <Route path="/guides/:slug" element={<GuideArticle />} />
+            <Route path="/claude-usage-tracker" element={<ClaudeUsageTracker />} />
 
             {/* Articles (news / longer-form). Prerendered only once the
                 collection has content — see entry-server.tsx. */}
