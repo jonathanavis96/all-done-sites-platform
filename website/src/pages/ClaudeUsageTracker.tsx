@@ -64,7 +64,6 @@ function Chart({
   };
   const x = (i: number) => xDate(points[i].date) ?? L;
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
-  const path = points.map((p, i) => `${x(i)},${y(p.value)}`).join(" ");
   // Held (backfilled) rows are flat-lined at the first real reading, not measured: they are
   // drawn as a dashed grey segment with no fill, so a reader never mistakes the flat line for
   // a proven period of no change. firstRealIdx is the earliest point that is a real reading.
