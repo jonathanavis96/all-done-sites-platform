@@ -22,6 +22,7 @@ import {
   type RangeDays,
   type UsageEvent,
   type UsageJson,
+  type WeeklySeries,
 } from "@/lib/claudeUsage";
 import "@/styles/home.css";
 import "@/styles/claude-usage.css";
@@ -169,7 +170,7 @@ function WeeklyChart({
   events,
   selectedPlan,
 }: {
-  series: { plan: Plan; assumed: boolean; points: { date: string; windows: number; partial: boolean }[] }[];
+  series: WeeklySeries[];
   events: UsageEvent[];
   selectedPlan: Plan;
 }) {
@@ -197,7 +198,7 @@ function WeeklyChart({
   const labelEvery = Math.max(1, Math.floor(allDates.length / 5));
   const ariaLabel = [
     "Weekly limit, 5-hour windows per week over time",
-    ...plotted.map((s) => `${PLAN_LABELS[s.plan]}${s.assumed ? " (assumed)" : ""}: ${s.points.map((p) => `${fmtDate(p.date)} ${p.windows.toFixed(1)}${p.partial ? " (partial week)" : ""}`).join(", ")}`),
+    ...plotted.map((s) => `${s.label}: ${s.points.map((p) => `${fmtDate(p.date)} ${p.windows.toFixed(1)}${p.partial ? " (partial week)" : ""}`).join(", ")}`),
     ...shown.map((ev) => `${fmtDate(ev.date)}: ${ev.label}`),
   ].join(". ");
   return (
@@ -229,23 +230,23 @@ function WeeklyChart({
       {plotted.map((s) => {
         const pts = s.points.filter((p) => xDate(p.date) !== null);
         if (pts.length === 0) return null;
-        const isSelected = s.plan === selectedPlan;
+        const isSelected = s.plan === selectedPlan || (!!s.sharedWithPro && (selectedPlan === "pro" || selectedPlan === "max5"));
         const color = isSelected ? "#0EA5E9" : "#94A3B8";
         const width = isSelected ? 2.5 : 1.5;
-        const opacity = isSelected ? 1 : 0.7;
         const path = pts.map((p) => `${xDate(p.date)},${y(p.windows)}`).join(" ");
         let lastPartialIdx = -1;
         for (let i = pts.length - 1; i >= 0; i--) {
           if (pts[i].partial) { lastPartialIdx = i; break; }
         }
+        const last = pts[pts.length - 1];
+        const lastX = xDate(last.date)!;
+        const nearRightEdge = lastX > R - 120;
         return (
           <g key={s.plan}>
             <polyline
               fill="none"
               stroke={color}
               strokeWidth={width}
-              strokeOpacity={opacity}
-              strokeDasharray={s.assumed ? "4 4" : undefined}
               strokeLinejoin="round"
               points={path}
             />
@@ -258,7 +259,6 @@ function WeeklyChart({
                 fill={p.partial ? "#fff" : color}
                 stroke={color}
                 strokeWidth={p.partial ? 2 : 1}
-                strokeOpacity={opacity}
               />
             ))}
             {lastPartialIdx !== -1 && (
@@ -270,6 +270,14 @@ function WeeklyChart({
                 partial week
               </text>
             )}
+            <text
+              x={nearRightEdge ? lastX - 6 : lastX + 6}
+              y={y(last.windows) - (lastPartialIdx === pts.length - 1 ? 20 : 8)}
+              textAnchor={nearRightEdge ? "end" : "start"}
+              style={{ fill: color, fontWeight: 600 }}
+            >
+              {s.label}
+            </text>
           </g>
         );
       })}
@@ -481,15 +489,13 @@ export default function ClaudeUsageTracker() {
         {!unavailable && data && (
           <section>
             <h2>Weekly limit, 5-hour windows per week</h2>
-            <div className="sub">
-              How many 5-hour windows fit in one week, measured from the usage meter. Full history: it needs only
-              meter readings, not probes, so it runs back further than the window chart.
-            </div>
+            <p className="sub">
+              How many 5-hour windows fit in one week, read from the usage meter. Full history.
+            </p>
             <WeeklyChart series={weeklySeries} events={weeklyEvents} selectedPlan={plan} />
             {weeklySeries.some((s) => s.points.length >= 2) && (
               <p className="sub chart-legend">
-                Solid: selected plan. Faint: other plans. Dashed: assumed from the Max 5x ratio, not measured.
-                Hollow: week still in progress.
+                Solid: selected plan. Grey: the other. Pro is assumed from the Max 5x ratio, not measured. Hollow: week in progress.
               </p>
             )}
           </section>

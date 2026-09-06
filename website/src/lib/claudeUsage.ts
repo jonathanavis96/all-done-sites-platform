@@ -184,12 +184,27 @@ export interface WeeklyPoint {
   partial: boolean;
 }
 
+export interface WeeklySeries {
+  plan: Plan;
+  assumed: boolean;
+  label: string;
+  // True when this series stands in for both Max 5x (measured) and Pro (assumed identical to
+  // it), so selecting either plan should draw this one series solid.
+  sharedWithPro?: boolean;
+  points: WeeklyPoint[];
+}
+
+function samePoints(a: WeeklyPoint[], b: WeeklyPoint[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((p, i) => p.date === b[i].date && p.windows === b[i].windows);
+}
+
 // Unlike seriesFor/eventsFor, the weekly chart is not scoped to the 30/90/180-day range
 // selector: it needs only meter readings (not probes), so its full history is cheap and the
 // range picker would otherwise hide the very history (months back) that justifies the chart.
-export function weeklySeriesFor(j: UsageJson): { plan: Plan; assumed: boolean; points: WeeklyPoint[] }[] {
+export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
   const lastSampleDate = j.last_sample_at ? j.last_sample_at.slice(0, 10) : null;
-  const out: { plan: Plan; assumed: boolean; points: WeeklyPoint[] }[] = [];
+  const byPlan = new Map<Plan, { assumed: boolean; points: WeeklyPoint[] }>();
   for (const p of Object.keys(PLAN_LABELS) as Plan[]) {
     const w = j.weekly_windows?.[p];
     if (!w || w.history.length === 0) continue;
@@ -198,7 +213,21 @@ export function weeklySeriesFor(j: UsageJson): { plan: Plan; assumed: boolean; p
       windows: h.windows,
       partial: lastSampleDate !== null && h.week_ending > lastSampleDate,
     }));
-    out.push({ plan: p, assumed: !!w.assumed, points });
+    byPlan.set(p, { assumed: !!w.assumed, points });
+  }
+  const pro = byPlan.get("pro");
+  const max5 = byPlan.get("max5");
+  // Pro's history today is usually just a copy of Max 5x's, borrowed rather than measured. When
+  // that is literally true (assumed, and every point matches), collapse the two into one labelled
+  // series instead of drawing two identical overlapping lines.
+  const collapse = !!pro && !!max5 && pro.assumed && samePoints(pro.points, max5.points);
+  const out: WeeklySeries[] = [];
+  for (const p of Object.keys(PLAN_LABELS) as Plan[]) {
+    if (p === "pro" && collapse) continue;
+    const w = byPlan.get(p);
+    if (!w) continue;
+    const label = p === "max5" && collapse ? "Max 5x and Pro (assumed)" : PLAN_LABELS[p];
+    out.push({ plan: p, assumed: w.assumed, label, sharedWithPro: p === "max5" && collapse, points: w.points });
   }
   return out;
 }
