@@ -265,10 +265,48 @@ describe("weeklySeriesFor", () => {
     const max5 = s.find((x) => x.plan === "max5")!;
     expect(max5.points.map((p) => p.partial)).toEqual([false, false, true]);
   });
-  it("carries the plan's assumed flag", () => {
+  it("collapses pro into max5 when pro is assumed and identical to max5, labelling the shared series", () => {
+    // WJ's pro history is a copy of max5's and flagged assumed, matching the live data shape
+    // today: two overlapping lines are pointless, so they draw as one labelled series.
     const s = weeklySeriesFor(WJ);
-    expect(s.find((x) => x.plan === "pro")!.assumed).toBe(true);
-    expect(s.find((x) => x.plan === "max5")!.assumed).toBe(false);
+    expect(s.some((x) => x.plan === "pro")).toBe(false);
+    const max5 = s.find((x) => x.plan === "max5")!;
+    expect(max5.label).toBe("Max 5x and Pro (assumed)");
+    expect(max5.sharedWithPro).toBe(true);
+    expect(max5.assumed).toBe(false);
+  });
+  it("keeps pro and max5 as separate labelled series when pro's points differ from max5's", () => {
+    const withDifferingPro: UsageJson = {
+      ...WJ,
+      weekly_windows: {
+        ...WJ.weekly_windows!,
+        pro: {
+          current: 8.4,
+          assumed: true,
+          history: [
+            { week_ending: "2026-08-01", windows: 8, five_hour_pct: 0.3, seven_day_pct: 0.8 },
+            { week_ending: "2026-09-05", windows: 8.4, five_hour_pct: 0.35, seven_day_pct: 0.85 },
+            { week_ending: "2026-09-12", windows: 8.6, five_hour_pct: 0.4, seven_day_pct: 0.9 },
+          ],
+        },
+      },
+    };
+    const s = weeklySeriesFor(withDifferingPro);
+    const pro = s.find((x) => x.plan === "pro")!;
+    const max5 = s.find((x) => x.plan === "max5")!;
+    expect(pro).toBeDefined();
+    expect(max5).toBeDefined();
+    expect(pro.label).toBe("Pro");
+    expect(pro.sharedWithPro).toBeFalsy();
+    expect(max5.label).toBe("Max 5x");
+    expect(max5.sharedWithPro).toBeFalsy();
+  });
+  it("leaves max20 unaffected by the pro/max5 collapse", () => {
+    const s = weeklySeriesFor(WJ);
+    const max20 = s.find((x) => x.plan === "max20")!;
+    expect(max20.label).toBe("Max 20x");
+    expect(max20.sharedWithPro).toBeFalsy();
+    expect(max20.points.map((p) => p.windows)).toEqual([10, 10.5, 11.2]);
   });
   it("skips a plan with a null weekly_windows entry", () => {
     const withNullMax20: UsageJson = { ...WJ, weekly_windows: { ...WJ.weekly_windows!, max20: null } };
