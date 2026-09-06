@@ -6,13 +6,17 @@ import {
   EFFORTS,
   MODEL_LABELS,
   PLAN_LABELS,
+  RANGE_DAYS,
   compute,
+  eventsFor,
   fmtDate,
   fmtTokens,
   headline,
   seriesFor,
   type Effort,
   type Plan,
+  type RangeDays,
+  type UsageEvent,
   type UsageJson,
 } from "@/lib/claudeUsage";
 import "@/styles/home.css";
@@ -26,9 +30,11 @@ const SITE = "https://alldonesites.com";
 function Chart({
   points,
   change,
+  events,
 }: {
   points: { date: string; value: number; interpolated: boolean }[];
   change: { date: string; direction: string; percent: number } | null;
+  events: UsageEvent[];
 }) {
   if (points.length < 2) return <p className="sub">Not enough history yet.</p>;
   const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
@@ -71,6 +77,20 @@ function Chart({
           </text>
         </g>
       )}
+      {events.map((ev) => {
+        const idx = points.findIndex((p) => p.date >= ev.date);
+        if (idx < 0) return null;
+        const xx = x(idx);
+        const color = ev.kind === "change" ? "#B42318" : "#8A94A6";
+        return (
+          <g key={`${ev.date}-${ev.label}`}>
+            <line x1={xx} x2={xx} y1={T} y2={B} stroke={color} strokeWidth="1.25" strokeDasharray="4 3" />
+            <text x={Math.min(xx + 4, R - 4)} y={T + 10} textAnchor={xx > R - 60 ? "end" : "start"} style={{ fill: color, fontWeight: 500 }}>
+              {ev.label}
+            </text>
+          </g>
+        );
+      })}
       <circle cx={R} cy={y(points[points.length - 1].value)} r="4.5" fill="#0EA5E9" stroke="#fff" strokeWidth="2" />
       <g style={{ fill: "#0277B5", fontWeight: 500 }}>
         {points.map(
@@ -87,6 +107,7 @@ export default function ClaudeUsageTracker() {
   const [plan, setPlan] = useState<Plan>("max20");
   const [model, setModel] = useState("claude-sonnet-5");
   const [effort, setEffort] = useState<Effort>("high");
+  const [range, setRange] = useState<RangeDays>(90);
 
   useEffect(() => {
     fetch("/data/claude-usage.json")
@@ -216,11 +237,33 @@ export default function ClaudeUsageTracker() {
 
         {!unavailable && data && (
           <section>
-            <h2>Effective window size, last 90 days</h2>
+            <div className="h2row">
+              <h2>Effective window size, last {range} days</h2>
+              <div className="range-toggle" role="group" aria-label="Chart range">
+                {RANGE_DAYS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={range === d}
+                    onClick={() => setRange(d)}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="sub">
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window
             </div>
-            <Chart points={seriesFor(data, plan, model)} change={data.last_change?.model === model ? data.last_change : null} />
+            <Chart
+              points={seriesFor(data, plan, model, range)}
+              change={
+                data.last_change && (data.last_change.model === model || data.last_change.model === "all")
+                  ? data.last_change
+                  : null
+              }
+              events={eventsFor(data, model, range)}
+            />
           </section>
         )}
 

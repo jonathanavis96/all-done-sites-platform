@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compute, headline, fmtTokens, seriesFor, type UsageJson } from "./claudeUsage";
+import { compute, headline, fmtTokens, seriesFor, eventsFor, type UsageJson } from "./claudeUsage";
 
 const J: UsageJson = {
   generated_at: "2026-09-05T20:15:00+00:00",
@@ -11,9 +11,15 @@ const J: UsageJson = {
   effort: { "claude-sonnet-5": { low: 900_000, medium: 1_400_000, high: 2_520_000, xhigh: 3_900_000, max: 5_600_000 } },
   api_price_per_mtok: { "claude-sonnet-5": { input: 3, output: 15, cache_read: 0.3, cache_write: 3.75 } },
   history: { "claude-sonnet-5": [
+    { date: "2026-05-01", tokens_per_window: 38_000_000, source: "passive", interpolated: false },
     { date: "2026-08-01", tokens_per_window: 40_000_000, source: "passive", interpolated: false },
     { date: "2026-09-05", tokens_per_window: 42_000_000, source: "probe", interpolated: false } ] },
   last_change: { date: "2026-09-02", direction: "decreased", percent: 14, model: "claude-sonnet-5" },
+  events: [
+    { date: "2026-05-15", kind: "plan", label: "Plan started" },
+    { date: "2026-08-01", kind: "change", label: "Limit change" },
+    { date: "2026-01-01", kind: "plan", label: "Too old" },
+  ],
 };
 
 describe("compute", () => {
@@ -38,7 +44,7 @@ describe("headline", () => {
   it("states no change when none", () => {
     const h = headline({ ...J, last_change: null });
     expect(h.tone).toBe("flat");
-    expect(h.text).toBe("Anthropic hasn't changed Claude's limits since 1 Aug 2026.");
+    expect(h.text).toBe("Anthropic hasn't changed Claude's limits since 1 May 2026.");
   });
 });
 
@@ -54,6 +60,33 @@ describe("seriesFor", () => {
   it("scales history by plan", () => {
     const s = seriesFor(J, "max5", "claude-sonnet-5");
     expect(s[1]).toEqual({ date: "2026-09-05", value: 10_500_000, interpolated: false });
+  });
+  it("defaults to the last 90 days, dropping older points", () => {
+    const s = seriesFor(J, "max20", "claude-sonnet-5");
+    expect(s.map((p) => p.date)).toEqual(["2026-08-01", "2026-09-05"]);
+  });
+  it("narrows to a 30-day window", () => {
+    const s = seriesFor(J, "max20", "claude-sonnet-5", 30);
+    expect(s.map((p) => p.date)).toEqual(["2026-09-05"]);
+  });
+  it("widens to a 180-day window", () => {
+    const s = seriesFor(J, "max20", "claude-sonnet-5", 180);
+    expect(s.map((p) => p.date)).toEqual(["2026-05-01", "2026-08-01", "2026-09-05"]);
+  });
+});
+
+describe("eventsFor", () => {
+  it("keeps only events inside the visible range", () => {
+    expect(eventsFor(J, "claude-sonnet-5", 90)).toEqual([{ date: "2026-08-01", kind: "change", label: "Limit change" }]);
+  });
+  it("widens with the range", () => {
+    expect(eventsFor(J, "claude-sonnet-5", 180)).toEqual([
+      { date: "2026-05-15", kind: "plan", label: "Plan started" },
+      { date: "2026-08-01", kind: "change", label: "Limit change" },
+    ]);
+  });
+  it("returns nothing for a model with no history", () => {
+    expect(eventsFor(J, "claude-nonexistent", 90)).toEqual([]);
   });
 });
 
