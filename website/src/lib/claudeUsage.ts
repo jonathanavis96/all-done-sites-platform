@@ -1,6 +1,12 @@
 export type Plan = "pro" | "max5" | "max20";
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export type TokenClass = "input" | "output" | "cache_read" | "cache_write";
+export type EventKind = "plan" | "change";
+export interface UsageEvent {
+  date: string;
+  kind: EventKind;
+  label: string;
+}
 
 export interface UsageJson {
   generated_at: string;
@@ -12,7 +18,11 @@ export interface UsageJson {
   api_price_per_mtok: Record<string, Record<TokenClass, number>>;
   history: Record<string, { date: string; tokens_per_window: number; source: string; interpolated: boolean }[]>;
   last_change: { date: string; direction: "increased" | "decreased"; percent: number; model: string } | null;
+  events?: UsageEvent[];
 }
+
+export const RANGE_DAYS = [30, 90, 180] as const;
+export type RangeDays = (typeof RANGE_DAYS)[number];
 
 export const MODEL_LABELS: Record<string, string> = {
   "claude-sonnet-5": "Sonnet 5",
@@ -59,7 +69,28 @@ export function fmtTokens(n: number): string {
   return String(Math.round(n));
 }
 
-export function seriesFor(j: UsageJson, plan: Plan, model: string) {
+// The window is anchored to the last recorded sample date, not the real clock: keeps the
+// prerender and the first client render identical regardless of when either one runs.
+function daysBefore(dateIso: string, days: number): string {
+  const d = new Date(dateIso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+export function seriesFor(j: UsageJson, plan: Plan, model: string, days: number = 90) {
   const ratio = j.plan_ratios[plan];
-  return (j.history[model] ?? []).map((h) => ({ date: h.date, value: h.tokens_per_window * ratio, interpolated: h.interpolated }));
+  const hist = j.history[model] ?? [];
+  if (hist.length === 0) return [];
+  const cutoff = daysBefore(hist[hist.length - 1].date, days);
+  return hist
+    .filter((h) => h.date >= cutoff)
+    .map((h) => ({ date: h.date, value: h.tokens_per_window * ratio, interpolated: h.interpolated }));
+}
+
+export function eventsFor(j: UsageJson, model: string, days: number = 90): UsageEvent[] {
+  const hist = j.history[model] ?? [];
+  if (hist.length === 0) return [];
+  const anchor = hist[hist.length - 1].date;
+  const cutoff = daysBefore(anchor, days);
+  return (j.events ?? []).filter((e) => e.date >= cutoff && e.date <= anchor);
 }

@@ -20,6 +20,13 @@
 .cut .quiet { font-size: 15px; color: var(--ads-mut); margin-top: 12px; }
 .cut section { padding: 48px 0; border-top: 1px solid var(--ads-line); }
 .cut h2 { font-family: var(--ads-disp); font-size: 20px; margin: 0 0 6px; }
+.cut .h2row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cut .h2row h2 { margin: 0; }
+.cut .range-toggle { display: inline-flex; gap: 4px; }
+.cut .range-toggle button { font: inherit; font-size: 13px; font-weight: 600; padding: 4px 12px; border: 1px solid var(--ads-line); border-radius: 999px; background: var(--ads-surface); color: var(--ads-mut); cursor: pointer; }
+.cut .range-toggle button:hover { color: var(--ads-acd); border-color: var(--ads-acd); }
+.cut .range-toggle button[aria-pressed="true"] { color: var(--ads-acd); border-color: var(--ads-acd); background: rgba(14,165,233,.08); }
+.cut .range-toggle button:focus-visible { outline: 2px solid var(--ads-acd); outline-offset: 2px; }
 .cut .sub { font-size: 14px; color: var(--ads-mut); margin-bottom: 24px; }
 .cut svg.chart text { font-family: var(--ads-body); font-size: 11px; fill: var(--ads-mut); }
 .cut table { width: 100%; border-collapse: collapse; font-size: 14px; }

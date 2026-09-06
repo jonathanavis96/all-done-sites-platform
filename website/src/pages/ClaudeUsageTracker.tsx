@@ -6,13 +6,17 @@ import {
   EFFORTS,
   MODEL_LABELS,
   PLAN_LABELS,
+  RANGE_DAYS,
   compute,
+  eventsFor,
   fmtDate,
   fmtTokens,
   headline,
   seriesFor,
   type Effort,
   type Plan,
+  type RangeDays,
+  type UsageEvent,
   type UsageJson,
 } from "@/lib/claudeUsage";
 import "@/styles/home.css";
@@ -26,22 +30,53 @@ const SITE = "https://alldonesites.com";
 function Chart({
   points,
   change,
+  events,
+  days,
 }: {
   points: { date: string; value: number; interpolated: boolean }[];
   change: { date: string; direction: string; percent: number } | null;
+  events: UsageEvent[];
+  days: number;
 }) {
   if (points.length < 2) return <p className="sub">Not enough history yet.</p>;
   const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
   const vals = points.map((p) => p.value);
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
-  const x = (i: number) => L + (i / (points.length - 1)) * (R - L);
+  // One date scale for samples and markers: every x is elapsed time between the first and
+  // last sample, so a sparse or irregular history never puts a marker beside the wrong point.
+  const day = (d: string) => Date.parse(d + "T00:00:00Z");
+  // The axis starts at the earlier of the first sample and the earliest marker inside the
+  // selected range, so an in-range marker before the first sample stays visible while a
+  // marker older than the range cutoff never widens the chart.
+  const d1 = day(points[points.length - 1].date);
+  const cutoff = d1 - days * 86400e3;
+  const markerDays = [...events.map((ev) => ev.date), ...(change ? [change.date] : [])]
+    .map(day)
+    .filter((t) => t >= cutoff && t <= d1);
+  const d0 = Math.min(day(points[0].date), ...markerDays);
+  const span = Math.max(1, d1 - d0);
+  const xDate = (d: string) => {
+    const t = day(d);
+    if (!(t >= d0 && t <= d1)) return null;
+    return L + ((t - d0) / span) * (R - L);
+  };
+  const x = (i: number) => xDate(points[i].date) ?? L;
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
   const path = points.map((p, i) => `${x(i)},${y(p.value)}`).join(" ");
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
-  const ci = change ? points.findIndex((p) => p.date >= change.date) : -1;
+  const cx = change ? xDate(change.date) : null;
   const labelEvery = Math.max(1, Math.floor(points.length / 5));
+  // The SVG is one image to assistive technology, so its label carries the marker text too.
+  const shown = events.filter((ev) => xDate(ev.date) !== null && !(change && ev.kind === "change" && ev.date === change.date));
+  const ariaLabel = [
+    "Effective window size over time",
+    ...(change && xDate(change.date) !== null
+      ? [`${fmtDate(change.date)}: window ${change.direction === "decreased" ? "down" : "up"} ${change.percent}%`]
+      : []),
+    ...shown.map((ev) => `${fmtDate(ev.date)}: ${ev.label}`),
+  ].join(". ");
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Effective window size over time">
+    <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
       <defs>
         <linearGradient id="cutfill" x1="0" x2="0" y1="0" y2="1">
           <stop offset="0" stopColor="#0EA5E9" stopOpacity=".28" />
@@ -62,15 +97,30 @@ function Chart({
         (p, i) =>
           p.interpolated && <circle key={p.date} cx={x(i)} cy={y(p.value)} r="3" fill="#fff" stroke="#0EA5E9" strokeWidth="2" />
       )}
-      {ci >= 0 && (
+      {cx !== null && (
         <g>
-          <line x1={x(ci)} x2={x(ci)} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
-          <rect x={Math.min(x(ci) + 7, R - 120)} y={T + 4} width="112" height="22" rx="6" fill="#B42318" />
-          <text x={Math.min(x(ci) + 15, R - 112)} y={T + 19} style={{ fill: "#fff", fontWeight: 600 }}>
+          <line x1={cx} x2={cx} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
+          <rect x={Math.min(cx + 7, R - 120)} y={T + 4} width="112" height="22" rx="6" fill="#B42318" />
+          <text x={Math.min(cx + 15, R - 112)} y={T + 19} style={{ fill: "#fff", fontWeight: 600 }}>
             {fmtDate(change!.date).slice(0, 6)} · {change!.direction === "decreased" ? "down" : "up"} {change!.percent}%
           </text>
         </g>
       )}
+      {events.map((ev) => {
+        // The last change already has its own boxed marker; do not draw it twice.
+        if (change && ev.kind === "change" && ev.date === change.date) return null;
+        const xx = xDate(ev.date);
+        if (xx === null) return null;
+        const color = ev.kind === "change" ? "#B42318" : "#8A94A6";
+        return (
+          <g key={`${ev.date}-${ev.label}`}>
+            <line x1={xx} x2={xx} y1={T} y2={B} stroke={color} strokeWidth="1.25" strokeDasharray="4 3" />
+            <text x={xx > R - 140 ? xx - 4 : xx + 4} y={T + 10} textAnchor={xx > R - 140 ? "end" : "start"} style={{ fill: color, fontWeight: 500 }}>
+              {ev.label}
+            </text>
+          </g>
+        );
+      })}
       <circle cx={R} cy={y(points[points.length - 1].value)} r="4.5" fill="#0EA5E9" stroke="#fff" strokeWidth="2" />
       <g style={{ fill: "#0277B5", fontWeight: 500 }}>
         {points.map(
@@ -87,6 +137,7 @@ export default function ClaudeUsageTracker() {
   const [plan, setPlan] = useState<Plan>("max20");
   const [model, setModel] = useState("claude-sonnet-5");
   const [effort, setEffort] = useState<Effort>("high");
+  const [range, setRange] = useState<RangeDays>(90);
 
   useEffect(() => {
     fetch("/data/claude-usage.json")
@@ -216,11 +267,34 @@ export default function ClaudeUsageTracker() {
 
         {!unavailable && data && (
           <section>
-            <h2>Effective window size, last 90 days</h2>
+            <div className="h2row">
+              <h2>Effective window size, last {range} days</h2>
+              <div className="range-toggle" role="group" aria-label="Chart range">
+                {RANGE_DAYS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={range === d}
+                    onClick={() => setRange(d)}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="sub">
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window
             </div>
-            <Chart points={seriesFor(data, plan, model)} change={data.last_change?.model === model ? data.last_change : null} />
+            <Chart
+              points={seriesFor(data, plan, model, range)}
+              change={
+                data.last_change && (data.last_change.model === model || data.last_change.model === "all")
+                  ? data.last_change
+                  : null
+              }
+              events={eventsFor(data, model, range)}
+              days={range}
+            />
           </section>
         )}
 
