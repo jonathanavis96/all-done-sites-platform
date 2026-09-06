@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compute, headline, fmtTokens, seriesFor, eventsFor, type UsageJson } from "./claudeUsage";
+import { compute, headline, fmtTokens, fmtUsd, seriesFor, eventsFor, type UsageJson } from "./claudeUsage";
 
 const J: UsageJson = {
   generated_at: "2026-09-05T20:15:00+00:00",
@@ -34,6 +34,23 @@ describe("compute", () => {
   });
   it("pro is 5% of max20", () => {
     expect(compute(J, "pro", "claude-sonnet-5", "low").tokensPerWindow).toBe(2_100_000);
+  });
+  it("shows the publisher's dollars per window when the JSON carries it, scaled by plan", () => {
+    const withUsd: UsageJson = {
+      ...J,
+      rates: { "claude-sonnet-5": { ...J.rates["claude-sonnet-5"], api_value_per_window: 100.42 } },
+    };
+    expect(compute(withUsd, "max20", "claude-sonnet-5", "high").apiValueUsd).toBe(100.42);
+    expect(compute(withUsd, "max5", "claude-sonnet-5", "high").apiValueUsd).toBeCloseTo(25.105, 6);
+    expect(compute(withUsd, "pro", "claude-sonnet-5", "high").apiValueUsd).toBeCloseTo(5.021, 6);
+  });
+});
+
+describe("fmtUsd", () => {
+  it("rounds to whole dollars", () => {
+    expect(fmtUsd(100.42)).toBe("$100");
+    expect(fmtUsd(5.021)).toBe("$5");
+    expect(fmtUsd(2811.76)).toBe("$2,812");
   });
 });
 
