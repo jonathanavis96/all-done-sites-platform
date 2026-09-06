@@ -335,7 +335,9 @@ export default function ClaudeUsageTracker() {
             <Chart
               points={chartPoints}
               change={
-                data.last_change && (data.last_change.model === model || data.last_change.model === "all")
+                data.last_change &&
+                (data.last_change.scope ?? "window") === "window" &&
+                (data.last_change.model === model || data.last_change.model === "all")
                   ? data.last_change
                   : null
               }

@@ -67,7 +67,7 @@ export async function onRequestPost({ request, env }) {
   }
   if (body?.to !== undefined) return sendToOne(body, env);
 
-  const { date, direction, percent, model } = body ?? {};
+  const { date, direction, percent, model, scope } = body ?? {};
   if (typeof date !== "string" || !DATE_RE.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) {
     return json({ error: "date must be YYYY-MM-DD" }, 400);
   }
@@ -78,6 +78,9 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "percent must be a number" }, 400);
   }
   if (model !== undefined && typeof model !== "string") return json({ error: "model must be a string" }, 400);
+  if (scope !== undefined && scope !== "window" && scope !== "weekly") {
+    return json({ error: "scope must be window or weekly" }, 400);
+  }
 
   // Claim the date before sending anything. A concurrent second call finds the
   // marker and returns "already sent" rather than mailing everyone twice.
@@ -97,8 +100,13 @@ export async function onRequestPost({ request, env }) {
 
   const modelLabel = model ? MODEL_LABELS[model] ?? model : null;
   const verb = direction === "increased" ? "increased" : "cut";
-  const subject = `Anthropic ${verb} Claude's limits by ${percent}%`;
-  const headingText = `Anthropic ${direction} Claude's limits by ${percent}% on ${fmtDate(date)}.`;
+  const isWeekly = scope === "weekly";
+  const subject = isWeekly
+    ? `Anthropic ${verb} Claude's weekly limit by ${percent}%`
+    : `Anthropic ${verb} Claude's limits by ${percent}%`;
+  const headingText = isWeekly
+    ? `Anthropic ${direction} Claude's weekly limit by ${percent}% in the week ending ${fmtDate(date)}.`
+    : `Anthropic ${direction} Claude's limits by ${percent}% on ${fmtDate(date)}.`;
   const heading = escapeHtml(headingText);
   const intro = modelLabel
     ? `Measured on ${escapeHtml(modelLabel)} from a real account. The tracker has the full history and what it means for your plan.`

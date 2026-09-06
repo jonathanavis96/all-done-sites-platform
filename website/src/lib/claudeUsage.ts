@@ -2,9 +2,13 @@ export type Plan = "pro" | "max5" | "max20";
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export type TokenClass = "input" | "output" | "cache_read" | "cache_write";
 export type EventKind = "plan" | "change";
+// Absent scope means "window" (the 5-hour rolling limit); "weekly" events carry a week-ending
+// date instead of a day the limit itself moved.
+export type EventScope = "window" | "weekly";
 export interface UsageEvent {
   date: string;
   kind: EventKind;
+  scope?: EventScope;
   label: string;
 }
 
@@ -31,7 +35,7 @@ export interface UsageJson {
     string,
     { date: string; tokens_per_window: number; api_value_per_window?: number; source: string; interpolated: boolean }[]
   >;
-  last_change: { date: string; direction: "increased" | "decreased"; percent: number; model: string } | null;
+  last_change: { date: string; direction: "increased" | "decreased"; percent: number; model: string; scope?: EventScope } | null;
   events?: UsageEvent[];
   // Median total tokens of one real session, per model. Optional: older JSON and models not
   // yet calibrated omit it, in which case sessionsPerWindow/sessionsPerWeek come back null.
@@ -125,7 +129,11 @@ export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "f
     if (!first) return { text: "Anthropic hasn't changed Claude's limits since we started measuring.", tone: "flat" };
     return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
   }
-  return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(c.date)}.`, tone: c.direction === "increased" ? "up" : "down" };
+  const tone = c.direction === "increased" ? "up" : "down";
+  if (c.scope === "weekly") {
+    return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% in the week ending ${fmtDate(c.date)}.`, tone };
+  }
+  return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
 }
 
 export function fmtTokens(n: number): string {

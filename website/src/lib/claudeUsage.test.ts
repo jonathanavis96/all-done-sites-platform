@@ -72,6 +72,33 @@ describe("headline", () => {
   it("states the last change", () => {
     expect(headline(J)).toEqual({ text: "Anthropic last decreased Claude's limits by 14% on 2 Sep 2026.", tone: "down" });
   });
+  it("uses window wording when scope is absent (old JSON)", () => {
+    const withoutScope: UsageJson = {
+      ...J,
+      last_change: { date: "2026-09-02", direction: "decreased", percent: 14, model: "claude-sonnet-5" },
+    };
+    expect(headline(withoutScope).text).toBe("Anthropic last decreased Claude's limits by 14% on 2 Sep 2026.");
+  });
+  it("states a weekly decrease", () => {
+    const weekly: UsageJson = {
+      ...J,
+      last_change: { date: "2026-08-21", direction: "decreased", percent: 36, model: "all", scope: "weekly" },
+    };
+    expect(headline(weekly)).toEqual({
+      text: "Anthropic last decreased Claude's weekly limit by 36% in the week ending 21 Aug 2026.",
+      tone: "down",
+    });
+  });
+  it("states a weekly increase", () => {
+    const weekly: UsageJson = {
+      ...J,
+      last_change: { date: "2026-08-21", direction: "increased", percent: 20, model: "all", scope: "weekly" },
+    };
+    expect(headline(weekly)).toEqual({
+      text: "Anthropic last increased Claude's weekly limit by 20% in the week ending 21 Aug 2026.",
+      tone: "up",
+    });
+  });
   it("states no change when none", () => {
     const h = headline({ ...J, last_change: null });
     expect(h.tone).toBe("flat");
