@@ -13,10 +13,24 @@ export interface UsageJson {
   last_sample_at: string | null;
   plan_measured: Plan;
   plan_ratios: Record<Plan, number>;
-  rates: Record<string, { tokens_per_window: number; source: string; probe_effort: string; split: Record<TokenClass, number> }>;
+  rates: Record<
+    string,
+    {
+      tokens_per_window: number;
+      // Dollars of API value one full Max 20x window buys, held at the current regime's
+      // level like tokens_per_window; the same for every model. Older JSON omits it.
+      api_value_per_window?: number;
+      source: string;
+      probe_effort: string;
+      split: Record<TokenClass, number>;
+    }
+  >;
   effort: Record<string, Record<Effort, number>>;
   api_price_per_mtok: Record<string, Record<TokenClass, number>>;
-  history: Record<string, { date: string; tokens_per_window: number; source: string; interpolated: boolean }[]>;
+  history: Record<
+    string,
+    { date: string; tokens_per_window: number; api_value_per_window?: number; source: string; interpolated: boolean }[]
+  >;
   last_change: { date: string; direction: "increased" | "decreased"; percent: number; model: string } | null;
   events?: UsageEvent[];
 }
@@ -42,8 +56,18 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
   const perTask = j.effort[model]?.[effort] ?? NaN;
   const tasksPerWindow = tokensPerWindow / perTask;
   const prices = j.api_price_per_mtok[model];
-  const apiValueUsd = CLASSES.reduce((s, c) => s + (split[c] / 1e6) * (prices?.[c] ?? 0), 0);
+  // The publisher's dollar figure is the measured invariant the tokens figure is derived
+  // from, so it is the one shown; list-price arithmetic over the split is only a fallback
+  // for JSON published before the figure existed.
+  const apiValueUsd =
+    typeof rate.api_value_per_window === "number"
+      ? rate.api_value_per_window * j.plan_ratios[plan]
+      : CLASSES.reduce((s, c) => s + (split[c] / 1e6) * (prices?.[c] ?? 0), 0);
   return { tokensPerWindow, split, tasksPerWindow, tasksPerWeek: tasksPerWindow * WINDOWS_PER_WEEK, apiValueUsd };
+}
+
+export function fmtUsd(n: number): string {
+  return "$" + Math.round(n).toLocaleString("en-US");
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

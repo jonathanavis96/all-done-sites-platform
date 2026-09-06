@@ -12,6 +12,7 @@ import {
   eventsFor,
   fmtDate,
   fmtTokens,
+  fmtUsd,
   headline,
   seriesFor,
   type Effort,
@@ -240,6 +241,10 @@ export default function ClaudeUsageTracker() {
                 {fmtTokens(r.tokensPerWindow)}
                 <span>tokens per 5-hour window</span>
               </div>
+              <div className="big usd">
+                {fmtUsd(r.apiValueUsd)}
+                <span>of API value per 5-hour window</span>
+              </div>
               <div className="split">
                 <span>
                   <b>{fmtTokens(r.split.input)}</b> input<em>·</em>
@@ -256,7 +261,7 @@ export default function ClaudeUsageTracker() {
                   about {Math.round(r.tasksPerWindow)} tasks<em>·</em>{Math.round(r.tasksPerWeek)} per week
                 </span>
                 <em className="brk">·</em>
-                <span>roughly ${Math.round(r.apiValueUsd)} of API value</span>
+                <span>{fmtUsd(r.apiValueUsd * 28)} of API value per week</span>
               </div>
               {stale && (
                 <div className="stale">
@@ -325,7 +330,8 @@ export default function ClaudeUsageTracker() {
                       (c: ReturnType<typeof compute>) => (c!.tasksPerWindow < 1 ? "< 1" : String(Math.round(c!.tasksPerWindow))),
                     ],
                     ["Tasks per week", (c: ReturnType<typeof compute>) => String(Math.round(c!.tasksPerWeek))],
-                    ["API value per week", (c: ReturnType<typeof compute>) => "~$" + Math.round(c!.apiValueUsd * 28)],
+                    ["API value per 5-hour window", (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsd)],
+                    ["API value per week", (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsd * 28)],
                   ] as [string, (c: ReturnType<typeof compute>) => string][]
                 ).map(([label, f]) => (
                   <tr key={label}>

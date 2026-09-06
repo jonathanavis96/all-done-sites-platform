@@ -15,6 +15,9 @@
 .cut .sel::after { content: ""; position: absolute; right: 3px; top: 40%; width: 7px; height: 7px; border-right: 1.5px solid var(--ads-acd); border-bottom: 1.5px solid var(--ads-acd); transform: rotate(45deg); pointer-events: none; }
 .cut .big { font-family: var(--ads-disp); font-size: 72px; font-weight: 800; letter-spacing: -.04em; line-height: 1; color: var(--ads-ac); }
 .cut .big span { font-size: 30px; font-weight: 600; letter-spacing: -.02em; color: var(--ads-tx); margin-left: 10px; }
+/* Second headline: the dollar invariant the tokens figure is derived from, one step down in size. */
+.cut .big.usd { font-size: 48px; margin-top: 14px; color: var(--ads-acd); }
+.cut .big.usd span { font-size: 22px; }
 .cut .split { font-family: var(--ads-mono); font-size: 14px; margin-top: 26px; }
 .cut .split b { font-weight: 500; } .cut .split em, .cut .quiet em { font-style: normal; color: var(--ads-mut); margin: 0 8px; }
 .cut .quiet { font-size: 15px; color: var(--ads-mut); margin-top: 12px; }
@@ -45,6 +48,7 @@
   .cut .pill { flex-direction: column; gap: 2px; padding: 9px 16px; margin-bottom: 32px; } .cut .pill i, .cut .pill .dot { display: none; }
   .cut .sentence { font-size: 16px; line-height: 1.7; }
   .cut .big { font-size: 52px; } .cut .big span { display: block; margin: 10px 0 0; font-size: 22px; }
+  .cut .big.usd { font-size: 36px; } .cut .big.usd span { font-size: 18px; }
   .cut .split { font-size: 12px; line-height: 1.8; } .cut .split span, .cut .quiet span { display: block; } .cut .brk { display: none; }
   .cut th, .cut td { padding: 12px 6px; font-size: 13px; }
 }
