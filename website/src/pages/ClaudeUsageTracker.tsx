@@ -46,7 +46,8 @@ function Chart({
   // The axis starts at the earlier of the first sample and the earliest event the range
   // filter kept, so an in-range event before the first sample stays visible.
   const d1 = day(points[points.length - 1].date);
-  const d0 = Math.min(day(points[0].date), ...events.map((ev) => day(ev.date)).filter((t) => t <= d1));
+  const markerDays = [...events.map((ev) => ev.date), ...(change ? [change.date] : [])].map(day).filter((t) => t <= d1);
+  const d0 = Math.min(day(points[0].date), ...markerDays);
   const span = Math.max(1, d1 - d0);
   const xDate = (d: string) => {
     const t = day(d);
