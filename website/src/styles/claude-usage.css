@@ -44,7 +44,8 @@
 .cut details p { color: var(--ads-bd); font-size: 14px; line-height: 1.6; margin: 0 0 14px; }
 .cut .stale { color: var(--red); font-size: 13px; margin-top: 8px; }
 @media (max-width: 640px) {
-  .cut .hero { padding: 20px 0 36px; } .cut h1 { font-size: 28px; }
+  .adsx .pagewrap:has(.cut) { padding-top: 8px; }
+  .cut .hero { padding: 8px 0 36px; } .cut h1 { font-size: 28px; }
   .cut .pill { padding: 6px 14px; margin-bottom: 20px; }
   .cut .sentence { font-size: 16px; line-height: 1.7; }
   .cut .big { font-size: 52px; } .cut .big span { display: block; margin: 10px 0 0; font-size: 22px; }

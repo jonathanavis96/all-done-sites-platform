@@ -15,6 +15,10 @@ const J: UsageJson = {
     { date: "2026-08-01", tokens_per_window: 40_000_000, source: "passive", interpolated: false },
     { date: "2026-09-05", tokens_per_window: 42_000_000, source: "probe", interpolated: false } ] },
   last_change: { date: "2026-09-02", direction: "decreased", percent: 14, model: "claude-sonnet-5" },
+  weekly_windows: {
+    current: 11.2,
+    history: [{ week_ending: "2026-09-05", windows: 11, five_hour_pct: 0.4, seven_day_pct: 0.9 }],
+  },
   events: [
     { date: "2026-05-15", kind: "plan", label: "Plan started" },
     { date: "2026-08-01", kind: "change", label: "Limit change" },
@@ -28,9 +32,19 @@ describe("compute", () => {
     expect(r.tokensPerWindow).toBe(42_000_000);
     expect(r.split.cache_read).toBeCloseTo(38_094_000, -3);
     expect(r.tasksPerWindow).toBeCloseTo(16.67, 1);
-    expect(r.tasksPerWeek).toBeCloseTo(466.7, 0);
+    // Weekly figures scale by the measured windows-per-week (11.2 here), not a theoretical 28.
+    expect(r.tasksPerWeek).toBeCloseTo(16.67 * 11.2, 0);
     // value = 2.604M*3 + 0.882M*15 + 38.094M*0.3 + 0.42M*3.75  (per Mtok)
     expect(r.apiValueUsd).toBeCloseTo(7.812 + 13.23 + 11.428 + 1.575, 1);
+    expect(r.apiValueUsdPerWeek).toBeCloseTo(r.apiValueUsd * 11.2, 6);
+    expect(r.windowsPerWeek).toBe(11.2);
+  });
+  it("returns null for every per-week figure when weekly_windows is absent", () => {
+    const { weekly_windows: _weekly_windows, ...withoutWeekly } = J;
+    const r = compute(withoutWeekly as UsageJson, "max20", "claude-sonnet-5", "high");
+    expect(r.windowsPerWeek).toBeNull();
+    expect(r.tasksPerWeek).toBeNull();
+    expect(r.apiValueUsdPerWeek).toBeNull();
   });
   it("pro is 5% of max20", () => {
     expect(compute(J, "pro", "claude-sonnet-5", "low").tokensPerWindow).toBe(2_100_000);

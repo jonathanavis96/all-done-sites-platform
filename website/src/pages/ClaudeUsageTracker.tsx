@@ -284,17 +284,25 @@ export default function ClaudeUsageTracker() {
                   <b>{fmtTokens(r.split.cache_write)}</b> cache write
                 </span>
               </div>
-              <div className="quiet">
-                {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
-                  <>
-                    <span>
-                      about {Math.round(r.sessionsPerWindow)} sessions<em>·</em>{Math.round(r.sessionsPerWeek)} per week
-                    </span>
-                    <em className="brk">·</em>
-                  </>
-                )}
-                <span>{fmtUsd(r.apiValueUsd * 28)} of API value per week</span>
-              </div>
+              {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
+                <div className="quiet">
+                  {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
+                    <>
+                      <span>
+                        about {Math.round(r.sessionsPerWindow)} sessions<em>·</em>{Math.round(r.sessionsPerWeek)} per week
+                      </span>
+                      {r.apiValueUsdPerWeek !== null && <em className="brk">·</em>}
+                    </>
+                  )}
+                  {r.apiValueUsdPerWeek !== null && <span>{fmtUsd(r.apiValueUsdPerWeek)} of API value per week</span>}
+                </div>
+              )}
+              {data.weekly_windows && (
+                <div className="quiet">
+                  A week holds about {data.weekly_windows.current.toFixed(1)} five-hour windows, measured from a real
+                  account.
+                </div>
+              )}
               {stale && (
                 <div className="stale">
                   Last updated {fmtDate(data.generated_at.slice(0, 10))}. The daily job has not run since.
@@ -373,6 +381,10 @@ export default function ClaudeUsageTracker() {
                                   ? "< 1"
                                   : String(Math.round(c!.sessionsPerWindow)),
                           ],
+                        ] as [string, (c: ReturnType<typeof compute>) => string][])
+                      : []),
+                    ...(r.sessionsPerWindow !== null && r.windowsPerWeek !== null
+                      ? ([
                           [
                             "Sessions per week",
                             (c: ReturnType<typeof compute>) =>
@@ -381,7 +393,14 @@ export default function ClaudeUsageTracker() {
                         ] as [string, (c: ReturnType<typeof compute>) => string][])
                       : []),
                     ["API value per 5-hour window", (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsd)],
-                    ["API value per week", (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsd * 28)],
+                    ...(r.windowsPerWeek !== null
+                      ? ([
+                          [
+                            "API value per week",
+                            (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsdPerWeek ?? 0),
+                          ],
+                        ] as [string, (c: ReturnType<typeof compute>) => string][])
+                      : []),
                   ] as [string, (c: ReturnType<typeof compute>) => string][]
                 ).map(([label, f]) => (
                   <tr key={label}>
