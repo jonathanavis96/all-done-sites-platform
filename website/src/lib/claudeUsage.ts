@@ -36,6 +36,14 @@ export interface UsageJson {
   // Median total tokens of one real session, per model. Optional: older JSON and models not
   // yet calibrated omit it, in which case sessionsPerWindow/sessionsPerWeek come back null.
   session_tokens?: Record<string, number>;
+  // How many 5-hour windows a real account's seven-day limit actually holds, measured (never
+  // assumed) from live usage. Optional until the daily job populates it; when absent, every
+  // per-week figure the page derives from a window figure comes back null rather than
+  // guessing at a windows-per-week ratio.
+  weekly_windows?: {
+    current: number;
+    history: { week_ending: string; windows: number; five_hour_pct: number; seven_day_pct: number }[];
+  };
 }
 
 export const RANGE_DAYS = [30, 90, 180] as const;
@@ -49,7 +57,6 @@ export const MODEL_LABELS: Record<string, string> = {
 export const PLAN_LABELS: Record<Plan, string> = { pro: "Pro", max5: "Max 5x", max20: "Max 20x" };
 export const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh", "max"];
 export const CLASSES: TokenClass[] = ["input", "output", "cache_read", "cache_write"];
-const WINDOWS_PER_WEEK = 28;
 
 export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort) {
   const rate = j.rates[model];
@@ -75,15 +82,24 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
     typeof sessionBase === "number" && typeof mediumEffort === "number" && mediumEffort > 0 && !Number.isNaN(perTask)
       ? tokensPerWindow / (sessionBase * (perTask / mediumEffort))
       : null;
-  const sessionsPerWeek = sessionsPerWindow === null ? null : sessionsPerWindow * WINDOWS_PER_WEEK;
+  // Windows per week is a measured figure, not the theoretical 28 (5-hour windows fit in a
+  // week); the seven-day limit holds far fewer. Null until the daily job has measured it, in
+  // which case every per-week figure below is null rather than guessed.
+  const windowsPerWeek = j.weekly_windows?.current ?? null;
+  const sessionsPerWeek =
+    sessionsPerWindow === null || windowsPerWeek === null ? null : sessionsPerWindow * windowsPerWeek;
+  const tasksPerWeek = windowsPerWeek === null ? null : tasksPerWindow * windowsPerWeek;
+  const apiValueUsdPerWeek = windowsPerWeek === null ? null : apiValueUsd * windowsPerWeek;
   return {
     tokensPerWindow,
     split,
     tasksPerWindow,
-    tasksPerWeek: tasksPerWindow * WINDOWS_PER_WEEK,
+    tasksPerWeek,
     sessionsPerWindow,
     sessionsPerWeek,
     apiValueUsd,
+    apiValueUsdPerWeek,
+    windowsPerWeek,
   };
 }
 
