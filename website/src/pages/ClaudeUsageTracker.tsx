@@ -22,6 +22,7 @@ import {
   type RangeDays,
   type UsageEvent,
   type UsageJson,
+  type WeeklyPoint,
   type WeeklySeries,
 } from "@/lib/claudeUsage";
 import "@/styles/home.css";
@@ -198,7 +199,17 @@ function WeeklyChart({
   const labelEvery = Math.max(1, Math.floor(allDates.length / 5));
   const ariaLabel = [
     "Weekly limit, 5-hour windows per week over time",
-    ...plotted.map((s) => `${s.label}: ${s.points.map((p) => `${fmtDate(p.date)} ${p.windows.toFixed(1)}${p.partial ? " (partial week)" : ""}`).join(", ")}`),
+    ...plotted.map((s) => {
+      const base = `${s.label}: ${s.points.map((p) => `${fmtDate(p.date)} ${p.windows.toFixed(1)}${p.partial ? " (partial week)" : ""}`).join(", ")}`;
+      const measuredDates = s.points.filter((p) => !p.inferred).map((p) => p.date);
+      if (measuredDates.length === 0) return base;
+      const firstMeasured = measuredDates[0];
+      const lastMeasured = measuredDates[measuredDates.length - 1];
+      const notes: string[] = [];
+      if (s.points.some((p) => p.inferred && p.date < firstMeasured)) notes.push(`dashed before ${fmtDate(firstMeasured)}`);
+      if (s.points.some((p) => p.inferred && p.date > lastMeasured)) notes.push(`dashed after ${fmtDate(lastMeasured)}`);
+      return notes.length > 0 ? `${base} (${notes.join(", ")})` : base;
+    }),
     ...shown.map((ev) => `${fmtDate(ev.date)}: ${ev.label}`),
   ].join(". ");
   return (
@@ -232,33 +243,50 @@ function WeeklyChart({
         if (pts.length === 0) return null;
         const isSelected = s.plan === selectedPlan || (!!s.sharedWithPro && (selectedPlan === "pro" || selectedPlan === "max5"));
         const color = isSelected ? "#0EA5E9" : "#94A3B8";
-        const width = isSelected ? 2.5 : 1.5;
-        const path = pts.map((p) => `${xDate(p.date)},${y(p.windows)}`).join(" ");
+        const measuredWidth = isSelected ? 2.5 : 1.5;
+        const inferredWidth = isSelected ? 1.5 : 1.25;
+        // Split into consecutive runs by `inferred` so measured spans draw solid and inferred
+        // spans draw dashed; the point where a run changes is duplicated into both runs so the
+        // two strokes meet without a gap.
+        const runs: { inferred: boolean; pts: WeeklyPoint[] }[] = [];
+        for (const p of pts) {
+          const prevRun = runs[runs.length - 1];
+          if (!prevRun || prevRun.inferred !== p.inferred) {
+            const boundary = prevRun ? [prevRun.pts[prevRun.pts.length - 1]] : [];
+            runs.push({ inferred: p.inferred, pts: [...boundary, p] });
+          } else {
+            prevRun.pts.push(p);
+          }
+        }
         let lastPartialIdx = -1;
         for (let i = pts.length - 1; i >= 0; i--) {
-          if (pts[i].partial) { lastPartialIdx = i; break; }
+          if (pts[i].partial && !pts[i].inferred) { lastPartialIdx = i; break; }
         }
         const last = pts[pts.length - 1];
         const lastX = xDate(last.date)!;
         const nearRightEdge = lastX > R - 120;
         return (
           <g key={s.plan}>
-            <polyline
-              fill="none"
-              stroke={color}
-              strokeWidth={width}
-              strokeLinejoin="round"
-              points={path}
-            />
-            {pts.map((p) => (
+            {runs.map((run, i) => (
+              <polyline
+                key={i}
+                fill="none"
+                stroke={color}
+                strokeWidth={run.inferred ? inferredWidth : measuredWidth}
+                strokeLinejoin="round"
+                strokeDasharray={run.inferred ? "5 4" : undefined}
+                points={run.pts.map((p) => `${xDate(p.date)},${y(p.windows)}`).join(" ")}
+              />
+            ))}
+            {pts.filter((p) => p.partial && !p.inferred).map((p) => (
               <circle
                 key={p.date}
                 cx={xDate(p.date)!}
                 cy={y(p.windows)}
                 r={isSelected ? 4 : 3}
-                fill={p.partial ? "#fff" : color}
+                fill="#fff"
                 stroke={color}
-                strokeWidth={p.partial ? 2 : 1}
+                strokeWidth={2}
               />
             ))}
             {lastPartialIdx !== -1 && (
@@ -495,7 +523,7 @@ export default function ClaudeUsageTracker() {
             <WeeklyChart series={weeklySeries} events={weeklyEvents} selectedPlan={plan} />
             {weeklySeries.some((s) => s.points.length >= 2) && (
               <p className="sub chart-legend">
-                Solid: selected plan. Grey: the other. Pro is assumed from the Max 5x ratio, not measured. Hollow: week in progress.
+                Solid: selected plan. Grey: the other. Dashed: inferred from the other line by the ratio of their weekly figures, not measured. Pro is assumed from Max 5x. Hollow: week in progress.
               </p>
             )}
           </section>
