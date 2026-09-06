@@ -257,13 +257,15 @@ describe("weeklySeriesFor", () => {
     // 30/90/180-day range picker, since it needs only meter readings, not probes.
     const s = weeklySeriesFor(WJ);
     const max20 = s.find((x) => x.plan === "max20")!;
-    expect(max20.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05"]);
+    // 2026-09-12 is filled in as an inferred point (max5/pro has it, max20 doesn't).
+    expect(max20.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05", "2026-09-12"]);
   });
   it("flags a week as partial when its week_ending falls after last_sample_at", () => {
-    // last_sample_at is 2026-09-05, so max5's 2026-09-12 week is still in progress.
+    // last_sample_at is 2026-09-05, so max5's 2026-09-12 week is still in progress. max5 also
+    // gains an inferred, non-partial point at 2026-07-04 (max20's earliest date).
     const s = weeklySeriesFor(WJ);
     const max5 = s.find((x) => x.plan === "max5")!;
-    expect(max5.points.map((p) => p.partial)).toEqual([false, false, true]);
+    expect(max5.points.map((p) => p.partial)).toEqual([false, false, false, true]);
   });
   it("collapses pro into max5 when pro is assumed and identical to max5, labelling the shared series", () => {
     // WJ's pro history is a copy of max5's and flagged assumed, matching the live data shape
@@ -306,7 +308,59 @@ describe("weeklySeriesFor", () => {
     const max20 = s.find((x) => x.plan === "max20")!;
     expect(max20.label).toBe("Max 20x");
     expect(max20.sharedWithPro).toBeFalsy();
-    expect(max20.points.map((p) => p.windows)).toEqual([10, 10.5, 11.2]);
+    // The trailing 11.2 is max20's own inferred 2026-09-12 point (9.6 * 11.2/9.6), not its
+    // measured 2026-09-05 figure, hence toBeCloseTo rather than toEqual for that one.
+    expect(max20.points[0].windows).toBe(10);
+    expect(max20.points[1].windows).toBe(10.5);
+    expect(max20.points[2].windows).toBe(11.2);
+    expect(max20.points[3].windows).toBeCloseTo(11.2, 10);
+  });
+  it("fills gaps: a series missing a date gets an inferred point scaled by the ratio of current windows-per-week", () => {
+    const s = weeklySeriesFor(WJ);
+    const max20 = s.find((x) => x.plan === "max20")!;
+    const max5 = s.find((x) => x.plan === "max5")!; // shared with Pro, current 9.6
+
+    // max20 lacks 2026-09-12 (only max5/pro has it): infer from max5's point there.
+    const inferredMax20 = max20.points.find((p) => p.date === "2026-09-12")!;
+    expect(inferredMax20.inferred).toBe(true);
+    expect(inferredMax20.windows).toBeCloseTo(9.6 * (11.2 / 9.6), 10);
+    expect(inferredMax20.partial).toBe(true); // copied from max5's in-progress week
+
+    // max5 lacks 2026-07-04 (only max20 has it): infer from max20's point there.
+    const inferredMax5 = max5.points.find((p) => p.date === "2026-07-04")!;
+    expect(inferredMax5.inferred).toBe(true);
+    expect(inferredMax5.windows).toBeCloseTo(10 * (9.6 / 11.2), 10);
+    expect(inferredMax5.partial).toBe(false);
+
+    // Measured points are untouched and flagged not inferred.
+    const measuredMax20 = max20.points.find((p) => p.date === "2026-09-05")!;
+    expect(measuredMax20.inferred).toBe(false);
+    expect(measuredMax20.windows).toBe(11.2);
+    const measuredMax5 = max5.points.find((p) => p.date === "2026-08-01")!;
+    expect(measuredMax5.inferred).toBe(false);
+    expect(measuredMax5.windows).toBe(9);
+
+    // Points stay sorted by date after gap-filling.
+    expect(max20.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05", "2026-09-12"]);
+    expect(max5.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05", "2026-09-12"]);
+  });
+  it("does not infer when either side's current is zero", () => {
+    const zeroCurrent: UsageJson = {
+      ...WJ,
+      weekly_windows: { ...WJ.weekly_windows!, max20: { ...WJ.weekly_windows!.max20!, current: 0 } },
+    };
+    const s = weeklySeriesFor(zeroCurrent);
+    const max20 = s.find((x) => x.plan === "max20")!;
+    const max5 = s.find((x) => x.plan === "max5")!;
+    expect(max20.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05"]);
+    expect(max5.points.map((p) => p.date)).toEqual(["2026-08-01", "2026-09-05", "2026-09-12"]);
+  });
+  it("leaves a lone series unfilled when there is no other series to infer from", () => {
+    const withNullMax20: UsageJson = { ...WJ, weekly_windows: { ...WJ.weekly_windows!, max20: null } };
+    const s = weeklySeriesFor(withNullMax20);
+    const max5 = s.find((x) => x.plan === "max5")!;
+    expect(max5.points.every((p) => !p.inferred)).toBe(true);
+    expect(max5.points.map((p) => p.date)).toEqual(["2026-08-01", "2026-09-05", "2026-09-12"]);
   });
   it("skips a plan with a null weekly_windows entry", () => {
     const withNullMax20: UsageJson = { ...WJ, weekly_windows: { ...WJ.weekly_windows!, max20: null } };

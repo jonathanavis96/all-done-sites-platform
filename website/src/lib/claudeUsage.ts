@@ -182,6 +182,9 @@ export interface WeeklyPoint {
   // True when this week is still in progress: its week_ending falls after the last sample
   // date, so the figure will still move as the week completes rather than being final.
   partial: boolean;
+  // True when this point was not measured for this plan but inferred from another series'
+  // point at the same date, scaled by the ratio of the two plans' current windows-per-week.
+  inferred: boolean;
 }
 
 export interface WeeklySeries {
@@ -212,6 +215,7 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
       date: h.week_ending,
       windows: h.windows,
       partial: lastSampleDate !== null && h.week_ending > lastSampleDate,
+      inferred: false,
     }));
     byPlan.set(p, { assumed: !!w.assumed, points });
   }
@@ -228,6 +232,32 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
     if (!w) continue;
     const label = p === "max5" && collapse ? "Max 5x and Pro (assumed)" : PLAN_LABELS[p];
     out.push({ plan: p, assumed: w.assumed, label, sharedWithPro: p === "max5" && collapse, points: w.points });
+  }
+  // Fill gaps: each series today only spans the weeks its own plan has actually measured, so
+  // two lines can each cover only part of the axis. For every date any series has, a series
+  // missing that date gets an inferred point scaled from another series' point at that date by
+  // the ratio of their measured windows-per-week (`current`), so the lines stay aligned as new
+  // data lands on one side before the other.
+  const allDates = Array.from(new Set(out.flatMap((s) => s.points.map((p) => p.date)))).sort();
+  for (const s of out) {
+    const ownCurrent = j.weekly_windows?.[s.plan]?.current ?? null;
+    const byDate = new Map(s.points.map((p) => [p.date, p]));
+    for (const date of allDates) {
+      if (byDate.has(date)) continue;
+      if (typeof ownCurrent !== "number" || !ownCurrent) continue;
+      const other = out.find((o) => o !== s && o.points.some((p) => p.date === date));
+      if (!other) continue;
+      const otherPoint = other.points.find((p) => p.date === date)!;
+      const otherCurrent = j.weekly_windows?.[other.plan]?.current ?? null;
+      if (typeof otherCurrent !== "number" || !otherCurrent) continue;
+      s.points.push({
+        date,
+        windows: otherPoint.windows * (ownCurrent / otherCurrent),
+        partial: otherPoint.partial,
+        inferred: true,
+      });
+    }
+    s.points.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   }
   return out;
 }
