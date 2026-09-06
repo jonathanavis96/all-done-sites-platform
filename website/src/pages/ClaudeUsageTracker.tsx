@@ -85,7 +85,7 @@ function Chart({
         return (
           <g key={`${ev.date}-${ev.label}`}>
             <line x1={xx} x2={xx} y1={T} y2={B} stroke={color} strokeWidth="1.25" strokeDasharray="4 3" />
-            <text x={Math.min(xx + 4, R - 4)} y={T + 10} textAnchor={xx > R - 60 ? "end" : "start"} style={{ fill: color, fontWeight: 500 }}>
+            <text x={xx > R - 140 ? xx - 4 : xx + 4} y={T + 10} textAnchor={xx > R - 140 ? "end" : "start"} style={{ fill: color, fontWeight: 500 }}>
               {ev.label}
             </text>
           </g>
