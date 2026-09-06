@@ -31,10 +31,12 @@ function Chart({
   points,
   change,
   events,
+  days,
 }: {
   points: { date: string; value: number; interpolated: boolean }[];
   change: { date: string; direction: string; percent: number } | null;
   events: UsageEvent[];
+  days: number;
 }) {
   if (points.length < 2) return <p className="sub">Not enough history yet.</p>;
   const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
@@ -43,10 +45,14 @@ function Chart({
   // One date scale for samples and markers: every x is elapsed time between the first and
   // last sample, so a sparse or irregular history never puts a marker beside the wrong point.
   const day = (d: string) => Date.parse(d + "T00:00:00Z");
-  // The axis starts at the earlier of the first sample and the earliest event the range
-  // filter kept, so an in-range event before the first sample stays visible.
+  // The axis starts at the earlier of the first sample and the earliest marker inside the
+  // selected range, so an in-range marker before the first sample stays visible while a
+  // marker older than the range cutoff never widens the chart.
   const d1 = day(points[points.length - 1].date);
-  const markerDays = [...events.map((ev) => ev.date), ...(change ? [change.date] : [])].map(day).filter((t) => t <= d1);
+  const cutoff = d1 - days * 86400e3;
+  const markerDays = [...events.map((ev) => ev.date), ...(change ? [change.date] : [])]
+    .map(day)
+    .filter((t) => t >= cutoff && t <= d1);
   const d0 = Math.min(day(points[0].date), ...markerDays);
   const span = Math.max(1, d1 - d0);
   const xDate = (d: string) => {
@@ -276,6 +282,7 @@ export default function ClaudeUsageTracker() {
                   : null
               }
               events={eventsFor(data, model, range)}
+              days={range}
             />
           </section>
         )}
