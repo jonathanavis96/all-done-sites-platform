@@ -44,7 +44,16 @@ function Chart({
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
   const path = points.map((p, i) => `${x(i)},${y(p.value)}`).join(" ");
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
-  const ci = change ? points.findIndex((p) => p.date >= change.date) : -1;
+  // Markers sit at their real date, interpolated between the first and last sample, so a
+  // sparse history never snaps an event onto the next later sample. Off-range dates are hidden.
+  const day = (d: string) => Date.parse(d + "T00:00:00Z");
+  const d0 = day(points[0].date), d1 = day(points[points.length - 1].date);
+  const xDate = (d: string) => {
+    const t = day(d);
+    if (!(t >= d0 && t <= d1) || d1 === d0) return null;
+    return L + ((t - d0) / (d1 - d0)) * (R - L);
+  };
+  const cx = change ? xDate(change.date) : null;
   const labelEvery = Math.max(1, Math.floor(points.length / 5));
   return (
     <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Effective window size over time">
@@ -68,19 +77,18 @@ function Chart({
         (p, i) =>
           p.interpolated && <circle key={p.date} cx={x(i)} cy={y(p.value)} r="3" fill="#fff" stroke="#0EA5E9" strokeWidth="2" />
       )}
-      {ci >= 0 && (
+      {cx !== null && (
         <g>
-          <line x1={x(ci)} x2={x(ci)} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
-          <rect x={Math.min(x(ci) + 7, R - 120)} y={T + 4} width="112" height="22" rx="6" fill="#B42318" />
-          <text x={Math.min(x(ci) + 15, R - 112)} y={T + 19} style={{ fill: "#fff", fontWeight: 600 }}>
+          <line x1={cx} x2={cx} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
+          <rect x={Math.min(cx + 7, R - 120)} y={T + 4} width="112" height="22" rx="6" fill="#B42318" />
+          <text x={Math.min(cx + 15, R - 112)} y={T + 19} style={{ fill: "#fff", fontWeight: 600 }}>
             {fmtDate(change!.date).slice(0, 6)} · {change!.direction === "decreased" ? "down" : "up"} {change!.percent}%
           </text>
         </g>
       )}
       {events.map((ev) => {
-        const idx = points.findIndex((p) => p.date >= ev.date);
-        if (idx < 0) return null;
-        const xx = x(idx);
+        const xx = xDate(ev.date);
+        if (xx === null) return null;
         const color = ev.kind === "change" ? "#B42318" : "#8A94A6";
         return (
           <g key={`${ev.date}-${ev.label}`}>
