@@ -1,6 +1,5 @@
 {
  "api_price_per_mtok": {
-  "_source": "https://docs.anthropic.com/en/docs/about-claude/pricing fetched 2026-09-06; USD per million tokens; cache_write is the 5-minute rate",
   "claude-fable-5-1": {
    "cache_read": 0.25,
    "cache_write": 12.5,
@@ -21,14 +20,29 @@
   }
  },
  "effort": {
+  "claude-fable-5-1": {
+   "high": 20956,
+   "low": 18115,
+   "max": 114589,
+   "medium": 19290,
+   "xhigh": 33106
+  },
+  "claude-opus-5": {
+   "high": 23789,
+   "low": 17424,
+   "max": 98750,
+   "medium": 18732,
+   "xhigh": 74965
+  },
   "claude-sonnet-5": {
    "high": 19783,
    "low": 15566,
+   "max": 110931,
    "medium": 16333,
    "xhigh": 22552
   }
  },
- "generated_at": "2026-09-05T23:56:47.677282+00:00",
+ "generated_at": "2026-09-06T05:30:12.253959+00:00",
  "history": {
   "claude-sonnet-5": [
    {
@@ -77,67 +91,67 @@
     "date": "2026-08-06",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 88696100
+    "tokens_per_window": 87550100
    },
    {
     "date": "2026-08-07",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 96056800
+    "tokens_per_window": 96655900
    },
    {
     "date": "2026-08-08",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 170546200
+    "tokens_per_window": 180920400
    },
    {
     "date": "2026-08-09",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 229055100
+    "tokens_per_window": 153074300
    },
    {
     "date": "2026-08-10",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 177128400
+    "tokens_per_window": 243785500
    },
    {
     "date": "2026-08-11",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 239453200
+    "tokens_per_window": 230777900
    },
    {
     "date": "2026-08-12",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 180584000
+    "tokens_per_window": 184396900
    },
    {
     "date": "2026-08-13",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 185524700
+    "tokens_per_window": 154768100
    },
    {
     "date": "2026-08-14",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 341504000
+    "tokens_per_window": 365346000
    },
    {
     "date": "2026-08-15",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 493178300
+    "tokens_per_window": 570731200
    },
    {
     "date": "2026-08-16",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 578828000
+    "tokens_per_window": 561298000
    },
    {
     "date": "2026-08-17",
@@ -149,13 +163,13 @@
     "date": "2026-08-18",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 362658600
+    "tokens_per_window": 367534800
    },
    {
     "date": "2026-08-19",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 544782300
+    "tokens_per_window": 590114100
    },
    {
     "date": "2026-08-20",
@@ -167,31 +181,31 @@
     "date": "2026-08-21",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 1624769900
+    "tokens_per_window": 741465900
    },
    {
     "date": "2026-08-22",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 556397500
+    "tokens_per_window": 569365300
    },
    {
     "date": "2026-08-23",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 527886100
+    "tokens_per_window": 536594700
    },
    {
     "date": "2026-08-24",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 639850200
+    "tokens_per_window": 694698000
    },
    {
     "date": "2026-08-25",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 1361914400
+    "tokens_per_window": 757295500
    },
    {
     "date": "2026-08-26",
@@ -203,66 +217,73 @@
     "date": "2026-08-27",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 349337800
+    "tokens_per_window": 401796300
    },
    {
     "date": "2026-08-28",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 473051600
+    "tokens_per_window": 383047500
    },
    {
     "date": "2026-08-29",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 78258500
+    "tokens_per_window": 80047500
    },
    {
     "date": "2026-08-30",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 100682500
+    "tokens_per_window": 100318500
    },
    {
     "date": "2026-08-31",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 148369300
+    "tokens_per_window": 506766700
    },
    {
     "date": "2026-09-01",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 802572400
+    "tokens_per_window": 812882700
    },
    {
     "date": "2026-09-02",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 80261800
+    "tokens_per_window": 56267300
    },
    {
     "date": "2026-09-03",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 60539600
+    "tokens_per_window": 84584000
    },
    {
     "date": "2026-09-04",
     "interpolated": false,
     "source": "passive",
-    "tokens_per_window": 200300400
+    "tokens_per_window": 176124000
    },
    {
     "date": "2026-09-05",
     "interpolated": false,
     "source": "probe",
-    "tokens_per_window": 325214611
+    "tokens_per_window": 332533335
+   },
+   {
+    "date": "2026-09-06",
+    "interpolated": false,
+    "source": "probe",
+    "tokens_per_window": 258642166
    }
   ]
  },
  "last_change": null,
- "last_sample_at": "2026-09-05T23:04:47.304378+00:00",
+ "last_sample_at": "2026-09-06T04:07:08.928539+00:00",
+ "passive_generated_at": "2026-09-06T01:15:12.749084+00:00",
  "plan_measured": "max20",
  "plan_ratios": {
   "max20": 1.0,
@@ -272,16 +293,16 @@
  "rate_basis": "api_value",
  "rates": {
   "claude-sonnet-5": {
-   "api_value_per_window": 102.7,
+   "api_value_per_window": 57.06,
    "probe_effort": "low",
    "source": "probe",
    "split": {
-    "cache_read": 0.9654,
-    "cache_write": 0.0302,
+    "cache_read": 0.9669,
+    "cache_write": 0.0285,
     "input": 0.0001,
-    "output": 0.0047
+    "output": 0.0044
    },
-   "tokens_per_window": 325214611
+   "tokens_per_window": 258642166
   }
  }
 }
