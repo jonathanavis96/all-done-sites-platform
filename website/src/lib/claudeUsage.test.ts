@@ -16,8 +16,15 @@ const J: UsageJson = {
     { date: "2026-09-05", tokens_per_window: 42_000_000, source: "probe", interpolated: false } ] },
   last_change: { date: "2026-09-02", direction: "decreased", percent: 14, model: "claude-sonnet-5" },
   weekly_windows: {
-    current: 11.2,
-    history: [{ week_ending: "2026-09-05", windows: 11, five_hour_pct: 0.4, seven_day_pct: 0.9 }],
+    max20: {
+      current: 11.2,
+      history: [{ week_ending: "2026-09-05", windows: 11, five_hour_pct: 0.4, seven_day_pct: 0.9 }],
+    },
+    max5: {
+      current: 9.4,
+      history: [{ week_ending: "2026-09-05", windows: 9, five_hour_pct: 0.4, seven_day_pct: 0.9 }],
+    },
+    pro: null,
   },
   events: [
     { date: "2026-05-15", kind: "plan", label: "Plan started" },
@@ -45,6 +52,16 @@ describe("compute", () => {
     expect(r.windowsPerWeek).toBeNull();
     expect(r.tasksPerWeek).toBeNull();
     expect(r.apiValueUsdPerWeek).toBeNull();
+  });
+  it("returns null for every per-week figure when the selected plan's weekly_windows entry is null", () => {
+    const r = compute(J, "pro", "claude-sonnet-5", "high");
+    expect(r.windowsPerWeek).toBeNull();
+    expect(r.tasksPerWeek).toBeNull();
+    expect(r.apiValueUsdPerWeek).toBeNull();
+  });
+  it("uses the selected plan's own windows-per-week, not another plan's", () => {
+    const r = compute(J, "max5", "claude-sonnet-5", "high");
+    expect(r.windowsPerWeek).toBe(9.4);
   });
   it("pro is 5% of max20", () => {
     expect(compute(J, "pro", "claude-sonnet-5", "low").tokensPerWindow).toBe(2_100_000);

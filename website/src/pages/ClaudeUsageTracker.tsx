@@ -168,7 +168,7 @@ export default function ClaudeUsageTracker() {
   const [plan, setPlan] = useState<Plan>("max20");
   const [model, setModel] = useState("claude-sonnet-5");
   const [effort, setEffort] = useState<Effort>("high");
-  const [range, setRange] = useState<RangeDays>(90);
+  const [range, setRange] = useState<RangeDays>(30);
 
   useEffect(() => {
     fetch("/data/claude-usage.json")
@@ -297,10 +297,10 @@ export default function ClaudeUsageTracker() {
                   {r.apiValueUsdPerWeek !== null && <span>{fmtUsd(r.apiValueUsdPerWeek)} of API value per week</span>}
                 </div>
               )}
-              {data.weekly_windows && (
+              {data.weekly_windows?.[plan] && (
                 <div className="quiet">
-                  A week holds about {data.weekly_windows.current.toFixed(1)} five-hour windows, measured from a real
-                  account.
+                  A week holds about {data.weekly_windows[plan]!.current.toFixed(1)} five-hour windows, measured from a
+                  real account.
                 </div>
               )}
               {stale && (

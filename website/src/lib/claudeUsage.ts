@@ -41,13 +41,14 @@ export interface UsageJson {
   // yet calibrated omit it, in which case sessionsPerWindow/sessionsPerWeek come back null.
   session_tokens?: Record<string, number>;
   // How many 5-hour windows a real account's seven-day limit actually holds, measured (never
-  // assumed) from live usage. Optional until the daily job populates it; when absent, every
-  // per-week figure the page derives from a window figure comes back null rather than
-  // guessing at a windows-per-week ratio.
-  weekly_windows?: {
-    current: number;
-    history: { week_ending: string; windows: number; five_hour_pct: number; seven_day_pct: number }[];
-  };
+  // assumed) from live usage, keyed by plan since the ratio differs per plan. Optional until
+  // the daily job populates a plan; a plan entry of null (e.g. "pro", not yet measured) means
+  // every per-week figure the page derives from a window figure for that plan comes back null
+  // rather than guessing at a windows-per-week ratio.
+  weekly_windows?: Record<
+    Plan,
+    { current: number; history: { week_ending: string; windows: number; five_hour_pct: number; seven_day_pct: number }[] } | null
+  >;
 }
 
 export const RANGE_DAYS = [30, 90, 180] as const;
@@ -89,7 +90,7 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
   // Windows per week is a measured figure, not the theoretical 28 (5-hour windows fit in a
   // week); the seven-day limit holds far fewer. Null until the daily job has measured it, in
   // which case every per-week figure below is null rather than guessed.
-  const windowsPerWeek = j.weekly_windows?.current ?? null;
+  const windowsPerWeek = j.weekly_windows?.[plan]?.current ?? null;
   const sessionsPerWeek =
     sessionsPerWindow === null || windowsPerWeek === null ? null : sessionsPerWindow * windowsPerWeek;
   const tasksPerWeek = windowsPerWeek === null ? null : tasksPerWindow * windowsPerWeek;
