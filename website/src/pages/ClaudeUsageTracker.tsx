@@ -40,19 +40,20 @@ function Chart({
   const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
   const vals = points.map((p) => p.value);
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
-  const x = (i: number) => L + (i / (points.length - 1)) * (R - L);
+  // One date scale for samples and markers: every x is elapsed time between the first and
+  // last sample, so a sparse or irregular history never puts a marker beside the wrong point.
+  const day = (d: string) => Date.parse(d + "T00:00:00Z");
+  const d0 = day(points[0].date), d1 = day(points[points.length - 1].date);
+  const span = Math.max(1, d1 - d0);
+  const xDate = (d: string) => {
+    const t = day(d);
+    if (!(t >= d0 && t <= d1)) return null;
+    return L + ((t - d0) / span) * (R - L);
+  };
+  const x = (i: number) => xDate(points[i].date) ?? L;
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
   const path = points.map((p, i) => `${x(i)},${y(p.value)}`).join(" ");
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
-  // Markers sit at their real date, interpolated between the first and last sample, so a
-  // sparse history never snaps an event onto the next later sample. Off-range dates are hidden.
-  const day = (d: string) => Date.parse(d + "T00:00:00Z");
-  const d0 = day(points[0].date), d1 = day(points[points.length - 1].date);
-  const xDate = (d: string) => {
-    const t = day(d);
-    if (!(t >= d0 && t <= d1) || d1 === d0) return null;
-    return L + ((t - d0) / (d1 - d0)) * (R - L);
-  };
   const cx = change ? xDate(change.date) : null;
   const labelEvery = Math.max(1, Math.floor(points.length / 5));
   return (
