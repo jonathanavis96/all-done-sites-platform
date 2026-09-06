@@ -67,21 +67,26 @@ function Chart({
   // Held (backfilled) rows are flat-lined at the first real reading, not measured: they are
   // drawn as a dashed grey segment with no fill, so a reader never mistakes the flat line for
   // a proven period of no change. firstRealIdx is the earliest point that is a real reading.
+  // When no point in range is real (findIndex gives -1) the whole series is held: it is drawn
+  // dashed with no real segment and no fill, never as proven data.
   const firstRealIdx = points.findIndex((p) => !p.held);
-  const hasHeld = firstRealIdx > 0;
-  const heldPath = hasHeld ? points.slice(0, firstRealIdx + 1).map((p, i) => `${x(i)},${y(p.value)}`).join(" ") : "";
+  const allHeld = firstRealIdx === -1 && points.length > 0;
+  const hasHeld = allHeld || firstRealIdx > 0;
+  const heldEnd = allHeld ? points.length : firstRealIdx + 1;
+  const heldPath = hasHeld ? points.slice(0, heldEnd).map((p, i) => `${x(i)},${y(p.value)}`).join(" ") : "";
   const realStartIdx = hasHeld ? firstRealIdx : 0;
-  const realPath = points.slice(realStartIdx).map((p, i) => `${x(realStartIdx + i)},${y(p.value)}`).join(" ");
+  const realPath = allHeld ? "" : points.slice(realStartIdx).map((p, i) => `${x(realStartIdx + i)},${y(p.value)}`).join(" ");
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
   const cx = change ? xDate(change.date) : null;
   // The first real reading gets its own marker so a dashed-flat period never reads as proven.
-  const measureX = hasHeld ? xDate(points[firstRealIdx].date) : null;
+  const measureX = hasHeld && !allHeld ? xDate(points[firstRealIdx].date) : null;
   const labelEvery = Math.max(1, Math.floor(points.length / 5));
   // The SVG is one image to assistive technology, so its label carries the marker text too.
   const shown = events.filter((ev) => xDate(ev.date) !== null && !(change && ev.kind === "change" && ev.date === change.date));
   const ariaLabel = [
     "Effective window size over time",
-    ...(hasHeld ? [`Dashed before ${fmtDate(points[firstRealIdx].date)}: shown flat at the first measured value, not measured day-by-day.`] : []),
+    ...(allHeld ? ["Dashed throughout: shown flat at the first measured value, not measured day-by-day."] : []),
+    ...(hasHeld && !allHeld ? [`Dashed before ${fmtDate(points[firstRealIdx].date)}: shown flat at the first measured value, not measured day-by-day.`] : []),
     ...(change && xDate(change.date) !== null
       ? [`${fmtDate(change.date)}: window ${change.direction === "decreased" ? "down" : "up"} ${change.percent}%`]
       : []),
@@ -103,9 +108,9 @@ function Chart({
       {ticks.map((t) => (
         <text key={t} x={0} y={y(t) + 4}>{fmtTokens(t)}</text>
       ))}
-      <polygon fill="url(#cutfill)" points={`${L},${B} ${realPath} ${R},${B}`} />
+      {!allHeld && <polygon fill="url(#cutfill)" points={`${L},${B} ${realPath} ${R},${B}`} />}
       {hasHeld && <polyline fill="none" stroke="#94A3B8" strokeWidth="2" strokeDasharray="4 4" strokeLinejoin="round" points={heldPath} />}
-      <polyline fill="none" stroke="#0EA5E9" strokeWidth="2.5" strokeLinejoin="round" points={realPath} />
+      {!allHeld && <polyline fill="none" stroke="#0EA5E9" strokeWidth="2.5" strokeLinejoin="round" points={realPath} />}
       {points.map(
         (p, i) =>
           p.interpolated && <circle key={p.date} cx={x(i)} cy={y(p.value)} r="3" fill="#fff" stroke="#0EA5E9" strokeWidth="2" />
