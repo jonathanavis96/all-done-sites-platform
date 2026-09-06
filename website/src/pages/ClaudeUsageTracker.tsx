@@ -66,8 +66,17 @@ function Chart({
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
   const cx = change ? xDate(change.date) : null;
   const labelEvery = Math.max(1, Math.floor(points.length / 5));
+  // The SVG is one image to assistive technology, so its label carries the marker text too.
+  const shown = events.filter((ev) => xDate(ev.date) !== null && !(change && ev.kind === "change" && ev.date === change.date));
+  const ariaLabel = [
+    "Effective window size over time",
+    ...(change && xDate(change.date) !== null
+      ? [`${fmtDate(change.date)}: window ${change.direction === "decreased" ? "down" : "up"} ${change.percent}%`]
+      : []),
+    ...shown.map((ev) => `${fmtDate(ev.date)}: ${ev.label}`),
+  ].join(". ");
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Effective window size over time">
+    <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
       <defs>
         <linearGradient id="cutfill" x1="0" x2="0" y1="0" y2="1">
           <stop offset="0" stopColor="#0EA5E9" stopOpacity=".28" />
@@ -98,6 +107,8 @@ function Chart({
         </g>
       )}
       {events.map((ev) => {
+        // The last change already has its own boxed marker; do not draw it twice.
+        if (change && ev.kind === "change" && ev.date === change.date) return null;
         const xx = xDate(ev.date);
         if (xx === null) return null;
         const color = ev.kind === "change" ? "#B42318" : "#8A94A6";
