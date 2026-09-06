@@ -78,7 +78,7 @@ export default function NotifyForm() {
         </button>
       </div>
       <p className="notify-note" id="notify-msg" role={status === "error" ? "alert" : undefined}>
-        {message || "One email per change to Claude's limits. Nothing else, unsubscribe in one click."}
+        {message || "One email per change. Unsubscribe in one click."}
       </p>
     </form>
   );

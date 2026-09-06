@@ -63,6 +63,35 @@ describe("headline", () => {
     expect(h.tone).toBe("flat");
     expect(h.text).toBe("Anthropic hasn't changed Claude's limits since 1 May 2026.");
   });
+  it("skips held (backfilled) rows and uses the first genuinely measured date", () => {
+    const withHeld: UsageJson = {
+      ...J,
+      last_change: null,
+      history: {
+        "claude-sonnet-5": [
+          { date: "2026-07-01", tokens_per_window: 42_000_000, source: "held", interpolated: false },
+          { date: "2026-08-01", tokens_per_window: 40_000_000, source: "passive", interpolated: false },
+          { date: "2026-09-05", tokens_per_window: 42_000_000, source: "probe", interpolated: false },
+        ],
+      },
+    };
+    expect(headline(withHeld).text).toBe("Anthropic hasn't changed Claude's limits since 1 Aug 2026.");
+  });
+  it("falls back to the earliest date when every row is held", () => {
+    const allHeld: UsageJson = {
+      ...J,
+      last_change: null,
+      history: {
+        "claude-sonnet-5": [
+          { date: "2026-07-01", tokens_per_window: 42_000_000, source: "held", interpolated: false },
+          { date: "2026-07-15", tokens_per_window: 42_000_000, source: "held", interpolated: false },
+        ],
+      },
+    };
+    expect(allHeld.history["claude-sonnet-5"] && headline(allHeld).text).toBe(
+      "Anthropic hasn't changed Claude's limits since 1 Jul 2026.",
+    );
+  });
 });
 
 describe("fmtTokens", () => {
@@ -76,7 +105,7 @@ describe("fmtTokens", () => {
 describe("seriesFor", () => {
   it("scales history by plan", () => {
     const s = seriesFor(J, "max5", "claude-sonnet-5");
-    expect(s[1]).toEqual({ date: "2026-09-05", value: 10_500_000, interpolated: false });
+    expect(s[1]).toEqual({ date: "2026-09-05", value: 10_500_000, interpolated: false, held: false });
   });
   it("defaults to the last 90 days, dropping older points", () => {
     const s = seriesFor(J, "max20", "claude-sonnet-5");

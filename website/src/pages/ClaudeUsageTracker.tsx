@@ -35,7 +35,7 @@ function Chart({
   events,
   days,
 }: {
-  points: { date: string; value: number; interpolated: boolean }[];
+  points: { date: string; value: number; interpolated: boolean; held: boolean }[];
   change: { date: string; direction: string; percent: number } | null;
   events: UsageEvent[];
   days: number;
@@ -64,14 +64,29 @@ function Chart({
   };
   const x = (i: number) => xDate(points[i].date) ?? L;
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
-  const path = points.map((p, i) => `${x(i)},${y(p.value)}`).join(" ");
+  // Held (backfilled) rows are flat-lined at the first real reading, not measured: they are
+  // drawn as a dashed grey segment with no fill, so a reader never mistakes the flat line for
+  // a proven period of no change. firstRealIdx is the earliest point that is a real reading.
+  // When no point in range is real (findIndex gives -1) the whole series is held: it is drawn
+  // dashed with no real segment and no fill, never as proven data.
+  const firstRealIdx = points.findIndex((p) => !p.held);
+  const allHeld = firstRealIdx === -1 && points.length > 0;
+  const hasHeld = allHeld || firstRealIdx > 0;
+  const heldEnd = allHeld ? points.length : firstRealIdx + 1;
+  const heldPath = hasHeld ? points.slice(0, heldEnd).map((p, i) => `${x(i)},${y(p.value)}`).join(" ") : "";
+  const realStartIdx = hasHeld ? firstRealIdx : 0;
+  const realPath = allHeld ? "" : points.slice(realStartIdx).map((p, i) => `${x(realStartIdx + i)},${y(p.value)}`).join(" ");
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
   const cx = change ? xDate(change.date) : null;
+  // The first real reading gets its own marker so a dashed-flat period never reads as proven.
+  const measureX = hasHeld && !allHeld ? xDate(points[firstRealIdx].date) : null;
   const labelEvery = Math.max(1, Math.floor(points.length / 5));
   // The SVG is one image to assistive technology, so its label carries the marker text too.
   const shown = events.filter((ev) => xDate(ev.date) !== null && !(change && ev.kind === "change" && ev.date === change.date));
   const ariaLabel = [
     "Effective window size over time",
+    ...(allHeld ? ["Dashed throughout: shown flat at the first measured value, not measured day-by-day."] : []),
+    ...(hasHeld && !allHeld ? [`Dashed before ${fmtDate(points[firstRealIdx].date)}: shown flat at the first measured value, not measured day-by-day.`] : []),
     ...(change && xDate(change.date) !== null
       ? [`${fmtDate(change.date)}: window ${change.direction === "decreased" ? "down" : "up"} ${change.percent}%`]
       : []),
@@ -93,11 +108,25 @@ function Chart({
       {ticks.map((t) => (
         <text key={t} x={0} y={y(t) + 4}>{fmtTokens(t)}</text>
       ))}
-      <polygon fill="url(#cutfill)" points={`${L},${B} ${path} ${R},${B}`} />
-      <polyline fill="none" stroke="#0EA5E9" strokeWidth="2.5" strokeLinejoin="round" points={path} />
+      {!allHeld && <polygon fill="url(#cutfill)" points={`${L},${B} ${realPath} ${R},${B}`} />}
+      {hasHeld && <polyline fill="none" stroke="#94A3B8" strokeWidth="2" strokeDasharray="4 4" strokeLinejoin="round" points={heldPath} />}
+      {!allHeld && <polyline fill="none" stroke="#0EA5E9" strokeWidth="2.5" strokeLinejoin="round" points={realPath} />}
       {points.map(
         (p, i) =>
           p.interpolated && <circle key={p.date} cx={x(i)} cy={y(p.value)} r="3" fill="#fff" stroke="#0EA5E9" strokeWidth="2" />
+      )}
+      {measureX !== null && (
+        <g>
+          <line x1={measureX} x2={measureX} y1={T} y2={B} stroke="#64748B" strokeWidth="1.25" strokeDasharray="2 3" />
+          <text
+            x={measureX > R - 160 ? measureX - 4 : measureX + 4}
+            y={B + 16}
+            textAnchor={measureX > R - 160 ? "end" : "start"}
+            style={{ fill: "#64748B", fontWeight: 500 }}
+          >
+            measuring since {fmtDate(points[firstRealIdx].date)}
+          </text>
+        </g>
       )}
       {cx !== null && (
         <g>
@@ -156,6 +185,7 @@ export default function ClaudeUsageTracker() {
   }, []);
 
   const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
+  const chartPoints = useMemo(() => (data ? seriesFor(data, plan, model, range) : []), [data, plan, model, range]);
   const h = data ? headline(data) : null;
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
@@ -169,7 +199,6 @@ export default function ClaudeUsageTracker() {
         : null,
     );
   }, [data]);
-  const sampleTime = localTime ? `${localTime} local` : data?.last_sample_at ? `${data.last_sample_at.slice(11, 16)} UTC` : null;
   // A failed refresh is not fatal while the build-time snapshot is still usable.
   const unavailable = (failed && data === null) || (data !== null && r === null);
 
@@ -195,16 +224,15 @@ export default function ClaudeUsageTracker() {
               dangerouslySetInnerHTML={{
                 __html: h.text
                   .replace(/(increased|decreased)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
-                  .replace(/(\d+%)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`),
+                  .replace(/(\d+%)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
+                  .replace(/Claude/, `<span class="claude">Claude</span>`),
               }}
             />
           )}
-          {!unavailable && data && (
+          {!unavailable && data && localTime && (
             <div className="pill">
               <i />
-              <span>Measured daily from a real account</span>
-              <em className="dot">·</em>
-              <span>last sample {sampleTime}</span>
+              <span>Last sample {localTime}</span>
             </div>
           )}
           <NotifyForm />
@@ -257,10 +285,14 @@ export default function ClaudeUsageTracker() {
                 </span>
               </div>
               <div className="quiet">
-                <span>
-                  about {Math.round(r.tasksPerWindow)} tasks<em>·</em>{Math.round(r.tasksPerWeek)} per week
-                </span>
-                <em className="brk">·</em>
+                {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
+                  <>
+                    <span>
+                      about {Math.round(r.sessionsPerWindow)} sessions<em>·</em>{Math.round(r.sessionsPerWeek)} per week
+                    </span>
+                    <em className="brk">·</em>
+                  </>
+                )}
                 <span>{fmtUsd(r.apiValueUsd * 28)} of API value per week</span>
               </div>
               {stale && (
@@ -293,7 +325,7 @@ export default function ClaudeUsageTracker() {
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window
             </div>
             <Chart
-              points={seriesFor(data, plan, model, range)}
+              points={chartPoints}
               change={
                 data.last_change && (data.last_change.model === model || data.last_change.model === "all")
                   ? data.last_change
@@ -302,6 +334,11 @@ export default function ClaudeUsageTracker() {
               events={eventsFor(data, model, range)}
               days={range}
             />
+            {chartPoints.some((p) => p.held) && (
+              <p className="sub chart-legend">
+                Dashed: before measurement began, shown flat at the first measured value.
+              </p>
+            )}
           </section>
         )}
 
@@ -325,11 +362,24 @@ export default function ClaudeUsageTracker() {
                 {(
                   [
                     ["Tokens per 5-hour window", (c: ReturnType<typeof compute>) => fmtTokens(c!.tokensPerWindow)],
-                    [
-                      "Tasks per 5-hour window",
-                      (c: ReturnType<typeof compute>) => (c!.tasksPerWindow < 1 ? "< 1" : String(Math.round(c!.tasksPerWindow))),
-                    ],
-                    ["Tasks per week", (c: ReturnType<typeof compute>) => String(Math.round(c!.tasksPerWeek))],
+                    ...(r.sessionsPerWindow !== null
+                      ? ([
+                          [
+                            "Sessions per window",
+                            (c: ReturnType<typeof compute>) =>
+                              c!.sessionsPerWindow === null
+                                ? "—"
+                                : c!.sessionsPerWindow < 1
+                                  ? "< 1"
+                                  : String(Math.round(c!.sessionsPerWindow)),
+                          ],
+                          [
+                            "Sessions per week",
+                            (c: ReturnType<typeof compute>) =>
+                              c!.sessionsPerWeek === null ? "—" : String(Math.round(c!.sessionsPerWeek)),
+                          ],
+                        ] as [string, (c: ReturnType<typeof compute>) => string][])
+                      : []),
                     ["API value per 5-hour window", (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsd)],
                     ["API value per week", (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsd * 28)],
                   ] as [string, (c: ReturnType<typeof compute>) => string][]

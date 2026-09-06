@@ -33,6 +33,9 @@ export interface UsageJson {
   >;
   last_change: { date: string; direction: "increased" | "decreased"; percent: number; model: string } | null;
   events?: UsageEvent[];
+  // Median total tokens of one real session, per model. Optional: older JSON and models not
+  // yet calibrated omit it, in which case sessionsPerWindow/sessionsPerWeek come back null.
+  session_tokens?: Record<string, number>;
 }
 
 export const RANGE_DAYS = [30, 90, 180] as const;
@@ -63,7 +66,25 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
     typeof rate.api_value_per_window === "number"
       ? rate.api_value_per_window * j.plan_ratios[plan]
       : CLASSES.reduce((s, c) => s + (split[c] / 1e6) * (prices?.[c] ?? 0), 0);
-  return { tokensPerWindow, split, tasksPerWindow, tasksPerWeek: tasksPerWindow * WINDOWS_PER_WEEK, apiValueUsd };
+  // Sessions per window: tokensPerWindow divided by one real session's token cost, scaled from
+  // its medium-effort baseline to the selected effort. Null (not a wrong number) whenever the
+  // session_tokens calibration for this model hasn't landed yet.
+  const sessionBase = j.session_tokens?.[model];
+  const mediumEffort = j.effort[model]?.medium;
+  const sessionsPerWindow =
+    typeof sessionBase === "number" && typeof mediumEffort === "number" && mediumEffort > 0 && !Number.isNaN(perTask)
+      ? tokensPerWindow / (sessionBase * (perTask / mediumEffort))
+      : null;
+  const sessionsPerWeek = sessionsPerWindow === null ? null : sessionsPerWindow * WINDOWS_PER_WEEK;
+  return {
+    tokensPerWindow,
+    split,
+    tasksPerWindow,
+    tasksPerWeek: tasksPerWindow * WINDOWS_PER_WEEK,
+    sessionsPerWindow,
+    sessionsPerWeek,
+    apiValueUsd,
+  };
 }
 
 export function fmtUsd(n: number): string {
@@ -80,7 +101,11 @@ export function fmtDate(iso: string): string {
 export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "flat" } {
   const c = j.last_change;
   if (!c) {
-    const first = Object.values(j.history ?? {}).flat().map((h) => h.date).sort()[0];
+    // "held" rows are backfilled with the first real reading, not measured on that day, so
+    // the "hasn't changed since" date must come from the first genuinely measured row.
+    const rows = Object.values(j.history ?? {}).flat();
+    const firstReal = rows.filter((h) => h.source !== "held").map((h) => h.date).sort()[0];
+    const first = firstReal ?? rows.map((h) => h.date).sort()[0];
     if (!first) return { text: "Anthropic hasn't changed Claude's limits since we started measuring.", tone: "flat" };
     return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
   }
@@ -108,7 +133,7 @@ export function seriesFor(j: UsageJson, plan: Plan, model: string, days: number 
   const cutoff = daysBefore(hist[hist.length - 1].date, days);
   return hist
     .filter((h) => h.date >= cutoff)
-    .map((h) => ({ date: h.date, value: h.tokens_per_window * ratio, interpolated: h.interpolated }));
+    .map((h) => ({ date: h.date, value: h.tokens_per_window * ratio, interpolated: h.interpolated, held: h.source === "held" }));
 }
 
 export function eventsFor(j: UsageJson, model: string, days: number = 90): UsageEvent[] {
