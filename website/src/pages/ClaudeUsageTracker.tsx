@@ -414,6 +414,12 @@ export default function ClaudeUsageTracker() {
                 ))}
               </tbody>
             </table>
+            {data.weekly_windows && (
+              <div className="quiet">
+                Max 20x and Max 5x weekly figures are measured from real accounts. Pro has no weekly data yet, so its
+                per-week figures are hidden.
+              </div>
+            )}
           </section>
         )}
 
