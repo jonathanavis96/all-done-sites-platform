@@ -43,7 +43,10 @@ function Chart({
   // One date scale for samples and markers: every x is elapsed time between the first and
   // last sample, so a sparse or irregular history never puts a marker beside the wrong point.
   const day = (d: string) => Date.parse(d + "T00:00:00Z");
-  const d0 = day(points[0].date), d1 = day(points[points.length - 1].date);
+  // The axis starts at the earlier of the first sample and the earliest event the range
+  // filter kept, so an in-range event before the first sample stays visible.
+  const d1 = day(points[points.length - 1].date);
+  const d0 = Math.min(day(points[0].date), ...events.map((ev) => day(ev.date)).filter((t) => t <= d1));
   const span = Math.max(1, d1 - d0);
   const xDate = (d: string) => {
     const t = day(d);
