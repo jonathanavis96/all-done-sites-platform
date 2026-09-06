@@ -35,7 +35,7 @@ function Chart({
   events,
   days,
 }: {
-  points: { date: string; value: number; interpolated: boolean }[];
+  points: { date: string; value: number; interpolated: boolean; held: boolean }[];
   change: { date: string; direction: string; percent: number } | null;
   events: UsageEvent[];
   days: number;
@@ -65,13 +65,24 @@ function Chart({
   const x = (i: number) => xDate(points[i].date) ?? L;
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
   const path = points.map((p, i) => `${x(i)},${y(p.value)}`).join(" ");
+  // Held (backfilled) rows are flat-lined at the first real reading, not measured: they are
+  // drawn as a dashed grey segment with no fill, so a reader never mistakes the flat line for
+  // a proven period of no change. firstRealIdx is the earliest point that is a real reading.
+  const firstRealIdx = points.findIndex((p) => !p.held);
+  const hasHeld = firstRealIdx > 0;
+  const heldPath = hasHeld ? points.slice(0, firstRealIdx + 1).map((p, i) => `${x(i)},${y(p.value)}`).join(" ") : "";
+  const realStartIdx = hasHeld ? firstRealIdx : 0;
+  const realPath = points.slice(realStartIdx).map((p, i) => `${x(realStartIdx + i)},${y(p.value)}`).join(" ");
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
   const cx = change ? xDate(change.date) : null;
+  // The first real reading gets its own marker so a dashed-flat period never reads as proven.
+  const measureX = hasHeld ? xDate(points[firstRealIdx].date) : null;
   const labelEvery = Math.max(1, Math.floor(points.length / 5));
   // The SVG is one image to assistive technology, so its label carries the marker text too.
   const shown = events.filter((ev) => xDate(ev.date) !== null && !(change && ev.kind === "change" && ev.date === change.date));
   const ariaLabel = [
     "Effective window size over time",
+    ...(hasHeld ? [`Dashed before ${fmtDate(points[firstRealIdx].date)}: shown flat at the first measured value, not measured day-by-day.`] : []),
     ...(change && xDate(change.date) !== null
       ? [`${fmtDate(change.date)}: window ${change.direction === "decreased" ? "down" : "up"} ${change.percent}%`]
       : []),
@@ -93,11 +104,25 @@ function Chart({
       {ticks.map((t) => (
         <text key={t} x={0} y={y(t) + 4}>{fmtTokens(t)}</text>
       ))}
-      <polygon fill="url(#cutfill)" points={`${L},${B} ${path} ${R},${B}`} />
-      <polyline fill="none" stroke="#0EA5E9" strokeWidth="2.5" strokeLinejoin="round" points={path} />
+      <polygon fill="url(#cutfill)" points={`${L},${B} ${realPath} ${R},${B}`} />
+      {hasHeld && <polyline fill="none" stroke="#94A3B8" strokeWidth="2" strokeDasharray="4 4" strokeLinejoin="round" points={heldPath} />}
+      <polyline fill="none" stroke="#0EA5E9" strokeWidth="2.5" strokeLinejoin="round" points={realPath} />
       {points.map(
         (p, i) =>
           p.interpolated && <circle key={p.date} cx={x(i)} cy={y(p.value)} r="3" fill="#fff" stroke="#0EA5E9" strokeWidth="2" />
+      )}
+      {measureX !== null && (
+        <g>
+          <line x1={measureX} x2={measureX} y1={T} y2={B} stroke="#64748B" strokeWidth="1.25" strokeDasharray="2 3" />
+          <text
+            x={measureX > R - 160 ? measureX - 4 : measureX + 4}
+            y={B + 16}
+            textAnchor={measureX > R - 160 ? "end" : "start"}
+            style={{ fill: "#64748B", fontWeight: 500 }}
+          >
+            measuring since {fmtDate(points[firstRealIdx].date)}
+          </text>
+        </g>
       )}
       {cx !== null && (
         <g>
@@ -156,6 +181,7 @@ export default function ClaudeUsageTracker() {
   }, []);
 
   const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
+  const chartPoints = useMemo(() => (data ? seriesFor(data, plan, model, range) : []), [data, plan, model, range]);
   const h = data ? headline(data) : null;
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
@@ -295,7 +321,7 @@ export default function ClaudeUsageTracker() {
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window
             </div>
             <Chart
-              points={seriesFor(data, plan, model, range)}
+              points={chartPoints}
               change={
                 data.last_change && (data.last_change.model === model || data.last_change.model === "all")
                   ? data.last_change
@@ -304,6 +330,11 @@ export default function ClaudeUsageTracker() {
               events={eventsFor(data, model, range)}
               days={range}
             />
+            {chartPoints.some((p) => p.held) && (
+              <p className="sub chart-legend">
+                Dashed: before measurement began, shown flat at the first measured value.
+              </p>
+            )}
           </section>
         )}
 

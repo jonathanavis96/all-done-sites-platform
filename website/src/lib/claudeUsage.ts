@@ -101,7 +101,11 @@ export function fmtDate(iso: string): string {
 export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "flat" } {
   const c = j.last_change;
   if (!c) {
-    const first = Object.values(j.history ?? {}).flat().map((h) => h.date).sort()[0];
+    // "held" rows are backfilled with the first real reading, not measured on that day, so
+    // the "hasn't changed since" date must come from the first genuinely measured row.
+    const rows = Object.values(j.history ?? {}).flat();
+    const firstReal = rows.filter((h) => h.source !== "held").map((h) => h.date).sort()[0];
+    const first = firstReal ?? rows.map((h) => h.date).sort()[0];
     if (!first) return { text: "Anthropic hasn't changed Claude's limits since we started measuring.", tone: "flat" };
     return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
   }
@@ -129,7 +133,7 @@ export function seriesFor(j: UsageJson, plan: Plan, model: string, days: number 
   const cutoff = daysBefore(hist[hist.length - 1].date, days);
   return hist
     .filter((h) => h.date >= cutoff)
-    .map((h) => ({ date: h.date, value: h.tokens_per_window * ratio, interpolated: h.interpolated }));
+    .map((h) => ({ date: h.date, value: h.tokens_per_window * ratio, interpolated: h.interpolated, held: h.source === "held" }));
 }
 
 export function eventsFor(j: UsageJson, model: string, days: number = 90): UsageEvent[] {
