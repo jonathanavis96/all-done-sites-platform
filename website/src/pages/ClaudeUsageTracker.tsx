@@ -15,6 +15,8 @@ import {
   fmtUsd,
   headline,
   seriesFor,
+  weeklyEventsFor,
+  weeklySeriesFor,
   type Effort,
   type Plan,
   type RangeDays,
@@ -162,6 +164,128 @@ function Chart({
   );
 }
 
+function WeeklyChart({
+  series,
+  events,
+  selectedPlan,
+}: {
+  series: { plan: Plan; assumed: boolean; points: { date: string; windows: number; partial: boolean }[] }[];
+  events: UsageEvent[];
+  selectedPlan: Plan;
+}) {
+  const plotted = series.filter((s) => s.points.length >= 2);
+  if (plotted.length === 0) return <p className="sub">Not enough weekly history yet.</p>;
+  const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
+  const vals = plotted.flatMap((s) => s.points.map((p) => p.windows));
+  const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
+  const day = (d: string) => Date.parse(d + "T00:00:00Z");
+  // Unscoped by the range picker: the chart always shows the full weekly history, since that
+  // longer history (months, not just the last 30/90/180 days) is the reason it exists.
+  const allDates = Array.from(new Set(plotted.flatMap((s) => s.points.map((p) => p.date)))).sort();
+  const d1 = Math.max(...allDates.map(day));
+  const markerDays = events.map((ev) => day(ev.date));
+  const d0 = Math.min(...allDates.map(day), ...markerDays);
+  const span = Math.max(1, d1 - d0);
+  const xDate = (d: string) => {
+    const t = day(d);
+    if (!(t >= d0 && t <= d1)) return null;
+    return L + ((t - d0) / span) * (R - L);
+  };
+  const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
+  const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
+  const shown = events.filter((ev) => xDate(ev.date) !== null);
+  const labelEvery = Math.max(1, Math.floor(allDates.length / 5));
+  const ariaLabel = [
+    "Weekly limit, 5-hour windows per week over time",
+    ...plotted.map((s) => `${PLAN_LABELS[s.plan]}${s.assumed ? " (assumed)" : ""}: ${s.points.map((p) => `${fmtDate(p.date)} ${p.windows.toFixed(1)}${p.partial ? " (partial week)" : ""}`).join(", ")}`),
+    ...shown.map((ev) => `${fmtDate(ev.date)}: ${ev.label}`),
+  ].join(". ");
+  return (
+    <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
+      <g stroke="#E6E9EE" strokeWidth="1">
+        {ticks.map((t) => (
+          <line key={t} x1={L} x2={R} y1={y(t)} y2={y(t)} />
+        ))}
+      </g>
+      {ticks.map((t) => (
+        <text key={t} x={0} y={y(t) + 4}>{t.toFixed(1)}</text>
+      ))}
+      {shown.map((ev) => {
+        const xx = xDate(ev.date)!;
+        return (
+          <g key={`${ev.date}-${ev.label}`}>
+            <line x1={xx} x2={xx} y1={T} y2={B} stroke="#B42318" strokeWidth="1.25" strokeDasharray="4 3" />
+            <text
+              x={xx > R - 140 ? xx - 4 : xx + 4}
+              y={T + 10}
+              textAnchor={xx > R - 140 ? "end" : "start"}
+              style={{ fill: "#B42318", fontWeight: 500 }}
+            >
+              {ev.label}
+            </text>
+          </g>
+        );
+      })}
+      {plotted.map((s) => {
+        const pts = s.points.filter((p) => xDate(p.date) !== null);
+        if (pts.length === 0) return null;
+        const isSelected = s.plan === selectedPlan;
+        const color = isSelected ? "#0EA5E9" : "#94A3B8";
+        const width = isSelected ? 2.5 : 1.5;
+        const opacity = isSelected ? 1 : 0.7;
+        const path = pts.map((p) => `${xDate(p.date)},${y(p.windows)}`).join(" ");
+        let lastPartialIdx = -1;
+        for (let i = pts.length - 1; i >= 0; i--) {
+          if (pts[i].partial) { lastPartialIdx = i; break; }
+        }
+        return (
+          <g key={s.plan}>
+            <polyline
+              fill="none"
+              stroke={color}
+              strokeWidth={width}
+              strokeOpacity={opacity}
+              strokeDasharray={s.assumed ? "4 4" : undefined}
+              strokeLinejoin="round"
+              points={path}
+            />
+            {pts.map((p) => (
+              <circle
+                key={p.date}
+                cx={xDate(p.date)!}
+                cy={y(p.windows)}
+                r={isSelected ? 4 : 3}
+                fill={p.partial ? "#fff" : color}
+                stroke={color}
+                strokeWidth={p.partial ? 2 : 1}
+                strokeOpacity={opacity}
+              />
+            ))}
+            {lastPartialIdx !== -1 && (
+              <text
+                x={(xDate(pts[lastPartialIdx].date) ?? 0) + 6}
+                y={y(pts[lastPartialIdx].windows) - 8}
+                style={{ fill: "#64748B", fontWeight: 500 }}
+              >
+                partial week
+              </text>
+            )}
+          </g>
+        );
+      })}
+      <g style={{ fill: "#0277B5", fontWeight: 500 }}>
+        {allDates.map(
+          (d, i) =>
+            i % labelEvery === 0 &&
+            xDate(d) !== null && (
+              <text key={d} x={xDate(d)!} y={B + 36}>{fmtDate(d).slice(0, 6)}</text>
+            ),
+        )}
+      </g>
+    </svg>
+  );
+}
+
 export default function ClaudeUsageTracker() {
   const [data, setData] = useState<UsageJson | null>(initialData);
   const [failed, setFailed] = useState(false);
@@ -186,6 +310,8 @@ export default function ClaudeUsageTracker() {
 
   const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
   const chartPoints = useMemo(() => (data ? seriesFor(data, plan, model, range) : []), [data, plan, model, range]);
+  const weeklySeries = useMemo(() => (data ? weeklySeriesFor(data) : []), [data]);
+  const weeklyEvents = useMemo(() => (data ? weeklyEventsFor(data) : []), [data]);
   const h = data ? headline(data) : null;
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
@@ -347,6 +473,23 @@ export default function ClaudeUsageTracker() {
             {chartPoints.some((p) => p.held) && (
               <p className="sub chart-legend">
                 Dashed: before measurement began, shown flat at the first measured value.
+              </p>
+            )}
+          </section>
+        )}
+
+        {!unavailable && data && (
+          <section>
+            <h2>Weekly limit, 5-hour windows per week</h2>
+            <div className="sub">
+              How many 5-hour windows fit in one week, measured from the usage meter. Full history: it needs only
+              meter readings, not probes, so it runs back further than the window chart.
+            </div>
+            <WeeklyChart series={weeklySeries} events={weeklyEvents} selectedPlan={plan} />
+            {weeklySeries.some((s) => s.points.length >= 2) && (
+              <p className="sub chart-legend">
+                Solid: selected plan. Faint: other plans. Dashed: assumed from the Max 5x ratio, not measured.
+                Hollow: week still in progress.
               </p>
             )}
           </section>

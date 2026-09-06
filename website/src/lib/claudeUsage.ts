@@ -175,3 +175,34 @@ export function eventsFor(j: UsageJson, model: string, days: number = 90): Usage
   const cutoff = daysBefore(anchor, days);
   return (j.events ?? []).filter((e) => e.date >= cutoff && e.date <= anchor);
 }
+
+export interface WeeklyPoint {
+  date: string;
+  windows: number;
+  // True when this week is still in progress: its week_ending falls after the last sample
+  // date, so the figure will still move as the week completes rather than being final.
+  partial: boolean;
+}
+
+// Unlike seriesFor/eventsFor, the weekly chart is not scoped to the 30/90/180-day range
+// selector: it needs only meter readings (not probes), so its full history is cheap and the
+// range picker would otherwise hide the very history (months back) that justifies the chart.
+export function weeklySeriesFor(j: UsageJson): { plan: Plan; assumed: boolean; points: WeeklyPoint[] }[] {
+  const lastSampleDate = j.last_sample_at ? j.last_sample_at.slice(0, 10) : null;
+  const out: { plan: Plan; assumed: boolean; points: WeeklyPoint[] }[] = [];
+  for (const p of Object.keys(PLAN_LABELS) as Plan[]) {
+    const w = j.weekly_windows?.[p];
+    if (!w || w.history.length === 0) continue;
+    const points = w.history.map((h) => ({
+      date: h.week_ending,
+      windows: h.windows,
+      partial: lastSampleDate !== null && h.week_ending > lastSampleDate,
+    }));
+    out.push({ plan: p, assumed: !!w.assumed, points });
+  }
+  return out;
+}
+
+export function weeklyEventsFor(j: UsageJson): UsageEvent[] {
+  return (j.events ?? []).filter((e) => e.scope === "weekly");
+}
