@@ -34,6 +34,7 @@ underscore.
 | `/api/notify/confirm` | GET | `?token=…` | HTML page: `200` confirmed, `400` bad token, `404` no pending record |
 | `/api/notify/unsubscribe` | GET, POST | `?token=…` | HTML page: `200` removed, `400` bad token |
 | `/api/notify/send` | POST | `{date,direction,percent,model?}` + `Authorization: Bearer $NOTIFY_SEND_SECRET` | `200 {ok,date,subscribers,sent,failures}`, `401`, `400` bad payload, `503` unconfigured |
+| `/api/notify/send` (one address) | POST | `{to,subject,text}` + the same bearer secret | `200 {ok,to,sent:1}`, `401`, `400` bad payload, `403` address not in `NOTIFY_ADMIN_TO`, `502` Resend refused, `503` unconfigured |
 
 `confirm` and `unsubscribe` return a rendered HTML page rather than JSON,
 because a person clicks them straight from their inbox.
@@ -55,10 +56,23 @@ because a person clicks them straight from their inbox.
   `{already_sent:true}` instead of mailing the list twice. The trade-off is
   deliberate: a crash midway through a fan-out drops the rest of that send rather
   than risking duplicates, and the failure is visible in the job's log.
+- **`send` with a `to` field mails one address, not the list.** This is the
+  tracker's alert channel to its owner: an outlier probe, a confirmed change,
+  a refused weight. The body is `{to, subject, text}`; the same bearer secret
+  guards it; it writes no `sent:<date>` marker, reads no subscriber record and
+  carries no unsubscribe link, because it is not a subscriber mail. `subject`
+  is capped at 200 characters and `text` at 20,000. If `NOTIFY_ADMIN_TO` is set
+  on the Pages project (comma-separated addresses), only those addresses are
+  accepted and anything else answers `403`; unset, any deliverable address is
+  accepted, which is the trade-off of keeping the endpoint config-free. The
+  tracker side is `tracker/alert.py` in `claude-usage-tracker`, which reads
+  the address from `NOTIFY_ALERT_TO` in `~/.claude-usage-notify.env` on `gs`.
 - **Validation lives in one place.** `website/src/lib/notify.ts` holds
   `normalizeEmail`/`isValidEmail`; `_lib.js` re-exports them and the React form
   imports them directly, so the client and the server can never drift. It is
-  covered by `website/src/lib/notify.test.ts` (vitest).
+  covered by `website/src/lib/notify.test.ts` (vitest). The `send` handler
+  itself is covered by `website/functions/api/notify/send.test.js`, which
+  runs it against an in-memory KV and a stubbed `fetch`.
 - **Addresses are normalised** (trimmed, lower-cased) before they become a key,
   so one person cannot hold two subscriptions.
 - **Unsubscribe answers POST as well as GET.** GET is a person clicking the
@@ -100,6 +114,7 @@ Cloudflare API, so they are available to Functions with no repo change:
 | `NOTIFY_TOKEN_SECRET` | secret | 32 random bytes, hex. Signs confirm/unsubscribe links. Rotating it invalidates every outstanding link |
 | `NOTIFY_SEND_SECRET` | secret | 32 random bytes, hex. Bearer secret for `/api/notify/send` |
 | `NOTIFY_FROM` | plain text | `All Done Sites <hello@alldonesites.com>` |
+| `NOTIFY_ADMIN_TO` | plain text, optional | Comma-separated addresses the one-address form of `send` may mail. Unset: any address |
 
 `NOTIFY_SEND_SECRET` is mirrored to `~/.claude-usage-notify.env` (mode 600) on
 `gs`, which is where `bin/daily.sh` reads it from. The same file exists on
