@@ -83,6 +83,7 @@ export function RedesignFooter() {
             <Link to="/#pricing">Pricing</Link>
             <Link to="/guides/">Guides</Link>
             <Link to="/#faq">FAQ</Link>
+            <Link to="/claude-usage-tracker/">Claude usage tracker</Link>
           </div>
           <div className="col">
             <div className="ftitle">Company</div>
