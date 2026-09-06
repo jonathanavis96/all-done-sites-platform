@@ -16,13 +16,11 @@ import {
   sentKey,
   signToken,
 } from "./_lib";
+// The same labels the tracker page shows, so an email never names a model
+// differently from the chart it links to.
+import { MODEL_LABELS } from "../../../src/lib/claudeUsage";
 
 const BATCH_SIZE = 100; // Resend's per-request cap on /emails/batch.
-const MODEL_LABELS = {
-  "claude-sonnet-5": "Sonnet 5",
-  "claude-opus-5": "Opus 5",
-  "claude-fable-5-1": "Fable 5.1",
-};
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

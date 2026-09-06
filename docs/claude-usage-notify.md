@@ -32,7 +32,7 @@ underscore.
 |---|---|---|---|
 | `/api/notify/subscribe` | POST | `{"email":"…"}` | `200 {ok,message}`, `400` bad address or body, `429` rate-limited, `502` Resend refused, `503` unconfigured |
 | `/api/notify/confirm` | GET | `?token=…` | HTML page: `200` confirmed, `400` bad token, `404` no pending record |
-| `/api/notify/unsubscribe` | GET | `?token=…` | HTML page: `200` removed, `400` bad token |
+| `/api/notify/unsubscribe` | GET, POST | `?token=…` | HTML page: `200` removed, `400` bad token |
 | `/api/notify/send` | POST | `{date,direction,percent,model?}` + `Authorization: Bearer $NOTIFY_SEND_SECRET` | `200 {ok,date,subscribers,sent,failures}`, `401`, `400` bad payload, `503` unconfigured |
 
 `confirm` and `unsubscribe` return a rendered HTML page rather than JSON,
@@ -61,6 +61,11 @@ because a person clicks them straight from their inbox.
   covered by `website/src/lib/notify.test.ts` (vitest).
 - **Addresses are normalised** (trimmed, lower-cased) before they become a key,
   so one person cannot hold two subscriptions.
+- **Unsubscribe answers POST as well as GET.** GET is a person clicking the
+  link; POST is the same URL arriving from a mail provider acting on the
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` header the alert carries,
+  which RFC 8058 requires to be a POST. Handling only GET would answer those
+  405 and quietly leave the person subscribed.
 - **No third-party libraries.** Resend is called over `fetch`; signing uses Web
   Crypto. Sends over one recipient use Resend's `/emails/batch` endpoint, 100 at
   a time, so each recipient still gets their own unsubscribe link.
