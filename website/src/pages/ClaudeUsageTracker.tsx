@@ -169,7 +169,6 @@ export default function ClaudeUsageTracker() {
         : null,
     );
   }, [data]);
-  const sampleTime = localTime ? `${localTime} local` : data?.last_sample_at ? `${data.last_sample_at.slice(11, 16)} UTC` : null;
   // A failed refresh is not fatal while the build-time snapshot is still usable.
   const unavailable = (failed && data === null) || (data !== null && r === null);
 
@@ -195,16 +194,15 @@ export default function ClaudeUsageTracker() {
               dangerouslySetInnerHTML={{
                 __html: h.text
                   .replace(/(increased|decreased)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
-                  .replace(/(\d+%)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`),
+                  .replace(/(\d+%)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
+                  .replace(/Claude/, `<span class="claude">Claude</span>`),
               }}
             />
           )}
-          {!unavailable && data && (
+          {!unavailable && data && localTime && (
             <div className="pill">
               <i />
-              <span>Measured daily from a real account</span>
-              <em className="dot">·</em>
-              <span>last sample {sampleTime}</span>
+              <span>Last sample {localTime}</span>
             </div>
           )}
           <NotifyForm />
@@ -257,10 +255,14 @@ export default function ClaudeUsageTracker() {
                 </span>
               </div>
               <div className="quiet">
-                <span>
-                  about {Math.round(r.tasksPerWindow)} tasks<em>·</em>{Math.round(r.tasksPerWeek)} per week
-                </span>
-                <em className="brk">·</em>
+                {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
+                  <>
+                    <span>
+                      about {Math.round(r.sessionsPerWindow)} sessions<em>·</em>{Math.round(r.sessionsPerWeek)} per week
+                    </span>
+                    <em className="brk">·</em>
+                  </>
+                )}
                 <span>{fmtUsd(r.apiValueUsd * 28)} of API value per week</span>
               </div>
               {stale && (
@@ -325,11 +327,24 @@ export default function ClaudeUsageTracker() {
                 {(
                   [
                     ["Tokens per 5-hour window", (c: ReturnType<typeof compute>) => fmtTokens(c!.tokensPerWindow)],
-                    [
-                      "Tasks per 5-hour window",
-                      (c: ReturnType<typeof compute>) => (c!.tasksPerWindow < 1 ? "< 1" : String(Math.round(c!.tasksPerWindow))),
-                    ],
-                    ["Tasks per week", (c: ReturnType<typeof compute>) => String(Math.round(c!.tasksPerWeek))],
+                    ...(r.sessionsPerWindow !== null
+                      ? ([
+                          [
+                            "Sessions per window",
+                            (c: ReturnType<typeof compute>) =>
+                              c!.sessionsPerWindow === null
+                                ? "—"
+                                : c!.sessionsPerWindow < 1
+                                  ? "< 1"
+                                  : String(Math.round(c!.sessionsPerWindow)),
+                          ],
+                          [
+                            "Sessions per week",
+                            (c: ReturnType<typeof compute>) =>
+                              c!.sessionsPerWeek === null ? "—" : String(Math.round(c!.sessionsPerWeek)),
+                          ],
+                        ] as [string, (c: ReturnType<typeof compute>) => string][])
+                      : []),
                     ["API value per 5-hour window", (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsd)],
                     ["API value per week", (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsd * 28)],
                   ] as [string, (c: ReturnType<typeof compute>) => string][]

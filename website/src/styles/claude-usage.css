@@ -1,12 +1,12 @@
 /* website/src/styles/claude-usage.css — Claude usage tracker page. Tokens from home.css. */
 .cut { --claude: #D97757; --red: #B42318; --green: #059669; max-width: 880px; margin: 0 auto; }
-.cut .hero { text-align: center; padding: 64px 0 56px; }
+.cut .hero { text-align: center; padding: 48px 0 56px; }
 .cut .lockup { display: inline-flex; align-items: center; gap: 9px; font-family: var(--ads-disp); font-weight: 600; font-size: 15px; padding: 7px 14px 7px 10px; border: 1px solid var(--ads-line); border-radius: 999px; background: var(--ads-surface); margin-bottom: 22px; }
 .cut .lockup svg { width: 20px; height: 20px; fill: var(--claude); }
 .cut .lockup b { color: var(--claude); }
 .cut .lockup small { color: var(--ads-mut); font-family: var(--ads-body); font-weight: 500; font-size: 13px; }
-.cut h1 { font-family: var(--ads-disp); font-size: 36px; line-height: 1.2; letter-spacing: -.02em; margin: 0 0 16px; }
-.cut h1 .down { color: var(--red); } .cut h1 .up { color: var(--green); }
+.cut h1 { font-family: var(--ads-disp); font-size: 36px; line-height: 1.2; letter-spacing: -.02em; margin: 0 0 16px; text-wrap: balance; }
+.cut h1 .down { color: var(--red); } .cut h1 .up { color: var(--green); } .cut h1 .claude { color: var(--claude); }
 .cut .pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(5,150,105,.10); color: #047857; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px; margin-bottom: 48px; }
 .cut .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
 .cut .sentence { font-size: 18px; margin-bottom: 22px; }
@@ -44,13 +44,16 @@
 .cut details p { color: var(--ads-bd); font-size: 14px; line-height: 1.6; margin: 0 0 14px; }
 .cut .stale { color: var(--red); font-size: 13px; margin-top: 8px; }
 @media (max-width: 640px) {
-  .cut .hero { padding: 40px 0 36px; } .cut h1 { font-size: 24px; }
-  .cut .pill { flex-direction: column; gap: 2px; padding: 9px 16px; margin-bottom: 32px; } .cut .pill i, .cut .pill .dot { display: none; }
+  .cut .hero { padding: 20px 0 36px; } .cut h1 { font-size: 28px; }
+  .cut .pill { padding: 6px 14px; margin-bottom: 20px; }
   .cut .sentence { font-size: 16px; line-height: 1.7; }
   .cut .big { font-size: 52px; } .cut .big span { display: block; margin: 10px 0 0; font-size: 22px; }
   .cut .big.usd { font-size: 36px; } .cut .big.usd span { font-size: 18px; }
   .cut .split { font-size: 12px; line-height: 1.8; } .cut .split span, .cut .quiet span { display: block; } .cut .brk { display: none; }
   .cut th, .cut td { padding: 12px 6px; font-size: 13px; }
+  .cut .notify { margin: 0 auto 20px; }
+  .cut .notify-label { margin-bottom: 6px; }
+  .cut .notify-note { font-size: 12px; margin-top: 6px; }
 }
 
 /* "Email me when this changes" sign-up, under the headline. */
