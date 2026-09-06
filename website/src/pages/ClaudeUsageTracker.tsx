@@ -167,12 +167,10 @@ function Chart({
 function WeeklyChart({
   series,
   events,
-  days,
   selectedPlan,
 }: {
   series: { plan: Plan; assumed: boolean; points: { date: string; windows: number; partial: boolean }[] }[];
   events: UsageEvent[];
-  days: number;
   selectedPlan: Plan;
 }) {
   const plotted = series.filter((s) => s.points.length >= 2);
@@ -181,10 +179,11 @@ function WeeklyChart({
   const vals = plotted.flatMap((s) => s.points.map((p) => p.windows));
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
   const day = (d: string) => Date.parse(d + "T00:00:00Z");
+  // Unscoped by the range picker: the chart always shows the full weekly history, since that
+  // longer history (months, not just the last 30/90/180 days) is the reason it exists.
   const allDates = Array.from(new Set(plotted.flatMap((s) => s.points.map((p) => p.date)))).sort();
   const d1 = Math.max(...allDates.map(day));
-  const cutoff = d1 - days * 86400e3;
-  const markerDays = events.map((ev) => day(ev.date)).filter((t) => t >= cutoff && t <= d1);
+  const markerDays = events.map((ev) => day(ev.date));
   const d0 = Math.min(...allDates.map(day), ...markerDays);
   const span = Math.max(1, d1 - d0);
   const xDate = (d: string) => {
@@ -311,8 +310,8 @@ export default function ClaudeUsageTracker() {
 
   const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
   const chartPoints = useMemo(() => (data ? seriesFor(data, plan, model, range) : []), [data, plan, model, range]);
-  const weeklySeries = useMemo(() => (data ? weeklySeriesFor(data, range) : []), [data, range]);
-  const weeklyEvents = useMemo(() => (data ? weeklyEventsFor(data, range) : []), [data, range]);
+  const weeklySeries = useMemo(() => (data ? weeklySeriesFor(data) : []), [data]);
+  const weeklyEvents = useMemo(() => (data ? weeklyEventsFor(data) : []), [data]);
   const h = data ? headline(data) : null;
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
@@ -483,10 +482,10 @@ export default function ClaudeUsageTracker() {
           <section>
             <h2>Weekly limit, 5-hour windows per week</h2>
             <div className="sub">
-              How many 5-hour windows fit in one week, measured from the usage meter. Longer history than the window
-              chart because it needs only meter readings, not probes.
+              How many 5-hour windows fit in one week, measured from the usage meter. Full history: it needs only
+              meter readings, not probes, so it runs back further than the window chart.
             </div>
-            <WeeklyChart series={weeklySeries} events={weeklyEvents} days={range} selectedPlan={plan} />
+            <WeeklyChart series={weeklySeries} events={weeklyEvents} selectedPlan={plan} />
             {weeklySeries.some((s) => s.points.length >= 2) && (
               <p className="sub chart-legend">
                 Solid: selected plan. Faint: other plans. Dashed: assumed from the Max 5x ratio, not measured.

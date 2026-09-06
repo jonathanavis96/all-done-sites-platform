@@ -252,32 +252,27 @@ const WJ: UsageJson = {
 };
 
 describe("weeklySeriesFor", () => {
-  it("respects the range cutoff, anchored on the latest week_ending across plans", () => {
-    // Anchor is max5/pro's 2026-09-12, so a 30-day cutoff is 2026-08-13: max20's earlier two
-    // weeks (2026-07-04, 2026-08-01) fall out, leaving only 2026-09-05.
-    const s = weeklySeriesFor(WJ, 30);
-    const max20 = s.find((x) => x.plan === "max20")!;
-    expect(max20.points.map((p) => p.date)).toEqual(["2026-09-05"]);
-  });
-  it("widens with the range", () => {
-    const s = weeklySeriesFor(WJ, 180);
+  it("is not scoped by any range: returns the plan's full weekly history", () => {
+    // Unlike seriesFor/eventsFor, the weekly chart never hides months of history behind the
+    // 30/90/180-day range picker, since it needs only meter readings, not probes.
+    const s = weeklySeriesFor(WJ);
     const max20 = s.find((x) => x.plan === "max20")!;
     expect(max20.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05"]);
   });
   it("flags a week as partial when its week_ending falls after last_sample_at", () => {
     // last_sample_at is 2026-09-05, so max5's 2026-09-12 week is still in progress.
-    const s = weeklySeriesFor(WJ, 90);
+    const s = weeklySeriesFor(WJ);
     const max5 = s.find((x) => x.plan === "max5")!;
     expect(max5.points.map((p) => p.partial)).toEqual([false, false, true]);
   });
   it("carries the plan's assumed flag", () => {
-    const s = weeklySeriesFor(WJ, 90);
+    const s = weeklySeriesFor(WJ);
     expect(s.find((x) => x.plan === "pro")!.assumed).toBe(true);
     expect(s.find((x) => x.plan === "max5")!.assumed).toBe(false);
   });
   it("skips a plan with a null weekly_windows entry", () => {
     const withNullMax20: UsageJson = { ...WJ, weekly_windows: { ...WJ.weekly_windows!, max20: null } };
-    const s = weeklySeriesFor(withNullMax20, 90);
+    const s = weeklySeriesFor(withNullMax20);
     expect(s.some((x) => x.plan === "max20")).toBe(false);
   });
   it("skips a plan with an empty history", () => {
@@ -285,26 +280,25 @@ describe("weeklySeriesFor", () => {
       ...WJ,
       weekly_windows: { ...WJ.weekly_windows!, max20: { current: 11.2, history: [] } },
     };
-    const s = weeklySeriesFor(withEmpty, 90);
+    const s = weeklySeriesFor(withEmpty);
     expect(s.some((x) => x.plan === "max20")).toBe(false);
   });
   it("returns nothing when weekly_windows is absent entirely", () => {
     const { weekly_windows: _weekly_windows, ...withoutWeekly } = WJ;
-    expect(weeklySeriesFor(withoutWeekly as UsageJson, 90)).toEqual([]);
+    expect(weeklySeriesFor(withoutWeekly as UsageJson)).toEqual([]);
   });
 });
 
 describe("weeklyEventsFor", () => {
-  it("keeps only weekly-scoped events inside the visible range", () => {
-    expect(weeklyEventsFor(WJ, 90)).toEqual([{ date: "2026-08-21", kind: "change", scope: "weekly", label: "Weekly limit changed" }]);
+  it("keeps only weekly-scoped events, unscoped by any range", () => {
+    expect(weeklyEventsFor(WJ)).toEqual([
+      { date: "2026-08-21", kind: "change", scope: "weekly", label: "Weekly limit changed" },
+      { date: "2026-01-01", kind: "change", scope: "weekly", label: "Too old weekly" },
+    ]);
   });
-  it("excludes window-scoped events even when they fall in range", () => {
-    const e = weeklyEventsFor(WJ, 90);
+  it("excludes window-scoped events", () => {
+    const e = weeklyEventsFor(WJ);
     expect(e.some((ev) => ev.label === "Limit change")).toBe(false);
-  });
-  it("excludes weekly events outside the range", () => {
-    const e = weeklyEventsFor(WJ, 90);
-    expect(e.some((ev) => ev.label === "Too old weekly")).toBe(false);
   });
 });
 
