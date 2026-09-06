@@ -24,7 +24,11 @@ const J: UsageJson = {
       current: 9.4,
       history: [{ week_ending: "2026-09-05", windows: 9, five_hour_pct: 0.4, seven_day_pct: 0.9 }],
     },
-    pro: null,
+    pro: {
+      current: 9.4,
+      history: [{ week_ending: "2026-09-05", windows: 9, five_hour_pct: 0.4, seven_day_pct: 0.9 }],
+      assumed: true,
+    },
   },
   events: [
     { date: "2026-05-15", kind: "plan", label: "Plan started" },
@@ -54,10 +58,15 @@ describe("compute", () => {
     expect(r.apiValueUsdPerWeek).toBeNull();
   });
   it("returns null for every per-week figure when the selected plan's weekly_windows entry is null", () => {
-    const r = compute(J, "pro", "claude-sonnet-5", "high");
+    const withNullPro: UsageJson = { ...J, weekly_windows: { ...J.weekly_windows!, pro: null } };
+    const r = compute(withNullPro, "pro", "claude-sonnet-5", "high");
     expect(r.windowsPerWeek).toBeNull();
     expect(r.tasksPerWeek).toBeNull();
     expect(r.apiValueUsdPerWeek).toBeNull();
+  });
+  it("pro carries max5's assumed windows-per-week until it is measured directly", () => {
+    const r = compute(J, "pro", "claude-sonnet-5", "high");
+    expect(r.windowsPerWeek).toBe(9.4);
   });
   it("uses the selected plan's own windows-per-week, not another plan's", () => {
     const r = compute(J, "max5", "claude-sonnet-5", "high");

@@ -41,13 +41,20 @@ export interface UsageJson {
   // yet calibrated omit it, in which case sessionsPerWindow/sessionsPerWeek come back null.
   session_tokens?: Record<string, number>;
   // How many 5-hour windows a real account's seven-day limit actually holds, measured (never
-  // assumed) from live usage, keyed by plan since the ratio differs per plan. Optional until
-  // the daily job populates a plan; a plan entry of null (e.g. "pro", not yet measured) means
-  // every per-week figure the page derives from a window figure for that plan comes back null
-  // rather than guessing at a windows-per-week ratio.
+  // assumed unless flagged) from live usage, keyed by plan since the ratio differs per plan.
+  // Optional until the daily job populates a plan; `assumed: true` means this plan's figures
+  // are borrowed from another plan's measured ratio rather than measured directly (e.g. Pro
+  // carries Max 5x's numbers until Pro itself is measured). A plan entry of null means no
+  // figure at all is available yet, in which case every per-week figure the page derives from
+  // a window figure for that plan comes back null rather than guessing at a ratio.
   weekly_windows?: Record<
     Plan,
-    { current: number; history: { week_ending: string; windows: number; five_hour_pct: number; seven_day_pct: number }[] } | null
+    | {
+        current: number;
+        history: { week_ending: string; windows: number; five_hour_pct: number; seven_day_pct: number }[];
+        assumed?: boolean;
+      }
+    | null
   >;
 }
 
