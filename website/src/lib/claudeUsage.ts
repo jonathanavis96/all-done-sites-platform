@@ -2,9 +2,13 @@ export type Plan = "pro" | "max5" | "max20";
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export type TokenClass = "input" | "output" | "cache_read" | "cache_write";
 export type EventKind = "plan" | "change";
+// Absent scope means "window" (the 5-hour rolling limit); "weekly" events carry a week-ending
+// date instead of a day the limit itself moved.
+export type EventScope = "window" | "weekly";
 export interface UsageEvent {
   date: string;
   kind: EventKind;
+  scope?: EventScope;
   label: string;
 }
 
@@ -31,19 +35,27 @@ export interface UsageJson {
     string,
     { date: string; tokens_per_window: number; api_value_per_window?: number; source: string; interpolated: boolean }[]
   >;
-  last_change: { date: string; direction: "increased" | "decreased"; percent: number; model: string } | null;
+  last_change: { date: string; direction: "increased" | "decreased"; percent: number; model: string; scope?: EventScope } | null;
   events?: UsageEvent[];
   // Median total tokens of one real session, per model. Optional: older JSON and models not
   // yet calibrated omit it, in which case sessionsPerWindow/sessionsPerWeek come back null.
   session_tokens?: Record<string, number>;
   // How many 5-hour windows a real account's seven-day limit actually holds, measured (never
-  // assumed) from live usage. Optional until the daily job populates it; when absent, every
-  // per-week figure the page derives from a window figure comes back null rather than
-  // guessing at a windows-per-week ratio.
-  weekly_windows?: {
-    current: number;
-    history: { week_ending: string; windows: number; five_hour_pct: number; seven_day_pct: number }[];
-  };
+  // assumed unless flagged) from live usage, keyed by plan since the ratio differs per plan.
+  // Optional until the daily job populates a plan; `assumed: true` means this plan's figures
+  // are borrowed from another plan's measured ratio rather than measured directly (e.g. Pro
+  // carries Max 5x's numbers until Pro itself is measured). A plan entry of null means no
+  // figure at all is available yet, in which case every per-week figure the page derives from
+  // a window figure for that plan comes back null rather than guessing at a ratio.
+  weekly_windows?: Record<
+    Plan,
+    | {
+        current: number;
+        history: { week_ending: string; windows: number; five_hour_pct: number; seven_day_pct: number }[];
+        assumed?: boolean;
+      }
+    | null
+  >;
 }
 
 export const RANGE_DAYS = [30, 90, 180] as const;
@@ -85,7 +97,7 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
   // Windows per week is a measured figure, not the theoretical 28 (5-hour windows fit in a
   // week); the seven-day limit holds far fewer. Null until the daily job has measured it, in
   // which case every per-week figure below is null rather than guessed.
-  const windowsPerWeek = j.weekly_windows?.current ?? null;
+  const windowsPerWeek = j.weekly_windows?.[plan]?.current ?? null;
   const sessionsPerWeek =
     sessionsPerWindow === null || windowsPerWeek === null ? null : sessionsPerWindow * windowsPerWeek;
   const tasksPerWeek = windowsPerWeek === null ? null : tasksPerWindow * windowsPerWeek;
@@ -125,7 +137,11 @@ export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "f
     if (!first) return { text: "Anthropic hasn't changed Claude's limits since we started measuring.", tone: "flat" };
     return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
   }
-  return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(c.date)}.`, tone: c.direction === "increased" ? "up" : "down" };
+  const tone = c.direction === "increased" ? "up" : "down";
+  if (c.scope === "weekly") {
+    return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% in the week ending ${fmtDate(c.date)}.`, tone };
+  }
+  return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
 }
 
 export function fmtTokens(n: number): string {

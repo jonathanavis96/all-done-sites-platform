@@ -16,8 +16,19 @@ const J: UsageJson = {
     { date: "2026-09-05", tokens_per_window: 42_000_000, source: "probe", interpolated: false } ] },
   last_change: { date: "2026-09-02", direction: "decreased", percent: 14, model: "claude-sonnet-5" },
   weekly_windows: {
-    current: 11.2,
-    history: [{ week_ending: "2026-09-05", windows: 11, five_hour_pct: 0.4, seven_day_pct: 0.9 }],
+    max20: {
+      current: 11.2,
+      history: [{ week_ending: "2026-09-05", windows: 11, five_hour_pct: 0.4, seven_day_pct: 0.9 }],
+    },
+    max5: {
+      current: 9.4,
+      history: [{ week_ending: "2026-09-05", windows: 9, five_hour_pct: 0.4, seven_day_pct: 0.9 }],
+    },
+    pro: {
+      current: 9.4,
+      history: [{ week_ending: "2026-09-05", windows: 9, five_hour_pct: 0.4, seven_day_pct: 0.9 }],
+      assumed: true,
+    },
   },
   events: [
     { date: "2026-05-15", kind: "plan", label: "Plan started" },
@@ -46,6 +57,21 @@ describe("compute", () => {
     expect(r.tasksPerWeek).toBeNull();
     expect(r.apiValueUsdPerWeek).toBeNull();
   });
+  it("returns null for every per-week figure when the selected plan's weekly_windows entry is null", () => {
+    const withNullPro: UsageJson = { ...J, weekly_windows: { ...J.weekly_windows!, pro: null } };
+    const r = compute(withNullPro, "pro", "claude-sonnet-5", "high");
+    expect(r.windowsPerWeek).toBeNull();
+    expect(r.tasksPerWeek).toBeNull();
+    expect(r.apiValueUsdPerWeek).toBeNull();
+  });
+  it("pro carries max5's assumed windows-per-week until it is measured directly", () => {
+    const r = compute(J, "pro", "claude-sonnet-5", "high");
+    expect(r.windowsPerWeek).toBe(9.4);
+  });
+  it("uses the selected plan's own windows-per-week, not another plan's", () => {
+    const r = compute(J, "max5", "claude-sonnet-5", "high");
+    expect(r.windowsPerWeek).toBe(9.4);
+  });
   it("pro is 5% of max20", () => {
     expect(compute(J, "pro", "claude-sonnet-5", "low").tokensPerWindow).toBe(2_100_000);
   });
@@ -71,6 +97,33 @@ describe("fmtUsd", () => {
 describe("headline", () => {
   it("states the last change", () => {
     expect(headline(J)).toEqual({ text: "Anthropic last decreased Claude's limits by 14% on 2 Sep 2026.", tone: "down" });
+  });
+  it("uses window wording when scope is absent (old JSON)", () => {
+    const withoutScope: UsageJson = {
+      ...J,
+      last_change: { date: "2026-09-02", direction: "decreased", percent: 14, model: "claude-sonnet-5" },
+    };
+    expect(headline(withoutScope).text).toBe("Anthropic last decreased Claude's limits by 14% on 2 Sep 2026.");
+  });
+  it("states a weekly decrease", () => {
+    const weekly: UsageJson = {
+      ...J,
+      last_change: { date: "2026-08-21", direction: "decreased", percent: 36, model: "all", scope: "weekly" },
+    };
+    expect(headline(weekly)).toEqual({
+      text: "Anthropic last decreased Claude's weekly limit by 36% in the week ending 21 Aug 2026.",
+      tone: "down",
+    });
+  });
+  it("states a weekly increase", () => {
+    const weekly: UsageJson = {
+      ...J,
+      last_change: { date: "2026-08-21", direction: "increased", percent: 20, model: "all", scope: "weekly" },
+    };
+    expect(headline(weekly)).toEqual({
+      text: "Anthropic last increased Claude's weekly limit by 20% in the week ending 21 Aug 2026.",
+      tone: "up",
+    });
   });
   it("states no change when none", () => {
     const h = headline({ ...J, last_change: null });
