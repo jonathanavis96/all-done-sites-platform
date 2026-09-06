@@ -36,3 +36,8 @@ dist-ssr
 
 # wrangler local dev state
 .wrangler/
+
+# Local Pages Functions secrets (wrangler pages dev) — never commit
+.dev.vars
+.dev.vars.*
+.wrangler/

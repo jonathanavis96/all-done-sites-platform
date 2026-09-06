@@ -1,5 +1,6 @@
 // website/src/pages/ClaudeUsageTracker.tsx
 import { useEffect, useMemo, useState } from "react";
+import NotifyForm from "@/components/NotifyForm";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
@@ -205,6 +206,7 @@ export default function ClaudeUsageTracker() {
               <span>last sample {sampleTime}</span>
             </div>
           )}
+          <NotifyForm />
           {!unavailable && data && r && (
             <>
               <div className="sentence">
