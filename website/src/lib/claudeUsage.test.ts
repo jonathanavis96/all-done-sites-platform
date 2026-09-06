@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { compute, headline, fmtTokens, fmtUsd, seriesFor, eventsFor, type UsageJson } from "./claudeUsage";
+import {
+  compute,
+  headline,
+  fmtTokens,
+  fmtUsd,
+  seriesFor,
+  eventsFor,
+  weeklySeriesFor,
+  weeklyEventsFor,
+  type UsageJson,
+} from "./claudeUsage";
 
 const J: UsageJson = {
   generated_at: "2026-09-05T20:15:00+00:00",
@@ -200,6 +210,101 @@ describe("eventsFor", () => {
   });
   it("returns nothing for a model with no history", () => {
     expect(eventsFor(J, "claude-nonexistent", 90)).toEqual([]);
+  });
+});
+
+const WJ: UsageJson = {
+  ...J,
+  weekly_windows: {
+    max20: {
+      current: 11.2,
+      history: [
+        { week_ending: "2026-07-04", windows: 10, five_hour_pct: 0.3, seven_day_pct: 0.8 },
+        { week_ending: "2026-08-01", windows: 10.5, five_hour_pct: 0.35, seven_day_pct: 0.85 },
+        { week_ending: "2026-09-05", windows: 11.2, five_hour_pct: 0.4, seven_day_pct: 0.9 },
+      ],
+    },
+    max5: {
+      current: 9.6,
+      history: [
+        { week_ending: "2026-08-01", windows: 9, five_hour_pct: 0.3, seven_day_pct: 0.8 },
+        { week_ending: "2026-09-05", windows: 9.4, five_hour_pct: 0.35, seven_day_pct: 0.85 },
+        { week_ending: "2026-09-12", windows: 9.6, five_hour_pct: 0.4, seven_day_pct: 0.9 },
+      ],
+    },
+    pro: {
+      current: 9.6,
+      assumed: true,
+      history: [
+        { week_ending: "2026-08-01", windows: 9, five_hour_pct: 0.3, seven_day_pct: 0.8 },
+        { week_ending: "2026-09-05", windows: 9.4, five_hour_pct: 0.35, seven_day_pct: 0.85 },
+        { week_ending: "2026-09-12", windows: 9.6, five_hour_pct: 0.4, seven_day_pct: 0.9 },
+      ],
+    },
+  },
+  events: [
+    { date: "2026-05-15", kind: "plan", label: "Plan started" },
+    { date: "2026-08-01", kind: "change", label: "Limit change" },
+    { date: "2026-01-01", kind: "plan", label: "Too old" },
+    { date: "2026-08-21", kind: "change", scope: "weekly", label: "Weekly limit changed" },
+    { date: "2026-01-01", kind: "change", scope: "weekly", label: "Too old weekly" },
+  ],
+};
+
+describe("weeklySeriesFor", () => {
+  it("respects the range cutoff, anchored on the latest week_ending across plans", () => {
+    // Anchor is max5/pro's 2026-09-12, so a 30-day cutoff is 2026-08-13: max20's earlier two
+    // weeks (2026-07-04, 2026-08-01) fall out, leaving only 2026-09-05.
+    const s = weeklySeriesFor(WJ, 30);
+    const max20 = s.find((x) => x.plan === "max20")!;
+    expect(max20.points.map((p) => p.date)).toEqual(["2026-09-05"]);
+  });
+  it("widens with the range", () => {
+    const s = weeklySeriesFor(WJ, 180);
+    const max20 = s.find((x) => x.plan === "max20")!;
+    expect(max20.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05"]);
+  });
+  it("flags a week as partial when its week_ending falls after last_sample_at", () => {
+    // last_sample_at is 2026-09-05, so max5's 2026-09-12 week is still in progress.
+    const s = weeklySeriesFor(WJ, 90);
+    const max5 = s.find((x) => x.plan === "max5")!;
+    expect(max5.points.map((p) => p.partial)).toEqual([false, false, true]);
+  });
+  it("carries the plan's assumed flag", () => {
+    const s = weeklySeriesFor(WJ, 90);
+    expect(s.find((x) => x.plan === "pro")!.assumed).toBe(true);
+    expect(s.find((x) => x.plan === "max5")!.assumed).toBe(false);
+  });
+  it("skips a plan with a null weekly_windows entry", () => {
+    const withNullMax20: UsageJson = { ...WJ, weekly_windows: { ...WJ.weekly_windows!, max20: null } };
+    const s = weeklySeriesFor(withNullMax20, 90);
+    expect(s.some((x) => x.plan === "max20")).toBe(false);
+  });
+  it("skips a plan with an empty history", () => {
+    const withEmpty: UsageJson = {
+      ...WJ,
+      weekly_windows: { ...WJ.weekly_windows!, max20: { current: 11.2, history: [] } },
+    };
+    const s = weeklySeriesFor(withEmpty, 90);
+    expect(s.some((x) => x.plan === "max20")).toBe(false);
+  });
+  it("returns nothing when weekly_windows is absent entirely", () => {
+    const { weekly_windows: _weekly_windows, ...withoutWeekly } = WJ;
+    expect(weeklySeriesFor(withoutWeekly as UsageJson, 90)).toEqual([]);
+  });
+});
+
+describe("weeklyEventsFor", () => {
+  it("keeps only weekly-scoped events inside the visible range", () => {
+    expect(weeklyEventsFor(WJ, 90)).toEqual([{ date: "2026-08-21", kind: "change", scope: "weekly", label: "Weekly limit changed" }]);
+  });
+  it("excludes window-scoped events even when they fall in range", () => {
+    const e = weeklyEventsFor(WJ, 90);
+    expect(e.some((ev) => ev.label === "Limit change")).toBe(false);
+  });
+  it("excludes weekly events outside the range", () => {
+    const e = weeklyEventsFor(WJ, 90);
+    expect(e.some((ev) => ev.label === "Too old weekly")).toBe(false);
   });
 });
 

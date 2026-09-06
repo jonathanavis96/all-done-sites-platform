@@ -175,3 +175,55 @@ export function eventsFor(j: UsageJson, model: string, days: number = 90): Usage
   const cutoff = daysBefore(anchor, days);
   return (j.events ?? []).filter((e) => e.date >= cutoff && e.date <= anchor);
 }
+
+// The latest week_ending across every plan with history, used to anchor both the weekly
+// series and the weekly events to the same window regardless of which plan is selected.
+function latestWeekEnding(j: UsageJson): string | null {
+  let latest: string | null = null;
+  for (const p of Object.keys(PLAN_LABELS) as Plan[]) {
+    const w = j.weekly_windows?.[p];
+    if (!w || w.history.length === 0) continue;
+    const last = w.history[w.history.length - 1].week_ending;
+    if (latest === null || last > latest) latest = last;
+  }
+  return latest;
+}
+
+export interface WeeklyPoint {
+  date: string;
+  windows: number;
+  // True when this week is still in progress: its week_ending falls after the last sample
+  // date, so the figure will still move as the week completes rather than being final.
+  partial: boolean;
+}
+
+export function weeklySeriesFor(
+  j: UsageJson,
+  days: number = 90,
+): { plan: Plan; assumed: boolean; points: WeeklyPoint[] }[] {
+  const anchor = latestWeekEnding(j);
+  if (anchor === null) return [];
+  const cutoff = daysBefore(anchor, days);
+  const lastSampleDate = j.last_sample_at ? j.last_sample_at.slice(0, 10) : null;
+  const out: { plan: Plan; assumed: boolean; points: WeeklyPoint[] }[] = [];
+  for (const p of Object.keys(PLAN_LABELS) as Plan[]) {
+    const w = j.weekly_windows?.[p];
+    if (!w || w.history.length === 0) continue;
+    const points = w.history
+      .filter((h) => h.week_ending >= cutoff)
+      .map((h) => ({
+        date: h.week_ending,
+        windows: h.windows,
+        partial: lastSampleDate !== null && h.week_ending > lastSampleDate,
+      }));
+    out.push({ plan: p, assumed: !!w.assumed, points });
+  }
+  return out;
+}
+
+export function weeklyEventsFor(j: UsageJson, days: number = 90): UsageEvent[] {
+  const anchor = latestWeekEnding(j);
+  if (anchor === null) return [];
+  const cutoff = daysBefore(anchor, days);
+  return (j.events ?? []).filter((e) => e.scope === "weekly" && e.date >= cutoff && e.date <= anchor);
+}
