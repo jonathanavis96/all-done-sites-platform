@@ -198,15 +198,16 @@ function WeeklyChart({
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
   const shown = events.filter((ev) => xDate(ev.date) !== null);
   // Calendar-aligned x-axis ticks, not every Nth data point: spacing stays regular regardless
-  // of how the samples fall, and the step widens once the plotted span gets long. Aligned to
-  // the first plotted date so the labels don't drift as history grows.
+  // of how the samples fall, and the step widens as the span gets long. The span is the one
+  // actually mapped onto the SVG (d0 to d1), which an old event marker can stretch well before
+  // the first plotted point, so the ticks start at d0 and the step is chosen from that width
+  // rather than from the data alone; otherwise the labels bunch up in the data's corner.
   const dayMs = 86400e3;
-  const firstT = day(allDates[0]);
-  const spanDays = (d1 - firstT) / dayMs;
-  const stepWeeks = spanDays > 120 ? 4 : 2;
+  const spanDays = (d1 - d0) / dayMs;
+  const stepWeeks = spanDays > 300 ? 8 : spanDays > 120 ? 4 : 2;
   const stepMs = stepWeeks * 7 * dayMs;
   const xTicks: string[] = [];
-  for (let t = firstT; t <= d1; t += stepMs) {
+  for (let t = d0; t <= d1; t += stepMs) {
     xTicks.push(new Date(t).toISOString().slice(0, 10));
   }
   // Hover lookup: nearest plotted date to the pointer's x position, in SVG viewBox units.
