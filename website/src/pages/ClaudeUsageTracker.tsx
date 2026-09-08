@@ -175,6 +175,7 @@ function WeeklyChart({
   events: UsageEvent[];
   selectedPlan: Plan;
 }) {
+  const [hoverX, setHoverX] = useState<number | null>(null);
   const plotted = series.filter((s) => s.points.length >= 2);
   if (plotted.length === 0) return <p className="sub">Not enough weekly history yet.</p>;
   const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
@@ -196,7 +197,37 @@ function WeeklyChart({
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
   const shown = events.filter((ev) => xDate(ev.date) !== null);
-  const labelEvery = Math.max(1, Math.floor(allDates.length / 5));
+  // Calendar-aligned x-axis ticks, not every Nth data point: spacing stays regular regardless
+  // of how the samples fall, and the step widens as the span gets long. The span is the one
+  // actually mapped onto the SVG (d0 to d1), which an old event marker can stretch well before
+  // the first plotted point, so the ticks start at d0 and the step is chosen from that width
+  // rather than from the data alone; otherwise the labels bunch up in the data's corner.
+  const dayMs = 86400e3;
+  const spanDays = (d1 - d0) / dayMs;
+  const stepWeeks = spanDays > 300 ? 8 : spanDays > 120 ? 4 : 2;
+  const stepMs = stepWeeks * 7 * dayMs;
+  const xTicks: string[] = [];
+  for (let t = d0; t <= d1; t += stepMs) {
+    xTicks.push(new Date(t).toISOString().slice(0, 10));
+  }
+  // Hover lookup: nearest plotted date to the pointer's x position, in SVG viewBox units.
+  const hoverDate = (() => {
+    if (hoverX === null) return null;
+    let best: string | null = null;
+    let bestDist = Infinity;
+    for (const d of allDates) {
+      const xx = xDate(d);
+      if (xx === null) continue;
+      const dist = Math.abs(xx - hoverX);
+      if (dist < bestDist) { bestDist = dist; best = d; }
+    }
+    return best;
+  })();
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHoverX(((e.clientX - rect.left) / rect.width) * W);
+  };
+  const handleMouseLeave = () => setHoverX(null);
   const ariaLabel = [
     "Weekly limit, 5-hour windows per week over time",
     ...plotted.map((s) => {
@@ -213,7 +244,15 @@ function WeeklyChart({
     ...shown.map((ev) => `${fmtDate(ev.date)}: ${ev.label}`),
   ].join(". ");
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
+    <svg
+      className="chart"
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label={ariaLabel}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
       <g stroke="#E6E9EE" strokeWidth="1">
         {ticks.map((t) => (
           <line key={t} x1={L} x2={R} y1={y(t)} y2={y(t)} />
@@ -289,15 +328,20 @@ function WeeklyChart({
                 strokeWidth={2}
               />
             ))}
-            {lastPartialIdx !== -1 && (
-              <text
-                x={(xDate(pts[lastPartialIdx].date) ?? 0) + 6}
-                y={y(pts[lastPartialIdx].windows) - 8}
-                style={{ fill: "#64748B", fontWeight: 500 }}
-              >
-                partial week
-              </text>
-            )}
+            {lastPartialIdx !== -1 && (() => {
+              const px = xDate(pts[lastPartialIdx].date) ?? 0;
+              const partialNearRight = px > R - 120;
+              return (
+                <text
+                  x={partialNearRight ? px - 6 : px + 6}
+                  y={y(pts[lastPartialIdx].windows) - 8}
+                  textAnchor={partialNearRight ? "end" : "start"}
+                  style={{ fill: "#64748B", fontWeight: 500 }}
+                >
+                  week in progress
+                </text>
+              );
+            })()}
             <text
               x={nearRightEdge ? lastX - 6 : lastX + 6}
               y={y(last.windows) - (lastPartialIdx === pts.length - 1 ? 20 : 8)}
@@ -310,14 +354,54 @@ function WeeklyChart({
         );
       })}
       <g style={{ fill: "#0277B5", fontWeight: 500 }}>
-        {allDates.map(
-          (d, i) =>
-            i % labelEvery === 0 &&
-            xDate(d) !== null && (
-              <text key={d} x={xDate(d)!} y={B + 36}>{fmtDate(d).slice(0, 6)}</text>
-            ),
-        )}
+        {xTicks.map((d) => {
+          const xx = xDate(d);
+          if (xx === null) return null;
+          const anchor = xx < L + 20 ? "start" : xx > R - 20 ? "end" : "middle";
+          return (
+            <text key={d} x={xx} y={B + 36} textAnchor={anchor}>{fmtDate(d).slice(0, 6)}</text>
+          );
+        })}
       </g>
+      {hoverDate && (() => {
+        const hx = xDate(hoverDate);
+        if (hx === null) return null;
+        const rows = plotted
+          .map((s) => ({ s, p: s.points.find((p) => p.date === hoverDate) }))
+          .filter((row): row is { s: WeeklySeries; p: WeeklyPoint } => !!row.p);
+        if (rows.length === 0) return null;
+        const headerText = fmtDate(hoverDate);
+        const lineTexts = rows.map(
+          (row) =>
+            `${row.s.label}: ${row.p.windows.toFixed(1)}${row.p.partial ? " (week in progress)" : ""}${row.p.inferred ? " (inferred)" : ""}`,
+        );
+        const maxChars = Math.max(headerText.length, ...lineTexts.map((t) => t.length));
+        const lineH = 16;
+        const boxW = Math.min(340, Math.max(150, maxChars * 6.3 + 20));
+        const boxH = 22 + rows.length * lineH;
+        const tipNearRight = hx > R - boxW - 12;
+        const boxX = tipNearRight ? hx - boxW - 10 : hx + 10;
+        const boxY = T + 4;
+        return (
+          <g pointerEvents="none">
+            <line x1={hx} x2={hx} y1={T} y2={B} stroke="#94A3B8" strokeWidth="1" />
+            <rect x={boxX} y={boxY} width={boxW} height={boxH} rx="6" fill="#0F172A" fillOpacity="0.92" />
+            <text x={boxX + 10} y={boxY + 16} style={{ fill: "#fff", fontWeight: 600 }}>
+              {fmtDate(hoverDate)}
+            </text>
+            {rows.map((row, i) => (
+              <text
+                key={row.s.plan}
+                x={boxX + 10}
+                y={boxY + 16 + (i + 1) * lineH}
+                style={{ fill: "#E2E8F0" }}
+              >
+                {lineTexts[i]}
+              </text>
+            ))}
+          </g>
+        );
+      })()}
     </svg>
   );
 }
