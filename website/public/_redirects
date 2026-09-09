@@ -22,3 +22,10 @@
 
 # Retired redesign-preview path
 /new/*           /   301
+
+# Personal contributor pages are client-rendered from /api/contribute/me with the
+# id in the URL. Pages has a 404.html, so there is no SPA fallback: rewrite every
+# id to the static shell scripts/generate-static-pages.js emits as
+# claude-usage-tracker/me.html (served at /claude-usage-tracker/me). The target
+# must sit outside the splat, or Pages rejects the rule as a loop.
+/claude-usage-tracker/me/*  /claude-usage-tracker/me  200

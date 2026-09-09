@@ -74,3 +74,28 @@
   .cut .notify-row { flex-direction: column; }
   .cut .notify-row button { width: 100%; }
 }
+
+/* "Contribute your own meter": two prompt boxes and the CUT1 paste box. */
+.cut .contrib p { font-size: 15px; line-height: 1.6; color: var(--ads-bd); margin: 0 0 18px; }
+.cut .copyboxes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+.cut .copybox { border: 1px solid var(--ads-line); border-radius: 10px; background: var(--ads-surface); overflow: hidden; }
+.cut .copybox-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-bottom: 1px solid var(--ads-line); font-size: 13px; font-weight: 600; }
+.cut .copybox button, .cut .pastebox button { font: inherit; font-size: 13px; font-weight: 600; padding: 5px 12px; border: 1px solid var(--ads-line); border-radius: 999px; background: var(--ads-surface); color: var(--ads-acd); cursor: pointer; }
+.cut .copybox button:hover, .cut .pastebox button:hover:not(:disabled) { border-color: var(--ads-acd); }
+.cut .copybox button:focus-visible, .cut .pastebox button:focus-visible, .cut .copybox pre:focus-visible { outline: 2px solid var(--ads-acd); outline-offset: 2px; }
+.cut .copybox pre { margin: 0; padding: 12px; font-family: var(--ads-mono); font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ads-tx); }
+.cut .pastebox textarea { display: block; width: 100%; box-sizing: border-box; min-height: 84px; font-family: var(--ads-mono); font-size: 12.5px; line-height: 1.5; padding: 10px 12px; border: 1px solid var(--ads-line); border-radius: 8px; background: var(--ads-surface); color: var(--ads-tx); resize: vertical; }
+.cut .pastebox textarea:focus-visible { outline: 2px solid var(--ads-acd); outline-offset: 1px; border-color: var(--ads-acd); }
+.cut .pastebox textarea[aria-invalid="true"] { border-color: var(--red); }
+.cut .pastebox .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.cut .pastebox button:disabled { opacity: .5; cursor: default; }
+.cut .pastebox .primary { background: var(--ads-ac); color: #fff; border-color: transparent; }
+.cut .pastebox .primary:hover:not(:disabled) { background: var(--ads-acd); }
+.cut .pastebox .err { color: var(--red); font-size: 13px; margin: 8px 0 0; }
+.cut .pastebox table { margin-top: 8px; }
+.cut .pastebox td:not(:first-child) { text-align: left; font-variant-numeric: tabular-nums; }
+.cut .pastebox td:first-child { color: var(--ads-mut); white-space: nowrap; }
+.cut .contrib .line { font-size: 14px; color: var(--ads-mut); margin: 22px 0 0; }
+@media (max-width: 640px) {
+  .cut .copyboxes { grid-template-columns: 1fr; }
+}

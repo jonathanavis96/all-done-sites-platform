@@ -1,5 +1,6 @@
 // website/src/pages/ClaudeUsageTracker.tsx
 import { useEffect, useMemo, useState } from "react";
+import ContributeMeter from "@/components/ContributeMeter";
 import NotifyForm from "@/components/NotifyForm";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
@@ -687,6 +688,11 @@ export default function ClaudeUsageTracker() {
             )}
           </section>
         )}
+
+        <section>
+          <h2>Contribute your own meter</h2>
+          <ContributeMeter />
+        </section>
 
         <section>
           <details>

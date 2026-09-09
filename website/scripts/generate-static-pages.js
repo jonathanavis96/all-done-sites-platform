@@ -59,6 +59,20 @@ const routes = [
     ogTitle: 'Subscription Agreement - All Done Sites'
   },
   {
+    // Personal contributor pages, /claude-usage-tracker/me/<id>. Client-rendered
+    // from /api/contribute/me (the id is in the URL, nothing to prerender); this
+    // shell is what public/_redirects rewrites every id to. Never for search.
+    path: 'claude-usage-tracker/me',
+    title: 'Your Claude meter',
+    description: 'Your own contributed Claude usage meter samples, drawn against everyone else\'s.',
+    ogTitle: 'Your Claude meter - All Done Sites',
+    noindex: true,
+    // A flat file, not me/index.html: Pages serves `me.html` at /claude-usage-tracker/me,
+    // and a rewrite whose target sits inside its own splat (me/index.html under me/*)
+    // is rejected as a loop.
+    flat: true
+  },
+  {
     path: 'privacy',
     title: 'Privacy Policy',
     description: 'How All Done Sites collects, uses, and protects your personal information.',
@@ -79,11 +93,15 @@ const indexHtml = fs.readFileSync(indexPath, 'utf-8');
 
 // Generate a static page for each route
 routes.forEach(route => {
-  const routeDir = path.join(distDir, route.path);
-  fs.mkdirSync(routeDir, { recursive: true });
+  // `flat` routes are written as <path>.html beside their parent, which Pages serves
+  // at /<path> (no trailing slash); everything else is <path>/index.html.
+  const outputPath = route.flat
+    ? path.join(distDir, `${route.path}.html`)
+    : path.join(distDir, route.path, 'index.html');
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
   // Canonical/OG URL for this route — trailing slash to match what Cloudflare serves.
-  const canonicalUrl = `${SITE}/${route.path}/`;
+  const canonicalUrl = route.flat ? `${SITE}/${route.path}` : `${SITE}/${route.path}/`;
 
   // Update meta tags for this specific route
   let html = indexHtml;
@@ -152,11 +170,9 @@ routes.forEach(route => {
            html.slice(headCloseTag);
   }
 
-  // Write the customized HTML to route/index.html
-  const outputPath = path.join(routeDir, 'index.html');
   fs.writeFileSync(outputPath, html);
 
-  console.log(`✓ Created /${route.path}/index.html (canonical ${canonicalUrl})`);
+  console.log(`✓ Created ${path.relative(distDir, outputPath)} (canonical ${canonicalUrl})`);
 });
 
 console.log('\n✅ Static pages generated successfully!\n');
