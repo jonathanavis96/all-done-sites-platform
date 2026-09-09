@@ -8,7 +8,7 @@ function get({ secret = SECRET, cursor, kv = fakeKv(), env = {} } = {}) {
   const url = new URL("https://alldonesites.com/api/contribute/export");
   if (cursor) url.searchParams.set("cursor", cursor);
   const headers = secret === null ? {} : { authorization: `Bearer ${secret}` };
-  return onRequestGet({ request: new Request(url, { headers }), env: { NOTIFY_KV: kv, NOTIFY_TOKEN_SECRET: SECRET, ...env } });
+  return onRequestGet({ request: new Request(url, { headers }), env: { NOTIFY_KV: kv, NOTIFY_SEND_SECRET: SECRET, ...env } });
 }
 
 function seed(kv, id, tsList) {
@@ -66,7 +66,7 @@ describe("GET /api/contribute/export", () => {
   });
 
   it("answers 503 when the secret or the KV binding is missing", async () => {
-    expect((await get({ env: { NOTIFY_TOKEN_SECRET: "" } })).status).toBe(503);
+    expect((await get({ env: { NOTIFY_SEND_SECRET: "" } })).status).toBe(503);
     expect((await get({ env: { NOTIFY_KV: undefined } })).status).toBe(503);
   });
 });

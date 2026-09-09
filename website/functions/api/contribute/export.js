@@ -1,7 +1,7 @@
 /**
  * GET /api/contribute/export — every stored sample, for the daily aggregation job.
  *
- * Needs `Authorization: Bearer <NOTIFY_TOKEN_SECRET>` (401 otherwise). Streams JSON
+ * Needs `Authorization: Bearer <NOTIFY_SEND_SECRET>` (401 otherwise). Streams JSON
  * lines: one stored record per line (the validated body plus `received_at`). One
  * call returns one KV page (up to 1000 keys); when more remain, the last line is
  * `{"next_cursor": "..."}` and the same value is in the `x-next-cursor` header. Pass
@@ -14,11 +14,11 @@ const GET_BATCH = 25;
 
 export async function onRequestGet({ request, env }) {
   const kv = env.NOTIFY_KV;
-  if (!kv || !env.NOTIFY_TOKEN_SECRET) return json({ error: "Export is not available right now." }, 503);
+  if (!kv || !env.NOTIFY_SEND_SECRET) return json({ error: "Export is not available right now." }, 503);
 
   const auth = request.headers.get("authorization") || "";
   const presented = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  if (!secretsMatch(presented, env.NOTIFY_TOKEN_SECRET)) return json({ error: "unauthorized" }, 401);
+  if (!secretsMatch(presented, env.NOTIFY_SEND_SECRET)) return json({ error: "unauthorized" }, 401);
 
   const cursor = new URL(request.url).searchParams.get("cursor") || undefined;
   const page = await kv.list({ prefix: SAMPLE_PREFIX, cursor, limit: PAGE_LIMIT });
