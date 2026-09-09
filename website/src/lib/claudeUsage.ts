@@ -25,6 +25,9 @@ export interface UsageJson {
       // level like tokens_per_window; the same for every model. Older JSON omits it.
       api_value_per_window?: number;
       source: string;
+      // ISO timestamp of this model's latest probe, when it has one of its own. Null/absent for
+      // a model whose figures are derived from another model's probe rather than probed directly.
+      probed_at?: string | null;
       probe_effort: string;
       split: Record<TokenClass, number>;
     }
@@ -40,6 +43,8 @@ export interface UsageJson {
   // Median total tokens of one real session, per model. Optional: older JSON and models not
   // yet calibrated omit it, in which case sessionsPerWindow/sessionsPerWeek come back null.
   session_tokens?: Record<string, number>;
+  // Accounts that run the fixed-prompt probes, e.g. ["dave","jwork"]. Optional: older JSON omits it.
+  probe_accounts?: string[];
   // How many 5-hour windows a real account's seven-day limit actually holds, measured (never
   // assumed unless flagged) from live usage, keyed by plan since the ratio differs per plan.
   // Optional until the daily job populates a plan; `assumed: true` means this plan's figures
@@ -51,7 +56,15 @@ export interface UsageJson {
     Plan,
     | {
         current: number;
-        history: { week_ending: string; windows: number; five_hour_pct: number; seven_day_pct: number }[];
+        history: {
+          week_ending: string;
+          windows: number;
+          five_hour_pct: number;
+          seven_day_pct: number;
+          // True when this week is still in progress. Optional: older JSON omits it, in which
+          // case it's inferred from week_ending falling after the last sample date.
+          partial?: boolean;
+        }[];
         assumed?: boolean;
       }
     | null
@@ -113,6 +126,17 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
     apiValueUsdPerWeek,
     windowsPerWeek,
   };
+}
+
+// Short label for a model's rate source, e.g. "probe, 8 Sep" when it has its own dated probe,
+// or plain "probe"/"derived" when no date is available.
+export function fmtSource(rate: { source: string; probed_at?: string | null } | undefined): string | null {
+  if (!rate) return null;
+  if (rate.probed_at) {
+    const d = new Date(rate.probed_at);
+    return `${rate.source}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+  }
+  return rate.source;
 }
 
 export function fmtUsd(n: number): string {
@@ -214,7 +238,7 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
     const points = w.history.map((h) => ({
       date: h.week_ending,
       windows: h.windows,
-      partial: lastSampleDate !== null && h.week_ending > lastSampleDate,
+      partial: typeof h.partial === "boolean" ? h.partial : lastSampleDate !== null && h.week_ending > lastSampleDate,
       inferred: false,
     }));
     byPlan.set(p, { assumed: !!w.assumed, points });

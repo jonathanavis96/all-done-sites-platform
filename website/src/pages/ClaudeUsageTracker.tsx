@@ -11,6 +11,7 @@ import {
   compute,
   eventsFor,
   fmtDate,
+  fmtSource,
   fmtTokens,
   fmtUsd,
   headline,
@@ -530,6 +531,9 @@ export default function ClaudeUsageTracker() {
                   <b>{fmtTokens(r.split.cache_write)}</b> cache write
                 </span>
               </div>
+              {fmtSource(data.rates[model]) && (
+                <div className="quiet">Source: {fmtSource(data.rates[model])}</div>
+              )}
               {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
                 <div className="quiet">
                   {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
@@ -708,11 +712,38 @@ export default function ClaudeUsageTracker() {
               Max 5x and Max 20x on Jonathan's own account history came out at roughly 2.5x, well below the published 4x,
               most likely because some of that usage happened off this machine and wasn't captured by the probe.
             </p>
+            <p>
+              Probes run on{" "}
+              {data?.probe_accounts?.length
+                ? `two Max 20x accounts (${data.probe_accounts.join(" and ")})`
+                : "two Max 20x accounts"}
+              ; their readings feed into one shared median, not a per-account figure.
+            </p>
+            {(() => {
+              // "probe" is a raw JSON key alongside the Plan keys, not itself a Plan the page
+              // lets you select — read it loosely rather than widening the Plan union for it.
+              const probeWeekly = (data?.weekly_windows as Record<string, { history: unknown[] } | null> | undefined)?.probe;
+              return !probeWeekly || probeWeekly.history.length === 0;
+            })() && (
+              <p>
+                The weekly-limit chart above comes from passive observation of one account's real use, not from probes.
+              </p>
+            )}
+            <p>The most recent week on that chart is still in progress and its figure will keep moving until the week ends.</p>
+            <p>
+              Methodology: probes are fixed-size prompts run on an idle account until the usage meter ticks; every number
+              on this page is derived from the JSON at{" "}
+              <a href="/data/claude-usage.json">/data/claude-usage.json</a>.
+            </p>
+            <p>
+              Source code and raw data: <a href="https://github.com/jonathanavis96/claude-usage-tracker">github.com/jonathanavis96/claude-usage-tracker</a>.
+            </p>
           </details>
         </section>
 
         <p className="sub" style={{ textAlign: "center", padding: "24px 0 8px" }}>
-          All Done Sites measures before it claims. Want a site that does the same? <a href="/#getquote">Get in touch</a>
+          All Done Sites measures before it claims. Want a site that does the same? <a href="/#getquote">Get in touch</a> &middot;{" "}
+          <a href="https://github.com/jonathanavis96/claude-usage-tracker">Source code and raw data</a>
         </p>
       </div>
     </PageShell>
