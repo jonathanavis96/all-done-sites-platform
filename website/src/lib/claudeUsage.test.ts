@@ -4,6 +4,7 @@ import {
   headline,
   fmtTokens,
   fmtUsd,
+  fmtSource,
   seriesFor,
   eventsFor,
   weeklySeriesFor,
@@ -101,6 +102,19 @@ describe("fmtUsd", () => {
     expect(fmtUsd(100.42)).toBe("$100");
     expect(fmtUsd(5.021)).toBe("$5");
     expect(fmtUsd(2811.76)).toBe("$2,812");
+  });
+});
+
+describe("fmtSource", () => {
+  it("appends the probe date when probed_at is present", () => {
+    expect(fmtSource({ source: "probe", probed_at: "2026-09-08T12:00:00Z" })).toBe("probe, 8 Sep");
+  });
+  it("falls back to the plain source when probed_at is absent", () => {
+    expect(fmtSource({ source: "derived" })).toBe("derived");
+    expect(fmtSource({ source: "derived", probed_at: null })).toBe("derived");
+  });
+  it("returns null when there is no rate at all", () => {
+    expect(fmtSource(undefined)).toBeNull();
   });
 });
 
@@ -266,6 +280,24 @@ describe("weeklySeriesFor", () => {
     const s = weeklySeriesFor(WJ);
     const max5 = s.find((x) => x.plan === "max5")!;
     expect(max5.points.map((p) => p.partial)).toEqual([false, false, false, true]);
+  });
+  it("prefers an explicit partial flag over the last_sample_at inference when present", () => {
+    const withExplicit: UsageJson = {
+      ...WJ,
+      last_sample_at: "2026-09-05T08:00:00+00:00",
+      weekly_windows: {
+        ...WJ.weekly_windows!,
+        max20: {
+          current: 11.2,
+          // week_ending is before last_sample_at (would infer false), but the explicit flag says true.
+          history: [{ week_ending: "2026-09-05", windows: 11, five_hour_pct: 0.4, seven_day_pct: 0.9, partial: true }],
+        },
+      },
+    };
+    const s = weeklySeriesFor(withExplicit);
+    const max20 = s.find((x) => x.plan === "max20")!;
+    const point = max20.points.find((p) => p.date === "2026-09-05")!;
+    expect(point.partial).toBe(true);
   });
   it("collapses pro into max5 when pro is assumed and identical to max5, labelling the shared series", () => {
     // WJ's pro history is a copy of max5's and flagged assumed, matching the live data shape
