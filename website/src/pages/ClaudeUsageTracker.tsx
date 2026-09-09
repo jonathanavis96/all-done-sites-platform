@@ -729,7 +729,9 @@ export default function ClaudeUsageTracker() {
                 The weekly-limit chart above comes from passive observation of one account's real use, not from probes.
               </p>
             )}
-            <p>The most recent week on that chart is still in progress and its figure will keep moving until the week ends.</p>
+            {weeklySeries.some((s) => s.points.some((p) => p.partial && !p.inferred)) && (
+              <p>The most recent week on that chart is still in progress and its figure will keep moving until the week ends.</p>
+            )}
             <p>
               Methodology: probes are fixed-size prompts run on an idle account until the usage meter ticks; every number
               on this page is derived from the JSON at{" "}
