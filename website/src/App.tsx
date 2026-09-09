@@ -22,6 +22,11 @@ const ThankYou = lazy(() => import("./pages/ThankYou"));
 const Terms = lazy(() => import("./pages/Terms"));
 const TermsFull = lazy(() => import("./pages/TermsFull"));
 const Privacy = lazy(() => import("./pages/Privacy"));
+// Personal contributor pages are client-rendered from /api/contribute/me (the id is in
+// the URL, so there is nothing to prerender); the static shell they mount into is
+// emitted by scripts/generate-static-pages.js (claude-usage-tracker/me.html) and
+// served for any id by the rewrite in public/_redirects.
+const ClaudeUsageMe = lazy(() => import("./pages/ClaudeUsageMe"));
 
 // Router and HelmetProvider are supplied by the entry points (main.tsx for the
 // browser, entry-server.tsx for build-time prerendering), so App can be rendered
@@ -55,6 +60,8 @@ export default function App() {
             <Route path="/guides" element={<GuidesIndex />} />
             <Route path="/guides/:slug" element={<GuideArticle />} />
             <Route path="/claude-usage-tracker" element={<ClaudeUsageTracker />} />
+            <Route path="/claude-usage-tracker/me" element={<ClaudeUsageMe />} />
+            <Route path="/claude-usage-tracker/me/:id" element={<ClaudeUsageMe />} />
 
             {/* Articles (news / longer-form). Prerendered only once the
                 collection has content — see entry-server.tsx. */}
