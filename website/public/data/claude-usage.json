@@ -109,7 +109,7 @@
     "weeks": 0
    }
   },
-  "updated_at": "2026-09-13T05:30:13+00:00"
+  "updated_at": "2026-09-14T05:30:12+00:00"
  },
  "effort": {
   "claude-fable-5-1": {
@@ -158,7 +158,7 @@
   }
  },
  "events": [],
- "generated_at": "2026-09-13T05:30:13.892402+00:00",
+ "generated_at": "2026-09-14T05:30:13.041328+00:00",
  "history": {
   "claude-fable-5-1": [
    {
@@ -395,6 +395,13 @@
    {
     "api_value_per_window": 100.6,
     "date": "2026-09-13",
+    "interpolated": false,
+    "source": "derived",
+    "tokens_per_window": 102531431
+   },
+   {
+    "api_value_per_window": 100.6,
+    "date": "2026-09-14",
     "interpolated": false,
     "source": "derived",
     "tokens_per_window": 102531431
@@ -638,6 +645,13 @@
     "interpolated": false,
     "source": "derived",
     "tokens_per_window": 117776848
+   },
+   {
+    "api_value_per_window": 100.6,
+    "date": "2026-09-14",
+    "interpolated": false,
+    "source": "derived",
+    "tokens_per_window": 117776848
    }
   ],
   "claude-sonnet-5": [
@@ -878,12 +892,19 @@
     "interpolated": false,
     "source": "derived",
     "tokens_per_window": 294442119
+   },
+   {
+    "api_value_per_window": 100.6,
+    "date": "2026-09-14",
+    "interpolated": false,
+    "source": "derived",
+    "tokens_per_window": 294442119
    }
   ]
  },
  "last_change": null,
  "last_sample_at": "2026-09-09T00:14:11.932199+00:00",
- "passive_generated_at": "2026-09-13T01:15:18.628115+00:00",
+ "passive_generated_at": "2026-09-14T01:15:19.342785+00:00",
  "plan_measured": "max20",
  "plan_ratios": {
   "max20": 1.0,
@@ -937,9 +958,9 @@
   }
  },
  "session_tokens": {
-  "claude-fable-5-1": 6729076,
-  "claude-opus-5": 1561053,
-  "claude-sonnet-5": 597450
+  "claude-fable-5-1": 6457348,
+  "claude-opus-5": 1583754,
+  "claude-sonnet-5": 562646
  },
  "weekly_windows": {
   "max20": {
@@ -966,6 +987,13 @@
      "seven_day_pct": 62.0,
      "week_ending": "2026-09-11",
      "windows": 6.02
+    },
+    {
+     "five_hour_pct": 56.0,
+     "partial": true,
+     "seven_day_pct": 8.0,
+     "week_ending": "2026-09-18",
+     "windows": 7.0
     }
    ]
   },
@@ -1131,6 +1159,13 @@
      "seven_day_pct": 62.0,
      "week_ending": "2026-09-11",
      "windows": 6.02
+    },
+    {
+     "five_hour_pct": 56.0,
+     "partial": true,
+     "seven_day_pct": 8.0,
+     "week_ending": "2026-09-18",
+     "windows": 7.0
     }
    ]
   },
