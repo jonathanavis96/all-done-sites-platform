@@ -163,7 +163,7 @@ export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "f
   }
   const tone = c.direction === "increased" ? "up" : "down";
   if (c.scope === "weekly") {
-    return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% in the week ending ${fmtDate(c.date)}.`, tone };
+    return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
   }
   return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
 }
