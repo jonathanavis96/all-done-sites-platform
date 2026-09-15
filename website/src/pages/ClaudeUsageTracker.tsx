@@ -340,7 +340,7 @@ function WeeklyChart({
                   textAnchor={partialNearRight ? "end" : "start"}
                   style={{ fill: "#64748B", fontWeight: 500 }}
                 >
-                  week in progress
+                  this week so far
                 </text>
               );
             })()}
@@ -375,7 +375,7 @@ function WeeklyChart({
         const headerText = fmtDate(hoverDate);
         const lineTexts = rows.map(
           (row) =>
-            `${row.s.label}: ${row.p.windows.toFixed(1)}${row.p.partial ? " (week in progress)" : ""}${row.p.inferred ? " (inferred)" : ""}`,
+            `${row.s.label}: ${row.p.windows.toFixed(1)}${row.p.partial ? " (week so far)" : ""}${row.p.inferred ? " (inferred)" : ""}`,
         );
         const maxChars = Math.max(headerText.length, ...lineTexts.map((t) => t.length));
         const lineH = 16;
@@ -550,8 +550,9 @@ export default function ClaudeUsageTracker() {
               )}
               {data.weekly_windows?.[plan] && (
                 <div className="quiet">
-                  A week holds about {data.weekly_windows[plan]!.current.toFixed(1)} five-hour windows, measured from a
-                  real account.
+                  A week currently holds about {data.weekly_windows[plan]!.current.toFixed(1)} five-hour windows, measured
+                  from a real account
+                  {data.last_change?.scope === "weekly" ? ` since the change on ${fmtDate(data.last_change.date)}` : ""}.
                 </div>
               )}
               {stale && (
@@ -612,7 +613,7 @@ export default function ClaudeUsageTracker() {
             <WeeklyChart series={weeklySeries} events={weeklyEvents} selectedPlan={plan} />
             {weeklySeries.some((s) => s.points.length >= 2) && (
               <p className="sub chart-legend">
-                Solid: selected plan. Grey: the other. Dashed: inferred from the other line by the ratio of their weekly figures, not measured. Pro is assumed from Max 5x. Hollow: week in progress.
+                Solid: selected plan. Grey: the other. Dashed: inferred from the other line by the ratio of their weekly figures, not measured. Pro is assumed from Max 5x. Hollow: this week so far.
               </p>
             )}
           </section>
@@ -736,7 +737,11 @@ export default function ClaudeUsageTracker() {
               </p>
             )}
             {weeklySeries.some((s) => s.points.some((p) => p.partial && !p.inferred)) && (
-              <p>The most recent week on that chart is still in progress and its figure will keep moving until the week ends.</p>
+              <p>
+                The hollow point is this week so far. The current figure above does not wait for it: it is measured
+                from the five-hour windows since the last confirmed change, so a mid-week step is dated to the day it
+                landed rather than blended into a week's average.
+              </p>
             )}
             <p>
               Methodology: probes are fixed-size prompts run on an idle account until the usage meter ticks; every number
