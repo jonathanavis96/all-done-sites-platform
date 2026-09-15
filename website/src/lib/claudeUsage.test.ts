@@ -135,7 +135,7 @@ describe("headline", () => {
       last_change: { date: "2026-08-21", direction: "decreased", percent: 36, model: "all", scope: "weekly" },
     };
     expect(headline(weekly)).toEqual({
-      text: "Anthropic last decreased Claude's weekly limit by 36% in the week ending 21 Aug 2026.",
+      text: "Anthropic last decreased Claude's weekly limit by 36% on 21 Aug 2026.",
       tone: "down",
     });
   });
@@ -145,7 +145,7 @@ describe("headline", () => {
       last_change: { date: "2026-08-21", direction: "increased", percent: 20, model: "all", scope: "weekly" },
     };
     expect(headline(weekly)).toEqual({
-      text: "Anthropic last increased Claude's weekly limit by 20% in the week ending 21 Aug 2026.",
+      text: "Anthropic last increased Claude's weekly limit by 20% on 21 Aug 2026.",
       tone: "up",
     });
   });
