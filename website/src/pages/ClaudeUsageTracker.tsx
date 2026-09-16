@@ -450,6 +450,8 @@ interface ContribTab {
   fmt: (v: number) => string;
   reference: (r: ReturnType<typeof compute> | null, fleetUsd: number | null) => number | null;
   refLabel: (v: number, fmt: (v: number) => string) => string;
+  // True when the reference is a per-week figure resting on an inferred weekly level.
+  referenceInferred?: (r: ReturnType<typeof compute> | null) => boolean;
   legend: string;
 }
 
@@ -480,6 +482,7 @@ const CONTRIB_TABS: ContribTab[] = [
     value: (p, model) => contribPointValue(p, "weekly", model),
     fmt: fmtTokens,
     reference: (r) => r?.tokensPerWeek ?? null,
+    referenceInferred: (r) => r?.weeklyInferred === true,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
       "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
@@ -489,11 +492,13 @@ const CONTRIB_TABS: ContribTab[] = [
 function ContributorsChart({
   points,
   reference,
+  referenceInferred,
   tab,
   model,
 }: {
   points: ContribPoint[];
   reference: number | null;
+  referenceInferred: boolean;
   tab: ContribTab;
   model: string;
 }) {
@@ -533,6 +538,7 @@ function ContributorsChart({
             <line x1={L} x2={R} y1={y(reference)} y2={y(reference)} stroke="var(--ads-ac)" strokeWidth="1.5" strokeDasharray="5 4" />
             <text x={R} y={y(reference) - 6} textAnchor="end" style={{ fill: "var(--ads-ac)", fontWeight: 500 }}>
               {tab.refLabel(reference, tab.fmt)}
+              {referenceInferred && " inferred"}
             </text>
           </g>
         )}
@@ -815,6 +821,7 @@ export default function ClaudeUsageTracker({
                         <em className="brk">·</em>
                         <span>
                           <b>{fmtUsd(r.apiListValueUsdPerWeek)}</b> per week
+                          {r.weeklyInferred && <em>inferred</em>}
                         </span>
                       </>
                     )}
@@ -835,8 +842,8 @@ export default function ClaudeUsageTracker({
                   )}
                   {r.planWindowsPerWeek !== null && (
                     <div className="quiet">
-                      A week currently holds about {r.planWindowsPerWeek.toFixed(1)} five-hour windows, measured from a
-                      real account.
+                      A week currently holds about {r.planWindowsPerWeek.toFixed(1)} five-hour windows,
+                      {r.weeklyInferred ? " inferred." : " measured from a real account."}
                       {r.weeklyFraction < 1 && (
                         <>
                           {" "}
@@ -929,6 +936,7 @@ export default function ClaudeUsageTracker({
                   <div className="rate">
                     <span>
                       <b>{fmtTokens(r.tokensPerWeek)}</b> tokens per week
+                      {r.weeklyInferred && <em>inferred</em>}
                     </span>
                   </div>
                 )}
@@ -964,6 +972,7 @@ export default function ClaudeUsageTracker({
                   <div className="rate">
                     <span>
                       <b>{r.planWindowsPerWeek.toFixed(1)}</b> five-hour windows per week
+                      {r.weeklyInferred && <em>inferred</em>}
                     </span>
                   </div>
                 )}
@@ -990,8 +999,8 @@ export default function ClaudeUsageTracker({
           <section>
             <h2>Plan comparison</h2>
             <div className="sub">
-              {MODEL_LABELS[model] ?? model}. Max 20x is measured; Pro and Max 5x are scaled from it by Anthropic's
-              published 1:5:20 ratios.
+              {MODEL_LABELS[model] ?? model}. Max 20x is measured; Pro and Max 5x are scaled from it, partly by
+              Anthropic's published 1:5:20 ratios.
             </div>
             <table>
               <thead>
@@ -1005,18 +1014,31 @@ export default function ClaudeUsageTracker({
               <tbody>
                 {(
                   [
-                    ["Tokens per 5-hour window", (c) => (c.tokensPerWindow === null ? "—" : fmtTokens(c.tokensPerWindow))],
-                    ["Tokens per week", (c) => (c.tokensPerWeek === null ? "—" : fmtTokens(c.tokensPerWeek))],
-                    ["Meter budget per 5-hour window", (c) => (c.meterBudgetUsd === null ? "—" : fmtUsd(c.meterBudgetUsd))],
-                    ["API list value per 5-hour window", (c) => (c.apiListValueUsd === null ? "—" : fmtUsd(c.apiListValueUsd))],
-                    ["API list value per week", (c) => (c.apiListValueUsdPerWeek === null ? "—" : fmtUsd(c.apiListValueUsdPerWeek))],
-                  ] as [string, (c: NonNullable<ReturnType<typeof compute>>) => string][]
-                ).map(([label, f]) => (
+                    ["Tokens per 5-hour window", (c) => c.tokensPerWindow, fmtTokens],
+                    ["Tokens per week", (c) => c.tokensPerWeek, fmtTokens, true],
+                    ["Meter budget per 5-hour window", (c) => c.meterBudgetUsd, fmtUsd],
+                    ["API list value per 5-hour window", (c) => c.apiListValueUsd, fmtUsd],
+                    ["API list value per week", (c) => c.apiListValueUsdPerWeek, fmtUsd, true],
+                  ] as [string, (c: NonNullable<ReturnType<typeof compute>>) => number | null, (v: number) => string, boolean?][]
+                ).map(([label, value, fmt, weekly]) => (
                   <tr key={label}>
                     <td>{label}</td>
-                    {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => (
-                      <td key={p} className={p === plan ? "hl" : ""}>{f(compute(data, p, model, EFFORT)!)}</td>
-                    ))}
+                    {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => {
+                      const c = compute(data, p, model, EFFORT)!;
+                      const v = value(c);
+                      return (
+                        <td key={p} className={p === plan ? "hl" : ""}>
+                          {v === null ? "—" : fmt(v)}
+                          {/* The table's form of the dashed line the weekly charts draw for an inferred level. */}
+                          {weekly && v !== null && c.weeklyInferred && (
+                            <>
+                              {" "}
+                              <em>inferred</em>
+                            </>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -1070,6 +1092,7 @@ export default function ClaudeUsageTracker({
                   points={data.contributed[plan]!.points!}
                   tab={contribTab}
                   reference={contribTab.reference(r, fleetUsdPerPercent(data, plan))}
+                  referenceInferred={contribTab.referenceInferred?.(r) ?? false}
                   model={model}
                 />
               </>

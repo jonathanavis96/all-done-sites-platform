@@ -3,7 +3,7 @@ import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import ClaudeUsageTracker from "./ClaudeUsageTracker";
-import type { Plan, UsageJson } from "@/lib/claudeUsage";
+import { compute, fmtTokens, fmtUsd, type Plan, type UsageJson } from "@/lib/claudeUsage";
 import type { ContribMetric } from "@/lib/contrib";
 // Schema 1: the published file as of 4401911 (generated 2026-09-16T16:30Z), what the live page
 // renders until the collector change merges. Schema 2: tracker PR #57's offline rebuild from the
@@ -38,11 +38,18 @@ function render(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", n
     .replace(/\s+/g, " ");
 }
 
-// The cells of one plan-comparison row, in Pro, Max 5x, Max 20x order.
+// The cells of one plan-comparison row, in Pro, Max 5x, Max 20x order. A cell whose figure is
+// inferred reads "<figure> inferred".
 function row(text: string, label: string): string[] {
   const table = text.slice(text.indexOf(" Plan comparison "), text.indexOf(" Contribute your own meter "));
   const after = table.split(` ${label} `)[1];
-  return after.trim().split(" ").slice(0, 3);
+  const cells: string[] = [];
+  for (const word of after.trim().split(" ")) {
+    if (word === "inferred" && cells.length > 0) cells[cells.length - 1] += " inferred";
+    else if (cells.length === 3) break;
+    else cells.push(word);
+  }
+  return cells;
 }
 
 const LIVE = schema1 as unknown as UsageJson;
@@ -101,8 +108,9 @@ describe("the tracker page renders both schemas", () => {
     expect(text).toContain("A week currently holds about 4.6 five-hour windows, measured from a real account.");
     expect(text).toContain("4.6 five-hour windows per week");
     expect(text).not.toContain("11.0 five-hour");
-    expect(row(text, "Tokens per week").slice(0, 2)).toEqual(["—", "—"]);
-    expect(row(text, "Tokens per week")[2]).toBe("5929M");
+    // Pro's and Max 5x's weekly cells take the level their chart ends on, marked inferred: reversed
+    // from "—" by Jonathan's decision on derived figures (PR #76).
+    expect(row(text, "Tokens per week")).toEqual(["494M inferred", "2472M inferred", "5929M"]);
     // Pro's assumed copy of Max 5x is drawn with it again, one line on the weekly-limit chart
     // (reverses finding 6 by Jonathan's decision, 2026-09-16).
     expect(text).toContain("Max 5x and Pro");
@@ -133,6 +141,49 @@ describe("the tracker page renders both schemas", () => {
       expect(text).toContain("Dashed: inferred, or a window figure not marked measured.");
       expect(text).toContain("Dashed: inferred.");
     }
+  });
+
+  it("fills the plan table's weekly rows for every included plan from the weekly chart, marking Pro and Max 5x inferred, on both schemas (PR #76)", () => {
+    for (const j of [LIVE, PUBLISHED]) {
+      for (const selected of ["pro", "max5", "max20"] as Plan[]) {
+        const text = render(j, selected);
+        for (const [label, figure, fmt] of [
+          ["Tokens per week", (c) => c.tokensPerWeek, fmtTokens],
+          ["API list value per week", (c) => c.apiListValueUsdPerWeek, fmtUsd],
+        ] as [string, (c: NonNullable<ReturnType<typeof compute>>) => number | null, (v: number) => string][]) {
+          const expected = (["pro", "max5", "max20"] as Plan[]).map((p) => {
+            const c = compute(j, p, "claude-sonnet-5", "high")!;
+            const v = figure(c);
+            return v === null ? "—" : `${fmt(v)}${c.weeklyInferred ? " inferred" : ""}`;
+          });
+          expect(row(text, label)).toEqual(expected);
+        }
+        const tokens = row(text, "Tokens per week");
+        expect(tokens).not.toContain("—");
+        expect(tokens[0]).toMatch(/^\d+M inferred$/);
+        expect(tokens[1]).toMatch(/^\d+M inferred$/);
+        expect(tokens[2]).toMatch(/^\d+M$/);
+      }
+    }
+    // Schema 1 publishes no API list value for any plan, so that row stays empty there.
+    expect(row(render(LIVE), "API list value per week")).toEqual(["—", "—", "—"]);
+    expect(row(render(PUBLISHED), "API list value per week")[2]).toBe("$1,977");
+  });
+
+  it("marks every weekly figure the hero and the weekly sections show for Pro or Max 5x as inferred, and none for Max 20x (PR #76)", () => {
+    for (const plan of ["pro", "max5"] as Plan[]) {
+      const r = compute(PUBLISHED, plan, "claude-sonnet-5", "high")!;
+      const text = render(PUBLISHED, plan);
+      expect(text).toContain(`A week currently holds about ${r.planWindowsPerWeek!.toFixed(1)} five-hour windows, inferred.`);
+      expect(text).not.toContain("measured from a real account");
+      expect(text).toContain(`${fmtUsd(r.apiListValueUsdPerWeek!)} per week inferred`);
+      expect(text).toContain(`${fmtTokens(r.tokensPerWeek!)} tokens per week inferred`);
+      expect(text).toContain(`${r.planWindowsPerWeek!.toFixed(1)} five-hour windows per week inferred`);
+    }
+    const text = render(PUBLISHED, "max20");
+    expect(text).toContain("A week currently holds about 4.7 five-hour windows, measured from a real account.");
+    expect(text).toContain("$1,977 per week ");
+    expect(text).not.toMatch(/per week inferred/);
   });
 
   it("renders the rebuilt schema 2 file with both dollar figures and no weekly figure it does not have (findings 1, 6, 13, 16)", () => {
@@ -228,6 +279,11 @@ describe("the tracker page renders both schemas", () => {
     // The tokens-per-week tab is the one open: its dashed line is the tracker's tokens per week, and
     // neither live reading carries a per-model weekly figure to plot.
     expect(weeklyTab).toContain("tracker 5929M");
+    expect(weeklyTab).not.toContain("tracker 5929M inferred");
+    // On a plan whose weekly figure is inferred, the tracker's line says so (PR #76).
+    const onPro: UsageJson = structuredClone(pooled);
+    onPro.contributed!.pro = structuredClone(pooled.contributed!.max20!);
+    expect(render(onPro, "pro", "claude-sonnet-5", undefined, "weekly")).toContain("tracker 494M inferred");
     expect(weeklyTab).toContain("No contributed reading carries this figure yet");
     for (const text of [weeklyTab, render(pooled), render(pooled, "max20", "claude-sonnet-5", undefined, "window")]) {
       expect(text).toContain("Two contributor IDs on Max 20x have shared meter readings.");

@@ -285,7 +285,8 @@ export interface UsageJson {
   contributed?: ContributedBlock;
   // How many 5-hour windows a real account's seven-day limit holds, keyed by plan. A plan entry
   // of null (or a null current) means no current figure, in which case every per-week figure
-  // the page derives from a window figure for that plan comes back null rather than guessed.
+  // the page derives for that plan rests on the level its weekly chart ends on, flagged inferred,
+  // or is null when that chart has no level for it (see compute).
   weekly_windows?: Partial<Record<Plan, WeeklyPlan | null>>;
   // Schema 2: which plans include each model, and what share of the weekly limit it may use.
   model_plan_limits?: Record<string, Partial<Record<Plan, PlanLimit>>>;
@@ -493,7 +494,15 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
     meterBudgetUsd !== null && typeof perTaskUsd === "number" && perTaskUsd > 0 ? meterBudgetUsd / perTaskUsd : null;
   // No session count: one needs a measured meter cost per session, and the only session figure
   // ever published was another account's token total on a different mix (finding 11).
-  const planWindowsPerWeek = currentWeeklyEstimate(j, plan)?.value ?? null;
+  // The plan's own current estimate where it has one. Otherwise the level its weekly chart ends on,
+  // scaled from another plan and flagged inferred: Jonathan reversed finding 6 here as on the
+  // charts (2026-09-16, PR #76), so a derived figure is shown marked rather than left out. A plan
+  // with no level at all still has no weekly figure.
+  const measuredWindowsPerWeek = currentWeeklyEstimate(j, plan)?.value ?? null;
+  const levels = measuredWindowsPerWeek === null ? weeklyRegimeLevelsFor(j, plan) : [];
+  const newestLevel = levels.length > 0 ? levels[levels.length - 1] : null;
+  const planWindowsPerWeek = measuredWindowsPerWeek ?? newestLevel?.windows ?? null;
+  const weeklyInferred = measuredWindowsPerWeek === null && newestLevel !== null;
   // The windows of the plan's week this model may use: Fable is capped at half on Max.
   const windowsPerWeek = limit.included && planWindowsPerWeek !== null ? planWindowsPerWeek * limit.weekly_fraction : null;
   const perWeek = (v: number | null) => (v === null || windowsPerWeek === null ? null : v * windowsPerWeek);
@@ -510,6 +519,8 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
     apiListValueUsdPerWeek: perWeek(apiListValueUsd),
     planWindowsPerWeek,
     windowsPerWeek,
+    // True when every per-week figure above rests on that inferred level, not a measurement.
+    weeklyInferred,
   };
 }
 
