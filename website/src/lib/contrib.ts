@@ -345,19 +345,25 @@ export function isCoarse(sample: Pick<PublicSample, "five_hour">): boolean {
 
 /**
  * Meter dollars for one model's token counts: Σ_class tokens × price[class] × class_weight[class]
- * / 1e6, scaled by price.meter_weight. Null when the price has no class_weight/meter_weight
- * (older published JSON, before the meter was priced this way).
+ * / 1e6, plus the one-hour cache write's difference from a five-minute one, scaled by
+ * price.meter_weight. Null when the price has no class_weight/meter_weight (older published JSON,
+ * before the meter was priced this way). Within a class_weight, the weights default as the
+ * collector's tracker/publish.py `class_weight` does: a missing class weighs 1, and the one-hour
+ * write weighs as cache_write unless it has its own entry.
  */
 export function meterUsd(counts: TokenCounts | undefined, price: ApiPrice | undefined): number | null {
   if (!price || !price.class_weight || typeof price.meter_weight !== "number") return null;
+  const weights = price.class_weight;
   let sum = 0;
   for (const c of CLASSES) {
     const tokens = counts?.[c] ?? 0;
-    sum += tokens * (price[c] ?? 0) * (price.class_weight[c] ?? 0);
+    sum += tokens * (price[c] ?? 0) * (weights[c] ?? 1);
   }
   const oneHour = counts?.cache_write_1h ?? 0;
   if (oneHour < 0 || oneHour > (counts?.cache_write ?? 0)) return null;
-  sum += oneHour * ((price.cache_write_1h ?? price.input * 2) - price.cache_write) * (price.class_weight.cache_write ?? 1);
+  const writeWeight = weights.cache_write ?? 1;
+  const oneHourWeight = weights.cache_write_1h ?? writeWeight;
+  sum += oneHour * ((price.cache_write_1h ?? price.input * 2) * oneHourWeight - price.cache_write * writeWeight);
   return (sum / 1e6) * price.meter_weight;
 }
 

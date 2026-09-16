@@ -97,6 +97,24 @@ describe("validateSample", () => {
     expect(usdPerPercent(plausible as unknown as PublicSample, {})).toBeNull();
   });
 
+  it("keeps a one-hour cache write count within cache_write, and refuses one that exceeds it or is not a count", () => {
+    const withOneHour = (n: unknown) => ({
+      ...BODY,
+      tokens_since_five_hour_reset: {
+        ...BODY.tokens_since_five_hour_reset,
+        "claude-sonnet-5": { ...BODY.tokens_since_five_hour_reset["claude-sonnet-5"], cache_write_1h: n },
+      },
+    });
+    const kept = validateSample(withOneHour(50), NOW);
+    expect(kept.ok).toBe(true);
+    if (kept.ok) expect(kept.value.tokens_since_five_hour_reset["claude-sonnet-5"].cache_write_1h).toBe(50);
+    const reason = "tokens_since_five_hour_reset.claude-sonnet-5.cache_write_1h must be a subset of cache_write";
+    expect(validateSample(withOneHour(51), NOW)).toEqual({ ok: false, reason });
+    expect(validateSample(withOneHour(-1), NOW)).toEqual({ ok: false, reason });
+    expect(validateSample(withOneHour(1.5), NOW)).toEqual({ ok: false, reason });
+    expect(validateSample(withOneHour("50"), NOW)).toEqual({ ok: false, reason });
+  });
+
   it("accepts capture provenance but refuses unknown capture fields", () => {
     // The capture block contrib/sample.py 0.2.0 builds for BODY: each window starts one window
     // length before its reset, and ownership is one of the two values the sampler emits.
@@ -179,6 +197,26 @@ describe("pricing a sample", () => {
     expect(meterUsd(REAL_SAMPLE.tokens_since_five_hour_reset["claude-opus-5"], PRICES["claude-opus-5"])).toBeCloseTo(0.39485125, 5);
     expect(meterUsd(undefined, PRICES["claude-sonnet-5"])).toBe(0);
     expect(meterUsd({ input: 1, output: 0, cache_read: 0, cache_write: 0 }, undefined)).toBeNull();
+  });
+
+  it("prices the one-hour cache write as the collector's meter_usd does, weights defaulting alike", () => {
+    // Expected values are the collector's tracker/publish.py meter_usd on the same inputs: a million
+    // cache writes, 400k of them one-hour, on Sonnet's prices.
+    const counts = { input: 0, output: 0, cache_read: 0, cache_write: 1_000_000, cache_write_1h: 400_000 };
+    const base = { input: 2, output: 10, cache_read: 0.2, cache_write: 2.5, meter_weight: 1 };
+    const full = { input: 1, output: 1.8, cache_read: 0, cache_write: 1 };
+    // The published one-hour price, and 2x input when it is absent.
+    expect(meterUsd(counts, { ...base, cache_write_1h: 5, class_weight: full })).toBeCloseTo(3.5, 9);
+    expect(meterUsd(counts, { ...base, class_weight: full })).toBeCloseTo(3.1, 9);
+    // A class_weight without cache_write weighs both the base writes and the one-hour difference at
+    // 1, not the base at 0 and the difference at 1 (review finding 3).
+    expect(meterUsd(counts, { ...base, cache_write_1h: 4, class_weight: { input: 1, output: 1.8, cache_read: 0 } })).toBeCloseTo(3.1, 9);
+    // The one-hour write weighs as cache_write unless it has its own weight.
+    expect(meterUsd(counts, { ...base, cache_write_1h: 4, class_weight: { ...full, cache_write: 0.5 } })).toBeCloseTo(1.55, 9);
+    expect(meterUsd(counts, { ...base, cache_write_1h: 4, class_weight: { ...full, cache_write: 0.5, cache_write_1h: 1 } })).toBeCloseTo(2.35, 9);
+    expect(meterUsd(counts, { ...base, meter_weight: 2, cache_write_1h: 4, class_weight: full })).toBeCloseTo(6.2, 9);
+    // A one-hour count larger than the writes it is part of prices as nothing.
+    expect(meterUsd({ ...counts, cache_write_1h: 1_000_001 }, { ...base, class_weight: full })).toBeNull();
   });
 
   it("prices every model in a sample and totals them, null when a used model is unpriced", () => {
