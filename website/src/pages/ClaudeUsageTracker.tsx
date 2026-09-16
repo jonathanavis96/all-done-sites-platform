@@ -636,6 +636,19 @@ export default function ClaudeUsageTracker() {
                 {fmtUsd(r.apiValueUsd)}
                 <span>of API value per 5-hour window</span>
               </div>
+              {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
+                <div className="rate">
+                  {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
+                    <>
+                      <span>
+                        about {Math.round(r.sessionsPerWindow)} sessions<em>·</em>{Math.round(r.sessionsPerWeek)} per week
+                      </span>
+                      {r.apiValueUsdPerWeek !== null && <em className="brk">·</em>}
+                    </>
+                  )}
+                  {r.apiValueUsdPerWeek !== null && <span>{fmtUsd(r.apiValueUsdPerWeek)} of API value per week</span>}
+                </div>
+              )}
               <div className="split">
                 <span>
                   <b>{fmtTokens(r.split.input)}</b> input<em>·</em>
@@ -649,19 +662,6 @@ export default function ClaudeUsageTracker() {
               </div>
               {fmtSource(data.rates[model]) && (
                 <div className="quiet">Source: {fmtSource(data.rates[model])}</div>
-              )}
-              {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
-                <div className="quiet">
-                  {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
-                    <>
-                      <span>
-                        about {Math.round(r.sessionsPerWindow)} sessions<em>·</em>{Math.round(r.sessionsPerWeek)} per week
-                      </span>
-                      {r.apiValueUsdPerWeek !== null && <em className="brk">·</em>}
-                    </>
-                  )}
-                  {r.apiValueUsdPerWeek !== null && <span>{fmtUsd(r.apiValueUsdPerWeek)} of API value per week</span>}
-                </div>
               )}
               {data.weekly_windows?.[plan] && (
                 <div className="quiet">
