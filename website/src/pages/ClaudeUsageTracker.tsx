@@ -19,6 +19,7 @@ import {
   headline,
   seriesFor,
   weeklyEventsFor,
+  latestWeeklyChange,
   weeklySeriesFor,
   weeklyTokenSeriesFor,
   type ContribPoint,
@@ -467,8 +468,7 @@ function WeeklyTokensChart({
   // The latest weekly change, if it falls inside the plotted span: the drop gets its own
   // marker here, the same red as the weekly-limit chart below, because a change in windows per
   // week moves this line as surely as it moves that one.
-  const weeklyChanges = events.filter((ev) => ev.kind === "change" && xDate(ev.date) !== null);
-  const change = weeklyChanges.length > 0 ? weeklyChanges[weeklyChanges.length - 1] : null;
+  const change = latestWeeklyChange(events.filter((ev) => xDate(ev.date) !== null));
   const changeDate = change ? change.date : null;
   const ariaLabel = [
     "Tokens per week over time",
