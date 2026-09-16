@@ -5,7 +5,6 @@ import NotifyForm from "@/components/NotifyForm";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
-  EFFORTS,
   MODEL_LABELS,
   PLAN_LABELS,
   RANGE_DAYS,
@@ -17,6 +16,8 @@ import {
   fmtUsd,
   fmtUsd2,
   headline,
+  modelPlanLimit,
+  staleEvidenceAt,
   seriesFor,
   weeklyEventsFor,
   latestWeeklyChange,
@@ -25,7 +26,6 @@ import {
   weeklyTokenRegimeLevelsFor,
   weeklyTokenSeriesFor,
   type ContribPoint,
-  type Effort,
   type Plan,
   type RangeDays,
   type UsageEvent,
@@ -34,7 +34,16 @@ import {
   type WeeklySeries,
   type RegimeLevel,
 } from "@/lib/claudeUsage";
-import { contribColor, contribGroups, contribXScale, contribYMax, contributorSentences, fleetUsdPerPercent } from "@/lib/contrib";
+import {
+  contribColor,
+  contribGroups,
+  contribPointValue,
+  contribXScale,
+  contribYMax,
+  contributorSentences,
+  fleetUsdPerPercent,
+  type ContribMetric,
+} from "@/lib/contrib";
 import "@/styles/home.css";
 import "@/styles/claude-usage.css";
 // Build-time snapshot so the prerendered HTML carries real figures; the fetch below refreshes it.
@@ -166,7 +175,7 @@ function Chart({
               textAnchor={xx > W - 130 ? "end" : "start"}
               style={{ fill: color, fontWeight: 500 }}
             >
-              {shortChangeLabel(ev.label)}
+              {shortChangeLabel(ev)}
             </text>
           </g>
         );
@@ -197,10 +206,14 @@ function Chart({
  * line's last value; where two would collide they are pushed apart by `gap` and the whole set
  * is kept inside the plot area, so a label never leaves the chart or covers another.
  */
-// The published event label reads "Weekly limit changed -29%". On a chart the word adds
-// nothing: a red dashed marker already says something changed there.
-function shortChangeLabel(label: string): string {
-  return label.replace(/\s+changed\b/, "");
+// The published event label reads "Weekly limit changed -29%" (schema 1) or "Observed weekly/window
+// ratio changed -29%" (schema 2). On a chart it becomes the metric and the signed percent: the red
+// dashed marker already says something changed there, and schema 1's words name a limit the
+// account's metric alone does not establish moved (audit finding 4).
+function shortChangeLabel(ev: Pick<UsageEvent, "label" | "scope">): string {
+  const pct = ev.label.match(/[-+\u2212]\d+(\.\d+)?%/);
+  if (!pct) return ev.label.replace(/\s+changed\b/, "");
+  return ev.scope === "weekly" ? `weekly ratio ${pct[0]}` : pct[0];
 }
 
 // The one segment a change lands on: from the change date to the next reading, with the start
@@ -323,10 +336,10 @@ function LevelChart({
     ...plotted.map(
       (p) =>
         `${p.label}: ${p.levels
-          .map((l) => `${fmtDate(l.start.slice(0, 10))} to ${fmtDate(l.end.slice(0, 10))} ${fmtValue(l.value)}${l.inferred ? " (inferred)" : ""}`)
+          .map((l) => `${fmtDate(l.start.slice(0, 10))} to ${fmtDate(l.end.slice(0, 10))} ${fmtValue(l.value)}${l.inferred ? " (dashed)" : ""}`)
           .join(", ")}`,
     ),
-    ...(change ? [`${fmtDate(change.date)}: ${change.label}`] : []),
+    ...(change ? [`${fmtDate(change.date)}: ${shortChangeLabel(change)}`] : []),
   ].join(". ");
   return (
     <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
@@ -353,13 +366,12 @@ function LevelChart({
             textAnchor={xDay(change.date) > W - 130 ? "end" : "start"}
             style={{ fill: "#B42318", fontWeight: 600 }}
           >
-            {shortChangeLabel(change.label)}
+            {shortChangeLabel(change)}
           </text>
         </g>
       )}
       {plotted.map((p) => {
-        const isSelected =
-          p.plan === selectedPlan || (selectedPlan === "pro" && p.plan === "max5" && !levelsByPlan.some((o) => o.plan === "pro"));
+        const isSelected = p.plan === selectedPlan;
         const color = isSelected ? "#0EA5E9" : "#94A3B8";
         const runs = stepRuns(p.levels, xAt, (l) => y(l.value));
         // Shade under the selected plan's own steps, so the eye lands on the plan in view.
@@ -426,10 +438,10 @@ function LevelChart({
 }
 
 // What each tab of the contributors section plots. Every one is read off the same
-// contributed samples: the dollar and token figures divide by the five-hour percent,
-// the windows figure divides the five-hour percent by the seven-day one.
-type ContribMetric = "usd" | "window" | "weekly" | "windows";
-
+// contributed samples: the dollar and window figures divide by the five-hour percent, the
+// weekly figure by the seven-day one. There is no windows-per-week tab: a reading's week of
+// tokens over its window of tokens divides two different workloads, not paired meter movement
+// (audit finding 7), and schema 2 no longer publishes that quotient.
 interface ContribTab {
   key: ContribMetric;
   label: string;
@@ -440,63 +452,36 @@ interface ContribTab {
   legend: string;
 }
 
-// The selected model's own figure when the point carries the per-model split, so the dot
-// and the tracker's line are the same model. A point published before the split existed
-// falls back to its combined figure, which mixes every model that reading used.
-function perPct(
-  byModel: Record<string, number> | undefined,
-  combined: number | null | undefined,
-  model: string,
-  scale: number,
-): number | null {
-  if (byModel) {
-    const own = byModel[model];
-    return typeof own === "number" ? own * scale : null;
-  }
-  return typeof combined === "number" ? combined * scale : null;
-}
-
 const CONTRIB_TABS: ContribTab[] = [
   {
     key: "usd",
     label: "Cost per 1%",
-    value: (p) => p.usd_per_pct ?? null,
+    value: (p, model) => contribPointValue(p, "usd", model),
     fmt: fmtUsd2,
     reference: (_r, fleetUsd) => fleetUsd,
     refLabel: (v, fmt) => `tracker ${fmt(v)} per 1%`,
     legend:
-      "One dot per reading, joined when they come from the same person. Hollow dots: meter under 5%. Dashed line: the tracker's own figure.",
+      "One dot per reading, joined when they come from the same contributor ID. Hollow dots: meter under 5%. Dashed line: the tracker's own figure.",
   },
   {
     key: "window",
     label: "Effective window size",
-    value: (p, model) => perPct(p.tokens_per_pct_by_model, p.tokens_per_pct, model, 100),
+    value: (p, model) => contribPointValue(p, "window", model),
     fmt: fmtTokens,
     reference: (r) => r?.tokensPerWindow ?? null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
-      "Tokens a full five-hour window buys, read off each contributor's own meter. Hollow dots: meter under 5%. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
+      "Tokens a full five-hour window buys, read off each contributor's own meter. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
   },
   {
     key: "weekly",
     label: "Tokens per week",
-    value: (p, model) => perPct(p.tokens_per_pct_week_by_model, p.tokens_per_pct_week, model, 100),
+    value: (p, model) => contribPointValue(p, "weekly", model),
     fmt: fmtTokens,
-    reference: (r) =>
-      r && r.windowsPerWeek !== null ? r.tokensPerWindow * r.windowsPerWeek : null,
+    reference: (r) => r?.tokensPerWeek ?? null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
       "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
-  },
-  {
-    key: "windows",
-    label: "Weekly limit",
-    value: (p) => p.windows ?? null,
-    fmt: (v) => v.toFixed(1),
-    reference: (r) => r?.windowsPerWeek ?? null,
-    refLabel: (v, fmt) => `tracker ${fmt(v)} windows`,
-    legend:
-      "Five-hour windows one week holds, from one reading: what a week buys over what a window buys, each measured on its own meter. Both meters step in whole percents, so a low reading swings it. Dashed line: the tracker's own figure.",
   },
 ];
 
@@ -528,7 +513,7 @@ function ContributorsChart({
     usable.length > 0
       ? `${fmtDate(new Date(t0).toISOString())} to ${fmtDate(new Date(t1).toISOString())}`
       : "no readings yet";
-  const ariaLabel = `${usable.length} reading${usable.length === 1 ? "" : "s"} from ${groups.length} ${groups.length === 1 ? "person" : "people"}, ${span}`;
+  const ariaLabel = `${usable.length} reading${usable.length === 1 ? "" : "s"} from ${groups.length} contributor ID${groups.length === 1 ? "" : "s"}, ${span}`;
   return (
     <>
       <svg className="chart contrib-chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
@@ -598,12 +583,32 @@ function ContributorsChart({
   );
 }
 
-export default function ClaudeUsageTracker() {
-  const [data, setData] = useState<UsageJson | null>(initialData);
+// Nothing on the page depends on effort any more: it only scaled the session count, which is gone
+// (audit finding 11). compute() still takes one for its calibration-task figures.
+const EFFORT = "high";
+
+// `initial` is the prerendered snapshot, and the selectors start on `initialPlan` and
+// `initialModel`; tests render the page with either schema and any selection through them.
+// The contributor chart starts on `initialContribMetric`. `now` fixes the clock the stale line
+// reads. The prerender leaves it unset, so its output never depends on when it ran; a test sets it
+// to render the stale line without mounting.
+export default function ClaudeUsageTracker({
+  initial = initialData,
+  initialPlan = "max20",
+  initialModel = "claude-sonnet-5",
+  initialContribMetric = "usd",
+  now,
+}: {
+  initial?: UsageJson | null;
+  initialPlan?: Plan;
+  initialModel?: string;
+  initialContribMetric?: ContribMetric;
+  now?: number;
+} = {}) {
+  const [data, setData] = useState<UsageJson | null>(initial);
   const [failed, setFailed] = useState(false);
-  const [plan, setPlan] = useState<Plan>("max20");
-  const [model, setModel] = useState("claude-sonnet-5");
-  const [effort, setEffort] = useState<Effort>("high");
+  const [plan, setPlan] = useState<Plan>(initialPlan);
+  const [model, setModel] = useState(initialModel);
   const [range, setRange] = useState<RangeDays>(30);
 
   useEffect(() => {
@@ -620,20 +625,14 @@ export default function ClaudeUsageTracker() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
-  const [contribMetric, setContribMetric] = useState<ContribMetric>("usd");
+  const r = useMemo(() => (data ? compute(data, plan, model, EFFORT) : null), [data, plan, model]);
+  const [contribMetric, setContribMetric] = useState<ContribMetric>(initialContribMetric);
   const contribTab = CONTRIB_TABS.find((t) => t.key === contribMetric) ?? CONTRIB_TABS[0];
   const hasContribPoints = !!data?.contributed?.[plan]?.points?.length;
   const contributed = useMemo(
     () =>
       data
-        ? contributorSentences(
-            plan,
-            data.contributed?.[plan],
-            fleetUsdPerPercent(data, plan),
-            data.contributed?.min_contributors,
-            data.contributed?.max_deviation,
-          )
+        ? contributorSentences(plan, data.contributed?.[plan], fleetUsdPerPercent(data, plan))
         : null,
     [data, plan],
   );
@@ -641,8 +640,11 @@ export default function ClaudeUsageTracker() {
   const weeklySeries = useMemo(() => (data ? weeklySeriesFor(data) : []), [data]);
   const weeklyEvents = useMemo(() => (data ? weeklyEventsFor(data) : []), [data]);
   const weeklyTokenSeries = useMemo(() => (data ? weeklyTokenSeriesFor(data, model) : []), [data, model]);
-  // Levels for every plan, not just the selected one: the chart draws all three, the selected
-  // one solid and the others grey, exactly as the old weekly lines did.
+  // Levels for every plan, not just the selected one: the chart draws each plan's own levels,
+  // the selected one solid and the others grey. A plan's windows per week is a property of the
+  // plan, so this chart does not change with the model; a model's share of the week (Fable's
+  // half on Max) applies to the per-week token and dollar figures instead. A plan with no levels
+  // of its own draws nothing: nothing is borrowed from another plan (audit finding 6).
   const weeklyLevels = useMemo(
     () =>
       data
@@ -653,19 +655,6 @@ export default function ClaudeUsageTracker() {
               levels: weeklyRegimeLevelsFor(data, pl).map((l) => ({ ...l, value: l.windows })),
             }))
             .filter((p) => p.levels.length > 0)
-            // Pro holds the same number of windows as Max 5x (it borrows its figures), so on
-            // this chart the two are one line. Collapsed into a single labelled series rather
-            // than drawn twice at identical y, which only stacks two labels on one line.
-            .reduce<PlanLevels[]>((acc, cur) => {
-              const same = acc.find(
-                (a) =>
-                  a.levels.length === cur.levels.length &&
-                  a.levels.every((l, i) => l.value === cur.levels[i].value && l.start === cur.levels[i].start),
-              );
-              if (same) same.label = `${same.label} and ${PLAN_LABELS[cur.plan]}`;
-              else acc.push(cur);
-              return acc;
-            }, [])
         : [],
     [data],
   );
@@ -685,10 +674,16 @@ export default function ClaudeUsageTracker() {
   const h = data ? headline(data) : null;
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
-  // The stale flag depends on the clock, so it is also decided after mount, never in the prerender.
-  const [stale, setStale] = useState(false);
+  // The stale line depends on the clock, so without a fixed `now` it is decided after mount, never
+  // in the prerender. Whether it shows and the date it gives both follow the selected figure's own
+  // evidence, not when the file was built or another model's reading (finding 16).
+  const [staleAt, setStaleAt] = useState<string | null>(() =>
+    now !== undefined && initial ? staleEvidenceAt(initial, initialModel, now) : null,
+  );
   useEffect(() => {
-    setStale(data ? Date.now() - new Date(data.generated_at).getTime() > 3 * 86400e3 : false);
+    setStaleAt(data ? staleEvidenceAt(data, model, now ?? Date.now()) : null);
+  }, [data, model, now]);
+  useEffect(() => {
     // "Last sample" means the meter reading, so show when the meter was last read.
     // The old pair is the fallback for JSON published before meter_read_at existed, and
     // both are the wrong answer to the label: last_sample_at is the end of the newest
@@ -704,14 +699,25 @@ export default function ClaudeUsageTracker() {
         : null,
     );
   }, [data]);
-  // A failed refresh is not fatal while the build-time snapshot is still usable.
-  const unavailable = (failed && data === null) || (data !== null && r === null);
+  // A failed refresh is not fatal while the build-time snapshot is still usable. A schema 2 rate
+  // with no eligible measurement publishes null figures, and nothing stands in for them (finding 13).
+  const unavailable = (failed && data === null) || (data !== null && (r === null || (r.included && r.tokensPerWindow === null)));
+  const limit = data ? modelPlanLimit(data, model, plan) : null;
+  const notIncluded = limit?.source_url ? (
+    <>
+      {MODEL_LABELS[model] ?? model} is <a href={limit.source_url}>not included</a> with {PLAN_LABELS[plan]}.
+    </>
+  ) : (
+    <>
+      {MODEL_LABELS[model] ?? model} is not included with {PLAN_LABELS[plan]}.
+    </>
+  );
 
   return (
     <PageShell>
       <Seo
         title="Claude Usage Tracker: what a Max plan actually buys | All Done Sites"
-        description="Measured daily from a real account: how many tokens a Claude Max 20x plan buys per 5-hour window, and whether Anthropic has changed the limit."
+        description="Measured daily from a real account: how many tokens a Claude Max 20x plan buys per 5-hour window, and when that changes."
         canonical={`${SITE}/claude-usage-tracker/`}
         image={`${SITE}/og1200x630_v2.jpg`}
       />
@@ -764,68 +770,73 @@ export default function ClaudeUsageTracker() {
                       <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
                     ))}
                   </select>
-                </span>{" "}
-                at{" "}
-                <span className="sel">
-                  <select aria-label="Effort" value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
-                    {EFFORTS.map((e) => (
-                      <option key={e} value={e}>{e}</option>
-                    ))}
-                  </select>
-                </span>{" "}
-                effort, you get
+                </span>
+                {r.included ? ", you get" : ""}
               </div>
-              <div className="big">
-                {fmtTokens(r.tokensPerWindow)}
-                <span>tokens per 5-hour window</span>
-              </div>
-              <div className="big usd">
-                {fmtUsd(r.apiValueUsd)}
-                <span>of API value per 5-hour window</span>
-              </div>
-              {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
-                <div className="rate">
-                  {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
-                    <>
+              {!r.included && <div className="quiet">{notIncluded}</div>}
+              {r.included && r.tokensPerWindow !== null && (
+                <>
+                  <div className="big">
+                    {fmtTokens(r.tokensPerWindow)}
+                    <span>tokens per 5-hour window on the reference mix</span>
+                  </div>
+                  {r.meterBudgetUsd !== null && (
+                    <div className="big usd">
+                      {fmtUsd(r.meterBudgetUsd)}
+                      <span>meter budget per 5-hour window</span>
+                    </div>
+                  )}
+                  <div className="rate">
+                    {r.apiListValueUsd === null ? (
+                      <span>API list value not published</span>
+                    ) : (
                       <span>
-                        about <b>{Math.round(r.sessionsPerWindow)}</b> sessions<em>·</em>
-                        <b>{Math.round(r.sessionsPerWeek)}</b> per week
+                        <b>{fmtUsd(r.apiListValueUsd)}</b> of API list value per 5-hour window
                       </span>
-                      {r.apiValueUsdPerWeek !== null && <em className="brk">·</em>}
-                    </>
-                  )}
-                  {r.apiValueUsdPerWeek !== null && (
+                    )}
+                    {r.apiListValueUsdPerWeek !== null && (
+                      <>
+                        <em className="brk">·</em>
+                        <span>
+                          <b>{fmtUsd(r.apiListValueUsdPerWeek)}</b> per week
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <div className="split">
                     <span>
-                      <b>{fmtUsd(r.apiValueUsdPerWeek)}</b> of API value per week
+                      <b>{fmtTokens(r.split.input)}</b> input<em>·</em>
+                      <b>{fmtTokens(r.split.output)}</b> output
                     </span>
+                    <em className="brk">·</em>
+                    <span>
+                      <b>{fmtTokens(r.split.cache_read)}</b> cache read<em>·</em>
+                      <b>{fmtTokens(r.split.cache_write)}</b> cache write
+                    </span>
+                  </div>
+                  {fmtSource(data.rates[model]) && (
+                    <div className="quiet">Source: {fmtSource(data.rates[model])}</div>
                   )}
-                </div>
-              )}
-              <div className="split">
-                <span>
-                  <b>{fmtTokens(r.split.input)}</b> input<em>·</em>
-                  <b>{fmtTokens(r.split.output)}</b> output
-                </span>
-                <em className="brk">·</em>
-                <span>
-                  <b>{fmtTokens(r.split.cache_read)}</b> cache read<em>·</em>
-                  <b>{fmtTokens(r.split.cache_write)}</b> cache write
-                </span>
-              </div>
-              {fmtSource(data.rates[model]) && (
-                <div className="quiet">Source: {fmtSource(data.rates[model])}</div>
-              )}
-              {data.weekly_windows?.[plan] && (
-                <div className="quiet">
-                  A week currently holds about {data.weekly_windows[plan]!.current.toFixed(1)} five-hour windows, measured
-                  from a real account
-                  {data.last_change?.scope === "weekly" ? ` since the change on ${fmtDate(data.last_change.date)}` : ""}.
-                </div>
-              )}
-              {stale && (
-                <div className="stale">
-                  Last updated {fmtDate(data.generated_at.slice(0, 10))}. The daily job has not run since.
-                </div>
+                  {r.planWindowsPerWeek !== null && (
+                    <div className="quiet">
+                      A week currently holds about {r.planWindowsPerWeek.toFixed(1)} five-hour windows, measured from a
+                      real account.
+                      {r.weeklyFraction < 1 && (
+                        <>
+                          {" "}
+                          {MODEL_LABELS[model] ?? model} may use{" "}
+                          {limit?.source_url ? (
+                            <a href={limit.source_url}>{Math.round(r.weeklyFraction * 100)}% of the weekly limit</a>
+                          ) : (
+                            `${Math.round(r.weeklyFraction * 100)}% of the weekly limit`
+                          )}
+                          .
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {staleAt && <div className="stale">Last measured {fmtDate(staleAt.slice(0, 10))}.</div>}
+                </>
               )}
             </>
           )}
@@ -851,32 +862,29 @@ export default function ClaudeUsageTracker() {
             <div className="sub">
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window
             </div>
-            {r && (
+            {r && r.tokensPerWindow !== null && (
               <div className="rate">
                 <span>
-                  <b>{fmtTokens(r.tokensPerWindow)}</b> tokens
-                  {r.sessionsPerWindow !== null && (
-                    <>
-                      <em>·</em>
-                      <b>{Math.round(r.sessionsPerWindow)}</b> sessions
-                    </>
-                  )}{" "}
-                  per 5-hour window
+                  <b>{fmtTokens(r.tokensPerWindow)}</b> tokens per 5-hour window
                 </span>
               </div>
             )}
-            <Chart
-              points={chartPoints}
-              change={
-                data.last_change &&
-                (data.last_change.scope ?? "window") === "window" &&
-                (data.last_change.model === model || data.last_change.model === "all")
-                  ? data.last_change
-                  : null
-              }
-              events={eventsFor(data, model, range)}
-              days={range}
-            />
+            {r && !r.included ? (
+              <p className="sub">{notIncluded}</p>
+            ) : (
+              <Chart
+                points={chartPoints}
+                change={
+                  data.last_change &&
+                  (data.last_change.scope ?? "window") === "window" &&
+                  (data.last_change.model === model || data.last_change.model === "all")
+                    ? data.last_change
+                    : null
+                }
+                events={eventsFor(data, model, range)}
+                days={range}
+              />
+            )}
             {chartPoints.some((p) => p.held) && (
               <p className="sub chart-legend">
                 Dashed: before measurement began, shown flat at the first measured value.
@@ -895,33 +903,33 @@ export default function ClaudeUsageTracker() {
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} · how many tokens a full week of five-hour windows
               buys. Full history.
             </p>
-            {r && r.windowsPerWeek !== null && (
-              <div className="rate">
-                <span>
-                  <b>{fmtTokens(r.tokensPerWindow * r.windowsPerWeek)}</b> tokens
-                  {r.sessionsPerWeek !== null && (
-                    <>
-                      <em>·</em>
-                      <b>{Math.round(r.sessionsPerWeek)}</b> sessions
-                    </>
-                  )}{" "}
-                  per week
-                </span>
-              </div>
+            {/* The same notice as the window chart: another plan's line under this plan's heading would
+                read as this plan's figure (finding 2). */}
+            {r && !r.included ? (
+              <p className="sub">{notIncluded}</p>
+            ) : (
+              <>
+                {r && r.tokensPerWeek !== null && (
+                  <div className="rate">
+                    <span>
+                      <b>{fmtTokens(r.tokensPerWeek)}</b> tokens per week
+                    </span>
+                  </div>
+                )}
+                <LevelChart
+                  levelsByPlan={weeklyTokenLevels}
+                  events={weeklyEvents}
+                  selectedPlan={plan}
+                  fmtValue={fmtTokens}
+                  plotRight={732}
+                  title="Tokens per week over time"
+                />
+                <p className="sub">
+                  Each line steps when either the weekly limit or a window's tokens change. Solid and shaded: selected
+                  plan. Grey: the others. Dashed: a window figure not marked measured. Red: an observed change.
+                </p>
+              </>
             )}
-            <LevelChart
-              levelsByPlan={weeklyTokenLevels}
-              events={weeklyEvents}
-              selectedPlan={plan}
-              fmtValue={fmtTokens}
-              plotRight={732}
-              title="Tokens per week over time"
-            />
-            <p className="sub">
-              Each line is the limit itself, held flat between changes: a step means a measured change, and nothing
-              else on the chart moves. Solid and shaded: selected plan. Grey: the others. Dashed: inferred from
-              another plan by the measured plan ratio, not measured on this one. Red: a measured change.
-            </p>
           </section>
         )}
 
@@ -931,25 +939,32 @@ export default function ClaudeUsageTracker() {
             <p className="sub">
               How many 5-hour windows fit in one week, read from the usage meter. Full history.
             </p>
-            {r && r.windowsPerWeek !== null && (
-              <div className="rate">
-                <span>
-                  <b>{r.windowsPerWeek.toFixed(1)}</b> five-hour windows per week
-                </span>
-              </div>
-            )}
-            <LevelChart
-              levelsByPlan={weeklyLevels}
-              events={weeklyEvents}
-              selectedPlan={plan}
-              fmtValue={(v) => v.toFixed(1)}
-              plotRight={732}
-              title="Five-hour windows per week over time"
-            />
-            {weeklySeries.some((s) => s.points.length >= 2) && (
-              <p className="sub chart-legend">
-                Each line is the limit itself, held flat between changes: a step means a measured change. Solid: selected plan. Grey: the others. Dashed: inferred from another plan by the measured plan ratio, not measured on this one. Pro is assumed from Max 5x.
-              </p>
+            {r && !r.included ? (
+              <p className="sub">{notIncluded}</p>
+            ) : (
+              <>
+                {r && r.planWindowsPerWeek !== null && (
+                  <div className="rate">
+                    <span>
+                      <b>{r.planWindowsPerWeek.toFixed(1)}</b> five-hour windows per week
+                    </span>
+                  </div>
+                )}
+                <LevelChart
+                  levelsByPlan={weeklyLevels}
+                  events={weeklyEvents}
+                  selectedPlan={plan}
+                  fmtValue={(v) => v.toFixed(1)}
+                  plotRight={732}
+                  title="Five-hour windows per week over time"
+                />
+                {weeklySeries.some((s) => s.points.length >= 2) && (
+                  <p className="sub chart-legend">
+                    Each line is one plan's own measured level, held flat between detected changes. Solid: selected
+                    plan. Grey: the others.
+                  </p>
+                )}
+              </>
             )}
           </section>
         )}
@@ -958,8 +973,8 @@ export default function ClaudeUsageTracker() {
           <section>
             <h2>Plan comparison</h2>
             <div className="sub">
-              {MODEL_LABELS[model] ?? model} at {effort} effort. Max 20x is measured; Pro and Max 5x are scaled from it by
-              Anthropic's published 1:5:20 ratios.
+              {MODEL_LABELS[model] ?? model}. Max 20x is measured; Pro and Max 5x are scaled from it by Anthropic's
+              published 1:5:20 ratios.
             </div>
             <table>
               <thead>
@@ -973,69 +988,30 @@ export default function ClaudeUsageTracker() {
               <tbody>
                 {(
                   [
-                    ["Tokens per 5-hour window", (c: ReturnType<typeof compute>) => fmtTokens(c!.tokensPerWindow)],
-                    [
-                      "Tokens per week",
-                      (c: ReturnType<typeof compute>) =>
-                        c!.windowsPerWeek === null ? "—" : fmtTokens(c!.tokensPerWindow * c!.windowsPerWeek),
-                    ],
-                    ...(r.sessionsPerWindow !== null
-                      ? ([
-                          [
-                            "Sessions per window",
-                            (c: ReturnType<typeof compute>) =>
-                              c!.sessionsPerWindow === null
-                                ? "—"
-                                : c!.sessionsPerWindow < 1
-                                  ? "< 1"
-                                  : String(Math.round(c!.sessionsPerWindow)),
-                          ],
-                        ] as [string, (c: ReturnType<typeof compute>) => string][])
-                      : []),
-                    ...(r.sessionsPerWindow !== null && r.windowsPerWeek !== null
-                      ? ([
-                          [
-                            "Sessions per week",
-                            (c: ReturnType<typeof compute>) =>
-                              c!.sessionsPerWeek === null ? "—" : String(Math.round(c!.sessionsPerWeek)),
-                          ],
-                        ] as [string, (c: ReturnType<typeof compute>) => string][])
-                      : []),
-                    ["API value per 5-hour window", (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsd)],
-                    ...(r.windowsPerWeek !== null
-                      ? ([
-                          [
-                            "API value per week",
-                            (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsdPerWeek ?? 0),
-                          ],
-                        ] as [string, (c: ReturnType<typeof compute>) => string][])
-                      : []),
-                  ] as [string, (c: ReturnType<typeof compute>) => string][]
+                    ["Tokens per 5-hour window", (c) => (c.tokensPerWindow === null ? "—" : fmtTokens(c.tokensPerWindow))],
+                    ["Tokens per week", (c) => (c.tokensPerWeek === null ? "—" : fmtTokens(c.tokensPerWeek))],
+                    ["Meter budget per 5-hour window", (c) => (c.meterBudgetUsd === null ? "—" : fmtUsd(c.meterBudgetUsd))],
+                    ["API list value per 5-hour window", (c) => (c.apiListValueUsd === null ? "—" : fmtUsd(c.apiListValueUsd))],
+                    ["API list value per week", (c) => (c.apiListValueUsdPerWeek === null ? "—" : fmtUsd(c.apiListValueUsdPerWeek))],
+                  ] as [string, (c: NonNullable<ReturnType<typeof compute>>) => string][]
                 ).map(([label, f]) => (
                   <tr key={label}>
                     <td>{label}</td>
                     {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => (
-                      <td key={p} className={p === plan ? "hl" : ""}>{f(compute(data, p, model, effort))}</td>
+                      <td key={p} className={p === plan ? "hl" : ""}>{f(compute(data, p, model, EFFORT)!)}</td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-            {data.weekly_windows && (
-              <div className="quiet">
-                Max 20x and Max 5x weekly figures are measured from real accounts. Pro assumes the Max 5x ratio until
-                it is measured.
-              </div>
-            )}
           </section>
         )}
 
         {!unavailable && data && contributed && (
           <section id="contributors">
-            {/* The same three pickers as the hero, so a reader comparing their own plan
-                does not have to scroll back up. Plan picks whose readings are plotted;
-                model and effort only move the tracker's own reference line, because a
-                contributed point is one figure across every model in that sample. */}
+            {/* The same pickers as the hero, so a reader comparing their own plan does not have
+                to scroll back up. Plan picks whose readings are plotted; model picks each
+                reading's own figure for that model and the tracker's line for it. */}
             <h2>From contributors</h2>
             <p className="sub">{contributed.intro}</p>
             {hasContribPoints && (
@@ -1055,8 +1031,7 @@ export default function ClaudeUsageTracker() {
                   ))}
                   {/* Plan chooses whose readings are plotted, model puts the dots and the
                       tracker's line on the same model. No effort picker: nothing on these
-                      four charts depends on effort -- it scales sessions per window, not
-                      tokens per window -- and a contributed reading does not carry it. */}
+                      charts depends on effort, and a contributed reading does not carry it. */}
                   <div className="section-sel">
                     <span className="sel">
                       <select aria-label="Plan" value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
@@ -1082,13 +1057,10 @@ export default function ClaudeUsageTracker() {
                 />
               </>
             )}
-            {/* Each sentence belongs to one chart, so it follows its own tab rather than
+            {/* The cost sentence belongs to the cost chart, so it follows its own tab rather than
                 sitting under whichever chart happens to be open. */}
             {contributed.cost && (!hasContribPoints || contribTab.key === "usd") && (
               <p className="sub">{contributed.cost}</p>
-            )}
-            {contributed.weekly && (!hasContribPoints || contribTab.key === "windows") && (
-              <p className="sub">{contributed.weekly}</p>
             )}
           </section>
         )}
@@ -1103,7 +1075,7 @@ export default function ClaudeUsageTracker() {
             <summary>How we measure this</summary>
             <p>
               Every morning the tracker reads two things off each Max 20x account it watches
-              {data?.passive_account_count ? ` (${data.passive_account_count === 1 ? "one account" : `${data.passive_account_count} accounts`} with usable readings today)` : ""}
+              {data?.passive_account_count ? ` (${data.passive_account_count === 1 ? "one account" : `${data.passive_account_count} accounts`} with usable readings)` : ""}
               : the Claude Code transcripts of the work actually done on it, and that account's own usage meter. Between
               any two meter readings it knows how far the meter moved and which tokens were spent moving it, and that
               gives a price for one percent of the five-hour window. Readings from every account are pooled by day.
@@ -1112,32 +1084,26 @@ export default function ClaudeUsageTracker() {
             <p>
               The meter does not treat every token the same. Cache reads cost nothing against it. Input, output and
               cache writes are charged at Anthropic's list price, the output rate fitted from 60 measured stretches of
-              real work. So every reading here is an API-dollar value per percent of meter, and the token counts are
-              that value converted back through the token mix of real sessions. The effort figures come from one
-              calibration task, run at each effort level on each model.
+              real work. So every reading here is a meter-dollar value per percent of meter, the meter budget, and the
+              token counts are that value converted back through one reference mix of real sessions' tokens. The API list
+              value prices those same tokens at list price, cache reads included.
             </p>
             <p>
               The weekly limit is measured the same way, per five-hour window: how far the seven-day meter moves for
-              each full window spent. A change is dated to the day it lands rather than averaged into a calendar week.
+              each full window spent.
             </p>
           </details>
           <details>
             <summary>Caveats</summary>
             <p>
               Token figures depend on the token mix. Because cache reads cost nothing against the meter, cache-heavy
-              work gets far more tokens per window than cache-light work for the same dollar value. The split shown is
-              one account's real mix; yours will differ, and the dollar figure is the one that carries across. The meter
+              work gets far more tokens per window than cache-light work for the same meter budget. The split shown is
+              the reference mix; yours will differ, and the meter budget is the figure that carries across. The meter
               reports whole percent, so each reading carries up to a percent's worth of rounding.
             </p>
             <p>
               The tokens and dollars per window for Pro and Max 5x are scaled from Max 20x by Anthropic's published plan
-              ratios. The weekly window counts are not: Max 20x and Max 5x are both measured from real accounts, Max 5x
-              from the period one of them spent on that plan, and only Pro is assumed, from Max 5x.
-            </p>
-            <p>
-              The effort figures describe one task shape, run seven times at each effort level on each model. On Sonnet
-              the spread between runs is wider than the gap between low, medium and high, so read those three rows as
-              roughly equal rather than in order.
+              ratios. The weekly window counts are not scaled: each plan shows only its own measurements.
             </p>
             <p>
               This method is only as good as what it can see. Work done away from the machine being read moves the meter
@@ -1146,7 +1112,7 @@ export default function ClaudeUsageTracker() {
             </p>
             <p>
               The current figure does not wait for a week to finish. It is measured from the five-hour windows since the
-              last confirmed change, so a step is dated to the day it landed rather than blended into a week's average.
+              last detected change.
             </p>
             <p>
               Every number on this page comes from the JSON at{" "}

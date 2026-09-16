@@ -9,14 +9,13 @@ export const ONE_OFF_PROMPT =
   'Run `python3 -c "$(curl -fsSL https://raw.githubusercontent.com/jonathanavis96/claude-usage-tracker/main/contrib/sample.py)" --print`, show me the JSON it prints, explain each field, and post it only if I say yes. If it asks which plan I am on, ask me -- do not guess.';
 
 // The continuous prompt is parameterised by how often the schedule runs. Hourly is the
-// default; the README's interval table carries the same choices.
+// default; the README's interval table carries the same choices. Nothing slower than two
+// hours: a contribution is now read from two samples in the same five-hour window, and a
+// slower schedule rarely takes two (audit finding 14, contrib/README.md on the collector).
 export const INTERVALS = [
   { minutes: 30, label: "every 30 minutes", phrase: "30-minute" },
   { minutes: 60, label: "every hour", phrase: "hourly" },
   { minutes: 120, label: "every 2 hours", phrase: "2-hourly" },
-  { minutes: 360, label: "every 6 hours", phrase: "6-hourly" },
-  { minutes: 720, label: "every 12 hours", phrase: "12-hourly" },
-  { minutes: 1440, label: "once a day", phrase: "daily" },
 ] as const;
 export const DEFAULT_INTERVAL_MINUTES = 60;
 

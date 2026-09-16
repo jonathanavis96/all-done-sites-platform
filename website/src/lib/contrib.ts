@@ -10,6 +10,9 @@
 import {
   CLASSES,
   PLAN_LABELS,
+  contributorModelValue,
+  meterBudgetPerWindow,
+  modelPlanLimit,
   type ApiPrice,
   type Plan,
   type PlanContrib,
@@ -32,8 +35,14 @@ export interface Meter {
   utilization: number;
   resets_at: string;
 }
-export type TokenCounts = Record<TokenClass, number>;
+export type TokenCounts = Record<TokenClass, number> & { cache_write_1h?: number };
 export type TokenMap = Record<string, TokenCounts>;
+export interface Capture {
+  collected_at: string;
+  five_hour_started_at: string;
+  seven_day_started_at: string;
+  ownership: "local_transcripts_unverified" | "filtered_local_transcripts";
+}
 
 export interface Sample {
   client_version: string;
@@ -45,6 +54,8 @@ export interface Sample {
   seven_day: Meter;
   tokens_since_five_hour_reset: TokenMap;
   tokens_since_seven_day_reset: TokenMap;
+  /** v2 capture metadata; optional only so old retained samples remain readable. */
+  capture?: Capture;
 }
 
 /** The subset of a stored sample the personal page is given back. */
@@ -56,6 +67,7 @@ export const PUBLIC_FIELDS: (keyof PublicSample)[] = [
   "seven_day",
   "tokens_since_five_hour_reset",
   "tokens_since_seven_day_reset",
+  "capture",
 ];
 
 const TOP_KEYS = [
@@ -68,6 +80,7 @@ const TOP_KEYS = [
   "seven_day",
   "tokens_since_five_hour_reset",
   "tokens_since_seven_day_reset",
+  "capture",
 ] as const;
 
 export type Validation = { ok: true; value: Sample } | { ok: false; reason: string };
@@ -113,7 +126,7 @@ function validateTokens(v: unknown, name: string): { ok: true; value: TokenMap }
     const counts = v[m];
     if (!isPlainObject(counts)) return { ok: false, reason: `${name}.${m} must be an object` };
     for (const k of Object.keys(counts)) {
-      if (!(CLASSES as string[]).includes(k)) return { ok: false, reason: `${name}.${m}.${k} is not a token class` };
+      if (k !== "cache_write_1h" && !(CLASSES as string[]).includes(k)) return { ok: false, reason: `${name}.${m}.${k} is not a token class` };
     }
     const row = {} as TokenCounts;
     for (const c of CLASSES) {
@@ -123,9 +136,31 @@ function validateTokens(v: unknown, name: string): { ok: true; value: TokenMap }
       }
       row[c] = n;
     }
+    if (counts.cache_write_1h !== undefined) {
+      const n = counts.cache_write_1h;
+      if (typeof n !== "number" || !Number.isSafeInteger(n) || n < 0 || n > row.cache_write) {
+        return { ok: false, reason: `${name}.${m}.cache_write_1h must be a subset of cache_write` };
+      }
+      row.cache_write_1h = n;
+    }
     out[m] = row;
   }
   return { ok: true, value: out };
+}
+
+function validateCapture(v: unknown, now: number): { ok: true; value: Capture } | { ok: false; reason: string } {
+  if (!isPlainObject(v)) return { ok: false, reason: "capture must be an object" };
+  const allowed = ["collected_at", "five_hour_started_at", "seven_day_started_at", "ownership"];
+  for (const k of Object.keys(v)) if (!allowed.includes(k)) return { ok: false, reason: `capture.${k} is not a known field` };
+  for (const k of allowed) if (!(k in v)) return { ok: false, reason: `capture.${k} is missing` };
+  for (const k of ["collected_at", "five_hour_started_at", "seven_day_started_at"] as const) {
+    const t = parseIso(v[k]);
+    if (t === null || Math.abs(t - now) > RESETS_WINDOW_MS) return { ok: false, reason: `capture.${k} must be a recent ISO timestamp` };
+  }
+  if (v.ownership !== "local_transcripts_unverified" && v.ownership !== "filtered_local_transcripts") {
+    return { ok: false, reason: "capture.ownership must describe local transcript coverage" };
+  }
+  return { ok: true, value: v as unknown as Capture };
 }
 
 /**
@@ -138,7 +173,7 @@ export function validateSample(body: unknown, now: number = Date.now()): Validat
     if (!(TOP_KEYS as readonly string[]).includes(k)) return { ok: false, reason: `${k} is not a known field` };
   }
   for (const k of TOP_KEYS) {
-    if (!(k in body)) return { ok: false, reason: `${k} is missing` };
+    if (k !== "capture" && !(k in body)) return { ok: false, reason: `${k} is missing` };
   }
   const cv = body.client_version;
   if (typeof cv !== "string" || cv.length === 0 || cv.length > 64) {
@@ -156,10 +191,26 @@ export function validateSample(body: unknown, now: number = Date.now()): Validat
   if (fh.ok === false) return { ok: false, reason: fh.reason };
   const sd = validateMeter(body.seven_day, "seven_day", now);
   if (sd.ok === false) return { ok: false, reason: sd.reason };
+  for (const [meter, duration] of [[fh.value, 5 * 3600e3], [sd.value, 7 * 86400e3]] as const) {
+    const delta = Date.parse(meter.resets_at) - ts;
+    if (delta < -120e3 || delta > duration + 120e3) {
+      return { ok: false, reason: "reset time is inconsistent with the sampled window" };
+    }
+  }
   const t5 = validateTokens(body.tokens_since_five_hour_reset, "tokens_since_five_hour_reset");
   if (t5.ok === false) return { ok: false, reason: t5.reason };
   const t7 = validateTokens(body.tokens_since_seven_day_reset, "tokens_since_seven_day_reset");
   if (t7.ok === false) return { ok: false, reason: t7.reason };
+  const capture = body.capture === undefined ? null : validateCapture(body.capture, now);
+  if (capture && capture.ok === false) return { ok: false, reason: capture.reason };
+  if (capture && capture.ok) {
+    const c = capture.value;
+    if (Math.abs(Date.parse(c.collected_at) - ts) > 120e3 ||
+        Math.abs(Date.parse(c.five_hour_started_at) + 5 * 3600e3 - Date.parse(fh.value.resets_at)) > 120e3 ||
+        Math.abs(Date.parse(c.seven_day_started_at) + 7 * 86400e3 - Date.parse(sd.value.resets_at)) > 120e3) {
+      return { ok: false, reason: "capture timestamps must match the sample and reset windows" };
+    }
+  }
   return {
     ok: true,
     value: {
@@ -172,6 +223,7 @@ export function validateSample(body: unknown, now: number = Date.now()): Validat
       seven_day: sd.value,
       tokens_since_five_hour_reset: t5.value,
       tokens_since_seven_day_reset: t7.value,
+      ...(capture && capture.ok === true ? { capture: capture.value } : {}),
     },
   };
 }
@@ -269,7 +321,8 @@ export function modelsIn(samples: PublicSample[]): string[] {
 export function fleetTokensPerPercent(j: UsageJson, plan: Plan, model: string): number | null {
   const rate = j.rates?.[model];
   const ratio = j.plan_ratios?.[plan];
-  if (!rate || typeof ratio !== "number") return null;
+  if (!rate || typeof ratio !== "number" || typeof rate.tokens_per_window !== "number") return null;
+  if (!modelPlanLimit(j, model, plan).included) return null;
   return (rate.tokens_per_window * ratio) / 100;
 }
 
@@ -292,17 +345,48 @@ export function isCoarse(sample: Pick<PublicSample, "five_hour">): boolean {
 
 /**
  * Meter dollars for one model's token counts: Σ_class tokens × price[class] × class_weight[class]
- * / 1e6, scaled by price.meter_weight. Null when the price has no class_weight/meter_weight
- * (older published JSON, before the meter was priced this way).
+ * / 1e6, plus the one-hour cache write's difference from a five-minute one, scaled by
+ * price.meter_weight. Null when the price has no class_weight/meter_weight (older published JSON,
+ * before the meter was priced this way). Within a class_weight, the weights default as the
+ * collector's tracker/publish.py `class_weight` does: a missing class weighs 1, and the one-hour
+ * write weighs as cache_write unless it has its own entry.
  */
 export function meterUsd(counts: TokenCounts | undefined, price: ApiPrice | undefined): number | null {
   if (!price || !price.class_weight || typeof price.meter_weight !== "number") return null;
+  const weights = price.class_weight;
   let sum = 0;
   for (const c of CLASSES) {
     const tokens = counts?.[c] ?? 0;
-    sum += tokens * (price[c] ?? 0) * (price.class_weight[c] ?? 0);
+    sum += tokens * (price[c] ?? 0) * (weights[c] ?? 1);
   }
+  const oneHour = counts?.cache_write_1h ?? 0;
+  if (oneHour < 0 || oneHour > (counts?.cache_write ?? 0)) return null;
+  // The one-hour difference needs the five-minute write price and the input price its default is
+  // built from (the collector reads both); without them there is no figure, never NaN.
+  if (oneHour > 0 && (typeof price.cache_write !== "number" || typeof price.input !== "number")) return null;
+  const writeWeight = weights.cache_write ?? 1;
+  const oneHourWeight = weights.cache_write_1h ?? writeWeight;
+  sum += oneHour * ((price.cache_write_1h ?? price.input * 2) * oneHourWeight - price.cache_write * writeWeight);
   return (sum / 1e6) * price.meter_weight;
+}
+
+/** A transcript model id as the collector's contrib/sample.py `normalize_model` records it: a
+ * trailing `[1m]` marker, then a trailing -YYYYMMDD date, removed; anything that is then not a
+ * claude- id becomes claude-unknown. */
+export function normalizeModelId(model: string): string {
+  const m = model.replace(/\s*\[1m\]$/, "").replace(/-\d{8}$/, "");
+  return /^claude-[a-z0-9-]+$/.test(m) ? m : "claude-unknown";
+}
+
+/** The price a model id is valued at: the price of its normalised id, or Fable 5.1's for the old
+ * Fable id. Normalising and aliasing only pick a price; the sample keeps the id it was observed
+ * under. The same rule as the collector's sampler `normalize_model` followed by
+ * tracker/contributed.py `_price`, so the personal page and the published contributor figures
+ * price a sample alike (audit finding 9). */
+export function priceForModel(model: string, prices: Record<string, ApiPrice>): ApiPrice | undefined {
+  const m = normalizeModelId(model);
+  if (Object.prototype.hasOwnProperty.call(prices, m)) return prices[m];
+  return m === "claude-fable-5" ? prices["claude-fable-5-1"] : undefined;
 }
 
 /**
@@ -318,16 +402,17 @@ export function sampleValue(
   let total = 0;
   for (const [model, counts] of Object.entries(sample.tokens_since_five_hour_reset)) {
     if (totalTokens(counts) <= 0) continue;
-    const usd = meterUsd(counts, prices[model]);
+    const usd = meterUsd(counts, priceForModel(model, prices));
     if (usd === null) return null;
     perModel[model] = usd;
     total += usd;
   }
-  return { perModel, total };
+  return Object.keys(perModel).length > 0 && total > 0 ? { perModel, total } : null;
 }
 
 /** Total meter dollars in the sample over its five-hour percent. Null when the percent is 0 or
- * unpriced. */
+ * unpriced. A reading under COARSE_BELOW still has a figure, marked coarse by isCoarse, as the
+ * published contributor points do. */
 export function usdPerPercent(sample: PublicSample, prices: Record<string, ApiPrice>): number | null {
   const u = sample.five_hour.utilization;
   if (!(u > 0)) return null;
@@ -341,32 +426,35 @@ export function usdPerPercent(sample: PublicSample, prices: Record<string, ApiPr
  * total dollar value over that model's own dollar value, over the meter percent. This spreads
  * the whole-sample percent across models by their dollar share rather than dividing the model's
  * raw tokens by the whole percent (which understates every model but the priciest one, since the
- * percent covers every model at once). Null when the percent is 0, the model's value is 0, or
- * either is unpriced.
+ * percent covers every model at once). Null when the model's value is 0, either is unpriced, or
+ * the model's slice of the meter is under COARSE_BELOW: dividing by a slice near zero runs away.
+ * That is the collector's rule for the published per-model figures, so the personal page and
+ * the public chart attribute a reading alike (audit finding 8).
  */
 export function shareTokensPerPercent(sample: PublicSample, model: string, prices: Record<string, ApiPrice>): number | null {
   const u = sample.five_hour.utilization;
-  if (!(u > 0)) return null;
+  if (!(u >= COARSE_BELOW)) return null;
   const v = sampleValue(sample, prices);
   if (v === null) return null;
   const valueM = v.perModel[model];
-  if (!valueM) return null;
+  if (!valueM || (u * valueM) / v.total < COARSE_BELOW) return null;
   const tokensM = totalTokens(sample.tokens_since_five_hour_reset[model]);
   return (tokensM * v.total) / (valueM * u);
 }
 
 /**
- * The fleet's meter dollars per 1%: a probed model's api_value_per_window (preferring one whose
- * rate source is literally "probe"), scaled by the plan ratio, over 100 percent. Null when no
- * rate carries that figure yet.
+ * The tracker's meter dollars per 1%: a model's meter budget per window (preferring one whose
+ * rate source is literally "probe"), scaled by the plan ratio, over 100 percent. Never the
+ * schema 2 API list value, which is another unit (audit finding 1). Null when no rate carries
+ * a meter budget yet.
  */
 export function fleetUsdPerPercent(j: UsageJson, plan: Plan): number | null {
   const ratio = j.plan_ratios?.[plan];
   if (typeof ratio !== "number") return null;
-  const withValue = Object.values(j.rates ?? {}).filter((r) => typeof r.api_value_per_window === "number");
+  const withValue = Object.values(j.rates ?? {}).filter((r) => meterBudgetPerWindow(j, r) !== null);
   if (withValue.length === 0) return null;
   const rate = withValue.find((r) => r.source === "probe") ?? withValue[0];
-  return ((rate.api_value_per_window as number) * ratio) / 100;
+  return (meterBudgetPerWindow(j, rate)! * ratio) / 100;
 }
 
 // ---------------------------------------------------------------- "from contributors" chart
@@ -383,9 +471,22 @@ export interface ContribPointLike {
   tokens_per_pct_week?: number | null;
   tokens_per_pct_by_model?: Record<string, number>;
   tokens_per_pct_week_by_model?: Record<string, number>;
-  windows?: number | null;
   c: number;
   coarse: boolean;
+}
+
+/** Which figure a tab of the contributor chart plots. */
+export type ContribMetric = "usd" | "window" | "weekly";
+
+/**
+ * The figure one contributed reading carries for a chart tab. Dollars per 1% combine every
+ * model and so compare with the tracker's meter budget per 1%. Tokens for a full window or week
+ * are the selected model's own figure, or null: a reading without a per-model figure for that
+ * model is missing data, never its combined total drawn under the model's name (audit finding 8).
+ */
+export function contribPointValue(p: ContribPointLike, metric: ContribMetric, model: string): number | null {
+  if (metric === "usd") return p.usd_per_pct ?? null;
+  return contributorModelValue(metric === "window" ? p.tokens_per_pct_by_model : p.tokens_per_pct_week_by_model, model, 100);
 }
 
 /** Group readings by contributor, each group's own readings sorted oldest to newest. Groups
@@ -473,44 +574,42 @@ function capitalize(s: string): string {
 }
 
 /**
- * Plain-English sentence for the weekly-limit block: whether a weekly figure could be shown,
- * and if not, why, in terms of the people involved rather than the raw `reason` string.
- */
-function weeklySentence(w: PlanContrib["weekly_windows"] | undefined): string | null {
-  if (typeof w?.measured === "number") {
-    return `Across their weeks that comes to about ${w.measured.toFixed(1)} five-hour windows of use per week.`;
-  }
-  return null;
-}
-
-/**
- * The sentences for the "From contributors" section on one plan: who has shared their meter,
- * what a percent of it cost them against the tracker's own figure, and, only once measured,
- * what their weeks say about the weekly limit. Short and plain; the reader is not expected to
- * know the jargon. Returns null when there is nothing to say (no contributors on this plan).
+ * The sentences for the "From contributors" section on one plan: who has shared their meter, and
+ * what a percent of it cost them against the tracker's own figure. Short and plain; the reader is
+ * not expected to know the jargon. Returns null when there is nothing to say (no contributors on
+ * this plan).
+ *
+ * There is no sentence for `weekly_windows.measured`. In schema 1 it is one windows-per-week
+ * figure pooled across contributor IDs: an all-history weighted median with outliers dropped,
+ * which the audit's finding 14 says can hide a limit change and stands in for a plan figure the
+ * unverified sources cannot support. Schema 2 never publishes it (measured is always null), and no
+ * chart on the page plots windows per week any more (finding 7).
  */
 export function contributorSentences(
   plan: Plan,
   contrib: PlanContrib | undefined,
   fleetUsd: number | null,
-): { intro: string; cost: string | null; weekly: string | null } | null {
+): { intro: string; cost: string | null } | null {
   if (!contrib || contrib.contributors <= 0) return null;
   const planLabel = PLAN_LABELS[plan];
   const n = contrib.contributors;
-  const who = n === 1 ? "One reader" : `${capitalize(numberWord(n))} readers`;
+  // The count is of submitted contributor IDs, not of people or accounts (audit finding 14).
+  const who = n === 1 ? "One contributor ID" : `${capitalize(numberWord(n))} contributor IDs`;
   const has = n === 1 ? "has" : "have";
-  const intro = `${who} on ${planLabel} ${has} shared their meter so far, measured from their own use of Claude Code.`;
+  const intro = `${who} on ${planLabel} ${has} shared meter readings.`;
 
   let cost: string | null = null;
   if (contrib.usd_per_pct === null) {
-    cost = "None of their readings had the meter above 5% yet, so there is no figure to show.";
+    // Not "no reading cleared 5%": an unpriced model or a missing second reading also leave it null.
+    cost = "There is no cost figure to show yet.";
   } else if (isPlanContribStat(contrib.usd_per_pct)) {
     const median = contrib.usd_per_pct.median;
-    cost = `On average their use came to $${median.toFixed(2)} of list-price work per 1% of the five-hour meter.`;
+    // Meter dollars, not list-price work: the class and meter weights apply (audit finding 1).
+    cost = `On average their use came to $${median.toFixed(2)} of meter budget per 1% of the five-hour meter.`;
     if (typeof fleetUsd === "number" && fleetUsd > 0) {
       cost += ` The tracker's own figure is $${fleetUsd.toFixed(2)}.`;
     }
   }
 
-  return { intro, cost, weekly: weeklySentence(contrib.weekly_windows) };
+  return { intro, cost };
 }

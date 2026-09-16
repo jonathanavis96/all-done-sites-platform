@@ -99,18 +99,15 @@ export async function onRequestPost({ request, env }) {
   } while (cursor);
 
   const modelLabel = model ? MODEL_LABELS[model] ?? model : null;
-  const verb = direction === "increased" ? "increased" : "cut";
-  const isWeekly = scope === "weekly";
-  const subject = isWeekly
-    ? `Anthropic ${verb} Claude's weekly limit by ${percent}%`
-    : `Anthropic ${verb} Claude's limits by ${percent}%`;
-  const headingText = isWeekly
-    ? `Anthropic ${direction} Claude's weekly limit by ${percent}% in the week ending ${fmtDate(date)}.`
-    : `Anthropic ${direction} Claude's limits by ${percent}% on ${fmtDate(date)}.`;
+  // The page headline's words: a change observed on the watched account, not a limit Anthropic
+  // is known to have changed (audit finding 4).
+  const metric = scope === "weekly" ? "weekly-to-window ratio" : "5-hour window budget";
+  const subject = `Claude's observed ${metric} ${direction} by ${percent}%`;
+  const headingText = `Claude's observed ${metric} ${direction} by ${percent}% on ${fmtDate(date)}.`;
   const heading = escapeHtml(headingText);
   const intro = modelLabel
-    ? `Measured on ${escapeHtml(modelLabel)} from a real account. The tracker has the full history and what it means for your plan.`
-    : "Measured daily from a real account. The tracker has the full history and what it means for your plan.";
+    ? `Measured on ${escapeHtml(modelLabel)} from a real account. The tracker has the full history.`
+    : "Measured daily from a real account. The tracker has the full history.";
 
   let sent = 0;
   const failures = [];
@@ -130,7 +127,7 @@ export async function onRequestPost({ request, env }) {
             body: intro,
             ctaLabel: "See the tracker",
             ctaUrl: PAGE,
-            footerHtml: `You asked to hear about changes to Claude's limits. <a href="${unsubUrl}" style="color:#8a8f99">Unsubscribe</a>.`,
+            footerHtml: `You asked to hear about changes observed by the Claude usage tracker. <a href="${unsubUrl}" style="color:#8a8f99">Unsubscribe</a>.`,
           }),
         };
       }),
