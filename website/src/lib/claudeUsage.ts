@@ -27,6 +27,9 @@ export interface PlanContribStat {
 export interface ContribPoint {
   t: string;
   usd_per_pct: number | null;
+  // Published since the contributor tabs landed; older JSON has neither.
+  tokens_per_pct?: number | null;
+  windows?: number | null;
   c: number;
   coarse: boolean;
 }
@@ -134,9 +137,73 @@ export interface UsageJson {
           partial?: boolean;
         }[];
         assumed?: boolean;
+        // Levels, oldest first: what the detector says the limit actually was, each held flat
+        // between steps. Windows per week is a plan constant, so this is the honest shape of
+        // the series and the weekly rows above are estimates of it. Optional: older JSON has
+        // only the rows.
+        regimes?: {
+          start: string;
+          end: string;
+          windows: number;
+          seven_day_pct: number;
+          points: number;
+        }[];
       }
     | null
   >;
+}
+
+export interface RegimeLevel {
+  start: string;
+  end: string;
+  windows: number;
+  // True when this level was measured on another plan and scaled onto this one by the frozen
+  // plan ratio, rather than measured on this plan's own windows.
+  inferred: boolean;
+  plan: Plan;
+}
+
+// Every regime level on one plan's scale, oldest first, gaps included.
+//
+// A plan's own regimes are used where it has them. Everywhere else the other plans' regimes
+// are scaled across by `weekly_window_ratios` and flagged inferred, which is how Max 20x gets
+// a level for the months before the account moved onto it and Max 5x keeps one for the months
+// after. Overlaps resolve in favour of the measured level.
+export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
+  const ratioOf = (p: Plan): number | null => {
+    const r = j.weekly_window_ratios?.[p];
+    return typeof r === "number" && r ? r : null;
+  };
+  const own = ratioOf(plan);
+  const out: RegimeLevel[] = [];
+  for (const source of Object.keys(PLAN_LABELS) as Plan[]) {
+    const regimes = j.weekly_windows?.[source]?.regimes;
+    if (!regimes || regimes.length === 0) continue;
+    const isOwn = source === plan;
+    // Pro borrows Max 5x's measured regimes wholesale, exactly as it borrows its weekly rows,
+    // so a ratio of 1 applies and the level is not flagged inferred twice over.
+    const from = ratioOf(source);
+    const scale = isOwn ? 1 : own !== null && from !== null ? own / from : null;
+    if (scale === null) continue;
+    for (const r of regimes) {
+      out.push({ start: r.start, end: r.end, windows: r.windows * scale, inferred: !isOwn, plan: source });
+    }
+  }
+  // A measured level wins any overlap: drop an inferred level whose span a measured one covers.
+  const measured = out.filter((r) => !r.inferred);
+  const kept = out.filter(
+    (r) => !r.inferred || !measured.some((m) => m.start <= r.end && r.start <= m.end),
+  );
+  // Pro publishes Max 5x's regimes verbatim, so scaling both onto a third plan yields the same
+  // level twice. Dedupe on the span and the level, keeping whichever arrived first.
+  const seen = new Set<string>();
+  const unique = kept.filter((r) => {
+    const key = `${r.start}|${r.end}|${r.windows.toFixed(4)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return unique.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
 }
 
 export const RANGE_DAYS = [30, 90, 180] as const;
@@ -447,6 +514,34 @@ export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[
       ? [withTokens(s, "max5", PLAN_LABELS.max5), withTokens(s, "pro", PLAN_LABELS.pro)]
       : [withTokens(s, s.plan, s.label)],
   );
+}
+
+// The same levels priced in tokens: each regime's windows times what one window bought at the
+// time, on the plan's own token ratio. Undefined per-window figures drop the level rather than
+// guessing, the same contract weeklyTokenSeriesFor keeps.
+export function weeklyTokenRegimeLevelsFor(
+  j: UsageJson,
+  plan: Plan,
+  model: string,
+): (RegimeLevel & { tokens: number })[] {
+  const hist = [...(j.history[model] ?? [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const rate = j.rates[model];
+  const planRatio = j.plan_ratios[plan];
+  const perWindowAt = (iso: string): number | undefined => {
+    const d = iso.slice(0, 10);
+    if (hist.length > 0) {
+      const atOrBefore = hist.filter((h) => h.date <= d);
+      return (atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1] : hist[0]).tokens_per_window;
+    }
+    return rate ? rate.tokens_per_window : undefined;
+  };
+  const out: (RegimeLevel & { tokens: number })[] = [];
+  for (const r of weeklyRegimeLevelsFor(j, plan)) {
+    const perWindow = perWindowAt(r.start);
+    if (typeof perWindow !== "number") continue;
+    out.push({ ...r, tokens: r.windows * perWindow * planRatio });
+  }
+  return out;
 }
 
 export function weeklyEventsFor(j: UsageJson): UsageEvent[] {

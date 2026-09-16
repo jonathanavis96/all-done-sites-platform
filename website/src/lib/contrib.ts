@@ -379,6 +379,8 @@ export interface ContribGroup {
 export interface ContribPointLike {
   t: string;
   usd_per_pct: number | null;
+  tokens_per_pct?: number | null;
+  windows?: number | null;
   c: number;
   coarse: boolean;
 }
@@ -433,8 +435,14 @@ export function contribXScale(
  * figure, so the probe's dashed line and every reading always sit inside the axis. Points with
  * a null usd_per_pct (below the coarse floor) are excluded, same as they are from the plot.
  */
-export function contribYMax(points: ContribPointLike[], fleetUsd: number | null): number {
-  const vals = points.map((p) => p.usd_per_pct).filter((v): v is number => typeof v === "number");
+export function contribYMax(
+  points: ContribPointLike[],
+  fleetUsd: number | null,
+  // Which figure to scale to. Defaults to the dollar one, so the cost chart and its
+  // tests read exactly as before; the other contributor tabs pass their own.
+  value: (p: ContribPointLike) => number | null = (p) => p.usd_per_pct,
+): number {
+  const vals = points.map(value).filter((v): v is number => typeof v === "number");
   if (typeof fleetUsd === "number") vals.push(fleetUsd);
   const max = vals.length > 0 ? Math.max(...vals) : 0;
   return max > 0 ? max * 1.15 : 1;

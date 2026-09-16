@@ -20,7 +20,9 @@ import {
   seriesFor,
   weeklyEventsFor,
   latestWeeklyChange,
+  weeklyRegimeLevelsFor,
   weeklySeriesFor,
+  weeklyTokenRegimeLevelsFor,
   weeklyTokenSeriesFor,
   type ContribPoint,
   type Effort,
@@ -30,6 +32,7 @@ import {
   type UsageJson,
   type WeeklyPoint,
   type WeeklySeries,
+  type RegimeLevel,
 } from "@/lib/claudeUsage";
 import { contribColor, contribGroups, contribXScale, contribYMax, contributorSentences, fleetUsdPerPercent } from "@/lib/contrib";
 import "@/styles/home.css";
@@ -170,9 +173,20 @@ function Chart({
       })}
       <circle cx={R} cy={y(points[points.length - 1].value)} r="4.5" fill="#0EA5E9" stroke="#fff" strokeWidth="2" />
       <g style={{ fill: "#0277B5", fontWeight: 500 }}>
-        {points.map(
-          (p, i) => i % labelEvery === 0 && <text key={p.date} x={x(i)} y={B + 36}>{fmtDate(p.date).slice(0, 6)}</text>
-        )}
+        {points.map((p, i) => {
+          if (i % labelEvery !== 0) return null;
+          const xx = x(i);
+          // Anchored by position, the same rule the weekly charts use: a label at the plot's
+          // right edge defaults to text-anchor start and runs past the viewBox, which cut the
+          // newest date in half. End-anchor it there, start-anchor it at the left edge, centre
+          // it everywhere between.
+          const anchor = xx < L + 20 ? "start" : xx > R - 20 ? "end" : "middle";
+          return (
+            <text key={p.date} x={xx} y={B + 36} textAnchor={anchor}>
+              {fmtDate(p.date).slice(0, 6)}
+            </text>
+          );
+        })}
       </g>
     </svg>
   );
@@ -205,6 +219,29 @@ function dropSegment(xy: [number, number][], cx: number | null): [number, number
   ];
 }
 
+// A regime step line: one horizontal run per level, joined by verticals at the boundaries.
+// Levels are what the detector measured; the weekly points behind them are estimates of the
+// same constant, carrying the assembly error the collector's weighted_regimes docstring lists.
+function stepRuns<T extends { start: string; end: string; inferred: boolean }>(
+  levels: T[],
+  xAt: (iso: string) => number | null,
+  yOf: (lvl: T) => number,
+): { d: string; inferred: boolean }[] {
+  const runs: { d: string; inferred: boolean }[] = [];
+  let prev: { x: number; y: number } | null = null;
+  for (const lvl of levels) {
+    const x0 = xAt(lvl.start), x1 = xAt(lvl.end);
+    if (x0 === null || x1 === null) continue;
+    const y = yOf(lvl);
+    // Join to the previous level with a vertical at the step, so a change reads as a step and
+    // never as a slope: a slope would imply the limit moved gradually, which it never does.
+    const lead = prev !== null ? `M ${prev.x},${prev.y} L ${x0},${prev.y} L ${x0},${y} ` : `M ${x0},${y} `;
+    runs.push({ d: `${lead}L ${x1},${y}`, inferred: lvl.inferred });
+    prev = { x: x1, y };
+  }
+  return runs;
+}
+
 function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: number, gap = 16): Map<Plan, number> {
   const sorted = [...items].sort((a, b) => a.y - b.y);
   let prev = -Infinity;
@@ -218,331 +255,84 @@ function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: nu
   return new Map(sorted.map((it) => [it.plan, it.y]));
 }
 
-function WeeklyChart({
-  series,
-  events,
-  selectedPlan,
-}: {
-  series: WeeklySeries[];
-  events: UsageEvent[];
-  selectedPlan: Plan;
-}) {
-  const [hoverX, setHoverX] = useState<number | null>(null);
-  const plotted = series.filter((s) => s.points.length >= 2);
-  if (plotted.length === 0) return <p className="sub">Not enough weekly history yet.</p>;
-  // The plot stops short of the viewBox so each plan's label sits in the right margin, clear of
-  // the lines; the box itself still spans the text column, so the charts line up with it.
-  const W = 840, H = 260, L = 44, R = 732, T = 20, B = 200;
-  const vals = plotted.flatMap((s) => s.points.map((p) => p.windows));
-  const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
-  const day = (d: string) => Date.parse(d + "T00:00:00Z");
-  // Unscoped by the range picker: the chart always shows the full weekly history, since that
-  // longer history (months, not just the last 30/90/180 days) is the reason it exists.
-  const allDates = Array.from(new Set(plotted.flatMap((s) => s.points.map((p) => p.date)))).sort();
-  const d1 = Math.max(...allDates.map(day));
-  const markerDays = events.map((ev) => day(ev.date));
-  const d0 = Math.min(...allDates.map(day), ...markerDays);
-  const span = Math.max(1, d1 - d0);
-  const xDate = (d: string) => {
-    const t = day(d);
-    if (!(t >= d0 && t <= d1)) return null;
-    return L + ((t - d0) / span) * (R - L);
-  };
-  const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
-  const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
-  const shown = events.filter((ev) => xDate(ev.date) !== null);
-  const weeklyChange = latestWeeklyChange(shown);
-  // Right-margin labels, pushed apart so two plans close together never print on top of each
-  // other. Anchored to each series' last plotted value, then spaced by at least 16 units.
-  const labelY = stackLabels(
-    plotted.map((s) => {
-      const pts = s.points.filter((p) => xDate(p.date) !== null);
-      return { plan: s.plan, y: y(pts[pts.length - 1].windows) };
-    }),
-    T,
-    B,
-  );
-
-  // Calendar-aligned x-axis ticks, not every Nth data point: spacing stays regular regardless
-  // of how the samples fall, and the step widens as the span gets long. The span is the one
-  // actually mapped onto the SVG (d0 to d1), which an old event marker can stretch well before
-  // the first plotted point, so the ticks start at d0 and the step is chosen from that width
-  // rather than from the data alone; otherwise the labels bunch up in the data's corner.
-  const dayMs = 86400e3;
-  const spanDays = (d1 - d0) / dayMs;
-  const stepWeeks = spanDays > 300 ? 8 : spanDays > 120 ? 4 : 2;
-  const stepMs = stepWeeks * 7 * dayMs;
-  const xTicks: string[] = [];
-  for (let t = d0; t <= d1; t += stepMs) {
-    xTicks.push(new Date(t).toISOString().slice(0, 10));
-  }
-  // Hover lookup: nearest plotted date to the pointer's x position, in SVG viewBox units.
-  const hoverDate = (() => {
-    if (hoverX === null) return null;
-    let best: string | null = null;
-    let bestDist = Infinity;
-    for (const d of allDates) {
-      const xx = xDate(d);
-      if (xx === null) continue;
-      const dist = Math.abs(xx - hoverX);
-      if (dist < bestDist) { bestDist = dist; best = d; }
-    }
-    return best;
-  })();
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setHoverX(((e.clientX - rect.left) / rect.width) * W);
-  };
-  const handleMouseLeave = () => setHoverX(null);
-  const ariaLabel = [
-    "Weekly limit, 5-hour windows per week over time",
-    ...plotted.map((s) => {
-      const base = `${s.label}: ${s.points.map((p) => `${fmtDate(p.date)} ${p.windows.toFixed(1)}${p.partial ? " (partial week)" : ""}`).join(", ")}`;
-      const measuredDates = s.points.filter((p) => !p.inferred).map((p) => p.date);
-      if (measuredDates.length === 0) return base;
-      const firstMeasured = measuredDates[0];
-      const lastMeasured = measuredDates[measuredDates.length - 1];
-      const notes: string[] = [];
-      if (s.points.some((p) => p.inferred && p.date < firstMeasured)) notes.push(`dashed before ${fmtDate(firstMeasured)}`);
-      if (s.points.some((p) => p.inferred && p.date > lastMeasured)) notes.push(`dashed after ${fmtDate(lastMeasured)}`);
-      return notes.length > 0 ? `${base} (${notes.join(", ")})` : base;
-    }),
-    ...shown.map((ev) => `${fmtDate(ev.date)}: ${ev.label}`),
-  ].join(". ");
-  return (
-    <svg
-      className="chart"
-      viewBox={`0 0 ${W} ${H}`}
-      width="100%"
-      role="img"
-      aria-label={ariaLabel}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    >
-      <defs>
-        <linearGradient id="windowsfill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#0EA5E9" stopOpacity=".28" />
-          <stop offset="1" stopColor="#0EA5E9" stopOpacity=".03" />
-        </linearGradient>
-      </defs>
-      <g stroke="#E6E9EE" strokeWidth="1">
-        {ticks.map((t) => (
-          <line key={t} x1={L} x2={R} y1={y(t)} y2={y(t)} />
-        ))}
-      </g>
-      {ticks.map((t) => (
-        <text key={t} x={0} y={y(t) + 4}>{t.toFixed(1)}</text>
-      ))}
-      {shown.map((ev) => {
-        const xx = xDate(ev.date)!;
-        return (
-          <g key={`${ev.date}-${ev.label}`}>
-            <line x1={xx} x2={xx} y1={T} y2={B} stroke="#B42318" strokeWidth="1.25" strokeDasharray="4 3" />
-            <text
-              x={xx > W - 130 ? xx - 6 : xx + 6}
-              y={T - 3}
-              textAnchor={xx > W - 130 ? "end" : "start"}
-              style={{ fill: "#B42318", fontWeight: 500 }}
-            >
-              {shortChangeLabel(ev.label)}
-            </text>
-          </g>
-        );
-      })}
-      {plotted.map((s) => {
-        const pts = s.points.filter((p) => xDate(p.date) !== null);
-        if (pts.length === 0) return null;
-        const isSelected = s.plan === selectedPlan || (!!s.sharedWithPro && (selectedPlan === "pro" || selectedPlan === "max5"));
-        const color = isSelected ? "#0EA5E9" : "#94A3B8";
-        const measuredWidth = isSelected ? 2.5 : 1.5;
-        const inferredWidth = isSelected ? 1.5 : 1.25;
-        // Split into consecutive runs by `inferred` so measured spans draw solid and inferred
-        // spans draw dashed; the point where a run changes is duplicated into both runs so the
-        // two strokes meet without a gap.
-        const runs: { inferred: boolean; pts: WeeklyPoint[] }[] = [];
-        for (const p of pts) {
-          const prevRun = runs[runs.length - 1];
-          if (!prevRun || prevRun.inferred !== p.inferred) {
-            const boundary = prevRun ? [prevRun.pts[prevRun.pts.length - 1]] : [];
-            runs.push({ inferred: p.inferred, pts: [...boundary, p] });
-          } else {
-            prevRun.pts.push(p);
-          }
-        }
-        const last = pts[pts.length - 1];
-        // The segment the change lands on, red under the line: the same treatment as the tokens
-        // chart above, since a drop in windows per week is what moves that chart.
-        const drop = dropSegment(
-          pts.map((q) => [xDate(q.date)!, y(q.windows)] as [number, number]),
-          weeklyChange ? xDate(weeklyChange.date) : null,
-        );
-
-        const xy = pts.map((q) => [xDate(q.date)!, y(q.windows)] as [number, number]);
-        return (
-          <g key={s.plan}>
-            {isSelected && xy.length >= 2 && (
-              <polygon
-                fill="url(#windowsfill)"
-                points={`${xy[0][0]},${B} ${xy.map(([px, py]) => `${px},${py}`).join(" ")} ${xy[xy.length - 1][0]},${B}`}
-              />
-            )}
-            {isSelected && drop.length === 2 && (
-              <polygon
-                fill="#B42318"
-                fillOpacity=".22"
-                points={`${drop[0][0]},${B} ${drop.map(([px, py]) => `${px},${py}`).join(" ")} ${drop[1][0]},${B}`}
-              />
-            )}
-            {runs.map((run, i) => (
-              <polyline
-                key={i}
-                fill="none"
-                stroke={color}
-                strokeWidth={run.inferred ? inferredWidth : measuredWidth}
-                strokeLinejoin="round"
-                strokeDasharray={run.inferred ? "5 4" : undefined}
-                points={run.pts.map((p) => `${xDate(p.date)},${y(p.windows)}`).join(" ")}
-              />
-            ))}
-            {isSelected && drop.length === 2 && (
-              <polyline fill="none" stroke="#B42318" strokeWidth={3} points={drop.map(([px, py]) => `${px},${py}`).join(" ")} />
-            )}
-            {pts.filter((p) => p.partial && !p.inferred).map((p) => (
-              <circle
-                key={p.date}
-                cx={xDate(p.date)!}
-                cy={y(p.windows)}
-                r={isSelected ? 4 : 3}
-                fill="#fff"
-                stroke={color}
-                strokeWidth={2}
-              />
-            ))}
-            <text x={R + 10} y={labelY.get(s.plan) ?? y(last.windows)} style={{ fill: color, fontWeight: 600 }}>
-              {s.label}
-            </text>
-          </g>
-        );
-      })}
-      <g style={{ fill: "#0277B5", fontWeight: 500 }}>
-        {xTicks.map((d) => {
-          const xx = xDate(d);
-          if (xx === null) return null;
-          const anchor = xx < L + 20 ? "start" : xx > R - 20 ? "end" : "middle";
-          return (
-            <text key={d} x={xx} y={B + 36} textAnchor={anchor}>{fmtDate(d).slice(0, 6)}</text>
-          );
-        })}
-      </g>
-      {hoverDate && (() => {
-        const hx = xDate(hoverDate);
-        if (hx === null) return null;
-        const rows = plotted
-          .map((s) => ({ s, p: s.points.find((p) => p.date === hoverDate) }))
-          .filter((row): row is { s: WeeklySeries; p: WeeklyPoint } => !!row.p);
-        if (rows.length === 0) return null;
-        const headerText = fmtDate(hoverDate);
-        const lineTexts = rows.map(
-          (row) =>
-            `${row.s.label}: ${row.p.windows.toFixed(1)}${row.p.partial ? " (week so far)" : ""}${row.p.inferred ? " (inferred)" : ""}`,
-        );
-        const maxChars = Math.max(headerText.length, ...lineTexts.map((t) => t.length));
-        const lineH = 16;
-        const boxW = Math.min(340, Math.max(150, maxChars * 6.3 + 20));
-        const boxH = 22 + rows.length * lineH;
-        const tipNearRight = hx > R - boxW - 12;
-        const boxX = tipNearRight ? hx - boxW - 10 : hx + 10;
-        const boxY = T + 4;
-        return (
-          <g pointerEvents="none">
-            <line x1={hx} x2={hx} y1={T} y2={B} stroke="#94A3B8" strokeWidth="1" />
-            <rect x={boxX} y={boxY} width={boxW} height={boxH} rx="6" fill="#0F172A" fillOpacity="0.92" />
-            <text x={boxX + 10} y={boxY + 16} style={{ fill: "#fff", fontWeight: 600 }}>
-              {fmtDate(hoverDate)}
-            </text>
-            {rows.map((row, i) => (
-              <text
-                key={row.s.plan}
-                x={boxX + 10}
-                y={boxY + 16 + (i + 1) * lineH}
-                style={{ fill: "#E2E8F0" }}
-              >
-                {lineTexts[i]}
-              </text>
-            ))}
-          </g>
-        );
-      })()}
-    </svg>
-  );
+// One plan's levels on a chart: what the limit was, held flat between changes.
+export interface PlanLevels {
+  plan: Plan;
+  label: string;
+  levels: { start: string; end: string; value: number; inferred: boolean }[];
 }
 
-function WeeklyTokensChart({
-  series,
+// The weekly charts draw levels, not weekly points.
+//
+// Windows per week is a plan constant: it moves when the limit moves and not otherwise. A
+// weekly ratio is an ESTIMATE of that constant and carries several percent of assembly error
+// (whole-percent rounding on a denominator that mostly moves by 1, an interval filter that
+// keys on the numerator, work spanning a reset dropped) -- so plotting the weekly points drew
+// week-to-week movement the limit never made, and a reader had no way to tell which wiggles
+// meant anything. The levels come from the collector's own regime detector, the same machinery
+// behind the headline figure, so the chart and the headline can no longer disagree.
+function LevelChart({
+  levelsByPlan,
   events,
   selectedPlan,
+  fmtValue,
+  plotRight,
+  title,
 }: {
-  series: WeeklySeries[];
+  levelsByPlan: PlanLevels[];
   events: UsageEvent[];
   selectedPlan: Plan;
+  fmtValue: (v: number) => string;
+  plotRight: number;
+  title: string;
 }) {
-  type TokenPoint = WeeklyPoint & { tokens: number };
-  const isTokenPoint = (p: WeeklyPoint): p is TokenPoint => typeof p.tokens === "number" && Number.isFinite(p.tokens);
-  const plotted = series
-    .map((s) => ({ ...s, points: s.points.filter(isTokenPoint) }))
-    .filter((s) => s.points.length >= 2);
-  if (plotted.length === 0) return <p className="sub">Not enough weekly history yet.</p>;
-  // The plot stops short of the viewBox so each plan's label sits in the right margin, clear of
-  // the lines; the box itself still spans the text column, so the charts line up with it.
-  const W = 840, H = 260, L = 44, R = 732, T = 20, B = 200;
-  const vals = plotted.flatMap((s) => s.points.map((p) => p.tokens));
+  const plotted = levelsByPlan.filter((p) => p.levels.length > 0);
+  if (plotted.length === 0) return <p className="sub">Not enough history yet.</p>;
+  const W = 840, H = 260, L = 44, R = plotRight, T = 20, B = 200;
+  const vals = plotted.flatMap((p) => p.levels.map((l) => l.value));
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
+  const stamps = plotted.flatMap((p) => p.levels.flatMap((l) => [Date.parse(l.start), Date.parse(l.end)]));
   const day = (d: string) => Date.parse(d + "T00:00:00Z");
-  const allDates = Array.from(new Set(plotted.flatMap((s) => s.points.map((p) => p.date)))).sort();
-  const d1 = Math.max(...allDates.map(day));
-  const d0 = Math.min(...allDates.map(day));
+  const markerDays = events.map((ev) => day(ev.date));
+  const d0 = Math.min(...stamps, ...markerDays);
+  const d1 = Math.max(...stamps, ...markerDays);
   const span = Math.max(1, d1 - d0);
-  const xDate = (d: string) => {
-    const t = day(d);
-    if (!(t >= d0 && t <= d1)) return null;
+  const xAt = (iso: string) => {
+    const t = Math.min(Math.max(Date.parse(iso), d0), d1);
     return L + ((t - d0) / span) * (R - L);
   };
+  const xDay = (d: string) => xAt(`${d}T00:00:00Z`);
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
-  const dayMs = 86400e3;
-  const spanDays = (d1 - d0) / dayMs;
-  const stepWeeks = spanDays > 300 ? 8 : spanDays > 120 ? 4 : 2;
-  const stepMs = stepWeeks * 7 * dayMs;
-  const xTicks: string[] = [];
-  for (let t = d0; t <= d1; t += stepMs) {
-    xTicks.push(new Date(t).toISOString().slice(0, 10));
-  }
+  const change = latestWeeklyChange(events);
+  // Two lines per plan on the right edge — name above, current value below — so the
+  // gap has to clear both, not one.
   const labelY = stackLabels(
-    plotted.map((s) => {
-      const pts = s.points.filter((p) => xDate(p.date) !== null);
-      return { plan: s.plan, y: y(pts[pts.length - 1].tokens) };
-    }),
-    T,
+    plotted.map((p) => ({ plan: p.plan, y: y(p.levels[p.levels.length - 1].value) })),
+    T + 6,
     B,
+    34,
   );
-  // The latest weekly change, if it falls inside the plotted span: the drop gets its own
-  // marker here, the same red as the weekly-limit chart below, because a change in windows per
-  // week moves this line as surely as it moves that one.
-  const change = latestWeeklyChange(events.filter((ev) => xDate(ev.date) !== null));
-  const changeDate = change ? change.date : null;
+  const dayMs = 86400e3;
+  const spanDays = span / dayMs;
+  const stepWeeks = spanDays > 300 ? 8 : spanDays > 120 ? 4 : 2;
+  const xTicks: string[] = [];
+  for (let t = d0; t <= d1; t += stepWeeks * 7 * dayMs) xTicks.push(new Date(t).toISOString().slice(0, 10));
   const ariaLabel = [
-    "Tokens per week over time",
+    title,
     ...plotted.map(
-      (s) =>
-        `${s.label}: ${s.points.map((p) => `${fmtDate(p.date)} ${fmtTokens(p.tokens)}${p.partial ? " (partial week)" : ""}`).join(", ")}`,
+      (p) =>
+        `${p.label}: ${p.levels
+          .map((l) => `${fmtDate(l.start.slice(0, 10))} to ${fmtDate(l.end.slice(0, 10))} ${fmtValue(l.value)}${l.inferred ? " (inferred)" : ""}`)
+          .join(", ")}`,
     ),
     ...(change ? [`${fmtDate(change.date)}: ${change.label}`] : []),
   ].join(". ");
   return (
     <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
       <defs>
-        <linearGradient id="weeklyfill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#0EA5E9" stopOpacity=".28" />
+        <linearGradient id={`lvlfill-${plotRight}`} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="#0EA5E9" stopOpacity=".22" />
           <stop offset="1" stopColor="#0EA5E9" stopOpacity=".02" />
         </linearGradient>
       </defs>
@@ -552,88 +342,79 @@ function WeeklyTokensChart({
         ))}
       </g>
       {ticks.map((t) => (
-        <text key={t} x={0} y={y(t) + 4}>{fmtTokens(t)}</text>
+        <text key={t} x={0} y={y(t) + 4}>{fmtValue(t)}</text>
       ))}
-      {change !== null && (
+      {change !== null && xDay(change.date) !== null && (
         <g>
-          <line x1={xDate(change.date)!} x2={xDate(change.date)!} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
+          <line x1={xDay(change.date)} x2={xDay(change.date)} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
           <text
-            x={xDate(change.date)! > W - 130 ? xDate(change.date)! - 6 : xDate(change.date)! + 6}
+            x={xDay(change.date) > W - 130 ? xDay(change.date) - 6 : xDay(change.date) + 6}
             y={T - 3}
-            textAnchor={xDate(change.date)! > W - 130 ? "end" : "start"}
+            textAnchor={xDay(change.date) > W - 130 ? "end" : "start"}
             style={{ fill: "#B42318", fontWeight: 600 }}
           >
             {shortChangeLabel(change.label)}
           </text>
         </g>
       )}
-      {plotted.map((s) => {
-        const pts = s.points.filter((p) => xDate(p.date) !== null);
-        if (pts.length === 0) return null;
-        const isSelected = s.plan === selectedPlan || (!!s.sharedWithPro && (selectedPlan === "pro" || selectedPlan === "max5"));
+      {plotted.map((p) => {
+        const isSelected =
+          p.plan === selectedPlan || (selectedPlan === "pro" && p.plan === "max5" && !levelsByPlan.some((o) => o.plan === "pro"));
         const color = isSelected ? "#0EA5E9" : "#94A3B8";
-        const measuredWidth = isSelected ? 2.5 : 1.5;
-        const inferredWidth = isSelected ? 1.5 : 1.25;
-        // Split into consecutive runs by `inferred`, same as WeeklyChart, so measured spans
-        // draw solid and inferred spans draw dashed with the boundary point shared by both.
-        const runs: { inferred: boolean; pts: TokenPoint[] }[] = [];
-        for (const p of pts) {
-          const prevRun = runs[runs.length - 1];
-          if (!prevRun || prevRun.inferred !== p.inferred) {
-            const boundary = prevRun ? [prevRun.pts[prevRun.pts.length - 1]] : [];
-            runs.push({ inferred: p.inferred, pts: [...boundary, p] });
-          } else {
-            prevRun.pts.push(p);
-          }
-        }
-        const last = pts[pts.length - 1];
-        // The selected plan is shaded across its whole span, inferred spans included, so the
-        // area reaches the right edge of the plot rather than stopping where the dashes start.
-        const xy = pts.map((q) => [xDate(q.date)!, y(q.tokens)] as [number, number]);
-        const areaPath = (run: [number, number][]) =>
-          `${run[0][0]},${B} ${run.map(([px, py]) => `${px},${py}`).join(" ")} ${run[run.length - 1][0]},${B}`;
-        const drop = dropSegment(xy, changeDate === null ? null : xDate(changeDate));
+        const runs = stepRuns(p.levels, xAt, (l) => y(l.value));
+        // Shade under the selected plan's own steps, so the eye lands on the plan in view.
+        const area = isSelected
+          ? p.levels
+              .map((l) => `${xAt(l.start)},${y(l.value)} ${xAt(l.end)},${y(l.value)}`)
+              .join(" ")
+          : "";
+        const last = p.levels[p.levels.length - 1];
         return (
-          <g key={s.plan}>
-            {isSelected && xy.length >= 2 && <polygon fill="url(#weeklyfill)" points={areaPath(xy)} />}
-            {/* The segment the change lands on, filled red under the line: at this scale a 29%
-                fall over one segment reads as a gentle slope unless it is coloured. */}
-            {isSelected && drop.length === 2 && <polygon fill="#B42318" fillOpacity=".22" points={areaPath(drop)} />}
+          <g key={p.plan}>
+            {isSelected && p.levels.length > 0 && (
+              <polygon
+                fill={`url(#lvlfill-${plotRight})`}
+                points={`${xAt(p.levels[0].start)},${B} ${area} ${xAt(last.end)},${B}`}
+              />
+            )}
             {runs.map((run, i) => (
-              <polyline
+              <path
                 key={i}
+                d={run.d}
                 fill="none"
                 stroke={color}
-                strokeWidth={run.inferred ? inferredWidth : measuredWidth}
+                strokeWidth={isSelected ? 3 : 1.75}
+                strokeDasharray={run.inferred ? "6 4" : undefined}
                 strokeLinejoin="round"
-                strokeDasharray={run.inferred ? "5 4" : undefined}
-                points={run.pts.map((p) => `${xDate(p.date)},${y(p.tokens)}`).join(" ")}
+                strokeLinecap="round"
               />
             ))}
-            {isSelected && drop.length === 2 && (
-              <polyline fill="none" stroke="#B42318" strokeWidth={3} points={drop.map(([px, py]) => `${px},${py}`).join(" ")} />
-            )}
-            {pts.filter((p) => p.partial && !p.inferred).map((p) => (
-              <circle
-                key={p.date}
-                cx={xDate(p.date)!}
-                cy={y(p.tokens)}
-                r={isSelected ? 4 : 3}
-                fill="#fff"
+            <g>
+              {/* Leader from the line's end to its label, so a stacked label still reads
+                  against the right level. */}
+              <line
+                x1={xAt(last.end)}
+                x2={R + 6}
+                y1={y(last.value)}
+                y2={(labelY.get(p.plan) ?? y(last.value)) - 4}
                 stroke={color}
-                strokeWidth={2}
+                strokeWidth="1"
+                strokeDasharray="2 3"
+                opacity=".6"
               />
-            ))}
-            <text x={R + 10} y={labelY.get(s.plan) ?? y(last.tokens)} style={{ fill: color, fontWeight: 600 }}>
-              {s.label}
-            </text>
+              <text x={R + 10} y={(labelY.get(p.plan) ?? y(last.value)) - 8} style={{ fill: color, fontWeight: 500 }}>
+                {p.label}
+              </text>
+              <text x={R + 10} y={(labelY.get(p.plan) ?? y(last.value)) + 8} style={{ fill: color, fontWeight: 700 }}>
+                {fmtValue(last.value)}
+              </text>
+            </g>
           </g>
         );
       })}
       <g style={{ fill: "#0277B5", fontWeight: 500 }}>
         {xTicks.map((d) => {
-          const xx = xDate(d);
-          if (xx === null) return null;
+          const xx = xDay(d);
           const anchor = xx < L + 20 ? "start" : xx > R - 20 ? "end" : "middle";
           return (
             <text key={d} x={xx} y={B + 36} textAnchor={anchor}>{fmtDate(d).slice(0, 6)}</text>
@@ -644,16 +425,85 @@ function WeeklyTokensChart({
   );
 }
 
-/**
- * The "From contributors" chart: one dot per reading, coloured by contributor and joined in
- * time order, against the tracker's own measurement as a dashed reference line.
- */
-function ContributorsChart({ points, fleetUsd }: { points: ContribPoint[]; fleetUsd: number | null }) {
+// What each tab of the contributors section plots. Every one is read off the same
+// contributed samples: the dollar and token figures divide by the five-hour percent,
+// the windows figure divides the five-hour percent by the seven-day one.
+type ContribMetric = "usd" | "window" | "weekly" | "windows";
+
+interface ContribTab {
+  key: ContribMetric;
+  label: string;
+  value: (p: ContribPoint, windowsPerWeek: number | null) => number | null;
+  fmt: (v: number) => string;
+  reference: (r: ReturnType<typeof compute> | null, fleetUsd: number | null) => number | null;
+  refLabel: (v: number, fmt: (v: number) => string) => string;
+  legend: string;
+}
+
+const CONTRIB_TABS: ContribTab[] = [
+  {
+    key: "usd",
+    label: "Cost per 1%",
+    value: (p) => p.usd_per_pct ?? null,
+    fmt: fmtUsd2,
+    reference: (_r, fleetUsd) => fleetUsd,
+    refLabel: (v, fmt) => `tracker ${fmt(v)} per 1%`,
+    legend:
+      "One dot per reading, joined when they come from the same person. Hollow dots: meter under 5%. Dashed line: the tracker's own figure.",
+  },
+  {
+    key: "window",
+    label: "Effective window size",
+    value: (p) => (typeof p.tokens_per_pct === "number" ? p.tokens_per_pct * 100 : null),
+    fmt: fmtTokens,
+    reference: (r) => r?.tokensPerWindow ?? null,
+    refLabel: (v, fmt) => `tracker ${fmt(v)}`,
+    legend:
+      "Tokens a full five-hour window buys, read off each contributor's own meter. Hollow dots: meter under 5%. Dashed line: the tracker's own figure.",
+  },
+  {
+    key: "weekly",
+    label: "Tokens per week",
+    value: (p, windowsPerWeek) =>
+      typeof p.tokens_per_pct === "number" && typeof windowsPerWeek === "number"
+        ? p.tokens_per_pct * 100 * windowsPerWeek
+        : null,
+    fmt: fmtTokens,
+    reference: (r) =>
+      r && r.windowsPerWeek !== null ? r.tokensPerWindow * r.windowsPerWeek : null,
+    refLabel: (v, fmt) => `tracker ${fmt(v)}`,
+    legend:
+      "Each contributor's window size times how many windows their own week holds. Hollow dots: meter under 5%. Dashed line: the tracker's own figure.",
+  },
+  {
+    key: "windows",
+    label: "Weekly limit",
+    value: (p) => p.windows ?? null,
+    fmt: (v) => v.toFixed(1),
+    reference: (r) => r?.windowsPerWeek ?? null,
+    refLabel: (v, fmt) => `tracker ${fmt(v)} windows`,
+    legend:
+      "Five-hour windows one week holds: each reading's five-hour percent over its seven-day percent. One sample reads this far more coarsely than a paired week does, so the scatter is wide. Dashed line: the tracker's own figure.",
+  },
+];
+
+function ContributorsChart({
+  points,
+  reference,
+  tab,
+  windowsPerWeek,
+}: {
+  points: ContribPoint[];
+  reference: number | null;
+  tab: ContribTab;
+  windowsPerWeek: number | null;
+}) {
   const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
-  const usable = points.filter((p) => typeof p.usd_per_pct === "number");
+  const valueOf = (p: ContribPoint) => tab.value(p, windowsPerWeek);
+  const usable = points.filter((p) => typeof valueOf(p) === "number");
   const groups = contribGroups(points);
   const { t0, t1, frac } = contribXScale(points);
-  const yMax = contribYMax(points, fleetUsd);
+  const yMax = contribYMax(points, reference, (p) => tab.value(p as ContribPoint, windowsPerWeek));
   const x = (t: string) => L + frac(t) * (R - L);
   const y = (v: number) => B - (v / yMax) * (B - T);
   const ticks = [0, 1, 2, 3].map((k) => (yMax * k) / 3);
@@ -676,19 +526,19 @@ function ContributorsChart({ points, fleetUsd }: { points: ContribPoint[]; fleet
         </g>
         <g style={{ fill: "var(--ads-mut)" }}>
           {ticks.map((t) => (
-            <text key={t} x={0} y={y(t) + 4}>{fmtUsd2(t)}</text>
+            <text key={t} x={0} y={y(t) + 4}>{tab.fmt(t)}</text>
           ))}
         </g>
-        {typeof fleetUsd === "number" && (
+        {typeof reference === "number" && (
           <g>
-            <line x1={L} x2={R} y1={y(fleetUsd)} y2={y(fleetUsd)} stroke="var(--ads-ac)" strokeWidth="1.5" strokeDasharray="5 4" />
-            <text x={R} y={y(fleetUsd) - 6} textAnchor="end" style={{ fill: "var(--ads-ac)", fontWeight: 500 }}>
-              tracker {fmtUsd2(fleetUsd)} per 1%
+            <line x1={L} x2={R} y1={y(reference)} y2={y(reference)} stroke="var(--ads-ac)" strokeWidth="1.5" strokeDasharray="5 4" />
+            <text x={R} y={y(reference) - 6} textAnchor="end" style={{ fill: "var(--ads-ac)", fontWeight: 500 }}>
+              {tab.refLabel(reference, tab.fmt)}
             </text>
           </g>
         )}
         {groups.map((g) => {
-          const drawable = g.points.filter((p) => typeof p.usd_per_pct === "number");
+          const drawable = (g.points as ContribPoint[]).filter((p) => typeof valueOf(p) === "number");
           const color = contribColor(g.c);
           return (
             <g key={g.c}>
@@ -698,14 +548,14 @@ function ContributorsChart({ points, fleetUsd }: { points: ContribPoint[]; fleet
                   stroke={color}
                   strokeWidth="1.5"
                   strokeLinejoin="round"
-                  points={drawable.map((p) => `${x(p.t)},${y(p.usd_per_pct as number)}`).join(" ")}
+                  points={drawable.map((p) => `${x(p.t)},${y(valueOf(p) as number)}`).join(" ")}
                 />
               )}
               {drawable.map((p) => (
                 <circle
                   key={p.t}
                   cx={x(p.t)}
-                  cy={y(p.usd_per_pct as number)}
+                  cy={y(valueOf(p) as number)}
                   r="4"
                   fill={p.coarse ? "var(--ads-bg)" : color}
                   stroke={color}
@@ -727,8 +577,9 @@ function ContributorsChart({ points, fleetUsd }: { points: ContribPoint[]; fleet
         </g>
       </svg>
       <p className="sub contrib-chart-legend">
-        One dot per reading, joined when they come from the same person. Hollow dots: meter under 5%. Dashed line:
-        the tracker&apos;s own figure.
+        {usable.length === 0
+          ? "No contributed reading carries this figure yet \u2014 only the tracker's own line is drawn."
+          : tab.legend}
       </p>
     </>
   );
@@ -757,6 +608,9 @@ export default function ClaudeUsageTracker() {
   }, []);
 
   const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
+  const [contribMetric, setContribMetric] = useState<ContribMetric>("usd");
+  const contribTab = CONTRIB_TABS.find((t) => t.key === contribMetric) ?? CONTRIB_TABS[0];
+  const hasContribPoints = !!data?.contributed?.[plan]?.points?.length;
   const contributed = useMemo(
     () =>
       data
@@ -774,6 +628,47 @@ export default function ClaudeUsageTracker() {
   const weeklySeries = useMemo(() => (data ? weeklySeriesFor(data) : []), [data]);
   const weeklyEvents = useMemo(() => (data ? weeklyEventsFor(data) : []), [data]);
   const weeklyTokenSeries = useMemo(() => (data ? weeklyTokenSeriesFor(data, model) : []), [data, model]);
+  // Levels for every plan, not just the selected one: the chart draws all three, the selected
+  // one solid and the others grey, exactly as the old weekly lines did.
+  const weeklyLevels = useMemo(
+    () =>
+      data
+        ? (Object.keys(PLAN_LABELS) as Plan[])
+            .map((pl) => ({
+              plan: pl,
+              label: PLAN_LABELS[pl],
+              levels: weeklyRegimeLevelsFor(data, pl).map((l) => ({ ...l, value: l.windows })),
+            }))
+            .filter((p) => p.levels.length > 0)
+            // Pro holds the same number of windows as Max 5x (it borrows its figures), so on
+            // this chart the two are one line. Collapsed into a single labelled series rather
+            // than drawn twice at identical y, which only stacks two labels on one line.
+            .reduce<PlanLevels[]>((acc, cur) => {
+              const same = acc.find(
+                (a) =>
+                  a.levels.length === cur.levels.length &&
+                  a.levels.every((l, i) => l.value === cur.levels[i].value && l.start === cur.levels[i].start),
+              );
+              if (same) same.label = `${same.label} and ${PLAN_LABELS[cur.plan]}`;
+              else acc.push(cur);
+              return acc;
+            }, [])
+        : [],
+    [data],
+  );
+  const weeklyTokenLevels = useMemo(
+    () =>
+      data
+        ? (Object.keys(PLAN_LABELS) as Plan[])
+            .map((pl) => ({
+              plan: pl,
+              label: PLAN_LABELS[pl],
+              levels: weeklyTokenRegimeLevelsFor(data, pl, model).map((l) => ({ ...l, value: l.tokens })),
+            }))
+            .filter((p) => p.levels.length > 0)
+        : [],
+    [data, model],
+  );
   const h = data ? headline(data) : null;
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
@@ -996,10 +891,18 @@ export default function ClaudeUsageTracker() {
                 </span>
               </div>
             )}
-            <WeeklyTokensChart series={weeklyTokenSeries} events={weeklyEvents} selectedPlan={plan} />
+            <LevelChart
+              levelsByPlan={weeklyTokenLevels}
+              events={weeklyEvents}
+              selectedPlan={plan}
+              fmtValue={fmtTokens}
+              plotRight={732}
+              title="Tokens per week over time"
+            />
             <p className="sub">
-              Solid and shaded: selected plan. Grey: the others. Dashed: inferred from another line by a fixed plan
-              ratio, not measured. Hollow: a week still in progress. Red: a measured change in the limit.
+              Each line is the limit itself, held flat between changes: a step means a measured change, and nothing
+              else on the chart moves. Solid and shaded: selected plan. Grey: the others. Dashed: inferred from
+              another plan by the measured plan ratio, not measured on this one. Red: a measured change.
             </p>
           </section>
         )}
@@ -1017,10 +920,17 @@ export default function ClaudeUsageTracker() {
                 </span>
               </div>
             )}
-            <WeeklyChart series={weeklySeries} events={weeklyEvents} selectedPlan={plan} />
+            <LevelChart
+              levelsByPlan={weeklyLevels}
+              events={weeklyEvents}
+              selectedPlan={plan}
+              fmtValue={(v) => v.toFixed(1)}
+              plotRight={732}
+              title="Five-hour windows per week over time"
+            />
             {weeklySeries.some((s) => s.points.length >= 2) && (
               <p className="sub chart-legend">
-                Solid: selected plan. Grey: the other. Dashed: inferred from the other line by a fixed plan ratio, not measured. Pro is assumed from Max 5x. Hollow: this week so far.
+                Each line is the limit itself, held flat between changes: a step means a measured change. Solid: selected plan. Grey: the others. Dashed: inferred from another plan by the measured plan ratio, not measured on this one. Pro is assumed from Max 5x.
               </p>
             )}
           </section>
@@ -1106,11 +1016,38 @@ export default function ClaudeUsageTracker() {
           <section id="contributors">
             <h2>From contributors</h2>
             <p className="sub">{contributed.intro}</p>
-            {!!data.contributed?.[plan]?.points?.length && (
-              <ContributorsChart points={data.contributed[plan]!.points!} fleetUsd={fleetUsdPerPercent(data, plan)} />
+            {hasContribPoints && (
+              <>
+                <div className="chart-tabs" role="tablist" aria-label="Contributor chart">
+                  {CONTRIB_TABS.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={t.key === contribTab.key}
+                      className={t.key === contribTab.key ? "on" : undefined}
+                      onClick={() => setContribMetric(t.key)}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <ContributorsChart
+                  points={data.contributed[plan]!.points!}
+                  tab={contribTab}
+                  reference={contribTab.reference(r, fleetUsdPerPercent(data, plan))}
+                  windowsPerWeek={r?.windowsPerWeek ?? null}
+                />
+              </>
             )}
-            {contributed.cost && <p className="sub">{contributed.cost}</p>}
-            {contributed.weekly && <p className="sub">{contributed.weekly}</p>}
+            {/* Each sentence belongs to one chart, so it follows its own tab rather than
+                sitting under whichever chart happens to be open. */}
+            {contributed.cost && (!hasContribPoints || contribTab.key === "usd") && (
+              <p className="sub">{contributed.cost}</p>
+            )}
+            {contributed.weekly && (!hasContribPoints || contribTab.key === "windows") && (
+              <p className="sub">{contributed.weekly}</p>
+            )}
           </section>
         )}
 
