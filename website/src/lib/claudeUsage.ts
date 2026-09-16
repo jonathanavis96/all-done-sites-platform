@@ -310,11 +310,19 @@ export function fmtSource(
   rate: { source: string; probed_at?: string | null; measured_at?: string | null } | undefined,
 ): string | null {
   if (!rate) return null;
-  const at = rate.source === "passive" ? rate.measured_at : rate.probed_at;
-  if (at) {
-    const d = new Date(at);
-    return `${rate.source}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+  const day = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+  };
+  // A passive figure is the regime median over every account's meter readings; measured_at is
+  // the newest of those, not anything this model did on its own. Say so in the fold-out's own
+  // words rather than the collector's name for the instrument.
+  if (rate.source === "passive") {
+    return rate.measured_at
+      ? `the account's own meter, newest reading ${day(rate.measured_at)}`
+      : "the account's own meter";
   }
+  if (rate.probed_at) return `${rate.source}, ${day(rate.probed_at)}`;
   return rate.source;
 }
 
