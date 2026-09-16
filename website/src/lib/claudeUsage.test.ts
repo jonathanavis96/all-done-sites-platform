@@ -9,6 +9,7 @@ import {
   eventsFor,
   weeklySeriesFor,
   weeklyEventsFor,
+  latestWeeklyChange,
   weeklyTokenSeriesFor,
   type UsageJson,
 } from "./claudeUsage";
@@ -507,6 +508,22 @@ describe("weeklyEventsFor", () => {
   it("excludes window-scoped events", () => {
     const e = weeklyEventsFor(WJ);
     expect(e.some((ev) => ev.label === "Limit change")).toBe(false);
+  });
+});
+
+describe("latestWeeklyChange", () => {
+  it("takes the newest change by date, not by position", () => {
+    expect(latestWeeklyChange(weeklyEventsFor(WJ))?.date).toBe("2026-08-21");
+  });
+  it("ignores non-change events", () => {
+    const events = [
+      { date: "2026-09-01", kind: "plan" as const, scope: "weekly" as const, label: "Plan change" },
+      { date: "2026-08-21", kind: "change" as const, scope: "weekly" as const, label: "Weekly limit changed" },
+    ];
+    expect(latestWeeklyChange(events)?.label).toBe("Weekly limit changed");
+  });
+  it("is null with no changes", () => {
+    expect(latestWeeklyChange([])).toBeNull();
   });
 });
 

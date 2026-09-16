@@ -427,3 +427,12 @@ export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[
 export function weeklyEventsFor(j: UsageJson): UsageEvent[] {
   return (j.events ?? []).filter((e) => e.scope === "weekly");
 }
+
+// The newest weekly change among the given events, by date. The published order is not
+// guaranteed to be chronological, so position in the array says nothing about recency.
+export function latestWeeklyChange(events: UsageEvent[]): UsageEvent | null {
+  return events.reduce<UsageEvent | null>(
+    (a, b) => (b.kind === "change" && (a === null || b.date > a.date) ? b : a),
+    null,
+  );
+}
