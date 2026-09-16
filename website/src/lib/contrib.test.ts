@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   COARSE_BELOW,
+  CONTRIB_PALETTE,
+  contribColor,
+  contribGroups,
   contributorSentences,
+  contribXScale,
+  contribYMax,
   decodeCut1,
   encodeCut1,
   fleetTokensPerPercent,
@@ -17,7 +22,7 @@ import {
   validateSample,
   type PublicSample,
 } from "./contrib";
-import type { ApiPrice, PlanContrib, UsageJson } from "./claudeUsage";
+import type { ApiPrice, ContribPoint, PlanContrib, UsageJson } from "./claudeUsage";
 
 const NOW = Date.parse("2026-09-09T12:00:00Z");
 
@@ -204,19 +209,120 @@ describe("contributorSentences", () => {
     expect(contributorSentences("max20", { ...CONTRIB, contributors: 0 }, 0.97)).toBeNull();
   });
 
-  it("builds the intro, cost and weekly sentences from a numeric usd_per_pct", () => {
+  it("builds a plain-English intro, singular for one contributor and one sample", () => {
     const r = contributorSentences("max20", CONTRIB, 0.97);
-    expect(r).not.toBeNull();
-    expect(r!.intro).toBe("1 contributor, 1 sample on Max 20x.");
-    expect(r!.cost).toBe("Contributors' meter cost: $1.75/1% (±12%) (median), the probe reads $0.97/1%.");
-    expect(r!.weekly).toBe("0 contributors with a complete week; 2 needed.");
+    expect(r!.intro).toBe(
+      "Readers can send in their own meter readings with the script below. So far 1 person on Max 20x has sent 1 reading.",
+    );
   });
 
-  it("reports the measured weekly figure when present, and treats an old per-model usd_per_pct as absent", () => {
-    const measured: PlanContrib = { ...CONTRIB, weekly_windows: { ...CONTRIB.weekly_windows, measured: 9.4 } };
-    const r = contributorSentences("max20", measured, null);
-    expect(r!.weekly).toBe("Contributors' weeks pair into 9.4 five-hour windows.");
+  it("pluralizes the intro for more than one contributor and sample", () => {
+    const two = { ...CONTRIB, contributors: 2, samples: 2 };
+    const r = contributorSentences("max20", two, 0.97);
+    expect(r!.intro).toBe(
+      "Readers can send in their own meter readings with the script below. So far 2 people on Max 20x have sent 2 readings.",
+    );
+  });
+
+  it("computes the percent difference against the probe and calls out dearer/cheaper/about the same", () => {
+    const dearer = { ...CONTRIB, contributors: 2, samples: 2, usd_per_pct: { median: 1.3233, spread: null, contributors: 2, samples: 2 } };
+    expect(contributorSentences("max20", dearer, 0.9741)!.cost).toBe(
+      "Their real work cost a median $1.32 of list-price usage for each 1% of the five-hour meter. The tracker's own test prompts cost $0.97 per 1%, so ordinary use is running about 36% dearer per percent than the probe.",
+    );
+    const cheaper = { ...CONTRIB, usd_per_pct: { median: 0.5, spread: null, contributors: 1, samples: 1 } };
+    expect(contributorSentences("max20", cheaper, 0.97)!.cost).toContain("cheaper per percent than the probe");
+    const close = { ...CONTRIB, usd_per_pct: { median: 1.0, spread: null, contributors: 1, samples: 1 } };
+    expect(contributorSentences("max20", close, 0.97)!.cost).toContain("about the same as the probe");
+  });
+
+  it("appends the spread sentence when a spread is present", () => {
+    const r = contributorSentences("max20", CONTRIB, 0.97);
+    expect(r!.cost).toContain("Readings vary by about ±12% around that median.");
+  });
+
+  it("reports the no-median floor sentence when usd_per_pct is null", () => {
+    const noMedian = { ...CONTRIB, usd_per_pct: null };
+    expect(contributorSentences("max20", noMedian, 0.97)!.cost).toBe(
+      "None of their readings had the meter above 5% yet, which is the minimum for a usable figure.",
+    );
+  });
+
+  it("treats an old per-model usd_per_pct shape as absent (no cost sentence)", () => {
     const oldShape = { ...CONTRIB, usd_per_pct: { "claude-sonnet-5": { median: 1, spread: null, contributors: 1, samples: 1 } } } as unknown as PlanContrib;
     expect(contributorSentences("max20", oldShape, 0.97)!.cost).toBeNull();
+  });
+
+  it("reports the measured weekly figure when present", () => {
+    const measured: PlanContrib = { ...CONTRIB, weekly_windows: { ...CONTRIB.weekly_windows, measured: 9.4 } };
+    const r = contributorSentences("max20", measured, null);
+    expect(r!.weekly).toBe("Their weeks pair into about 9.4 five-hour windows of use per week.");
+  });
+
+  it("explains the weekly gap in plain English when nobody has a complete week", () => {
+    const none: PlanContrib = { ...CONTRIB, weekly_windows: { measured: null, reason: null, contributors: 0, with_complete_week: 0, dropped: 0, weeks: 0 } };
+    expect(contributorSentences("max20", none, 0.97)!.weekly).toBe(
+      "A weekly figure needs two people who have each sent readings across a full week. Nobody has yet.",
+    );
+  });
+
+  it("says how many more are needed when one person has a complete week", () => {
+    const one: PlanContrib = { ...CONTRIB, weekly_windows: { measured: null, reason: null, contributors: 1, with_complete_week: 1, dropped: 0, weeks: 0 } };
+    expect(contributorSentences("max20", one, 0.97)!.weekly).toBe(
+      "A weekly figure needs two people who have each sent readings across a full week. One person has; one more is needed.",
+    );
+  });
+
+  it("explains a dropped weekly figure when enough people qualify but disagree too much", () => {
+    const dropped: PlanContrib = { ...CONTRIB, weekly_windows: { measured: null, reason: null, contributors: 2, with_complete_week: 2, dropped: 1, weeks: 1 } };
+    expect(contributorSentences("max20", dropped, 0.97)!.weekly).toBe(
+      "A weekly figure needs two people who have each sent readings across a full week. Two people have, but their figures were more than 30% apart, so none is shown.",
+    );
+  });
+
+  it("uses min_contributors and max_deviation from the block root when given", () => {
+    const one: PlanContrib = { ...CONTRIB, weekly_windows: { measured: null, reason: null, contributors: 1, with_complete_week: 1, dropped: 0, weeks: 0 } };
+    expect(contributorSentences("max20", one, 0.97, 3, 40)!.weekly).toBe(
+      "A weekly figure needs three people who have each sent readings across a full week. One person has; two more are needed.",
+    );
+  });
+});
+
+describe("contrib chart helpers", () => {
+  const P = (t: string, c: number, usd: number | null, coarse = false): ContribPoint => ({ t, c, usd_per_pct: usd, coarse });
+
+  it("contribGroups groups by contributor, sorted by time within each group, groups sorted by c", () => {
+    const points = [P("2026-09-10T00:00:00Z", 2, 1), P("2026-09-01T00:00:00Z", 1, 1), P("2026-09-05T00:00:00Z", 1, 2)];
+    const groups = contribGroups(points);
+    expect(groups.map((g) => g.c)).toEqual([1, 2]);
+    expect(groups[0].points.map((p) => p.t)).toEqual(["2026-09-01T00:00:00Z", "2026-09-05T00:00:00Z"]);
+  });
+
+  it("contribColor cycles the 6-colour palette", () => {
+    expect(contribColor(0)).toBe(CONTRIB_PALETTE[0]);
+    expect(contribColor(6)).toBe(CONTRIB_PALETTE[0]);
+    expect(contribColor(7)).toBe(CONTRIB_PALETTE[1]);
+  });
+
+  it("contribXScale centers a single point at 0.5", () => {
+    const now = Date.parse("2026-09-16T00:00:00Z");
+    const scale = contribXScale([P("2026-09-10T00:00:00Z", 1, 1)], now);
+    expect(scale.frac("2026-09-10T00:00:00Z")).toBe(0.5);
+  });
+
+  it("contribXScale spans from the earliest point, or 30 days ago, whichever is later", () => {
+    const now = Date.parse("2026-09-16T00:00:00Z");
+    const recent = contribXScale([P("2026-09-10T00:00:00Z", 1, 1), P("2026-09-14T00:00:00Z", 1, 2)], now);
+    expect(recent.t0).toBe(Date.parse("2026-09-10T00:00:00Z"));
+    const old = contribXScale([P("2026-01-01T00:00:00Z", 1, 1), P("2026-09-14T00:00:00Z", 1, 2)], now);
+    expect(old.t0).toBe(now - 30 * 86400e3);
+  });
+
+  it("contribYMax is 1.15x the max of points and the probe figure, and skips null-usd points", () => {
+    expect(contribYMax([P("t", 1, 2), P("t", 1, null)], 0.5)).toBeCloseTo(2.3, 5);
+    expect(contribYMax([P("t", 1, 0.5)], 2)).toBeCloseTo(2.3, 5);
+  });
+
+  it("contribYMax falls back to a positive default when there is nothing to plot", () => {
+    expect(contribYMax([], null)).toBeGreaterThan(0);
   });
 });

@@ -369,6 +369,77 @@ export function fleetUsdPerPercent(j: UsageJson, plan: Plan): number | null {
   return ((rate.api_value_per_window as number) * ratio) / 100;
 }
 
+// ---------------------------------------------------------------- "from contributors" chart
+
+/** One contributor's readings, in time order. `c` is the anonymous ordinal `ContribPoint.c`. */
+export interface ContribGroup {
+  c: number;
+  points: ContribPointLike[];
+}
+export interface ContribPointLike {
+  t: string;
+  usd_per_pct: number | null;
+  c: number;
+  coarse: boolean;
+}
+
+/** Group readings by contributor, each group's own readings sorted oldest to newest. Groups
+ * are returned sorted by `c` for a stable render order (and so tests are deterministic). */
+export function contribGroups(points: ContribPointLike[]): ContribGroup[] {
+  const byC = new Map<number, ContribPointLike[]>();
+  for (const p of points) {
+    const arr = byC.get(p.c);
+    if (arr) arr.push(p);
+    else byC.set(p.c, [p]);
+  }
+  return [...byC.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([c, pts]) => ({ c, points: [...pts].sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0)) }));
+}
+
+/** Six colours, cycled by contributor ordinal so any number of contributors gets a colour. */
+export const CONTRIB_PALETTE = ["#0EA5E9", "#F59E0B", "#059669", "#8B5CF6", "#DB2777", "#64748B"];
+
+export function contribColor(c: number): string {
+  const n = CONTRIB_PALETTE.length;
+  return CONTRIB_PALETTE[((c % n) + n) % n];
+}
+
+const CONTRIB_CHART_SPAN_MS = 30 * 86400e3;
+
+/**
+ * The chart's x scale: a fraction-of-width function over [earliest point, or 30 days ago,
+ * whichever is later] to now. A single point (or none) centers at 0.5 rather than dividing by
+ * a zero span, so a brand-new contributor's first reading still renders sanely.
+ */
+export function contribXScale(
+  points: ContribPointLike[],
+  now: number = Date.now(),
+): { t0: number; t1: number; frac: (t: string) => number } {
+  const times = points.map((p) => Date.parse(p.t)).filter((t) => Number.isFinite(t));
+  const t1 = now;
+  if (times.length <= 1) {
+    const t0 = times.length === 1 ? Math.min(times[0], now - 1) : now - CONTRIB_CHART_SPAN_MS;
+    return { t0, t1, frac: () => 0.5 };
+  }
+  const earliest = Math.min(...times);
+  const t0 = Math.max(earliest, now - CONTRIB_CHART_SPAN_MS);
+  const span = Math.max(1, t1 - t0);
+  return { t0, t1, frac: (t: string) => (Date.parse(t) - t0) / span };
+}
+
+/**
+ * The chart's y max: 1.15x the largest of the points' dollar figures and the probe's own
+ * figure, so the probe's dashed line and every reading always sit inside the axis. Points with
+ * a null usd_per_pct (below the coarse floor) are excluded, same as they are from the plot.
+ */
+export function contribYMax(points: ContribPointLike[], fleetUsd: number | null): number {
+  const vals = points.map((p) => p.usd_per_pct).filter((v): v is number => typeof v === "number");
+  if (typeof fleetUsd === "number") vals.push(fleetUsd);
+  const max = vals.length > 0 ? Math.max(...vals) : 0;
+  return max > 0 ? max * 1.15 : 1;
+}
+
 // ---------------------------------------------------------------- "from contributors" copy
 
 /** A `usd_per_pct`/tokens_per_pct stat with a numeric median, the shape the aggregator's PR
@@ -378,38 +449,91 @@ function isPlanContribStat(v: unknown): v is { median: number; spread: number | 
   return !!v && typeof v === "object" && typeof (v as { median?: unknown }).median === "number";
 }
 
+const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+
+/** Spell out small counts (matches how a person would read the sentence aloud); falls back to
+ * the numeral once it gets past ten. */
+function numberWord(n: number): string {
+  return n >= 0 && n < NUMBER_WORDS.length ? NUMBER_WORDS[n] : String(n);
+}
+
+function capitalize(s: string): string {
+  return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
+}
+
+/**
+ * Plain-English sentence for the weekly-limit block: whether a weekly figure could be shown,
+ * and if not, why, in terms of the people involved rather than the raw `reason` string.
+ */
+function weeklySentence(
+  w: PlanContrib["weekly_windows"] | undefined,
+  minContributors: number | undefined,
+  maxDeviation: number | undefined,
+): string {
+  if (typeof w?.measured === "number") {
+    return `Their weeks pair into about ${w.measured.toFixed(1)} five-hour windows of use per week.`;
+  }
+  const complete = w?.with_complete_week ?? 0;
+  const need = minContributors ?? 2;
+  const dropped = w?.dropped ?? 0;
+  const maxDev = maxDeviation ?? 30;
+  const intro = `A weekly figure needs ${numberWord(need)} people who have each sent readings across a full week.`;
+  if (complete <= 0) return `${intro} Nobody has yet.`;
+  const haveClause = complete === 1 ? "One person has" : `${capitalize(numberWord(complete))} people have`;
+  if (complete < need) {
+    const remaining = need - complete;
+    const needVerb = remaining === 1 ? "is" : "are";
+    return `${intro} ${haveClause}; ${numberWord(remaining)} more ${needVerb} needed.`;
+  }
+  if (dropped > 0) {
+    return `${intro} ${haveClause}, but their figures were more than ${maxDev}% apart, so none is shown.`;
+  }
+  return `${intro} ${haveClause}.`;
+}
+
 /**
  * The sentences for the "From contributors" section on one plan: who has contributed, what
  * their meter cost per 1% is against the probe's figure, and what their weeks say about the
- * weekly limit. Returns null when there is nothing to say (no contributors on this plan).
+ * weekly limit. Written for a first-time reader, not someone who already knows the jargon.
+ * Returns null when there is nothing to say (no contributors on this plan).
  */
 export function contributorSentences(
   plan: Plan,
   contrib: PlanContrib | undefined,
   fleetUsd: number | null,
+  minContributors?: number,
+  maxDeviation?: number,
 ): { intro: string; cost: string | null; weekly: string } | null {
   if (!contrib || contrib.contributors <= 0) return null;
   const planLabel = PLAN_LABELS[plan];
-  const intro = `${contrib.contributors} contributor${contrib.contributors === 1 ? "" : "s"}, ${contrib.samples} sample${contrib.samples === 1 ? "" : "s"} on ${planLabel}.`;
+  const peopleWord = contrib.contributors === 1 ? "person" : "people";
+  const haveVerb = contrib.contributors === 1 ? "has" : "have";
+  const readingsWord = contrib.samples === 1 ? "reading" : "readings";
+  const intro = `Readers can send in their own meter readings with the script below. So far ${contrib.contributors} ${peopleWord} on ${planLabel} ${haveVerb} sent ${contrib.samples} ${readingsWord}.`;
+
   let cost: string | null = null;
-  if (isPlanContribStat(contrib.usd_per_pct)) {
+  if (contrib.usd_per_pct === null) {
+    cost = "None of their readings had the meter above 5% yet, which is the minimum for a usable figure.";
+  } else if (isPlanContribStat(contrib.usd_per_pct)) {
     const median = contrib.usd_per_pct.median;
     const spread = contrib.usd_per_pct.spread;
-    const spreadText = typeof spread === "number" ? ` (±${(spread * 100).toFixed(0)}%)` : "";
-    const fleetText = typeof fleetUsd === "number" ? `$${fleetUsd.toFixed(2)}/1%` : "not yet published";
-    cost = `Contributors' meter cost: $${median.toFixed(2)}/1%${spreadText} (median), the probe reads ${fleetText}.`;
+    const medianText = `$${median.toFixed(2)}`;
+    let sentence = `Their real work cost a median ${medianText} of list-price usage for each 1% of the five-hour meter.`;
+    if (typeof fleetUsd === "number" && fleetUsd > 0) {
+      const probeText = `$${fleetUsd.toFixed(2)}`;
+      const diffPct = ((median - fleetUsd) / fleetUsd) * 100;
+      const compare =
+        Math.abs(diffPct) < 5
+          ? "about the same as the probe"
+          : `about ${Math.round(Math.abs(diffPct))}% ${diffPct > 0 ? "dearer" : "cheaper"} per percent than the probe`;
+      sentence += ` The tracker's own test prompts cost ${probeText} per 1%, so ordinary use is running ${compare}.`;
+    }
+    if (typeof spread === "number") {
+      sentence += ` Readings vary by about ±${(spread * 100).toFixed(0)}% around that median.`;
+    }
+    cost = sentence;
   }
-  const w = contrib.weekly_windows;
-  const weekly =
-    typeof w?.measured === "number"
-      ? `Contributors' weeks pair into ${w.measured.toFixed(1)} five-hour windows.`
-      : sentenceCase(w?.reason ?? "not enough contributor weeks yet");
-  return { intro, cost, weekly };
-}
 
-function sentenceCase(s: string): string {
-  const t = s.trim();
-  if (t.length === 0) return t;
-  const cased = t[0].toUpperCase() + t.slice(1);
-  return /[.!?]$/.test(cased) ? cased : `${cased}.`;
+  const weekly = weeklySentence(contrib.weekly_windows, minContributors, maxDeviation);
+  return { intro, cost, weekly };
 }
