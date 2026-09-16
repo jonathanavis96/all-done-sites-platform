@@ -816,10 +816,12 @@ export default function ClaudeUsageTracker() {
           <details>
             <summary>How we measure this</summary>
             <p>
-              Every morning the tracker reads two things off one Max 20x account: the Claude Code transcripts of the
-              work actually done on it, and the account's own usage meter. Between any two meter readings it knows how
-              far the meter moved and which tokens were spent moving it, and that gives a price for one percent of the
-              five-hour window. Nothing is run to produce these numbers. They come out of ordinary working days.
+              Every morning the tracker reads two things off each Max 20x account it watches
+              {data?.passive_account_count ? ` (${data.passive_account_count === 1 ? "one account" : `${data.passive_account_count} accounts`} with usable readings today)` : ""}
+              : the Claude Code transcripts of the work actually done on it, and that account's own usage meter. Between
+              any two meter readings it knows how far the meter moved and which tokens were spent moving it, and that
+              gives a price for one percent of the five-hour window. Readings from every account are pooled by day.
+              Nothing is run to produce these numbers. They come out of ordinary working days.
             </p>
             <p>
               The meter does not treat every token the same. Cache reads cost nothing against it. Input, output and
@@ -839,8 +841,12 @@ export default function ClaudeUsageTracker() {
               Token figures depend on the token mix. Because cache reads cost nothing against the meter, cache-heavy
               work gets far more tokens per window than cache-light work for the same dollar value. The split shown is
               one account's real mix; yours will differ, and the dollar figure is the one that carries across. The meter
-              reports whole percent, so each reading carries up to a percent's worth of rounding. Pro and Max 5x are
-              scaled from Max 20x by Anthropic's published plan ratios, not measured directly.
+              reports whole percent, so each reading carries up to a percent's worth of rounding.
+            </p>
+            <p>
+              The tokens and dollars per window for Pro and Max 5x are scaled from Max 20x by Anthropic's published plan
+              ratios. The weekly window counts are not: Max 20x and Max 5x are both measured from real accounts, Max 5x
+              from the period one of them spent on that plan, and only Pro is assumed, from Max 5x.
             </p>
             <p>
               The effort figures describe one task shape, run seven times at each effort level on each model. On Sonnet
@@ -848,9 +854,9 @@ export default function ClaudeUsageTracker() {
               roughly equal rather than in order.
             </p>
             <p>
-              This method is only as good as what it can see. Work done on the account away from the machine being read
-              moves the meter with no transcript to match it. A day like that is left out when it is obvious and reads
-              as a cheap day when it is not.
+              This method is only as good as what it can see. Work done away from the machine being read moves the meter
+              with no transcript to match it. Where that is obvious, because the meter moved with no transcripts at all,
+              the stretch is dropped. Partial use elsewhere is not obvious, and it reads as a cheap day.
             </p>
             <p>
               The current figure does not wait for a week to finish. It is measured from the five-hour windows since the
