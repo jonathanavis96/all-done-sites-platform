@@ -699,25 +699,34 @@ export default function ClaudeUsageTracker() {
           <details>
             <summary>How we measure this</summary>
             <p>
-              A small fixed prompt is run repeatedly on an otherwise idle Max 20x account until Anthropic's own usage meter
-              ticks from one whole percent to the next, twice. The tokens spent between the two ticks are one percent of the
-              5-hour window. That runs twice a day, rotating across Sonnet 5, Opus 5 and Fable 5.1.
+              Twice a day a fixed prompt is run repeatedly on an otherwise idle Max 20x account until Anthropic's own
+              usage meter ticks from one whole percent to the next, three times over. The tokens spent across those ticks
+              are what one percent of the 5-hour window buys. The run rotates across Sonnet 5, Opus 5 and Fable 5.1 and
+              skips any account that is busy or already past 90% of its weekly limit.
             </p>
             <p>
-              The split between input, output and cache tokens comes from real working sessions on a second Max 20x account,
-              joined against the same usage meter. Effort figures come from one calibration task run at every effort level on
-              every model.
+              The meter is priced, not counted: it charges each token class at Anthropic's API list price with its own
+              weight. Measured against 111 five-hour windows of real work, cache reads are not charged at all, output
+              tokens are charged at about 1.8 times list, and input and cache writes at list. Every reading on this page
+              is therefore an API-dollar value per percent of the meter, and the token figures are that value converted
+              through the input, output and cache split of real working sessions on a second Max 20x account. Effort
+              figures come from one calibration task run at every effort level on every model.
+            </p>
+            <p>
+              The weekly limit is measured per 5-hour window from a real account's meter (how far the seven-day meter moves
+              for every full 5-hour window spent), so a change is dated to the day it lands rather than averaged into a
+              calendar week.
             </p>
           </details>
           <details>
             <summary>Caveats</summary>
             <p>
-              This is one account running one workload mix; your split of input, output and cache tokens will differ. The
-              usage meter reports whole percent, so every probe carries about one small prompt's worth of rounding error.
-              Effort figures describe one calibration task shape, not your actual work. Pro and Max 5x are scaled from Max
-              20x using Anthropic's published plan ratios, not measured directly &mdash; the passive-observed ratio between
-              Max 5x and Max 20x on Jonathan's own account history came out at roughly 2.5x, well below the published 4x,
-              most likely because some of that usage happened off this machine and wasn't captured by the probe.
+              The token figures depend on the token mix: because the meter does not charge cache reads, a cache-heavy
+              workload gets far more tokens per window than a cache-light one for the same dollar value. The split shown
+              is one account's real working mix; yours will differ, and the API-dollar figure is the number that carries
+              across. The usage meter reports whole percent, so every probe carries about one small prompt's worth of
+              rounding error. Effort figures describe one calibration task shape, not your actual work. Pro and Max 5x are
+              scaled from Max 20x using Anthropic's published plan ratios, not measured directly.
             </p>
             <p>
               Probes run on{" "}
@@ -755,7 +764,8 @@ export default function ClaudeUsageTracker() {
         </section>
 
         <p className="sub" style={{ textAlign: "center", padding: "24px 0 8px" }}>
-          All Done Sites measures before it claims. Want a site that does the same? <a href="/#getquote">Get in touch</a> &middot;{" "}
+          All Done Sites measures before it claims. Want a site that does the same? <a href="/#getquote">Get in touch</a>
+          <br />
           <a href="https://github.com/jonathanavis96/claude-usage-tracker">Source code and raw data</a>
         </p>
       </div>
