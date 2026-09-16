@@ -689,10 +689,15 @@ export default function ClaudeUsageTracker() {
   const [stale, setStale] = useState(false);
   useEffect(() => {
     setStale(data ? Date.now() - new Date(data.generated_at).getTime() > 3 * 86400e3 : false);
-    // The pill shows whichever measurement is newer: a probe sample or a passive reading.
+    // "Last sample" means the meter reading, so show when the meter was last read.
+    // The old pair is the fallback for JSON published before meter_read_at existed, and
+    // both are the wrong answer to the label: last_sample_at is the end of the newest
+    // completed measurement, hours behind a meter read every few minutes, and
+    // passive_generated_at is when a file was rebuilt on another host.
+    const meterT = data?.meter_read_at ? Date.parse(data.meter_read_at) : NaN;
     const lastSampleT = data?.last_sample_at ? Date.parse(data.last_sample_at) : NaN;
     const passiveT = data?.passive_generated_at ? Date.parse(data.passive_generated_at) : NaN;
-    const newestT = [lastSampleT, passiveT].filter(Number.isFinite);
+    const newestT = Number.isFinite(meterT) ? [meterT] : [lastSampleT, passiveT].filter(Number.isFinite);
     setLocalTime(
       newestT.length > 0
         ? new Date(Math.max(...newestT)).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })

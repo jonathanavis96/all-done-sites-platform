@@ -74,6 +74,9 @@ export interface UsageEvent {
 export interface UsageJson {
   generated_at: string;
   last_sample_at: string | null;
+  // When a watched account's meter was last read. Published since 2026-09-16; older
+  // JSON has only last_sample_at, which is the newest completed measurement instead.
+  meter_read_at?: string | null;
   // Newest passive (non-probe) measurement's timestamp. Optional: older JSON predates passive
   // measurement.
   passive_generated_at?: string | null;
