@@ -465,75 +465,41 @@ function capitalize(s: string): string {
  * Plain-English sentence for the weekly-limit block: whether a weekly figure could be shown,
  * and if not, why, in terms of the people involved rather than the raw `reason` string.
  */
-function weeklySentence(
-  w: PlanContrib["weekly_windows"] | undefined,
-  minContributors: number | undefined,
-  maxDeviation: number | undefined,
-): string {
+function weeklySentence(w: PlanContrib["weekly_windows"] | undefined): string | null {
   if (typeof w?.measured === "number") {
-    return `Their weeks pair into about ${w.measured.toFixed(1)} five-hour windows of use per week.`;
+    return `Across their weeks that comes to about ${w.measured.toFixed(1)} five-hour windows of use per week.`;
   }
-  const complete = w?.with_complete_week ?? 0;
-  const need = minContributors ?? 2;
-  const dropped = w?.dropped ?? 0;
-  const maxDev = maxDeviation ?? 30;
-  const intro = `A weekly figure needs ${numberWord(need)} people who have each sent readings across a full week.`;
-  if (complete <= 0) return `${intro} Nobody has yet.`;
-  const haveClause = complete === 1 ? "One person has" : `${capitalize(numberWord(complete))} people have`;
-  if (complete < need) {
-    const remaining = need - complete;
-    const needVerb = remaining === 1 ? "is" : "are";
-    return `${intro} ${haveClause}; ${numberWord(remaining)} more ${needVerb} needed.`;
-  }
-  if (dropped > 0) {
-    return `${intro} ${haveClause}, but their figures were more than ${maxDev}% apart, so none is shown.`;
-  }
-  return `${intro} ${haveClause}.`;
+  return null;
 }
 
 /**
- * The sentences for the "From contributors" section on one plan: who has contributed, what
- * their meter cost per 1% is against the tracker's own measurement, and what their weeks say about the
- * weekly limit. Written for a first-time reader, not someone who already knows the jargon.
- * Returns null when there is nothing to say (no contributors on this plan).
+ * The sentences for the "From contributors" section on one plan: who has shared their meter,
+ * what a percent of it cost them against the tracker's own figure, and, only once measured,
+ * what their weeks say about the weekly limit. Short and plain; the reader is not expected to
+ * know the jargon. Returns null when there is nothing to say (no contributors on this plan).
  */
 export function contributorSentences(
   plan: Plan,
   contrib: PlanContrib | undefined,
   fleetUsd: number | null,
-  minContributors?: number,
-  maxDeviation?: number,
-): { intro: string; cost: string | null; weekly: string } | null {
+): { intro: string; cost: string | null; weekly: string | null } | null {
   if (!contrib || contrib.contributors <= 0) return null;
   const planLabel = PLAN_LABELS[plan];
-  const peopleWord = contrib.contributors === 1 ? "person" : "people";
-  const haveVerb = contrib.contributors === 1 ? "has" : "have";
-  const readingsWord = contrib.samples === 1 ? "reading" : "readings";
-  const intro = `Readers can send in their own meter readings with the script below. So far ${contrib.contributors} ${peopleWord} on ${planLabel} ${haveVerb} sent ${contrib.samples} ${readingsWord}.`;
+  const n = contrib.contributors;
+  const who = n === 1 ? "One reader" : `${capitalize(numberWord(n))} readers`;
+  const has = n === 1 ? "has" : "have";
+  const intro = `${who} on ${planLabel} ${has} shared their meter so far, measured from their own use of Claude Code.`;
 
   let cost: string | null = null;
   if (contrib.usd_per_pct === null) {
-    cost = "None of their readings had the meter above 5% yet, which is the minimum for a usable figure.";
+    cost = "None of their readings had the meter above 5% yet, so there is no figure to show.";
   } else if (isPlanContribStat(contrib.usd_per_pct)) {
     const median = contrib.usd_per_pct.median;
-    const spread = contrib.usd_per_pct.spread;
-    const medianText = `$${median.toFixed(2)}`;
-    let sentence = `Their real work cost a median ${medianText} of list-price usage for each 1% of the five-hour meter.`;
+    cost = `On average their use came to $${median.toFixed(2)} of list-price work per 1% of the five-hour meter.`;
     if (typeof fleetUsd === "number" && fleetUsd > 0) {
-      const measuredText = `$${fleetUsd.toFixed(2)}`;
-      const diffPct = ((median - fleetUsd) / fleetUsd) * 100;
-      const compare =
-        Math.abs(diffPct) < 5
-          ? "about the same as the tracker's own measurement"
-          : `about ${Math.round(Math.abs(diffPct))}% ${diffPct > 0 ? "dearer" : "cheaper"} per percent`;
-      sentence += ` The tracker's own measurement reads ${measuredText} per 1%, so contributors are running ${compare}.`;
+      cost += ` The tracker's own figure is $${fleetUsd.toFixed(2)}.`;
     }
-    if (typeof spread === "number") {
-      sentence += ` Readings vary by about ±${(spread * 100).toFixed(0)}% around that median.`;
-    }
-    cost = sentence;
   }
 
-  const weekly = weeklySentence(contrib.weekly_windows, minContributors, maxDeviation);
-  return { intro, cost, weekly };
+  return { intro, cost, weekly: weeklySentence(contrib.weekly_windows) };
 }

@@ -494,8 +494,8 @@ function ContributorsChart({ points, fleetUsd }: { points: ContribPoint[]; fleet
         </g>
       </svg>
       <p className="sub contrib-chart-legend">
-        Each dot is one reading; dots from the same person are joined. Hollow dots had the meter under 5%. Dashed
-        line: the tracker&apos;s own measurement.
+        One dot per reading, joined when they come from the same person. Hollow dots: meter under 5%. Dashed line:
+        the tracker&apos;s own figure.
       </p>
     </>
   );
@@ -816,7 +816,7 @@ export default function ClaudeUsageTracker() {
               <ContributorsChart points={data.contributed[plan]!.points!} fleetUsd={fleetUsdPerPercent(data, plan)} />
             )}
             {contributed.cost && <p className="sub">{contributed.cost}</p>}
-            <p className="sub">{contributed.weekly}</p>
+            {contributed.weekly && <p className="sub">{contributed.weekly}</p>}
           </section>
         )}
 

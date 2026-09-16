@@ -209,41 +209,32 @@ describe("contributorSentences", () => {
     expect(contributorSentences("max20", { ...CONTRIB, contributors: 0 }, 0.97)).toBeNull();
   });
 
-  it("builds a plain-English intro, singular for one contributor and one sample", () => {
+  it("names one reader in the singular", () => {
     const r = contributorSentences("max20", CONTRIB, 0.97);
-    expect(r!.intro).toBe(
-      "Readers can send in their own meter readings with the script below. So far 1 person on Max 20x has sent 1 reading.",
-    );
+    expect(r!.intro).toBe("One reader on Max 20x has shared their meter so far, measured from their own use of Claude Code.");
   });
 
-  it("pluralizes the intro for more than one contributor and sample", () => {
+  it("spells out small counts of readers", () => {
     const two = { ...CONTRIB, contributors: 2, samples: 2 };
-    const r = contributorSentences("max20", two, 0.97);
-    expect(r!.intro).toBe(
-      "Readers can send in their own meter readings with the script below. So far 2 people on Max 20x have sent 2 readings.",
+    expect(contributorSentences("max20", two, 0.97)!.intro).toBe(
+      "Two readers on Max 20x have shared their meter so far, measured from their own use of Claude Code.",
     );
   });
 
-  it("computes the percent difference against the tracker's own measurement and calls out dearer/cheaper/about the same", () => {
-    const dearer = { ...CONTRIB, contributors: 2, samples: 2, usd_per_pct: { median: 1.3233, spread: null, contributors: 2, samples: 2 } };
-    expect(contributorSentences("max20", dearer, 0.9741)!.cost).toBe(
-      "Their real work cost a median $1.32 of list-price usage for each 1% of the five-hour meter. The tracker's own measurement reads $0.97 per 1%, so contributors are running about 36% dearer per percent.",
+  it("states the median cost and the tracker's own figure, nothing more", () => {
+    const two = { ...CONTRIB, contributors: 2, samples: 2, usd_per_pct: { median: 1.3233, spread: null, contributors: 2, samples: 2 } };
+    expect(contributorSentences("max20", two, 0.9741)!.cost).toBe(
+      "On average their use came to $1.32 of list-price work per 1% of the five-hour meter. The tracker's own figure is $0.97.",
     );
-    const cheaper = { ...CONTRIB, usd_per_pct: { median: 0.5, spread: null, contributors: 1, samples: 1 } };
-    expect(contributorSentences("max20", cheaper, 0.97)!.cost).toContain("cheaper per percent");
-    const close = { ...CONTRIB, usd_per_pct: { median: 1.0, spread: null, contributors: 1, samples: 1 } };
-    expect(contributorSentences("max20", close, 0.97)!.cost).toContain("about the same as the tracker's own measurement");
+    expect(contributorSentences("max20", two, null)!.cost).toBe(
+      "On average their use came to $1.32 of list-price work per 1% of the five-hour meter.",
+    );
   });
 
-  it("appends the spread sentence when a spread is present", () => {
-    const r = contributorSentences("max20", CONTRIB, 0.97);
-    expect(r!.cost).toContain("Readings vary by about ±12% around that median.");
-  });
-
-  it("reports the no-median floor sentence when usd_per_pct is null", () => {
+  it("says plainly when no reading cleared the 5% floor", () => {
     const noMedian = { ...CONTRIB, usd_per_pct: null };
     expect(contributorSentences("max20", noMedian, 0.97)!.cost).toBe(
-      "None of their readings had the meter above 5% yet, which is the minimum for a usable figure.",
+      "None of their readings had the meter above 5% yet, so there is no figure to show.",
     );
   });
 
@@ -252,37 +243,11 @@ describe("contributorSentences", () => {
     expect(contributorSentences("max20", oldShape, 0.97)!.cost).toBeNull();
   });
 
-  it("reports the measured weekly figure when present", () => {
+  it("mentions the weekly figure only once it is measured", () => {
+    expect(contributorSentences("max20", CONTRIB, 0.97)!.weekly).toBeNull();
     const measured: PlanContrib = { ...CONTRIB, weekly_windows: { ...CONTRIB.weekly_windows, measured: 9.4 } };
-    const r = contributorSentences("max20", measured, null);
-    expect(r!.weekly).toBe("Their weeks pair into about 9.4 five-hour windows of use per week.");
-  });
-
-  it("explains the weekly gap in plain English when nobody has a complete week", () => {
-    const none: PlanContrib = { ...CONTRIB, weekly_windows: { measured: null, reason: null, contributors: 0, with_complete_week: 0, dropped: 0, weeks: 0 } };
-    expect(contributorSentences("max20", none, 0.97)!.weekly).toBe(
-      "A weekly figure needs two people who have each sent readings across a full week. Nobody has yet.",
-    );
-  });
-
-  it("says how many more are needed when one person has a complete week", () => {
-    const one: PlanContrib = { ...CONTRIB, weekly_windows: { measured: null, reason: null, contributors: 1, with_complete_week: 1, dropped: 0, weeks: 0 } };
-    expect(contributorSentences("max20", one, 0.97)!.weekly).toBe(
-      "A weekly figure needs two people who have each sent readings across a full week. One person has; one more is needed.",
-    );
-  });
-
-  it("explains a dropped weekly figure when enough people qualify but disagree too much", () => {
-    const dropped: PlanContrib = { ...CONTRIB, weekly_windows: { measured: null, reason: null, contributors: 2, with_complete_week: 2, dropped: 1, weeks: 1 } };
-    expect(contributorSentences("max20", dropped, 0.97)!.weekly).toBe(
-      "A weekly figure needs two people who have each sent readings across a full week. Two people have, but their figures were more than 30% apart, so none is shown.",
-    );
-  });
-
-  it("uses min_contributors and max_deviation from the block root when given", () => {
-    const one: PlanContrib = { ...CONTRIB, weekly_windows: { measured: null, reason: null, contributors: 1, with_complete_week: 1, dropped: 0, weeks: 0 } };
-    expect(contributorSentences("max20", one, 0.97, 3, 40)!.weekly).toBe(
-      "A weekly figure needs three people who have each sent readings across a full week. One person has; two more are needed.",
+    expect(contributorSentences("max20", measured, null)!.weekly).toBe(
+      "Across their weeks that comes to about 9.4 five-hour windows of use per week.",
     );
   });
 });
