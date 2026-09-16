@@ -383,10 +383,11 @@ describe("one weekly value per plan (finding 6)", () => {
     };
     expect(currentWeeklyEstimate(stale, "max20")).toBeNull();
     // Reversed by Jonathan's decision on derived figures (PR #76): with no current value, the hero
-    // and the table take the level the chart ends on, flagged inferred, rather than the stale 6.13.
+    // and the table take the level the chart ends on rather than the stale 6.13. That level is the
+    // plan's own regime, drawn solid, so it is not marked inferred.
     const r = compute(stale, "max20", SONNET, "high")!;
     expect(r.windowsPerWeek).toBe(6.34);
-    expect(r.weeklyInferred).toBe(true);
+    expect(r.weeklyInferred).toBe(false);
     // The regime is still history, drawn at its own pooled level rather than the stale estimate,
     // after Max 5x's two levels scaled across by 1 / 1.713.
     expect(weeklyRegimeLevelsFor(stale, "max20").map((l) => [+l.windows.toFixed(2), l.inferred])).toEqual([

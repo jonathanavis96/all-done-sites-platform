@@ -495,14 +495,15 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
   // No session count: one needs a measured meter cost per session, and the only session figure
   // ever published was another account's token total on a different mix (finding 11).
   // The plan's own current estimate where it has one. Otherwise the level its weekly chart ends on,
-  // scaled from another plan and flagged inferred: Jonathan reversed finding 6 here as on the
-  // charts (2026-09-16, PR #76), so a derived figure is shown marked rather than left out. A plan
-  // with no level at all still has no weekly figure.
+  // marked inferred exactly when the chart draws it dashed: a level scaled from another plan is
+  // inferred (Jonathan reversed finding 6 here as on the charts, 2026-09-16, PR #76), while a
+  // plan's own regime level standing in for a stale estimate is its own measurement and is not.
+  // A plan with no level at all still has no weekly figure.
   const measuredWindowsPerWeek = currentWeeklyEstimate(j, plan)?.value ?? null;
   const levels = measuredWindowsPerWeek === null ? weeklyRegimeLevelsFor(j, plan) : [];
   const newestLevel = levels.length > 0 ? levels[levels.length - 1] : null;
   const planWindowsPerWeek = measuredWindowsPerWeek ?? newestLevel?.windows ?? null;
-  const weeklyInferred = measuredWindowsPerWeek === null && newestLevel !== null;
+  const weeklyInferred = measuredWindowsPerWeek === null && newestLevel?.inferred === true;
   // The windows of the plan's week this model may use: Fable is capped at half on Max.
   const windowsPerWeek = limit.included && planWindowsPerWeek !== null ? planWindowsPerWeek * limit.weekly_fraction : null;
   const perWeek = (v: number | null) => (v === null || windowsPerWeek === null ? null : v * windowsPerWeek);
