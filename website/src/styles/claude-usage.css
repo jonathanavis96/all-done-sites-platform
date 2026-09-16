@@ -49,6 +49,23 @@
 .cut details[open] summary::after { content: "collapse ⌃"; }
 .cut details p { color: var(--ads-bd); font-size: 14px; line-height: 1.6; margin: 0 0 14px; }
 .cut .stale { color: var(--red); font-size: 13px; margin-top: 8px; }
+.cut .quiet.warn { color: var(--red); }
+
+/* Personal page ("me"): dollar share bar, grouped tokens-per-1% bars, coarse-sample rows. */
+.cut svg.share-bar { border-radius: 6px; overflow: hidden; }
+.cut .share-legend { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 20px; font-size: 13px; color: var(--ads-bd); }
+.cut .share-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.cut .share-legend .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.cut .tp-bars { display: flex; flex-direction: column; gap: 18px; }
+.cut .tp-row { display: flex; flex-direction: column; gap: 4px; }
+.cut .tp-label { font-size: 13px; font-weight: 600; color: var(--ads-tx); }
+.cut .tp-bar-line { display: flex; align-items: center; gap: 10px; }
+.cut svg.tp-bar { flex: 1 1 auto; min-width: 0; height: 10px; border-radius: 3px; overflow: hidden; background: var(--ads-line); }
+.cut svg.tp-bar rect { fill: var(--ads-mut); }
+.cut svg.tp-bar.mine rect { fill: var(--ads-ac); }
+.cut .tp-val { flex: 0 0 auto; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--ads-tx); white-space: nowrap; }
+.cut .tp-val.muted { color: var(--ads-mut); }
+.cut tr[title] td:first-child { border-left: 2px solid var(--red); }
 @media (max-width: 640px) {
   .adsx .pagewrap:has(.cut) { padding-top: 8px; }
   .cut .hero { padding: 8px 0 36px; } .cut h1 { font-size: 28px; }
