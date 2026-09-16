@@ -103,7 +103,7 @@ function TokensPerPctBars({
             <svg className="tp-bar fleet" viewBox="0 0 100 10" preserveAspectRatio="none" role="presentation">
               <rect x={0} y={0} width={r.fleet !== null ? pct(r.fleet) : 0} height={10} />
             </svg>
-            <span className="tp-val muted">{r.fleet !== null ? `fleet ${fmtTokens(r.fleet)}` : "fleet —"}</span>
+            <span className="tp-val muted">{r.fleet !== null ? `tracker ${fmtTokens(r.fleet)}` : "tracker —"}</span>
           </div>
           <div className="tp-bar-line">
             <svg className="tp-bar mine" viewBox="0 0 100 10" preserveAspectRatio="none" role="presentation">
@@ -133,7 +133,7 @@ function UsdChart({ points, fleet }: { points: { t: number; value: number }[]; f
   const path = points.map((p) => `${x(p.t)},${y(p.value)}`).join(" ");
   const desc =
     `${points.length} sample${points.length === 1 ? "" : "s"}, latest ${fmtUsd2(points[points.length - 1].value)} per 1%` +
-    (fleet !== null ? `, fleet ${fmtUsd2(fleet)}` : "");
+    (fleet !== null ? `, tracker ${fmtUsd2(fleet)}` : "");
   return (
     <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={desc}>
       {ticks.map((v) => (
@@ -145,7 +145,7 @@ function UsdChart({ points, fleet }: { points: { t: number; value: number }[]; f
       {fleet !== null && (
         <g>
           <line x1={L} x2={R} y1={y(fleet)} y2={y(fleet)} stroke="var(--ads-mut)" strokeDasharray="6 5" strokeWidth="1.5" />
-          <text x={R} y={y(fleet) - 6} textAnchor="end">fleet {fmtUsd2(fleet)} per 1%</text>
+          <text x={R} y={y(fleet) - 6} textAnchor="end">tracker {fmtUsd2(fleet)} per 1%</text>
         </g>
       )}
       {points.length > 1 && <polyline points={path} fill="none" stroke="var(--ads-ac)" strokeWidth="2" />}
@@ -258,7 +258,7 @@ export default function ClaudeUsageMe() {
                 )}
                 {fleetUsd !== null && (
                   <>
-                    <em>·</em>vs fleet {fmtUsd2(fleetUsd)}/1%
+                    <em>·</em>vs tracker {fmtUsd2(fleetUsd)}/1%
                   </>
                 )}
               </div>
@@ -277,10 +277,10 @@ export default function ClaudeUsageMe() {
 
         {me && newest && newestValue && newestValue.total > 0 && (
           <section>
-                <h2>Estimated meter work in your newest sample</h2>
+            <h2>Your newest sample, by model</h2>
             <p className="sub">
-              This is an estimated subscription-meter cost from local transcript capture, split by model using published
-              weighting assumptions. It does not establish complete account capture, included billing, API spend, or a bill.
+              The newest sample's meter dollars, split by model: each model's tokens priced by class, as a share of the
+              sample's total.
             </p>
             <ShareBar perModel={newestValue.perModel} total={newestValue.total} models={newestModels} />
           </section>
@@ -288,10 +288,10 @@ export default function ClaudeUsageMe() {
 
         {me && newest && plan && tokensRows.length > 0 && (
           <section>
-            <h2>Tokens per 1% by model, you vs the fleet</h2>
+            <h2>Tokens per 1% by model, you vs the tracker</h2>
             <p className="sub">
               Your tokens are share-attributed: the newest sample's whole-number meter percent split across models by
-              dollar value, not divided raw against the whole percent. Fleet bars are the tracker's own measurement for{" "}
+              dollar value, not divided raw against the whole percent. Tracker bars are the tracker's own figure for{" "}
               {PLAN_LABELS[plan] ?? plan}.
             </p>
             <TokensPerPctBars rows={tokensRows} />
@@ -302,7 +302,8 @@ export default function ClaudeUsageMe() {
           <section>
             <h2>Over time</h2>
             <p className="sub">
-              Estimated meter dollars per 1% across all your models, one point per sample, against the fleet reference.
+              Combined meter dollars per 1% across all your models, one point per sample on {PLAN_LABELS[plan] ?? plan},
+              against the tracker's dashed line.
             </p>
             <UsdChart points={chartPoints} fleet={fleetUsd} />
           </section>
@@ -312,8 +313,8 @@ export default function ClaudeUsageMe() {
           <section>
             <h2>Samples</h2>
             <p className="sub">
-              Estimated meter dollars per 1% combine every model in that sample. Per-model columns are share-attributed
-              tokens per 1%, blank when a model is unpriced or the meter is below the 5% precision floor.
+              $ per 1% combines every model in that sample. Per-model columns are share-attributed tokens per 1%, blank
+              when unpriced or when that model's share of the meter is under 5%.
             </p>
             <div style={{ overflowX: "auto" }}>
               <table>
@@ -359,7 +360,7 @@ export default function ClaudeUsageMe() {
 
         <p className="sub" style={{ textAlign: "center", padding: "24px 0 8px" }}>
           This page is not indexed and holds only what your script sent: meter percentages and token counts. Anyone with
-          the link can see it. <Link to="/claude-usage-tracker">How the fleet figure is measured</Link>
+          the link can see it. <Link to="/claude-usage-tracker">How the tracker's figure is measured</Link>
         </p>
       </div>
     </PageShell>

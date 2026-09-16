@@ -10,6 +10,9 @@
 import {
   CLASSES,
   PLAN_LABELS,
+  contributorModelValue,
+  meterBudgetPerWindow,
+  modelPlanLimit,
   type ApiPrice,
   type Plan,
   type PlanContrib,
@@ -157,7 +160,7 @@ function validateCapture(v: unknown, now: number): { ok: true; value: Capture } 
   if (v.ownership !== "local_transcripts_unverified" && v.ownership !== "filtered_local_transcripts") {
     return { ok: false, reason: "capture.ownership must describe local transcript coverage" };
   }
-  return { ok: true, value: v as Capture };
+  return { ok: true, value: v as unknown as Capture };
 }
 
 /**
@@ -220,7 +223,7 @@ export function validateSample(body: unknown, now: number = Date.now()): Validat
       seven_day: sd.value,
       tokens_since_five_hour_reset: t5.value,
       tokens_since_seven_day_reset: t7.value,
-      ...(capture ? { capture: capture.value } : {}),
+      ...(capture && capture.ok === true ? { capture: capture.value } : {}),
     },
   };
 }
@@ -318,7 +321,8 @@ export function modelsIn(samples: PublicSample[]): string[] {
 export function fleetTokensPerPercent(j: UsageJson, plan: Plan, model: string): number | null {
   const rate = j.rates?.[model];
   const ratio = j.plan_ratios?.[plan];
-  if (!rate || typeof ratio !== "number") return null;
+  if (!rate || typeof ratio !== "number" || typeof rate.tokens_per_window !== "number") return null;
+  if (!modelPlanLimit(j, model, plan).included) return null;
   return (rate.tokens_per_window * ratio) / 100;
 }
 
@@ -357,12 +361,13 @@ export function meterUsd(counts: TokenCounts | undefined, price: ApiPrice | unde
   return (sum / 1e6) * price.meter_weight;
 }
 
-/** Keep the observed model ID in samples; aliases only choose a published price. */
+/** The price a model id is valued at: its own, or Fable 5.1's for the old Fable id. The alias
+ * only picks a price; the sample keeps the id it was observed under. The same rule as the
+ * collector's tracker/contributed.py `_price`, so the personal page and the published
+ * contributor figures price a sample alike (audit finding 9). */
 export function priceForModel(model: string, prices: Record<string, ApiPrice>): ApiPrice | undefined {
   if (prices[model]) return prices[model];
-  const normalized = model.replace(/\s*\[1m\]$/, "").replace(/-\d{8}$/, "");
-  if (prices[normalized]) return prices[normalized];
-  return normalized === "claude-fable-5" ? prices["claude-fable-5-1"] : undefined;
+  return model === "claude-fable-5" ? prices["claude-fable-5-1"] : undefined;
 }
 
 /**
@@ -387,10 +392,11 @@ export function sampleValue(
 }
 
 /** Total meter dollars in the sample over its five-hour percent. Null when the percent is 0 or
- * unpriced. */
+ * unpriced. A reading under COARSE_BELOW still has a figure, marked coarse by isCoarse, as the
+ * published contributor points do. */
 export function usdPerPercent(sample: PublicSample, prices: Record<string, ApiPrice>): number | null {
   const u = sample.five_hour.utilization;
-  if (!(u >= COARSE_BELOW)) return null;
+  if (!(u > 0)) return null;
   const v = sampleValue(sample, prices);
   if (v === null) return null;
   return v.total / u;
@@ -401,8 +407,10 @@ export function usdPerPercent(sample: PublicSample, prices: Record<string, ApiPr
  * total dollar value over that model's own dollar value, over the meter percent. This spreads
  * the whole-sample percent across models by their dollar share rather than dividing the model's
  * raw tokens by the whole percent (which understates every model but the priciest one, since the
- * percent covers every model at once). Null when the percent is 0, the model's value is 0, or
- * either is unpriced.
+ * percent covers every model at once). Null when the model's value is 0, either is unpriced, or
+ * the model's slice of the meter is under COARSE_BELOW: dividing by a slice near zero runs away.
+ * That is the collector's rule for the published per-model figures, so the personal page and
+ * the public chart attribute a reading alike (audit finding 8).
  */
 export function shareTokensPerPercent(sample: PublicSample, model: string, prices: Record<string, ApiPrice>): number | null {
   const u = sample.five_hour.utilization;
@@ -410,24 +418,24 @@ export function shareTokensPerPercent(sample: PublicSample, model: string, price
   const v = sampleValue(sample, prices);
   if (v === null) return null;
   const valueM = v.perModel[model];
-  if (!valueM) return null;
+  if (!valueM || (u * valueM) / v.total < COARSE_BELOW) return null;
   const tokensM = totalTokens(sample.tokens_since_five_hour_reset[model]);
   return (tokensM * v.total) / (valueM * u);
 }
 
 /**
- * The fleet's meter dollars per 1%: a probed model's api_value_per_window (preferring one whose
- * rate source is literally "probe"), scaled by the plan ratio, over 100 percent. Null when no
- * rate carries that figure yet.
+ * The tracker's meter dollars per 1%: a model's meter budget per window (preferring one whose
+ * rate source is literally "probe"), scaled by the plan ratio, over 100 percent. Never the
+ * schema 2 API list value, which is another unit (audit finding 1). Null when no rate carries
+ * a meter budget yet.
  */
 export function fleetUsdPerPercent(j: UsageJson, plan: Plan): number | null {
   const ratio = j.plan_ratios?.[plan];
   if (typeof ratio !== "number") return null;
-  const withValue = Object.values(j.rates ?? {}).filter((r) => typeof r.meter_budget_per_window === "number" || (j.schema_version !== 2 && typeof r.api_value_per_window === "number"));
+  const withValue = Object.values(j.rates ?? {}).filter((r) => meterBudgetPerWindow(j, r) !== null);
   if (withValue.length === 0) return null;
   const rate = withValue.find((r) => r.source === "probe") ?? withValue[0];
-  const meter = typeof rate.meter_budget_per_window === "number" ? rate.meter_budget_per_window : rate.api_value_per_window;
-  return (meter as number * ratio) / 100;
+  return (meterBudgetPerWindow(j, rate)! * ratio) / 100;
 }
 
 // ---------------------------------------------------------------- "from contributors" chart
@@ -444,9 +452,22 @@ export interface ContribPointLike {
   tokens_per_pct_week?: number | null;
   tokens_per_pct_by_model?: Record<string, number>;
   tokens_per_pct_week_by_model?: Record<string, number>;
-  windows?: number | null;
   c: number;
   coarse: boolean;
+}
+
+/** Which figure a tab of the contributor chart plots. */
+export type ContribMetric = "usd" | "window" | "weekly";
+
+/**
+ * The figure one contributed reading carries for a chart tab. Dollars per 1% combine every
+ * model and so compare with the tracker's meter budget per 1%. Tokens for a full window or week
+ * are the selected model's own figure, or null: a reading without a per-model figure for that
+ * model is missing data, never its combined total drawn under the model's name (audit finding 8).
+ */
+export function contribPointValue(p: ContribPointLike, metric: ContribMetric, model: string): number | null {
+  if (metric === "usd") return p.usd_per_pct ?? null;
+  return contributorModelValue(metric === "window" ? p.tokens_per_pct_by_model : p.tokens_per_pct_week_by_model, model, 100);
 }
 
 /** Group readings by contributor, each group's own readings sorted oldest to newest. Groups
@@ -558,16 +579,19 @@ export function contributorSentences(
   if (!contrib || contrib.contributors <= 0) return null;
   const planLabel = PLAN_LABELS[plan];
   const n = contrib.contributors;
-  const who = n === 1 ? "One anonymous source" : `${capitalize(numberWord(n))} anonymous sources`;
+  // The count is of submitted contributor IDs, not of people or accounts (audit finding 14).
+  const who = n === 1 ? "One contributor ID" : `${capitalize(numberWord(n))} contributor IDs`;
   const has = n === 1 ? "has" : "have";
-  const intro = `${who} on ${planLabel} ${has} shared recent meter readings. Source IDs and account ownership are unverified.`;
+  const intro = `${who} on ${planLabel} ${has} shared meter readings.`;
 
   let cost: string | null = null;
   if (contrib.usd_per_pct === null) {
-    cost = "No usable monetary estimate: readings may be too small, empty, unpriced, or missing capture evidence.";
+    // Not "no reading cleared 5%": an unpriced model or a missing second reading also leave it null.
+    cost = "There is no cost figure to show yet.";
   } else if (isPlanContribStat(contrib.usd_per_pct)) {
     const median = contrib.usd_per_pct.median;
-    cost = `Their recent local-transcript readings median $${median.toFixed(2)} of estimated meter work per 1% of the five-hour meter; this is conditional on capture and meter-weight assumptions.`;
+    // Meter dollars, not list-price work: the class and meter weights apply (audit finding 1).
+    cost = `On average their use came to $${median.toFixed(2)} of meter budget per 1% of the five-hour meter.`;
     if (typeof fleetUsd === "number" && fleetUsd > 0) {
       cost += ` The tracker's own figure is $${fleetUsd.toFixed(2)}.`;
     }

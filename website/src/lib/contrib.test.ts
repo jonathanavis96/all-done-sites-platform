@@ -4,6 +4,7 @@ import {
   CONTRIB_PALETTE,
   contribColor,
   contribGroups,
+  contribPointValue,
   contributorSentences,
   contribXScale,
   contribYMax,
@@ -80,8 +81,26 @@ describe("validateSample", () => {
     expect(v).toEqual({ ok: false, reason: "plan must be pro, max5 or max20" });
   });
 
+  it("refuses a reset time the sampled window could not have, and prices an empty sample as no figure (audit_checks.cjs)", () => {
+    // The auditor's body: a five-hour reset seven days out and a seven-day reset one day out were
+    // both accepted, and empty token maps against a 20% meter gave a personal rate.
+    const now = Date.parse("2026-09-16T14:30:22Z");
+    const body = {
+      ...BODY, client_version: "contrib-sample/0.1.0", plan: "max20", plan_source: "flag", ts: new Date(now).toISOString(),
+      five_hour: { utilization: 20, resets_at: new Date(now + 7 * 86400e3).toISOString() },
+      seven_day: { utilization: 10, resets_at: new Date(now + 86400e3).toISOString() },
+      tokens_since_five_hour_reset: {}, tokens_since_seven_day_reset: {},
+    };
+    expect(validateSample(body, now)).toEqual({ ok: false, reason: "reset time is inconsistent with the sampled window" });
+    const plausible = { ...body, five_hour: { ...body.five_hour, resets_at: new Date(now + 3600e3).toISOString() } };
+    expect(validateSample(plausible, now).ok).toBe(true);
+    expect(usdPerPercent(plausible as unknown as PublicSample, {})).toBeNull();
+  });
+
   it("accepts capture provenance but refuses unknown capture fields", () => {
-    const capture = { collected_at: BODY.ts, five_hour_started_at: "2026-09-09T09:00:00Z", seven_day_started_at: "2026-09-05T14:00:00Z", ownership: "configured_profile" };
+    // The capture block contrib/sample.py 0.2.0 builds for BODY: each window starts one window
+    // length before its reset, and ownership is one of the two values the sampler emits.
+    const capture = { collected_at: BODY.ts, five_hour_started_at: "2026-09-09T09:00:00Z", seven_day_started_at: "2026-09-05T00:00:00Z", ownership: "local_transcripts_unverified" };
     expect(validateSample({ ...BODY, capture }, NOW).ok).toBe(true);
     expect(validateSample({ ...BODY, capture: { ...capture, path: "/private" } }, NOW)).toEqual({ ok: false, reason: "capture.path is not a known field" });
   });
@@ -120,6 +139,16 @@ describe("derived figures", () => {
     expect(fleetTokensPerPercent(j, "max20", "claude-sonnet-5")).toBe(400_000);
     expect(fleetTokensPerPercent(j, "pro", "claude-sonnet-5")).toBe(20_000);
     expect(fleetTokensPerPercent(j, "pro", "claude-opus-5")).toBeNull();
+  });
+
+  it("has no tracker tokens per 1% for a model the plan does not include, or with no published figure (findings 2, 13)", () => {
+    const j = {
+      plan_ratios: { pro: 0.05, max5: 0.25, max20: 1 },
+      rates: { "claude-fable-5-1": { tokens_per_window: 200_000_000 }, "claude-sonnet-5": { tokens_per_window: null } },
+    } as unknown as UsageJson;
+    expect(fleetTokensPerPercent(j, "pro", "claude-fable-5-1")).toBeNull();
+    expect(fleetTokensPerPercent(j, "max5", "claude-fable-5-1")).toBe(500_000);
+    expect(fleetTokensPerPercent(j, "max20", "claude-sonnet-5")).toBeNull();
   });
 });
 
@@ -172,14 +201,20 @@ describe("pricing a sample", () => {
   });
 
   it("hand-computes the real sample's dollars per 1% and Sonnet's share tokens per 1%", () => {
-    // A 3% whole-number meter cannot support a precise per-percent claim.
-    expect(usdPerPercent(REAL_SAMPLE, PRICES)).toBeNull();
+    // The dollar figure exists at a 3% meter and is marked coarse, as the published contributor
+    // points mark it.
+    expect(usdPerPercent(REAL_SAMPLE, PRICES)).toBeCloseTo(1.749, 2);
+    expect(isCoarse(REAL_SAMPLE)).toBe(true);
+    // Sonnet's slice of a 3% meter is 1.19 points: under the 5-point slice floor the collector
+    // applies to every published per-model figure, so there is none (audit finding 8).
     expect(shareTokensPerPercent(REAL_SAMPLE, "claude-sonnet-5", PRICES)).toBeNull();
-    const precise = { ...REAL_SAMPLE, five_hour: { ...REAL_SAMPLE.five_hour, utilization: 5 } };
-    expect(usdPerPercent(precise, PRICES)).toBeCloseTo(1.049, 2);
-    const shareSonnet = shareTokensPerPercent(precise, "claude-sonnet-5", PRICES);
+    // At 20% Sonnet's slice is 7.9 points: the same arithmetic as before, 4.54M x 3/20. Opus's
+    // slice is 1.5 points and stays without a figure.
+    const higher = { ...REAL_SAMPLE, five_hour: { ...REAL_SAMPLE.five_hour, utilization: 20 } };
+    const shareSonnet = shareTokensPerPercent(higher, "claude-sonnet-5", PRICES);
     expect(shareSonnet).not.toBeNull();
-    expect(shareSonnet!).toBeCloseTo(2_723_903, -5);
+    expect(Math.abs(shareSonnet! - (4_539_837.5 * 3) / 20) / ((4_539_837.5 * 3) / 20)).toBeLessThan(0.02);
+    expect(shareTokensPerPercent(higher, "claude-opus-5", PRICES)).toBeNull();
   });
 
   it("returns null for usdPerPercent/shareTokensPerPercent when unpriced or the meter reads 0", () => {
@@ -196,6 +231,22 @@ describe("pricing a sample", () => {
     expect(isCoarse({ five_hour: { utilization: 3, resets_at: "t" } })).toBe(true);
     expect(isCoarse({ five_hour: { utilization: 5, resets_at: "t" } })).toBe(false);
     expect(isCoarse({ five_hour: { utilization: 40, resets_at: "t" } })).toBe(false);
+  });
+
+  it("reads the tracker's meter budget per 1%, never the schema 2 API list value (finding 1)", () => {
+    const j = {
+      schema_version: 2,
+      plan_ratios: { pro: 0.05, max5: 0.25, max20: 1 },
+      rates: {
+        "claude-sonnet-5": { tokens_per_window: 1, meter_budget_per_window: 115.05, api_value_per_window: 343.45, api_list_value_per_window: 343.45, source: "derived_reference_mix" },
+      },
+    } as unknown as UsageJson;
+    expect(fleetUsdPerPercent(j, "max20")).toBeCloseTo(1.1505, 4);
+    const unavailable = {
+      ...j,
+      rates: { "claude-sonnet-5": { tokens_per_window: null, meter_budget_per_window: null, api_value_per_window: 343.45, source: "unavailable" } },
+    } as unknown as UsageJson;
+    expect(fleetUsdPerPercent(unavailable, "max20")).toBeNull();
   });
 
   it("reads the fleet's dollars per 1% from a probed rate, preferring source \"probe\"", () => {
@@ -226,33 +277,34 @@ describe("contributorSentences", () => {
     expect(contributorSentences("max20", { ...CONTRIB, contributors: 0 }, 0.97)).toBeNull();
   });
 
-  it("names one reader in the singular", () => {
+  // The count is of submitted contributor IDs: one account can submit under two, and nothing
+  // verifies that an ID is a person (audit finding 14).
+  it("names one contributor ID in the singular", () => {
     const r = contributorSentences("max20", CONTRIB, 0.97);
-    expect(r!.intro).toBe("One reader on Max 20x has shared their meter so far, measured from their own use of Claude Code.");
+    expect(r!.intro).toBe("One contributor ID on Max 20x has shared meter readings.");
   });
 
-  it("spells out small counts of readers", () => {
+  it("spells out small counts of contributor IDs", () => {
     const two = { ...CONTRIB, contributors: 2, samples: 2 };
-    expect(contributorSentences("max20", two, 0.97)!.intro).toBe(
-      "Two readers on Max 20x have shared their meter so far, measured from their own use of Claude Code.",
-    );
+    expect(contributorSentences("max20", two, 0.97)!.intro).toBe("Two contributor IDs on Max 20x have shared meter readings.");
   });
 
   it("states the median cost and the tracker's own figure, nothing more", () => {
     const two = { ...CONTRIB, contributors: 2, samples: 2, usd_per_pct: { median: 1.3233, spread: null, contributors: 2, samples: 2 } };
+    // Meter budget, not list-price work: the figure carries the class and meter weights (finding 1).
     expect(contributorSentences("max20", two, 0.9741)!.cost).toBe(
-      "Their recent, capture-qualified readings median $1.32 of estimated meter work per 1% of the five-hour meter. The tracker's own figure is $0.97.",
+      "On average their use came to $1.32 of meter budget per 1% of the five-hour meter. The tracker's own figure is $0.97.",
     );
     expect(contributorSentences("max20", two, null)!.cost).toBe(
-      "Their recent, capture-qualified readings median $1.32 of estimated meter work per 1% of the five-hour meter.",
+      "On average their use came to $1.32 of meter budget per 1% of the five-hour meter.",
     );
   });
 
-  it("says plainly when no reading cleared the 5% floor", () => {
+  it("says there is no figure without claiming why (finding 16)", () => {
+    // A null figure also follows an unpriced model or a missing second reading, not only a
+    // meter under 5%, so the sentence names no cause.
     const noMedian = { ...CONTRIB, usd_per_pct: null };
-    expect(contributorSentences("max20", noMedian, 0.97)!.cost).toBe(
-      "None of their readings had the meter above 5% yet, so there is no figure to show.",
-    );
+    expect(contributorSentences("max20", noMedian, 0.97)!.cost).toBe("There is no cost figure to show yet.");
   });
 
   it("treats an old per-model usd_per_pct shape as absent (no cost sentence)", () => {
@@ -271,6 +323,31 @@ describe("contributorSentences", () => {
 
 describe("contrib chart helpers", () => {
   const P = (t: string, c: number, usd: number | null, coarse = false): ContribPoint => ({ t, c, usd_per_pct: usd, coarse });
+
+  it("draws a reading without a per-model figure as missing, never as its combined total (audit finding 8)", () => {
+    // The two max20 points in the published JSON at the audit. The second carries a combined
+    // weekly figure of 28,716,453 tokens per 1% and no per-model map: the chart used to draw
+    // 2,871,645,300 tokens under whichever model the reader picked.
+    const withMap: ContribPoint = {
+      t: "2026-09-09T13:16:16Z", c: 0, coarse: false, usd_per_pct: 0.8977,
+      tokens_per_pct: 2_866_282, tokens_per_pct_by_model: { "claude-fable-5-1": 2_948_230 },
+      tokens_per_pct_week: 13_323_833, tokens_per_pct_week_by_model: { "claude-fable-5-1": 11_159_414 },
+    };
+    const combinedOnly: ContribPoint = {
+      t: "2026-09-16T00:11:31Z", c: 1, coarse: true, usd_per_pct: 1.2843, tokens_per_pct: null, tokens_per_pct_week: 28_716_453,
+    };
+    for (const model of ["claude-sonnet-5", "claude-opus-5", "claude-fable-5-1"]) {
+      expect(contribPointValue(combinedOnly, "weekly", model)).toBeNull();
+      expect(contribPointValue(combinedOnly, "window", model)).toBeNull();
+    }
+    // A map without the selected model is missing data for that model too.
+    expect(contribPointValue(withMap, "weekly", "claude-sonnet-5")).toBeNull();
+    expect(contribPointValue(withMap, "window", "claude-sonnet-5")).toBeNull();
+    expect(contribPointValue(withMap, "weekly", "claude-fable-5-1")).toBe(1_115_941_400);
+    expect(contribPointValue(withMap, "window", "claude-fable-5-1")).toBe(294_823_000);
+    // Dollars per 1% combine every model by design, and compare with a meter budget that does too.
+    expect(contribPointValue(combinedOnly, "usd", "claude-sonnet-5")).toBe(1.2843);
+  });
 
   it("contribGroups groups by contributor, sorted by time within each group, groups sorted by c", () => {
     const points = [P("2026-09-10T00:00:00Z", 2, 1), P("2026-09-01T00:00:00Z", 1, 1), P("2026-09-05T00:00:00Z", 1, 2)];

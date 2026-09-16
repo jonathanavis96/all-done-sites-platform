@@ -148,7 +148,7 @@ export default function ContributeMeter() {
     <div className="contrib">
       <p>
         One sample is your tokens since the current window started, over your meter percent right now: tokens per 1% under
-        your real mix of models, and enough of them give Pro and Max 5x a measured figure instead of an assumed one. The
+        your real mix of models. The
         one-off path installs nothing: your own Claude Code fetches a public script, prints exactly what it would send, and
         sends it only when you say so. Read the script at{" "}
         <a href={SCRIPT_URL}>contrib/sample.py</a> and what it sends in <a href={README_URL}>contrib/README.md</a>.
@@ -223,7 +223,7 @@ export default function ContributeMeter() {
       </div>
       <p className="line">
         Every sample gets a personal page: one sample shows where your meter went and your tokens per 1% by model
-        against the fleet's, and a contributor on a schedule (hourly unless you pick another interval above) sees their
+        against the tracker's, and a contributor on a schedule (hourly unless you pick another interval above) sees their
         own line over time.
       </p>
     </div>
