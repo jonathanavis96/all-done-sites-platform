@@ -1,6 +1,47 @@
 export type Plan = "pro" | "max5" | "max20";
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export type TokenClass = "input" | "output" | "cache_read" | "cache_write";
+
+// The meter charges each token class at API list price times a class weight, then the whole
+// thing by a meter weight; older JSON predates both fields, so they are optional.
+export interface ApiPrice extends Record<TokenClass, number> {
+  meter_weight?: number;
+  class_weight?: Record<TokenClass, number>;
+}
+
+// One plan's contributed-sample aggregate, published under `contributed[plan]`. usd_per_pct is
+// shaped this way only from the tracker PR landing alongside this one; the live JSON today still
+// publishes usd_per_pct as a per-model record, so callers must treat a value without a numeric
+// `median` as absent rather than crashing on it.
+export interface PlanContribStat {
+  median: number;
+  spread: number | null;
+  contributors: number;
+  samples: number;
+}
+export interface PlanContrib {
+  contributors: number;
+  samples: number;
+  usd_per_pct: PlanContribStat | null;
+  tokens_per_pct: Record<string, PlanContribStat>;
+  weekly_windows: {
+    measured: number | null;
+    reason: string | null;
+    contributors: number;
+    with_complete_week?: number;
+    dropped: number;
+    weeks: number;
+  };
+}
+export interface ContributedBlock {
+  updated_at: string;
+  min_utilization: number;
+  max_deviation: number;
+  min_contributors: number;
+  max20?: PlanContrib;
+  max5?: PlanContrib;
+  pro?: PlanContrib;
+}
 export type EventKind = "plan" | "change";
 // Absent scope means "window" (the 5-hour rolling limit); "weekly" events carry a week-ending
 // date instead of a day the limit itself moved.
@@ -15,6 +56,9 @@ export interface UsageEvent {
 export interface UsageJson {
   generated_at: string;
   last_sample_at: string | null;
+  // Newest passive (non-probe) measurement's timestamp. Optional: older JSON predates passive
+  // measurement.
+  passive_generated_at?: string | null;
   plan_measured: Plan;
   plan_ratios: Record<Plan, number>;
   rates: Record<
@@ -33,7 +77,7 @@ export interface UsageJson {
     }
   >;
   effort: Record<string, Record<Effort, number>>;
-  api_price_per_mtok: Record<string, Record<TokenClass, number>>;
+  api_price_per_mtok: Record<string, ApiPrice>;
   history: Record<
     string,
     { date: string; tokens_per_window: number; api_value_per_window?: number; source: string; interpolated: boolean }[]
@@ -45,6 +89,9 @@ export interface UsageJson {
   session_tokens?: Record<string, number>;
   // Accounts that run the fixed-prompt probes, e.g. ["dave","jwork"]. Optional: older JSON omits it.
   probe_accounts?: string[];
+  // Contributed-sample aggregate, once at least one contributor has posted. Optional: older
+  // JSON and a freshly-deployed collector with zero contributors omit it.
+  contributed?: ContributedBlock;
   // How many 5-hour windows a real account's seven-day limit actually holds, measured (never
   // assumed unless flagged) from live usage, keyed by plan since the ratio differs per plan.
   // Optional until the daily job populates a plan; `assumed: true` means this plan's figures
@@ -141,6 +188,12 @@ export function fmtSource(rate: { source: string; probed_at?: string | null } | 
 
 export function fmtUsd(n: number): string {
   return "$" + Math.round(n).toLocaleString("en-US");
+}
+
+/** A dollar figure worth showing to the cent, such as a per-percent rate rather than a
+ * per-window total. */
+export function fmtUsd2(n: number): string {
+  return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
