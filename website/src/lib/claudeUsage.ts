@@ -89,6 +89,9 @@ export interface UsageJson {
     }
   >;
   effort: Record<string, Record<Effort, number>>;
+  // Meter dollars one calibration task costs at each effort level. Optional: older JSON omits
+  // it. This is the effort series to scale by, not `effort` above -- see compute().
+  effort_usd?: Record<string, Record<Effort, number>>;
   api_price_per_mtok: Record<string, ApiPrice>;
   history: Record<
     string,
@@ -149,7 +152,14 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
   const tokensPerWindow = rate.tokens_per_window * j.plan_ratios[plan];
   const split = Object.fromEntries(CLASSES.map((c) => [c, tokensPerWindow * (rate.split?.[c] ?? 0)])) as Record<TokenClass, number>;
   const perTask = j.effort[model]?.[effort] ?? NaN;
-  const tasksPerWindow = tokensPerWindow / perTask;
+  const perTaskUsd = j.effort_usd?.[model]?.[effort];
+  const mediumTaskUsd = j.effort_usd?.[model]?.medium;
+  // Tasks and sessions scale with effort by the PRICED calibration figures, never the raw
+  // token totals. The token totals carry the cache state of the run that produced them: a
+  // Sonnet cell that happened to run cold reads about twice a warm one, which put Sonnet's
+  // low above its own medium and made the page claim fewer sessions at lower effort. The
+  // meter does not charge cache reads, so the dollar series is free of that and rises with
+  // effort on every model.
   const prices = j.api_price_per_mtok[model];
   // The publisher's dollar figure is the measured invariant the tokens figure is derived
   // from, so it is the one shown; list-price arithmetic over the split is only a fallback
@@ -158,14 +168,24 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
     typeof rate.api_value_per_window === "number"
       ? rate.api_value_per_window * j.plan_ratios[plan]
       : CLASSES.reduce((s, c) => s + (split[c] / 1e6) * (prices?.[c] ?? 0), 0);
+  const tasksPerWindow =
+    typeof perTaskUsd === "number" && perTaskUsd > 0 ? apiValueUsd / perTaskUsd : tokensPerWindow / perTask;
   // Sessions per window: tokensPerWindow divided by one real session's token cost, scaled from
   // its medium-effort baseline to the selected effort. Null (not a wrong number) whenever the
   // session_tokens calibration for this model hasn't landed yet.
   const sessionBase = j.session_tokens?.[model];
   const mediumEffort = j.effort[model]?.medium;
+  // The effort multiplier: priced where the JSON carries effort_usd, otherwise the old token
+  // ratio, which is all older JSON has.
+  const effortScale =
+    typeof perTaskUsd === "number" && typeof mediumTaskUsd === "number" && mediumTaskUsd > 0
+      ? perTaskUsd / mediumTaskUsd
+      : typeof mediumEffort === "number" && mediumEffort > 0 && !Number.isNaN(perTask)
+        ? perTask / mediumEffort
+        : null;
   const sessionsPerWindow =
-    typeof sessionBase === "number" && typeof mediumEffort === "number" && mediumEffort > 0 && !Number.isNaN(perTask)
-      ? tokensPerWindow / (sessionBase * (perTask / mediumEffort))
+    typeof sessionBase === "number" && effortScale !== null && effortScale > 0
+      ? tokensPerWindow / (sessionBase * effortScale)
       : null;
   // Windows per week is a measured figure, not the theoretical 28 (5-hour windows fit in a
   // week); the seven-day limit holds far fewer. Null until the daily job has measured it, in
@@ -327,7 +347,9 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
     if (p === "pro" && collapse) continue;
     const w = byPlan.get(p);
     if (!w) continue;
-    const label = p === "max5" && collapse ? "Max 5x and Pro (assumed)" : PLAN_LABELS[p];
+    // No "(assumed)" in the label: the dashed stroke and the legend under each chart already
+    // say which spans are inferred rather than measured.
+    const label = p === "max5" && collapse ? "Max 5x and Pro" : PLAN_LABELS[p];
     out.push({ plan: p, assumed: w.assumed, label, sharedWithPro: p === "max5" && collapse, points: w.points });
   }
   // Fill gaps: each series today only spans the weeks its own plan has actually measured, so
@@ -378,16 +400,28 @@ export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[
     if (rate) return rate.tokens_per_window;
     return undefined;
   };
-  return base.map((s) => {
-    const planRatio = j.plan_ratios[s.plan];
+  const withTokens = (s: WeeklySeries, plan: Plan, label: string): WeeklySeries => {
+    const planRatio = j.plan_ratios[plan];
     return {
       ...s,
+      plan,
+      label,
+      sharedWithPro: false,
       points: s.points.map((p) => {
         const perWindow = tokensPerWindowAt(p.date);
         return { ...p, tokens: typeof perWindow === "number" ? p.windows * perWindow * planRatio : undefined };
       }),
     };
-  });
+  };
+  // Pro and Max 5x share one line on the windows chart because they are assumed to hold the
+  // same number of windows per week. They do NOT share a tokens line: a window is worth five
+  // times as much on Max 5x, so a collapsed series is expanded back into two here, each
+  // priced with its own plan ratio.
+  return base.flatMap((s) =>
+    s.sharedWithPro
+      ? [withTokens(s, "max5", PLAN_LABELS.max5), withTokens(s, "pro", PLAN_LABELS.pro)]
+      : [withTokens(s, s.plan, s.label)],
+  );
 }
 
 export function weeklyEventsFor(j: UsageJson): UsageEvent[] {
