@@ -433,11 +433,27 @@ type ContribMetric = "usd" | "window" | "weekly" | "windows";
 interface ContribTab {
   key: ContribMetric;
   label: string;
-  value: (p: ContribPoint) => number | null;
+  value: (p: ContribPoint, model: string) => number | null;
   fmt: (v: number) => string;
   reference: (r: ReturnType<typeof compute> | null, fleetUsd: number | null) => number | null;
   refLabel: (v: number, fmt: (v: number) => string) => string;
   legend: string;
+}
+
+// The selected model's own figure when the point carries the per-model split, so the dot
+// and the tracker's line are the same model. A point published before the split existed
+// falls back to its combined figure, which mixes every model that reading used.
+function perPct(
+  byModel: Record<string, number> | undefined,
+  combined: number | null | undefined,
+  model: string,
+  scale: number,
+): number | null {
+  if (byModel) {
+    const own = byModel[model];
+    return typeof own === "number" ? own * scale : null;
+  }
+  return typeof combined === "number" ? combined * scale : null;
 }
 
 const CONTRIB_TABS: ContribTab[] = [
@@ -454,23 +470,23 @@ const CONTRIB_TABS: ContribTab[] = [
   {
     key: "window",
     label: "Effective window size",
-    value: (p) => (typeof p.tokens_per_pct === "number" ? p.tokens_per_pct * 100 : null),
+    value: (p, model) => perPct(p.tokens_per_pct_by_model, p.tokens_per_pct, model, 100),
     fmt: fmtTokens,
     reference: (r) => r?.tokensPerWindow ?? null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
-      "Tokens a full five-hour window buys, read off each contributor's own meter. Hollow dots: meter under 5%. Dashed line: the tracker's own figure. The tracker's line is one model at one effort; a dot is that reader's own mix. The meter does not charge cache reads, so a reader whose work is mostly cache reads shows a far larger token figure for the same meter percent.",
+      "Tokens a full five-hour window buys, read off each contributor's own meter. Hollow dots: meter under 5%. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. Effort is not in a contributed reading and moves only the tracker's line.",
   },
   {
     key: "weekly",
     label: "Tokens per week",
-    value: (p) => (typeof p.tokens_per_pct_week === "number" ? p.tokens_per_pct_week * 100 : null),
+    value: (p, model) => perPct(p.tokens_per_pct_week_by_model, p.tokens_per_pct_week, model, 100),
     fmt: fmtTokens,
     reference: (r) =>
       r && r.windowsPerWeek !== null ? r.tokensPerWindow * r.windowsPerWeek : null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
-      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. The tracker's line is one model at one effort; a dot is that reader's own mix. The meter does not charge cache reads, so a reader whose work is mostly cache reads shows a far larger token figure for the same meter percent.",
+      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. Effort is not in a contributed reading and moves only the tracker's line.",
   },
   {
     key: "windows",
@@ -488,17 +504,19 @@ function ContributorsChart({
   points,
   reference,
   tab,
+  model,
 }: {
   points: ContribPoint[];
   reference: number | null;
   tab: ContribTab;
+  model: string;
 }) {
   const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
-  const valueOf = (p: ContribPoint) => tab.value(p);
+  const valueOf = (p: ContribPoint) => tab.value(p, model);
   const usable = points.filter((p) => typeof valueOf(p) === "number");
   const groups = contribGroups(points);
   const { t0, t1, frac } = contribXScale(points);
-  const yMax = contribYMax(points, reference, (p) => tab.value(p as ContribPoint));
+  const yMax = contribYMax(points, reference, (p) => tab.value(p as ContribPoint, model));
   const x = (t: string) => L + frac(t) * (R - L);
   const y = (v: number) => B - (v / yMax) * (B - T);
   const ticks = [0, 1, 2, 3].map((k) => (yMax * k) / 3);
@@ -1061,6 +1079,7 @@ export default function ClaudeUsageTracker() {
                   points={data.contributed[plan]!.points!}
                   tab={contribTab}
                   reference={contribTab.reference(r, fleetUsdPerPercent(data, plan))}
+                  model={model}
                 />
               </>
             )}

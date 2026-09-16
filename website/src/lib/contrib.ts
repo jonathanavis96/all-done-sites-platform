@@ -381,6 +381,8 @@ export interface ContribPointLike {
   usd_per_pct: number | null;
   tokens_per_pct?: number | null;
   tokens_per_pct_week?: number | null;
+  tokens_per_pct_by_model?: Record<string, number>;
+  tokens_per_pct_week_by_model?: Record<string, number>;
   windows?: number | null;
   c: number;
   coarse: boolean;
