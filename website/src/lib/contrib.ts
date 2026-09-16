@@ -380,6 +380,7 @@ export interface ContribPointLike {
   t: string;
   usd_per_pct: number | null;
   tokens_per_pct?: number | null;
+  tokens_per_pct_week?: number | null;
   windows?: number | null;
   c: number;
   coarse: boolean;

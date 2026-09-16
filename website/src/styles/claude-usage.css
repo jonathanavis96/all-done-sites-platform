@@ -139,6 +139,7 @@
 .cut .chart-tabs button:hover { border-color: var(--ads-acd); color: var(--ads-acd); }
 .cut .chart-tabs button:focus-visible { outline: 2px solid var(--ads-acd); outline-offset: 2px; }
 .cut .chart-tabs button.on { background: var(--ads-acd); border-color: transparent; color: #fff; }
-.cut .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.cut .section-head h2 { margin-bottom: 0; }
-.cut .section-sel { display: flex; align-items: baseline; gap: 14px; font-size: 15px; }
+/* The pickers sit on the tab row, pushed to its right edge. */
+.cut .section-sel { display: flex; align-items: baseline; gap: 14px; font-size: 15px; margin-left: auto; }
+.cut .chart-tabs { align-items: baseline; }
+@media (max-width: 640px) { .cut .section-sel { margin-left: 0; } }

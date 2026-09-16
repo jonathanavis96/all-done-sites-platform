@@ -433,7 +433,7 @@ type ContribMetric = "usd" | "window" | "weekly" | "windows";
 interface ContribTab {
   key: ContribMetric;
   label: string;
-  value: (p: ContribPoint, windowsPerWeek: number | null) => number | null;
+  value: (p: ContribPoint) => number | null;
   fmt: (v: number) => string;
   reference: (r: ReturnType<typeof compute> | null, fleetUsd: number | null) => number | null;
   refLabel: (v: number, fmt: (v: number) => string) => string;
@@ -464,16 +464,13 @@ const CONTRIB_TABS: ContribTab[] = [
   {
     key: "weekly",
     label: "Tokens per week",
-    value: (p, windowsPerWeek) =>
-      typeof p.tokens_per_pct === "number" && typeof windowsPerWeek === "number"
-        ? p.tokens_per_pct * 100 * windowsPerWeek
-        : null,
+    value: (p) => (typeof p.tokens_per_pct_week === "number" ? p.tokens_per_pct_week * 100 : null),
     fmt: fmtTokens,
     reference: (r) =>
       r && r.windowsPerWeek !== null ? r.tokensPerWindow * r.windowsPerWeek : null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
-      "Each contributor's window size times how many windows their own week holds. Hollow dots: meter under 5%. Dashed line: the tracker's own figure.",
+      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure.",
   },
   {
     key: "windows",
@@ -483,7 +480,7 @@ const CONTRIB_TABS: ContribTab[] = [
     reference: (r) => r?.windowsPerWeek ?? null,
     refLabel: (v, fmt) => `tracker ${fmt(v)} windows`,
     legend:
-      "Five-hour windows one week holds: each reading's five-hour percent over its seven-day percent. One sample reads this far more coarsely than a paired week does, so the scatter is wide. Dashed line: the tracker's own figure.",
+      "Five-hour windows one week holds, from one reading: what a week buys over what a window buys, each measured on its own meter. Both meters step in whole percents, so a low reading swings it. Dashed line: the tracker's own figure.",
   },
 ];
 
@@ -491,19 +488,17 @@ function ContributorsChart({
   points,
   reference,
   tab,
-  windowsPerWeek,
 }: {
   points: ContribPoint[];
   reference: number | null;
   tab: ContribTab;
-  windowsPerWeek: number | null;
 }) {
   const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
-  const valueOf = (p: ContribPoint) => tab.value(p, windowsPerWeek);
+  const valueOf = (p: ContribPoint) => tab.value(p);
   const usable = points.filter((p) => typeof valueOf(p) === "number");
   const groups = contribGroups(points);
   const { t0, t1, frac } = contribXScale(points);
-  const yMax = contribYMax(points, reference, (p) => tab.value(p as ContribPoint, windowsPerWeek));
+  const yMax = contribYMax(points, reference, (p) => tab.value(p as ContribPoint));
   const x = (t: string) => L + frac(t) * (R - L);
   const y = (v: number) => B - (v / yMax) * (B - T);
   const ticks = [0, 1, 2, 3].map((k) => (yMax * k) / 3);
@@ -1018,32 +1013,7 @@ export default function ClaudeUsageTracker() {
                 does not have to scroll back up. Plan picks whose readings are plotted;
                 model and effort only move the tracker's own reference line, because a
                 contributed point is one figure across every model in that sample. */}
-            <div className="section-head">
-              <h2>From contributors</h2>
-              <div className="section-sel">
-                <span className="sel">
-                  <select aria-label="Plan" value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
-                    {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => (
-                      <option key={p} value={p}>{PLAN_LABELS[p]}</option>
-                    ))}
-                  </select>
-                </span>
-                <span className="sel">
-                  <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
-                    {Object.keys(data.rates).map((m) => (
-                      <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
-                    ))}
-                  </select>
-                </span>
-                <span className="sel">
-                  <select aria-label="Effort" value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
-                    {EFFORTS.map((e) => (
-                      <option key={e} value={e}>{e}</option>
-                    ))}
-                  </select>
-                </span>
-              </div>
-            </div>
+            <h2>From contributors</h2>
             <p className="sub">{contributed.intro}</p>
             {hasContribPoints && (
               <>
@@ -1060,12 +1030,37 @@ export default function ClaudeUsageTracker() {
                       {t.label}
                     </button>
                   ))}
+                  {/* Same three pickers as the hero, inline with the tabs: plan chooses
+                      whose readings are plotted, model and effort move only the tracker's
+                      own reference line. */}
+                  <div className="section-sel">
+                    <span className="sel">
+                      <select aria-label="Plan" value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
+                        {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => (
+                          <option key={p} value={p}>{PLAN_LABELS[p]}</option>
+                        ))}
+                      </select>
+                    </span>
+                    <span className="sel">
+                      <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
+                        {Object.keys(data.rates).map((m) => (
+                          <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
+                        ))}
+                      </select>
+                    </span>
+                    <span className="sel">
+                      <select aria-label="Effort" value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
+                        {EFFORTS.map((e) => (
+                          <option key={e} value={e}>{e}</option>
+                        ))}
+                      </select>
+                    </span>
+                  </div>
                 </div>
                 <ContributorsChart
                   points={data.contributed[plan]!.points!}
                   tab={contribTab}
                   reference={contribTab.reference(r, fleetUsdPerPercent(data, plan))}
-                  windowsPerWeek={r?.windowsPerWeek ?? null}
                 />
               </>
             )}

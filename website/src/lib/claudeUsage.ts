@@ -27,8 +27,9 @@ export interface PlanContribStat {
 export interface ContribPoint {
   t: string;
   usd_per_pct: number | null;
-  // Published since the contributor tabs landed; older JSON has neither.
+  // Published since the contributor tabs landed; older JSON has none of them.
   tokens_per_pct?: number | null;
+  tokens_per_pct_week?: number | null;
   windows?: number | null;
   c: number;
   coarse: boolean;
