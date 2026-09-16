@@ -417,7 +417,15 @@ function WeeklyChart({
   );
 }
 
-function WeeklyTokensChart({ series, selectedPlan }: { series: WeeklySeries[]; selectedPlan: Plan }) {
+function WeeklyTokensChart({
+  series,
+  events,
+  selectedPlan,
+}: {
+  series: WeeklySeries[];
+  events: UsageEvent[];
+  selectedPlan: Plan;
+}) {
   type TokenPoint = WeeklyPoint & { tokens: number };
   const isTokenPoint = (p: WeeklyPoint): p is TokenPoint => typeof p.tokens === "number" && Number.isFinite(p.tokens);
   const plotted = series
@@ -456,12 +464,19 @@ function WeeklyTokensChart({ series, selectedPlan }: { series: WeeklySeries[]; s
     T,
     B,
   );
+  // The latest weekly change, if it falls inside the plotted span: the drop gets its own
+  // marker here, the same red as the weekly-limit chart below, because a change in windows per
+  // week moves this line as surely as it moves that one.
+  const weeklyChanges = events.filter((ev) => ev.kind === "change" && xDate(ev.date) !== null);
+  const change = weeklyChanges.length > 0 ? weeklyChanges[weeklyChanges.length - 1] : null;
+  const changeDate = change ? change.date : null;
   const ariaLabel = [
     "Tokens per week over time",
     ...plotted.map(
       (s) =>
         `${s.label}: ${s.points.map((p) => `${fmtDate(p.date)} ${fmtTokens(p.tokens)}${p.partial ? " (partial week)" : ""}`).join(", ")}`,
     ),
+    ...(change ? [`${fmtDate(change.date)}: ${change.label}`] : []),
   ].join(". ");
   return (
     <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
@@ -479,6 +494,19 @@ function WeeklyTokensChart({ series, selectedPlan }: { series: WeeklySeries[]; s
       {ticks.map((t) => (
         <text key={t} x={0} y={y(t) + 4}>{fmtTokens(t)}</text>
       ))}
+      {change !== null && (
+        <g>
+          <line x1={xDate(change.date)!} x2={xDate(change.date)!} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
+          <text
+            x={xDate(change.date)! > R - 140 ? xDate(change.date)! - 6 : xDate(change.date)! + 6}
+            y={T + 10}
+            textAnchor={xDate(change.date)! > R - 140 ? "end" : "start"}
+            style={{ fill: "#B42318", fontWeight: 600 }}
+          >
+            {change.label}
+          </text>
+        </g>
+      )}
       {plotted.map((s) => {
         const pts = s.points.filter((p) => xDate(p.date) !== null);
         if (pts.length === 0) return null;
@@ -499,19 +527,30 @@ function WeeklyTokensChart({ series, selectedPlan }: { series: WeeklySeries[]; s
           }
         }
         const last = pts[pts.length - 1];
-        // The selected plan's area fill covers only its measured (non-inferred) span, never an
-        // inferred one, exactly as the top chart never fills a held/dashed span.
-        const measuredRun = isSelected ? runs.filter((r) => !r.inferred) : [];
+        // The selected plan is shaded across its whole span, inferred spans included, so the
+        // area reaches the right edge of the plot rather than stopping where the dashes start.
+        // The span from the last weekly change onward is shaded red instead: that is the drop,
+        // and at this scale a 29% fall reads as a gentle slope unless it is coloured.
+        const xy = pts.map((q) => [xDate(q.date)!, y(q.tokens)] as [number, number]);
+        const areaPath = (run: [number, number][]) =>
+          `${run[0][0]},${B} ${run.map(([px, py]) => `${px},${py}`).join(" ")} ${run[run.length - 1][0]},${B}`;
+        // The change rarely lands on a week ending, so the two areas meet at a point
+        // interpolated along the segment that spans it, not at the nearest reading.
+        const cx = changeDate === null ? null : xDate(changeDate);
+        let drop: [number, number][] = [];
+        let seamY: number | null = null;
+        if (cx !== null && cx > xy[0][0] && cx < xy[xy.length - 1][0]) {
+          const i = xy.findIndex(([px]) => px >= cx);
+          const [x0, y0] = xy[i - 1];
+          const [x1, y1] = xy[i];
+          seamY = y0 + ((y1 - y0) * (cx - x0)) / (x1 - x0);
+          drop = [[cx, seamY], ...xy.slice(i)];
+        }
         return (
           <g key={s.plan}>
-            {isSelected &&
-              measuredRun.map((run, i) => (
-                <polygon
-                  key={`fill-${i}`}
-                  fill="url(#weeklyfill)"
-                  points={`${xDate(run.pts[0].date)},${B} ${run.pts.map((p) => `${xDate(p.date)},${y(p.tokens)}`).join(" ")} ${xDate(run.pts[run.pts.length - 1].date)},${B}`}
-                />
-              ))}
+            {isSelected && xy.length >= 2 && <polygon fill="url(#weeklyfill)" points={areaPath(xy)} />}
+            {/* The band between where the line was when the limit changed and where it is since:
+                the loss itself, which a 29% fall spread over one segment does not otherwise show. */}
             {runs.map((run, i) => (
               <polyline
                 key={i}
@@ -523,6 +562,23 @@ function WeeklyTokensChart({ series, selectedPlan }: { series: WeeklySeries[]; s
                 points={run.pts.map((p) => `${xDate(p.date)},${y(p.tokens)}`).join(" ")}
               />
             ))}
+            {isSelected && drop.length >= 2 && seamY !== null && (
+              <>
+                <polygon
+                  fill="#B42318"
+                  fillOpacity=".3"
+                  points={`${drop.map(([px, py]) => `${px},${py}`).join(" ")} ${drop[drop.length - 1][0]},${seamY}`}
+                />
+                <line x1={cx!} x2={drop[drop.length - 1][0]} y1={seamY} y2={seamY} stroke="#B42318" strokeWidth="1.25" strokeDasharray="3 3" />
+                <polyline
+                  fill="none"
+                  stroke="#B42318"
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                  points={drop.map(([px, py]) => `${px},${py}`).join(" ")}
+                />
+              </>
+            )}
             {pts.filter((p) => p.partial && !p.inferred).map((p) => (
               <circle
                 key={p.date}
@@ -906,7 +962,7 @@ export default function ClaudeUsageTracker() {
                 </span>
               </div>
             )}
-            <WeeklyTokensChart series={weeklyTokenSeries} selectedPlan={plan} />
+            <WeeklyTokensChart series={weeklyTokenSeries} events={weeklyEvents} selectedPlan={plan} />
             <p className="sub">
               Solid and shaded: selected plan. Grey: the others. Dashed: inferred from another line by the ratio of
               their weekly figures, not measured. Hollow: a week still in progress.
