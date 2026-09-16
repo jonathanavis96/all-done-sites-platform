@@ -220,7 +220,7 @@ export interface WeeklyPlan {
     reasons?: string[];
   }[];
   // True when this plan's figures are borrowed from another plan rather than measured on it.
-  // Only schema 1 sets it (Pro carried Max 5x's numbers); nothing borrowed is drawn.
+  // Only schema 1 sets it (Pro carried Max 5x's numbers); the weekly charts draw them inferred.
   assumed?: boolean;
   // Levels, oldest first: what the detector found, each held flat between steps. Optional:
   // older JSON has only the rows.
@@ -260,9 +260,9 @@ export interface UsageJson {
   passive_generated_at?: string | null;
   plan_measured: Plan;
   plan_ratios: Record<Plan, number>;
-  // Schema 1: a cross-period quotient of two plans' weekly levels, used to draw one plan's
-  // line from another's. The audit (finding 6) showed it cannot tell a plan difference from a
-  // limit change, so nothing reads it; schema 2 publishes it empty.
+  // How many five-hour windows a week's cap holds, per plan, relative to max20: a quotient of
+  // two plans' weekly levels, used to draw one plan's weekly line from another's. Schema 2
+  // publishes it empty, so the page derives it from the regimes; see weeklyWindowRatio.
   weekly_window_ratios?: Partial<Record<Plan, number>>;
   availability?: { rates?: string; evidence?: string; reason?: string | null };
   rates: Record<string, Rate>;
@@ -349,11 +349,10 @@ export interface RegimeLevel {
   plan: Plan;
 }
 
-// One plan's own regime levels, oldest first. Nothing is scaled across from another plan and
-// nothing borrowed is drawn: a cross-period plan ratio cannot tell a plan difference from a
-// limit change (audit finding 6). The newest level is drawn at the plan's current estimate, so
-// the chart ends on the figure the hero sentence and the table use.
-export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
+// One plan's own regime levels, oldest first. The newest level is drawn at the plan's current
+// estimate, so the chart ends on the figure the hero sentence and the table use. A plan flagged
+// assumed has none of its own: its regimes are a copy of another plan's.
+function ownRegimeLevels(j: UsageJson, plan: Plan): RegimeLevel[] {
   const w = j.weekly_windows?.[plan];
   if (!w?.regimes || w.assumed) return [];
   const levels = w.regimes
@@ -363,6 +362,89 @@ export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
   const current = currentWeeklyEstimate(j, plan);
   if (current && levels.length > 0) levels[levels.length - 1].windows = current.value;
   return levels;
+}
+
+// A plan's five-hour windows per week relative to Max 20x. Schema 1 publishes it. Schema 2
+// publishes weekly_window_ratios empty, so it is derived the way the schema 1 collector derived
+// it (tracker/publish.py before tracker PR #57): Max 5x's first level over Max 20x's first level,
+// rounded to three places, with Pro taking Max 5x's. Null when neither is available.
+export function weeklyWindowRatio(j: UsageJson, plan: Plan): number | null {
+  const published = j.weekly_window_ratios?.[plan];
+  if (typeof published === "number" && published) return published;
+  if (plan === "max20") return 1;
+  const max5 = j.weekly_windows?.max5?.regimes?.[0]?.windows;
+  const max20 = j.weekly_windows?.max20?.regimes?.[0]?.windows;
+  if (typeof max5 !== "number" || typeof max20 !== "number" || !max20) return null;
+  return Math.round((max5 / max20) * 1000) / 1000;
+}
+
+// The factor that puts `other`'s windows per week on `own`'s scale. JSON published before either
+// ratio existed falls back to the quotient of the two plans' `current` figures, which drifts with
+// every limit change since the older one froze (issue #54) but is all that JSON has.
+function weeklyScale(j: UsageJson, own: Plan, other: Plan): number | null {
+  const ownRatio = weeklyWindowRatio(j, own);
+  const otherRatio = weeklyWindowRatio(j, other);
+  if (ownRatio !== null && otherRatio !== null) return ownRatio / otherRatio;
+  const ownCurrent = j.weekly_windows?.[own]?.current ?? null;
+  const otherCurrent = j.weekly_windows?.[other]?.current ?? null;
+  if (typeof ownCurrent !== "number" || !ownCurrent) return null;
+  if (typeof otherCurrent !== "number" || !otherCurrent) return null;
+  return ownCurrent / otherCurrent;
+}
+
+// Every regime level on one plan's scale, oldest first, gaps included.
+//
+// A plan's own regimes are used where it has them. Everywhere else the other plans' regimes
+// are scaled across by weeklyScale and flagged inferred, which is how Max 20x gets a level for
+// the months before the account moved onto it, Max 5x keeps one for the months after, and Pro,
+// which has no measurement of its own, borrows both. Overlaps resolve in favour of the measured
+// level. The audit (finding 6) drew each plan's own levels only; Jonathan reversed that on
+// 2026-09-16, so the borrowed spans are drawn dashed rather than dropped.
+export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
+  const out: RegimeLevel[] = [];
+  for (const source of Object.keys(PLAN_LABELS) as Plan[]) {
+    const levels = ownRegimeLevels(j, source);
+    if (levels.length === 0) continue;
+    const isOwn = source === plan;
+    const scale = isOwn ? 1 : weeklyScale(j, plan, source);
+    if (scale === null) continue;
+    for (const r of levels) {
+      out.push({ ...r, windows: r.windows * scale, inferred: r.inferred || !isOwn });
+    }
+  }
+  // A measured level wins any overlap: clip an inferred level to the parts no measured one
+  // covers, rather than dropping it whole. Max 5x's regime ends on the day Max 20x's begins, so
+  // the two always touch at the plan boundary; dropping on contact would lose every month
+  // before the move, and the chart would bridge the gap with the wrong level.
+  const t = (iso: string) => Date.parse(iso);
+  const measured = out.filter((r) => !r.inferred);
+  const kept: RegimeLevel[] = [];
+  for (const r of out) {
+    if (!r.inferred) {
+      kept.push(r);
+      continue;
+    }
+    let pieces = [r];
+    for (const m of measured) {
+      pieces = pieces.flatMap((p) => {
+        if (t(m.start) >= t(p.end) || t(m.end) <= t(p.start)) return [p];
+        const before = t(m.start) > t(p.start) ? [{ ...p, end: m.start }] : [];
+        const after = t(m.end) < t(p.end) ? [{ ...p, start: m.end }] : [];
+        return [...before, ...after];
+      });
+    }
+    kept.push(...pieces);
+  }
+  // Scaling two plans' identical regimes onto a third yields the same level twice. Dedupe on the
+  // span and the level, keeping whichever arrived first.
+  const seen = new Set<string>();
+  const unique = kept.filter((r) => {
+    const key = `${r.start}|${r.end}|${r.windows.toFixed(4)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return unique.sort((a, b) => t(a.start) - t(b.start));
 }
 
 export const RANGE_DAYS = [30, 90, 180] as const;
@@ -579,7 +661,8 @@ export interface WeeklyPoint {
   // True when this week is still in progress: its week_ending falls after the last sample
   // date, so the figure will still move as the week completes rather than being final.
   partial: boolean;
-  // True when this row is flagged assumed rather than measured on this plan.
+  // True when this point was not measured for this plan but inferred from another series'
+  // point at the same date, scaled by weeklyScale, or when its row is flagged assumed.
   inferred: boolean;
   // Tokens a full week of windows buys, only populated by weeklyTokenSeriesFor. Undefined
   // (never a wrong number) whenever there is no dated window figure for that week.
@@ -590,31 +673,86 @@ export interface WeeklySeries {
   plan: Plan;
   assumed: boolean;
   label: string;
+  // True when this series stands in for both Max 5x (measured) and Pro (assumed identical to
+  // it), so selecting either plan should draw this one series solid.
+  sharedWithPro?: boolean;
   points: WeeklyPoint[];
+}
+
+function samePoints(a: WeeklyPoint[], b: WeeklyPoint[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((p, i) => p.date === b[i].date && p.windows === b[i].windows);
 }
 
 // Unlike seriesFor/eventsFor, the weekly chart is not scoped to the 30/90/180-day range
 // selector: it needs only meter readings (not probes), so its full history is cheap and the
 // range picker would otherwise hide the very history (months back) that justifies the chart.
-//
-// Each plan's series holds only its own weeks. Gaps stay gaps: until issue #54 they were filled
-// by scaling another plan's weeks by the quotient of the two plans' `current` figures, and after
-// it by `weekly_window_ratios`. Both are cross-period quotients that make the plan seam continuous
-// by construction, so a limit change at the seam disappears into them (audit finding 6). A plan
-// flagged assumed has no weeks of its own and draws no series.
 export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
   const lastSampleDate = j.last_sample_at ? j.last_sample_at.slice(0, 10) : null;
-  const out: WeeklySeries[] = [];
+  const byPlan = new Map<Plan, { assumed: boolean; points: WeeklyPoint[] }>();
   for (const p of Object.keys(PLAN_LABELS) as Plan[]) {
     const w = j.weekly_windows?.[p];
-    if (!w || w.assumed || w.history.length === 0) continue;
+    if (!w || w.history.length === 0) continue;
     const points = w.history.map((h) => ({
       date: h.week_ending,
       windows: h.windows,
       partial: typeof h.partial === "boolean" ? h.partial : lastSampleDate !== null && h.week_ending > lastSampleDate,
       inferred: h.assumed === true,
     }));
-    out.push({ plan: p, assumed: false, label: PLAN_LABELS[p], points });
+    byPlan.set(p, { assumed: !!w.assumed, points });
+  }
+  const max5 = byPlan.get("max5");
+  // Pro has no weeks of its own. Schema 1 published a copy of Max 5x's rows under Pro, flagged
+  // assumed; schema 2 publishes Pro empty, so the same copy is made here.
+  if (!byPlan.has("pro") && max5) {
+    byPlan.set("pro", { assumed: true, points: max5.points.map((pt) => ({ ...pt })) });
+  }
+  const pro = byPlan.get("pro");
+  // Pro's history today is usually just a copy of Max 5x's, borrowed rather than measured. When
+  // that is literally true (assumed, and every point matches), collapse the two into one labelled
+  // series instead of drawing two identical overlapping lines.
+  const collapse = !!pro && !!max5 && pro.assumed && samePoints(pro.points, max5.points);
+  const out: WeeklySeries[] = [];
+  for (const p of Object.keys(PLAN_LABELS) as Plan[]) {
+    if (p === "pro" && collapse) continue;
+    const w = byPlan.get(p);
+    if (!w) continue;
+    // No "(assumed)" in the label: the dashed stroke and the legend under each chart already
+    // say which spans are inferred rather than measured.
+    const label = p === "max5" && collapse ? "Max 5x and Pro" : PLAN_LABELS[p];
+    out.push({ plan: p, assumed: w.assumed, label, sharedWithPro: p === "max5" && collapse, points: w.points });
+  }
+  // Fill gaps: each series today only spans the weeks its own plan has actually measured, so
+  // two lines can each cover only part of the axis. For every date any series has, a series
+  // missing that date gets an inferred point scaled from another series' point at that date,
+  // so the lines stay aligned as new data lands on one side before the other.
+  //
+  // The scale factor is weeklyScale: the published `weekly_window_ratios`, or schema 2's
+  // derivation of the same ratio. It must NOT be the quotient of the two plans' `current` fields
+  // while a ratio exists, which is what this did until issue #54: max20's current tracks the
+  // newest regime while max5's is a frozen August calendar-week median, so their quotient carries
+  // every limit change that has landed since. It read 2.39 against a true 1.78 -- the extra 1.43
+  // being the 14 Sep -29% -- which put inferred Max 5x weeks at 15.7 windows against a measured
+  // history that never left 9.5-11.0, and drew a 43% step at the plan boundary in both directions
+  // at once. A plan move is not a limit move, and only the limit belongs in the data.
+  const allDates = Array.from(new Set(out.flatMap((s) => s.points.map((p) => p.date)))).sort();
+  for (const s of out) {
+    const byDate = new Map(s.points.map((p) => [p.date, p]));
+    for (const date of allDates) {
+      if (byDate.has(date)) continue;
+      const other = out.find((o) => o !== s && o.points.some((p) => p.date === date));
+      if (!other) continue;
+      const otherPoint = other.points.find((p) => p.date === date)!;
+      const scale = weeklyScale(j, s.plan, other.plan);
+      if (scale === null) continue;
+      s.points.push({
+        date,
+        windows: otherPoint.windows * scale,
+        partial: otherPoint.partial,
+        inferred: true,
+      });
+    }
+    s.points.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   }
   return out;
 }
@@ -640,26 +778,41 @@ export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[
     const atOrBefore = rows.filter((h) => h.date <= weekEnding);
     return atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1].tokens_per_window : undefined;
   };
-  return weeklySeriesFor(j)
-    .filter((s) => modelPlanLimit(j, model, s.plan).included)
-    .map((s) => {
-      const scale = j.plan_ratios[s.plan] * modelPlanLimit(j, model, s.plan).weekly_fraction;
-      return {
+  const withTokens = (s: WeeklySeries, plan: Plan, label: string): WeeklySeries[] => {
+    const limit = modelPlanLimit(j, model, plan);
+    if (!limit.included) return [];
+    const scale = j.plan_ratios[plan] * limit.weekly_fraction;
+    return [
+      {
         ...s,
+        plan,
+        label,
+        sharedWithPro: false,
         points: s.points.map((p) => {
           const perWindow = tokensPerWindowAt(p.date);
           return { ...p, tokens: typeof perWindow === "number" ? p.windows * perWindow * scale : undefined };
         }),
-      };
-    });
+      },
+    ];
+  };
+  // Pro and Max 5x share one line on the windows chart because they are assumed to hold the
+  // same number of windows per week. They do NOT share a tokens line: a window is worth five
+  // times as much on Max 5x, so a collapsed series is expanded back into two here, each
+  // priced with its own plan ratio.
+  return weeklySeriesFor(j).flatMap((s) =>
+    s.sharedWithPro
+      ? [...withTokens(s, "max5", PLAN_LABELS.max5), ...withTokens(s, "pro", PLAN_LABELS.pro)]
+      : withTokens(s, s.plan, s.label),
+  );
 }
 
 // The same levels priced in tokens: each span's windows times what one window bought during it,
 // on the plan's own token ratio and the model's share of the week. The product changes when
 // either factor does, so each weekly level is split wherever the dated window figure changes
 // inside it: a five-hour change inside a flat weekly level is a step here (audit finding 12).
-// Spans before the first dated window figure are left out rather than backdated. A span is
-// inferred when its weekly level is, or when its window figure is not marked measured.
+// A span before the first dated window figure takes that figure, so every plan's line covers
+// its full history. A span is inferred when its weekly level is, when its window figure is not
+// marked measured, or when that figure is backdated from a later date.
 export function weeklyTokenRegimeLevelsFor(
   j: UsageJson,
   plan: Plan,
@@ -675,10 +828,11 @@ export function weeklyTokenRegimeLevelsFor(
     const cuts = [t0, ...rows.map((h) => h.t).filter((t) => t > t0 && t < t1), t1];
     for (let i = 0; i < cuts.length - 1; i++) {
       const atOrBefore = rows.filter((h) => h.t <= cuts[i]);
-      const h = atOrBefore[atOrBefore.length - 1];
+      const backdated = atOrBefore.length === 0;
+      const h = backdated ? rows[0] : atOrBefore[atOrBefore.length - 1];
       if (!h) continue;
       const tokens = r.windows * h.tokens_per_window * scale;
-      const inferred = r.inferred || (h.quality !== undefined && h.quality !== "measured");
+      const inferred = r.inferred || backdated || (h.quality !== undefined && h.quality !== "measured");
       const iso = (t: number, original: string) => (t === t0 || t === t1 ? original : new Date(t).toISOString());
       const prev = out[out.length - 1];
       // Consecutive days at the same figure are one span, not a run of identical steps.
