@@ -274,8 +274,9 @@ export interface UsageJson {
   history: Record<string, HistoryRow[]>;
   last_change: ChangeRecord | null;
   events?: UsageEvent[];
-  // Schema 1 only: median tokens of one session on another account. The page never divides by
-  // it: those sessions do not share the reference mix (audit finding 11).
+  // Median tokens of one session on another account, per model. compute() divides the window
+  // by it (scaled by the priced effort figures) for the sessions per window and per week lines,
+  // as the page did at PR #74; audit finding 11 had dropped that and Jonathan reversed it.
   session_tokens?: Record<string, number>;
   // How many accounts the passive readings rest on. Counts only: the JSON is public and the
   // account names are real people's logins. Optional: older JSON omits it.
@@ -302,14 +303,6 @@ export function meterBudgetPerWindow(j: UsageJson, rate: Rate): number | null {
   return typeof v === "number" ? v : null;
 }
 
-// The API list value of the tokens one Max 20x window holds. Schema 1 has no such figure: its
-// only dollar field is the meter budget, so this is null rather than that number relabelled.
-export function apiListValuePerWindow(j: UsageJson, rate: Rate): number | null {
-  if (!isSchema2(j)) return null;
-  const v = rate.api_list_value_per_window ?? rate.api_value_per_window;
-  return typeof v === "number" ? v : null;
-}
-
 // Mirrors tracker/publish.py's _model_plan_limits, for JSON published before it existed: the
 // eligibility rule is published policy, not a measurement, so it holds for either schema.
 const PLAN_LIMIT_SOURCE_URL = "https://support.claude.com/en/articles/15424964-claude-fable-models-on-your-plan";
@@ -325,50 +318,21 @@ export function modelPlanLimit(j: UsageJson, model: string, plan: Plan): PlanLim
   return { included: true, weekly_fraction: 1 };
 }
 
-// A plan's current windows per week, or null when the plan has no current measurement of its
-// own. Schema 2 publishes it as `current_estimate`, and a stale or assumed estimate is not
-// current. Schema 1 measured only `plan_measured`: every other plan's `current` is either a
-// frozen median from before the account moved plans (Max 5x) or a copy of one (Pro).
-export function currentWeeklyEstimate(j: UsageJson, plan: Plan): WeeklyEstimate | null {
-  const w = j.weekly_windows?.[plan];
-  if (!w || w.assumed) return null;
-  if (isSchema2(j)) {
-    const e = w.current_estimate;
-    if (!e || e.assumed || e.stale === true || typeof e.value !== "number") return null;
-    return e;
-  }
-  if (plan !== j.plan_measured || typeof w.current !== "number") return null;
-  return { value: w.current };
-}
-
 export interface RegimeLevel {
   start: string;
   end: string;
   windows: number;
-  // True when this level is not this plan's own measurement for that span.
+  // True when this level was measured on another plan and scaled onto this one by the plan
+  // ratio, rather than measured on this plan's own windows.
   inferred: boolean;
   plan: Plan;
 }
 
-// One plan's own regime levels, oldest first. The newest level is drawn at the plan's current
-// estimate, so the chart ends on the figure the hero sentence and the table use. A plan flagged
-// assumed has none of its own: its regimes are a copy of another plan's.
-function ownRegimeLevels(j: UsageJson, plan: Plan): RegimeLevel[] {
-  const w = j.weekly_windows?.[plan];
-  if (!w?.regimes || w.assumed) return [];
-  const levels = w.regimes
-    .filter((r) => Number.isFinite(r.windows))
-    .map((r) => ({ start: r.start, end: r.end, windows: r.windows, inferred: r.assumed === true, plan }))
-    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
-  const current = currentWeeklyEstimate(j, plan);
-  if (current && levels.length > 0) levels[levels.length - 1].windows = current.value;
-  return levels;
-}
-
-// A plan's five-hour windows per week relative to Max 20x. Schema 1 publishes it. Schema 2
-// publishes weekly_window_ratios empty, so it is derived the way the schema 1 collector derived
-// it (tracker/publish.py before tracker PR #57): Max 5x's first level over Max 20x's first level,
-// rounded to three places, with Pro taking Max 5x's. Null when neither is available.
+// A plan's five-hour windows per week relative to Max 20x. Schema 1 publishes it directly under
+// `weekly_window_ratios`. Schema 2 can publish that field empty, so this falls back to the way
+// the schema 1 collector derived it (tracker/publish.py before tracker PR #57): Max 5x's first
+// regime level over Max 20x's first, rounded to three places, with Pro taking Max 5x's. Null
+// when neither is available -- kept as the #76 fallback so a plan is never dropped outright.
 export function weeklyWindowRatio(j: UsageJson, plan: Plan): number | null {
   const published = j.weekly_window_ratios?.[plan];
   if (typeof published === "number" && published) return published;
@@ -379,38 +343,28 @@ export function weeklyWindowRatio(j: UsageJson, plan: Plan): number | null {
   return Math.round((max5 / max20) * 1000) / 1000;
 }
 
-// The factor that puts `other`'s windows per week on `own`'s scale. JSON published before either
-// ratio existed falls back to the quotient of the two plans' `current` figures, which drifts with
-// every limit change since the older one froze (issue #54) but is all that JSON has.
-function weeklyScale(j: UsageJson, own: Plan, other: Plan): number | null {
-  const ownRatio = weeklyWindowRatio(j, own);
-  const otherRatio = weeklyWindowRatio(j, other);
-  if (ownRatio !== null && otherRatio !== null) return ownRatio / otherRatio;
-  const ownCurrent = j.weekly_windows?.[own]?.current ?? null;
-  const otherCurrent = j.weekly_windows?.[other]?.current ?? null;
-  if (typeof ownCurrent !== "number" || !ownCurrent) return null;
-  if (typeof otherCurrent !== "number" || !otherCurrent) return null;
-  return ownCurrent / otherCurrent;
-}
-
 // Every regime level on one plan's scale, oldest first, gaps included.
 //
 // A plan's own regimes are used where it has them. Everywhere else the other plans' regimes
-// are scaled across by weeklyScale and flagged inferred, which is how Max 20x gets a level for
-// the months before the account moved onto it, Max 5x keeps one for the months after, and Pro,
-// which has no measurement of its own, borrows both. Overlaps resolve in favour of the measured
-// level. The audit (finding 6) drew each plan's own levels only; Jonathan reversed that on
-// 2026-09-16, so the borrowed spans are drawn dashed rather than dropped.
+// are scaled across by weeklyWindowRatio and flagged inferred, which is how Max 20x gets a
+// level for the months before the account moved onto it and Max 5x keeps one for the months
+// after. Overlaps resolve in favour of the measured level.
 export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
+  const ratioOf = (p: Plan): number | null => weeklyWindowRatio(j, p);
+  const own = ratioOf(plan);
   const out: RegimeLevel[] = [];
   for (const source of Object.keys(PLAN_LABELS) as Plan[]) {
-    const levels = ownRegimeLevels(j, source);
-    if (levels.length === 0) continue;
+    const regimes = j.weekly_windows?.[source]?.regimes;
+    if (!regimes || regimes.length === 0) continue;
     const isOwn = source === plan;
-    const scale = isOwn ? 1 : weeklyScale(j, plan, source);
+    // Pro borrows Max 5x's measured regimes wholesale, exactly as it borrows its weekly rows,
+    // so a ratio of 1 applies and the level is not flagged inferred twice over.
+    const from = ratioOf(source);
+    const scale = isOwn ? 1 : own !== null && from !== null ? own / from : null;
     if (scale === null) continue;
-    for (const r of levels) {
-      out.push({ ...r, windows: r.windows * scale, inferred: r.inferred || !isOwn });
+    for (const r of regimes) {
+      if (!Number.isFinite(r.windows)) continue;
+      out.push({ start: r.start, end: r.end, windows: r.windows * scale, inferred: !isOwn, plan: source });
     }
   }
   // A measured level wins any overlap: clip an inferred level to the parts no measured one
@@ -448,6 +402,23 @@ export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
   return unique.sort((a, b) => t(a.start) - t(b.start));
 }
 
+// The factor that puts `other`'s windows per week on `own`'s scale, for filling gaps in the
+// weekly chart. weeklyWindowRatio already covers the case where `weekly_window_ratios` is
+// unpublished (deriving it from the first regime level, PR #76). This adds one more fallback,
+// for JSON published before either ratio or regime existed: the quotient of the two plans'
+// `current` figures, which drifts with every limit change since the older one froze (issue #54)
+// but is all that JSON has.
+function scaleFrom(j: UsageJson, own: Plan, other: Plan): number | null {
+  const ownRatio = weeklyWindowRatio(j, own);
+  const otherRatio = weeklyWindowRatio(j, other);
+  if (ownRatio !== null && otherRatio !== null) return ownRatio / otherRatio;
+  const ownCurrent = j.weekly_windows?.[own]?.current ?? null;
+  const otherCurrent = j.weekly_windows?.[other]?.current ?? null;
+  if (typeof ownCurrent !== "number" || !ownCurrent) return null;
+  if (typeof otherCurrent !== "number" || !otherCurrent) return null;
+  return ownCurrent / otherCurrent;
+}
+
 export const RANGE_DAYS = [30, 90, 180] as const;
 export type RangeDays = (typeof RANGE_DAYS)[number];
 
@@ -476,82 +447,114 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
   if (!rate) return null; // no probe data for this model yet: the page shows its unavailable state
   const limit = modelPlanLimit(j, model, plan);
   const ratio = j.plan_ratios[plan];
-  // A model the plan does not include has no subscription capacity to scale (finding 2).
+  // A model the plan does not include has no subscription capacity to scale (audit finding 2,
+  // kept: Fable is not on Pro at all, and is capped at half the week on Max).
   const scaled = (v: number | null | undefined) => (limit.included && typeof v === "number" ? v * ratio : null);
   const tokensPerWindow = scaled(rate.tokens_per_window);
   const split =
     tokensPerWindow === null
       ? null
       : (Object.fromEntries(CLASSES.map((c) => [c, tokensPerWindow * (rate.split?.[c] ?? 0)])) as Record<TokenClass, number>);
-  // Two dollar figures in two units (finding 1): the meter budget is what the meter charges and
-  // the API list value is what the same tokens cost at list price, cache reads included.
-  const meterBudgetUsd = scaled(meterBudgetPerWindow(j, rate));
-  const apiListValueUsd = scaled(apiListValuePerWindow(j, rate));
-  // Tasks divide like units: meter dollars a window holds over meter dollars one calibration
-  // task cost. Never the token totals, which carry the cache state of the run behind them.
+  const perTask = j.effort[model]?.[effort] ?? NaN;
   const perTaskUsd = j.effort_usd?.[model]?.[effort];
+  const mediumTaskUsd = j.effort_usd?.[model]?.medium;
+  // Tasks and sessions scale with effort by the PRICED calibration figures, never the raw
+  // token totals. The token totals carry the cache state of the run that produced them: a
+  // Sonnet cell that happened to run cold reads about twice a warm one, which put Sonnet's
+  // low above its own medium and made the page claim fewer sessions at lower effort. The
+  // meter does not charge cache reads, so the dollar series is free of that and rises with
+  // effort on every model.
+  const prices = j.api_price_per_mtok[model];
+  // The dollar figure shown across the page is the meter budget: what the meter actually
+  // charges for the window, the same quantity #74 called "API value" (Jonathan reversed audit
+  // finding 1's rename on 2026-09-16). Schema 1 published it as api_value_per_window; schema 2
+  // as meter_budget_per_window. List-price arithmetic over the split is only a fallback for
+  // JSON published before either figure existed.
+  const rawApiValue =
+    meterBudgetPerWindow(j, rate) ?? (typeof rate.api_value_per_window === "number" ? rate.api_value_per_window : null);
+  const apiValueUsd =
+    rawApiValue !== null
+      ? scaled(rawApiValue)
+      : split === null
+        ? null
+        : CLASSES.reduce((s, c) => s + (split[c] / 1e6) * (prices?.[c] ?? 0), 0);
   const tasksPerWindow =
-    meterBudgetUsd !== null && typeof perTaskUsd === "number" && perTaskUsd > 0 ? meterBudgetUsd / perTaskUsd : null;
-  // No session count: one needs a measured meter cost per session, and the only session figure
-  // ever published was another account's token total on a different mix (finding 11).
-  // The plan's own current estimate where it has one. Otherwise the level its weekly chart ends on,
-  // marked inferred exactly when the chart draws it dashed: a level scaled from another plan is
-  // inferred (Jonathan reversed finding 6 here as on the charts, 2026-09-16, PR #76), while a
-  // plan's own regime level standing in for a stale estimate is its own measurement and is not.
-  // A plan with no level at all still has no weekly figure.
-  const measuredWindowsPerWeek = currentWeeklyEstimate(j, plan)?.value ?? null;
-  const levels = measuredWindowsPerWeek === null ? weeklyRegimeLevelsFor(j, plan) : [];
-  const newestLevel = levels.length > 0 ? levels[levels.length - 1] : null;
-  const planWindowsPerWeek = measuredWindowsPerWeek ?? newestLevel?.windows ?? null;
-  const weeklyInferred = measuredWindowsPerWeek === null && newestLevel?.inferred === true;
-  // The windows of the plan's week this model may use: Fable is capped at half on Max.
-  const windowsPerWeek = limit.included && planWindowsPerWeek !== null ? planWindowsPerWeek * limit.weekly_fraction : null;
-  const perWeek = (v: number | null) => (v === null || windowsPerWeek === null ? null : v * windowsPerWeek);
+    apiValueUsd !== null && typeof perTaskUsd === "number" && perTaskUsd > 0
+      ? apiValueUsd / perTaskUsd
+      : tokensPerWindow !== null && Number.isFinite(perTask)
+        ? tokensPerWindow / perTask
+        : null;
+  // Sessions per window: tokensPerWindow divided by one real session's token cost, scaled from
+  // its medium-effort baseline to the selected effort. Null (not a wrong number) whenever the
+  // session_tokens calibration for this model hasn't landed yet.
+  const sessionBase = j.session_tokens?.[model];
+  const mediumEffort = j.effort[model]?.medium;
+  // The effort multiplier: priced where the JSON carries effort_usd, otherwise the old token
+  // ratio, which is all older JSON has.
+  const effortScale =
+    typeof perTaskUsd === "number" && typeof mediumTaskUsd === "number" && mediumTaskUsd > 0
+      ? perTaskUsd / mediumTaskUsd
+      : typeof mediumEffort === "number" && mediumEffort > 0 && Number.isFinite(perTask)
+        ? perTask / mediumEffort
+        : null;
+  const sessionsPerWindow =
+    tokensPerWindow !== null && typeof sessionBase === "number" && effortScale !== null && effortScale > 0
+      ? tokensPerWindow / (sessionBase * effortScale)
+      : null;
+  // Windows per week is a measured figure, not the theoretical 28 (5-hour windows fit in a
+  // week); the seven-day limit holds far fewer. A plan with no `current` measurement falls back
+  // to the newest level its own weekly chart ends on (kept from PR #76, so the page never loses
+  // a plan outright); a plan with no level at all still has no weekly figure. `planWindowsPerWeek`
+  // is the plan's own figure; `windowsPerWeek` is this model's usable share of it.
+  const currentVal = j.weekly_windows?.[plan]?.current;
+  const fallbackLevel = typeof currentVal === "number" ? null : weeklyRegimeLevelsFor(j, plan).at(-1) ?? null;
+  const planWindowsPerWeek = typeof currentVal === "number" ? currentVal : (fallbackLevel?.windows ?? null);
+  const windowsPerWeek =
+    limit.included && planWindowsPerWeek !== null ? planWindowsPerWeek * limit.weekly_fraction : null;
+  const sessionsPerWeek =
+    sessionsPerWindow === null || windowsPerWeek === null ? null : sessionsPerWindow * windowsPerWeek;
+  const tasksPerWeek = windowsPerWeek === null || tasksPerWindow === null ? null : tasksPerWindow * windowsPerWeek;
+  const apiValueUsdPerWeek = windowsPerWeek === null || apiValueUsd === null ? null : apiValueUsd * windowsPerWeek;
   return {
     included: limit.included,
     weeklyFraction: limit.weekly_fraction,
     tokensPerWindow,
     split,
-    meterBudgetUsd,
-    apiListValueUsd,
     tasksPerWindow,
-    tasksPerWeek: perWeek(tasksPerWindow),
-    tokensPerWeek: perWeek(tokensPerWindow),
-    apiListValueUsdPerWeek: perWeek(apiListValueUsd),
+    tasksPerWeek,
+    sessionsPerWindow,
+    sessionsPerWeek,
+    apiValueUsd,
+    apiValueUsdPerWeek,
     planWindowsPerWeek,
     windowsPerWeek,
-    // True when every per-week figure above rests on that inferred level, not a measurement.
-    weeklyInferred,
   };
 }
 
-// Short label for a model's rate source: "the account's own meter, newest reading 15 Sep" dated
-// by the passive reading itself (measured_at), "probe, 8 Sep" by the model's own probe, or the
-// plain source when no date is available. A passive figure must never carry a probe's date.
-// Schema 2 adds the figure's quality status and staleness in the collector's own words.
+// Short label for a model's rate source: "passive, 15 Sep" dated by the passive reading
+// itself (measured_at), "probe, 8 Sep" by the model's own probe, or plain "probe"/"derived"
+// when no date is available. A passive figure must never carry a probe's date. Jonathan
+// reversed audit finding 10 on 2026-09-16: back to the plain #74 wording, no quality/staleness
+// qualifiers or account-count wording.
 export function fmtSource(
-  rate: Pick<Rate, "source" | "probed_at" | "measured_at" | "evidence" | "quality" | "freshness"> | undefined,
+  rate: Pick<Rate, "source" | "probed_at" | "measured_at"> | undefined,
 ): string | null {
   if (!rate) return null;
   const day = (iso: string) => {
     const d = new Date(iso);
     return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
   };
-  const qualifiers = [
-    rate.quality?.status && rate.quality.status !== "measured" && rate.quality.status !== rate.source ? rate.quality.status : null,
-    rate.freshness?.stale === true ? "stale" : null,
-  ].filter(Boolean);
-  const suffix = qualifiers.length > 0 ? `, ${qualifiers.join(", ")}` : "";
-  // A passive figure is pooled over every account's meter readings; measured_at is the newest
-  // of those, not anything this model did on its own. Say so in the fold-out's own words rather
-  // than the collector's name for the instrument.
-  if (rate.source === "passive" || rate.evidence?.source === "passive") {
-    const n = rate.evidence?.account_count;
-    const meter = typeof n === "number" && n > 1 ? `${n} accounts' own meters` : "the account's own meter";
-    return (rate.measured_at ? `${meter}, newest reading ${day(rate.measured_at)}` : meter) + suffix;
+  // A passive figure is the regime median over every account's meter readings; measured_at is
+  // the newest of those, not anything this model did on its own. Say so in the fold-out's own
+  // words rather than the collector's name for the instrument. Schema 2 calls the same thing
+  // "derived_reference_mix"; treat it the same as "passive" for this sentence.
+  if (rate.source === "passive" || rate.source === "derived_reference_mix") {
+    return rate.measured_at
+      ? `the account's own meter, newest reading ${day(rate.measured_at)}`
+      : "the account's own meter";
   }
-  if (rate.source === "probe" && rate.probed_at) return `probe, ${day(rate.probed_at)}${suffix}`;
-  return rate.source + suffix;
+  if (rate.probed_at) return `${rate.source}, ${day(rate.probed_at)}`;
+  return rate.source;
 }
 
 // The newest evidence behind one model's figure: its own freshness date, else its own
@@ -605,27 +608,24 @@ export function fmtDate(iso: string): string {
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-// The headline states what was observed on the watched account, never that Anthropic changed a
-// limit: a change in one account's metric does not establish a policy change, or which cap moved
-// (audit finding 4). Schema 2 bounds the onset; schema 1 has only the detection's date.
+// Jonathan reversed audit finding 4 on 2026-09-16: the headline says Anthropic changed the
+// limit again, as it did at PR #74, rather than hedging to "observed ... ratio changed".
 export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "flat" } {
   const c = j.last_change;
   if (!c) {
-    // The "since" date is the first dated window measurement, by the same rule as every other date
-    // on the page: a held (backfilled), interpolated or unpriced row was not measured that day.
-    const first = Object.keys(j.history ?? {})
-      .flatMap((m) => datedWindowRows(j, m).map((h) => h.date))
-      .sort()[0];
-    if (!first) return { text: "No change in Claude's limits detected since we started measuring.", tone: "flat" };
-    return { text: `No change in Claude's limits detected since ${fmtDate(first)}.`, tone: "flat" };
+    // "held" rows are backfilled with the first real reading, not measured on that day, so
+    // the "hasn't changed since" date must come from the first genuinely measured row.
+    const rows = Object.values(j.history ?? {}).flat();
+    const firstReal = rows.filter((h) => h.source !== "held").map((h) => h.date).sort()[0];
+    const first = firstReal ?? rows.map((h) => h.date).sort()[0];
+    if (!first) return { text: "Anthropic hasn't changed Claude's limits since we started measuring.", tone: "flat" };
+    return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
   }
   const tone = c.direction === "increased" ? "up" : "down";
-  const metric = c.scope === "weekly" ? "weekly-to-window ratio" : "5-hour window budget";
-  const earliest = c.onset?.earliest?.slice(0, 10);
-  const latest = c.onset?.latest?.slice(0, 10);
-  const when =
-    earliest && latest && earliest !== latest ? `between ${fmtDate(earliest)} and ${fmtDate(latest)}` : `on ${fmtDate(latest ?? c.date)}`;
-  return { text: `Claude's observed ${metric} ${c.direction} by ${c.percent}% ${when}.`, tone };
+  if (c.scope === "weekly") {
+    return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
+  }
+  return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
 }
 
 export function fmtTokens(n: number): string {
@@ -674,7 +674,7 @@ export interface WeeklyPoint {
   // date, so the figure will still move as the week completes rather than being final.
   partial: boolean;
   // True when this point was not measured for this plan but inferred from another series'
-  // point at the same date, scaled by weeklyScale, or when its row is flagged assumed.
+  // point at the same date, scaled by scaleFrom, or when its row is flagged assumed.
   inferred: boolean;
   // Tokens a full week of windows buys, only populated by weeklyTokenSeriesFor. Undefined
   // (never a wrong number) whenever there is no dated window figure for that week.
@@ -739,7 +739,7 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
   // missing that date gets an inferred point scaled from another series' point at that date,
   // so the lines stay aligned as new data lands on one side before the other.
   //
-  // The scale factor is weeklyScale: the published `weekly_window_ratios`, or schema 2's
+  // The scale factor is scaleFrom: the published `weekly_window_ratios`, or a derivation of it
   // derivation of the same ratio. It must NOT be the quotient of the two plans' `current` fields
   // while a ratio exists, which is what this did until issue #54: max20's current tracks the
   // newest regime while max5's is a frozen August calendar-week median, so their quotient carries
@@ -755,7 +755,7 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
       const other = out.find((o) => o !== s && o.points.some((p) => p.date === date));
       if (!other) continue;
       const otherPoint = other.points.find((p) => p.date === date)!;
-      const scale = weeklyScale(j, s.plan, other.plan);
+      const scale = scaleFrom(j, s.plan, other.plan);
       if (scale === null) continue;
       s.points.push({
         date,
@@ -769,26 +769,24 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
   return out;
 }
 
-// A window figure that is evidence for its own date: not a day backfilled with a later reading
-// ("held") or interpolated, and with a token figure at all.
-function datedWindowRows(j: UsageJson, model: string): (HistoryRow & { tokens_per_window: number })[] {
-  return (j.history[model] ?? [])
-    .filter((h): h is HistoryRow & { tokens_per_window: number } =>
-      typeof h.tokens_per_window === "number" && h.source !== "held" && !h.interpolated,
-    )
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-}
-
 // Same series as weeklySeriesFor, with each point's tokens-per-week added: windows times the
-// tokens a single window bought at that week_ending, scaled by the plan's ratio and the share of
-// the week the model may use. The per-window figure is the LAST dated history row at or before
-// week_ending. A week before the first dated row has no figure: the earliest row is not backdated
-// and the current rate is not projected into the past (audit finding 12).
+// tokens a single window bought at that week_ending, scaled by the plan's ratio and the model's
+// share of the week (audit finding 2, kept). The per-window figure comes from the LAST history
+// entry at or before week_ending (the earliest entry when week_ending predates all of them),
+// falling back to the model's current rate when there is no history at all, and leaving tokens
+// undefined when neither exists.
 export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[] {
-  const rows = datedWindowRows(j, model);
+  const base = weeklySeriesFor(j);
+  const hist = j.history[model] ?? [];
+  const sorted = [...hist].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const rate = j.rates[model];
   const tokensPerWindowAt = (weekEnding: string): number | undefined => {
-    const atOrBefore = rows.filter((h) => h.date <= weekEnding);
-    return atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1].tokens_per_window : undefined;
+    if (sorted.length > 0) {
+      const atOrBefore = sorted.filter((h) => h.date <= weekEnding);
+      const entry = atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1] : sorted[0];
+      return typeof entry.tokens_per_window === "number" ? entry.tokens_per_window : undefined;
+    }
+    return typeof rate?.tokens_per_window === "number" ? rate.tokens_per_window : undefined;
   };
   const withTokens = (s: WeeklySeries, plan: Plan, label: string): WeeklySeries[] => {
     const limit = modelPlanLimit(j, model, plan);
@@ -811,20 +809,18 @@ export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[
   // same number of windows per week. They do NOT share a tokens line: a window is worth five
   // times as much on Max 5x, so a collapsed series is expanded back into two here, each
   // priced with its own plan ratio.
-  return weeklySeriesFor(j).flatMap((s) =>
+  return base.flatMap((s) =>
     s.sharedWithPro
       ? [...withTokens(s, "max5", PLAN_LABELS.max5), ...withTokens(s, "pro", PLAN_LABELS.pro)]
       : withTokens(s, s.plan, s.label),
   );
 }
 
-// The same levels priced in tokens: each span's windows times what one window bought during it,
-// on the plan's own token ratio and the model's share of the week. The product changes when
-// either factor does, so each weekly level is split wherever the dated window figure changes
-// inside it: a five-hour change inside a flat weekly level is a step here (audit finding 12).
-// A span before the first dated window figure takes that figure, so every plan's line covers
-// its full history. A span is inferred when its weekly level is, when its window figure is not
-// marked measured, or when that figure is backdated from a later date.
+// The same levels priced in tokens: each regime's windows times what one window bought at the
+// time, on the plan's own token ratio and the model's share of the week (audit finding 2, kept).
+// Undefined per-window figures drop the level rather than guessing, the same contract
+// weeklyTokenSeriesFor keeps. Jonathan reversed audit finding 12 on 2026-09-16: one flat level
+// per weekly regime, not a level cut at every daily window reading.
 export function weeklyTokenRegimeLevelsFor(
   j: UsageJson,
   plan: Plan,
@@ -833,27 +829,22 @@ export function weeklyTokenRegimeLevelsFor(
   const limit = modelPlanLimit(j, model, plan);
   if (!limit.included) return [];
   const scale = j.plan_ratios[plan] * limit.weekly_fraction;
-  const rows = datedWindowRows(j, model).map((h) => ({ ...h, t: Date.parse(`${h.date}T00:00:00Z`) }));
+  const hist = [...(j.history[model] ?? [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const rate = j.rates[model];
+  const perWindowAt = (iso: string): number | undefined => {
+    const d = iso.slice(0, 10);
+    if (hist.length > 0) {
+      const atOrBefore = hist.filter((h) => h.date <= d);
+      const entry = atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1] : hist[0];
+      return typeof entry.tokens_per_window === "number" ? entry.tokens_per_window : undefined;
+    }
+    return typeof rate?.tokens_per_window === "number" ? rate.tokens_per_window : undefined;
+  };
   const out: (RegimeLevel & { tokens: number })[] = [];
   for (const r of weeklyRegimeLevelsFor(j, plan)) {
-    const t0 = Date.parse(r.start), t1 = Date.parse(r.end);
-    const cuts = [t0, ...rows.map((h) => h.t).filter((t) => t > t0 && t < t1), t1];
-    for (let i = 0; i < cuts.length - 1; i++) {
-      const atOrBefore = rows.filter((h) => h.t <= cuts[i]);
-      const backdated = atOrBefore.length === 0;
-      const h = backdated ? rows[0] : atOrBefore[atOrBefore.length - 1];
-      if (!h) continue;
-      const tokens = r.windows * h.tokens_per_window * scale;
-      const inferred = r.inferred || backdated || (h.quality !== undefined && h.quality !== "measured");
-      const iso = (t: number, original: string) => (t === t0 || t === t1 ? original : new Date(t).toISOString());
-      const prev = out[out.length - 1];
-      // Consecutive days at the same figure are one span, not a run of identical steps.
-      if (prev && prev.end === iso(cuts[i], r.start) && prev.tokens === tokens && prev.inferred === inferred) {
-        prev.end = iso(cuts[i + 1], r.end);
-        continue;
-      }
-      out.push({ ...r, start: iso(cuts[i], r.start), end: iso(cuts[i + 1], r.end), inferred, tokens });
-    }
+    const perWindow = perWindowAt(r.start);
+    if (typeof perWindow !== "number") continue;
+    out.push({ ...r, tokens: r.windows * perWindow * scale });
   }
   return out;
 }

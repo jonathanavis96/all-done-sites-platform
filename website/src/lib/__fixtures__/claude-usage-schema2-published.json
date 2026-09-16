@@ -876,7 +876,16 @@
   }
  },
  "schema_version": 2,
- "weekly_window_ratios": {},
+ "session_tokens": {
+  "claude-fable-5-1": 6852277,
+  "claude-opus-5": 1565359,
+  "claude-sonnet-5": 520063
+ },
+ "weekly_window_ratios": {
+  "max20": 1.0,
+  "max5": 1.668,
+  "pro": 1.668
+ },
  "weekly_windows": {
   "max20": {
    "assumed": false,
@@ -1012,7 +1021,7 @@
     "reason": "no_current_max5_measurement",
     "status": "historical_only"
    },
-   "current": null,
+   "current": 7.8062,
    "current_estimate": null,
    "history": [
     {
@@ -5287,12 +5296,12 @@
    ]
   },
   "pro": {
-   "assumed": false,
+   "assumed": true,
    "availability": {
     "reason": "no_pro_measurement",
     "status": "unavailable"
    },
-   "current": null,
+   "current": 7.8062,
    "current_estimate": null,
    "history": [],
    "regimes": []
