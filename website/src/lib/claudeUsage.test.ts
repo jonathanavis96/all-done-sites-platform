@@ -21,6 +21,9 @@ import {
   staleEvidenceAt,
   type UsageJson,
 } from "./claudeUsage";
+import schema1 from "./__fixtures__/claude-usage-schema1.json";
+import schema2 from "./__fixtures__/claude-usage-schema2.json";
+import schema2Published from "./__fixtures__/claude-usage-schema2-published.json";
 
 const J: UsageJson = {
   generated_at: "2026-09-05T20:15:00+00:00",
@@ -195,18 +198,28 @@ describe("compute", () => {
     expect(r.tokensPerWeek).toBeNull();
     expect(r.apiListValueUsdPerWeek).toBeNull();
   });
-  it("gives pro no windows per week while its figure is an assumed copy of max5's (finding 6)", () => {
+  it("gives pro no windows per week of its own while its figure is an assumed copy of max5's, only an inferred level (finding 6)", () => {
+    // J publishes no regimes, so Pro has no level to fall back to.
     const r = compute(J, "pro", "claude-sonnet-5", "high");
     expect(r.planWindowsPerWeek).toBeNull();
     expect(r.windowsPerWeek).toBeNull();
-    expect(compute(V2, "pro", SONNET, "high")!.windowsPerWeek).toBeNull();
+    expect(r.weeklyInferred).toBe(false);
+    // Reversed by Jonathan's decision on derived figures (PR #76): V2 has levels to borrow, so Pro
+    // takes the one its weekly chart ends on, flagged inferred.
+    const v2 = compute(V2, "pro", SONNET, "high")!;
+    expect(v2.windowsPerWeek).toBe(weeklyRegimeLevelsFor(V2, "pro").at(-1)!.windows);
+    expect(v2.weeklyInferred).toBe(true);
   });
-  it("uses the selected plan's own current estimate, and never another plan's (finding 6)", () => {
+  it("uses the selected plan's own current estimate, and another plan's only scaled across and flagged inferred (finding 6)", () => {
     // Schema 1 measured only plan_measured: max5's `current` is a frozen median from before the
-    // account moved plans, so it is not a current figure.
+    // account moved plans, so it is not a current figure, and J has no level to fall back to.
     expect(compute(J, "max5", "claude-sonnet-5", "high").windowsPerWeek).toBeNull();
-    // Schema 2 publishes max5 as history only.
-    expect(compute(V2, "max5", SONNET, "high")!.windowsPerWeek).toBeNull();
+    // Schema 2 publishes max5 as history only. Reversed by Jonathan's decision on derived figures
+    // (PR #76): its weekly figure is Max 20x's current estimate scaled by 10.86 / 6.34 = 1.713,
+    // flagged inferred, never its own frozen level.
+    const v2Max5 = compute(V2, "max5", SONNET, "high")!;
+    expect(v2Max5.windowsPerWeek).toBeCloseTo(6.13 * 1.713, 10);
+    expect(v2Max5.weeklyInferred).toBe(true);
     const measuredMax5: UsageJson = {
       ...V2,
       weekly_windows: {
@@ -215,7 +228,9 @@ describe("compute", () => {
       },
     };
     expect(compute(measuredMax5, "max5", SONNET, "high")!.windowsPerWeek).toBe(9.4);
+    expect(compute(measuredMax5, "max5", SONNET, "high")!.weeklyInferred).toBe(false);
     expect(compute(measuredMax5, "max20", SONNET, "high")!.windowsPerWeek).toBe(6.13);
+    expect(compute(measuredMax5, "max20", SONNET, "high")!.weeklyInferred).toBe(false);
   });
   it("pro is 5% of max20", () => {
     expect(compute(J, "pro", "claude-sonnet-5", "low").tokensPerWindow).toBe(2_100_000);
@@ -317,17 +332,20 @@ describe("one weekly value per plan (finding 6)", () => {
       const chartEnd = weeklyRegimeLevelsFor(j, "max20").at(-1)!.windows;
       expect(chartEnd).toBe(r.planWindowsPerWeek);
       expect(r.tokensPerWeek).toBeCloseTo(r.tokensPerWindow! * chartEnd, 0);
+      expect(r.weeklyInferred).toBe(false);
     }
     // V2's regime pools to 6.34 over its whole span; the chart ends on the current estimate.
     expect(weeklyRegimeLevelsFor(V2, "max20").at(-1)!.windows).toBe(6.13);
   });
-  it("gives an unmeasured plan no current weekly value, and draws another plan's levels for it only flagged inferred", () => {
-    // Reverses finding 6's chart half by Jonathan's decision (2026-09-16): the borrowed level is
-    // drawn, dashed. The hero and the table still give an unmeasured plan no weekly figure.
+  it("gives an unmeasured plan no current weekly value, and another plan's levels and weekly figures only flagged inferred", () => {
+    // Reverses finding 6 by Jonathan's decision (2026-09-16): the borrowed level is drawn, dashed
+    // (PR #76), and the hero and the table take the level the chart ends on, flagged inferred.
     for (const plan of ["max5", "pro"] as const) {
       const r = compute(LIVE, plan, SONNET, "high");
-      expect(r.planWindowsPerWeek).toBeNull();
-      expect(r.tokensPerWeek).toBeNull();
+      expect(currentWeeklyEstimate(LIVE, plan)).toBeNull();
+      expect(r.planWindowsPerWeek).toBeCloseTo(4.61 * 1.668, 10);
+      expect(r.tokensPerWeek).toBeCloseTo(r.tokensPerWindow! * 4.61 * 1.668, 0);
+      expect(r.weeklyInferred).toBe(true);
       // Never 11.02 (the frozen median).
       for (const level of weeklyRegimeLevelsFor(LIVE, plan)) {
         expect(level.windows).not.toBe(11.02);
@@ -364,7 +382,12 @@ describe("one weekly value per plan (finding 6)", () => {
       },
     };
     expect(currentWeeklyEstimate(stale, "max20")).toBeNull();
-    expect(compute(stale, "max20", SONNET, "high")!.windowsPerWeek).toBeNull();
+    // Reversed by Jonathan's decision on derived figures (PR #76): with no current value, the hero
+    // and the table take the level the chart ends on rather than the stale 6.13. That level is the
+    // plan's own regime, drawn solid, so it is not marked inferred.
+    const r = compute(stale, "max20", SONNET, "high")!;
+    expect(r.windowsPerWeek).toBe(6.34);
+    expect(r.weeklyInferred).toBe(false);
     // The regime is still history, drawn at its own pooled level rather than the stale estimate,
     // after Max 5x's two levels scaled across by 1 / 1.713.
     expect(weeklyRegimeLevelsFor(stale, "max20").map((l) => [+l.windows.toFixed(2), l.inferred])).toEqual([
@@ -372,6 +395,69 @@ describe("one weekly value per plan (finding 6)", () => {
       [3.86, true],
       [6.34, false],
     ]);
+  });
+});
+
+describe("weekly figures for a plan with no current estimate, on the published files (PR #76)", () => {
+  const LIVE_FILE = schema1 as unknown as UsageJson;
+  const PUBLISHED_FILE = schema2Published as unknown as UsageJson;
+  const REBUILT_FILE = schema2 as unknown as UsageJson;
+  const OPUS = "claude-opus-5";
+
+  it("derives Pro's and Max 5x's from the level their weekly chart ends on, times the model's weekly share, flagged inferred", () => {
+    for (const j of [LIVE_FILE, PUBLISHED_FILE]) {
+      for (const [plan, model] of [["pro", SONNET], ["max5", SONNET], ["pro", OPUS], ["max5", FABLE]] as const) {
+        expect(currentWeeklyEstimate(j, plan)).toBeNull();
+        const level = weeklyRegimeLevelsFor(j, plan).at(-1)!;
+        expect(level.inferred).toBe(true);
+        const windows = level.windows * modelPlanLimit(j, model, plan).weekly_fraction;
+        const r = compute(j, plan, model, "high")!;
+        expect(r.weeklyInferred).toBe(true);
+        expect(r.planWindowsPerWeek).toBe(level.windows);
+        expect(r.windowsPerWeek).toBeCloseTo(windows, 10);
+        expect(r.tokensPerWeek).not.toBeNull();
+        expect(r.tokensPerWeek).toBeCloseTo(r.tokensPerWindow! * windows, 0);
+        if (j === PUBLISHED_FILE) {
+          expect(r.apiListValueUsdPerWeek).not.toBeNull();
+          expect(r.apiListValueUsdPerWeek).toBeCloseTo(r.apiListValueUsd! * windows, 6);
+        } else {
+          // Schema 1 publishes no API list value for any plan, Max 20x included.
+          expect(r.apiListValueUsdPerWeek).toBeNull();
+        }
+      }
+      // Fable on Pro is not included: nothing to scale, whatever the level (finding 2).
+      expect(compute(j, "pro", FABLE, "high")!.tokensPerWeek).toBeNull();
+    }
+  });
+
+  it("keeps Max 20x's measured figures exactly as before, not inferred", () => {
+    // The figures main computed before this change, from each file's current estimate.
+    const before: [UsageJson, string, number, number, number | null][] = [
+      [LIVE_FILE, SONNET, 4.61, 5_929_114_583.12, null],
+      [LIVE_FILE, FABLE, 4.61, 592_911_457.39, null],
+      [PUBLISHED_FILE, SONNET, 4.68, 6_768_738_007.2, 1977.2532],
+      [PUBLISHED_FILE, FABLE, 4.68, 676_873_800.72, 495.5418],
+    ];
+    for (const [j, model, planWindows, tokens, apiListValue] of before) {
+      const r = compute(j, "max20", model, "high")!;
+      expect(r.weeklyInferred).toBe(false);
+      expect(r.planWindowsPerWeek).toBe(planWindows);
+      expect(r.tokensPerWeek).toBeCloseTo(tokens, 0);
+      if (apiListValue === null) expect(r.apiListValueUsdPerWeek).toBeNull();
+      else expect(r.apiListValueUsdPerWeek).toBeCloseTo(apiListValue, 4);
+    }
+  });
+
+  it("gives no weekly figure to any plan of a file whose weekly chart has no level at all", () => {
+    for (const plan of ["pro", "max5", "max20"] as const) {
+      expect(weeklyRegimeLevelsFor(REBUILT_FILE, plan)).toEqual([]);
+      const r = compute(REBUILT_FILE, plan, SONNET, "high")!;
+      expect(r.planWindowsPerWeek).toBeNull();
+      expect(r.tokensPerWeek).toBeNull();
+      expect(r.apiListValueUsdPerWeek).toBeNull();
+      expect(r.tasksPerWeek).toBeNull();
+      expect(r.weeklyInferred).toBe(false);
+    }
   });
 });
 
