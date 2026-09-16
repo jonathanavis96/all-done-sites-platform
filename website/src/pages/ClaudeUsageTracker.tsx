@@ -475,7 +475,7 @@ const CONTRIB_TABS: ContribTab[] = [
     reference: (r) => r?.tokensPerWindow ?? null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
-      "Tokens a full five-hour window buys, read off each contributor's own meter. Hollow dots: meter under 5%. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. Effort is not in a contributed reading and moves only the tracker's line.",
+      "Tokens a full five-hour window buys, read off each contributor's own meter. Hollow dots: meter under 5%. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
   },
   {
     key: "weekly",
@@ -486,7 +486,7 @@ const CONTRIB_TABS: ContribTab[] = [
       r && r.windowsPerWeek !== null ? r.tokensPerWindow * r.windowsPerWeek : null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
-      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. Effort is not in a contributed reading and moves only the tracker's line.",
+      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
   },
   {
     key: "windows",
@@ -1048,9 +1048,10 @@ export default function ClaudeUsageTracker() {
                       {t.label}
                     </button>
                   ))}
-                  {/* Same three pickers as the hero, inline with the tabs: plan chooses
-                      whose readings are plotted, model and effort move only the tracker's
-                      own reference line. */}
+                  {/* Plan chooses whose readings are plotted, model puts the dots and the
+                      tracker's line on the same model. No effort picker: nothing on these
+                      four charts depends on effort -- it scales sessions per window, not
+                      tokens per window -- and a contributed reading does not carry it. */}
                   <div className="section-sel">
                     <span className="sel">
                       <select aria-label="Plan" value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
@@ -1063,13 +1064,6 @@ export default function ClaudeUsageTracker() {
                       <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
                         {Object.keys(data.rates).map((m) => (
                           <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
-                        ))}
-                      </select>
-                    </span>
-                    <span className="sel">
-                      <select aria-label="Effort" value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
-                        {EFFORTS.map((e) => (
-                          <option key={e} value={e}>{e}</option>
                         ))}
                       </select>
                     </span>
