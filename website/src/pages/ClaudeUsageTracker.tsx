@@ -302,10 +302,6 @@ function WeeklyChart({
             prevRun.pts.push(p);
           }
         }
-        let lastPartialIdx = -1;
-        for (let i = pts.length - 1; i >= 0; i--) {
-          if (pts[i].partial && !pts[i].inferred) { lastPartialIdx = i; break; }
-        }
         const last = pts[pts.length - 1];
         const lastX = xDate(last.date)!;
         const nearRightEdge = lastX > R - 120;
@@ -333,23 +329,9 @@ function WeeklyChart({
                 strokeWidth={2}
               />
             ))}
-            {lastPartialIdx !== -1 && (() => {
-              const px = xDate(pts[lastPartialIdx].date) ?? 0;
-              const partialNearRight = px > R - 120;
-              return (
-                <text
-                  x={partialNearRight ? px - 6 : px + 6}
-                  y={y(pts[lastPartialIdx].windows) - 8}
-                  textAnchor={partialNearRight ? "end" : "start"}
-                  style={{ fill: "#64748B", fontWeight: 500 }}
-                >
-                  this week so far
-                </text>
-              );
-            })()}
             <text
               x={nearRightEdge ? lastX - 6 : lastX + 6}
-              y={y(last.windows) - (lastPartialIdx === pts.length - 1 ? 20 : 8)}
+              y={y(last.windows) - 8}
               textAnchor={nearRightEdge ? "end" : "start"}
               style={{ fill: color, fontWeight: 600 }}
             >
@@ -636,6 +618,24 @@ export default function ClaudeUsageTracker() {
                 {fmtUsd(r.apiValueUsd)}
                 <span>of API value per 5-hour window</span>
               </div>
+              {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
+                <div className="rate">
+                  {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
+                    <>
+                      <span>
+                        about <b>{Math.round(r.sessionsPerWindow)}</b> sessions<em>·</em>
+                        <b>{Math.round(r.sessionsPerWeek)}</b> per week
+                      </span>
+                      {r.apiValueUsdPerWeek !== null && <em className="brk">·</em>}
+                    </>
+                  )}
+                  {r.apiValueUsdPerWeek !== null && (
+                    <span>
+                      <b>{fmtUsd(r.apiValueUsdPerWeek)}</b> of API value per week
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="split">
                 <span>
                   <b>{fmtTokens(r.split.input)}</b> input<em>·</em>
@@ -649,19 +649,6 @@ export default function ClaudeUsageTracker() {
               </div>
               {fmtSource(data.rates[model]) && (
                 <div className="quiet">Source: {fmtSource(data.rates[model])}</div>
-              )}
-              {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
-                <div className="quiet">
-                  {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
-                    <>
-                      <span>
-                        about {Math.round(r.sessionsPerWindow)} sessions<em>·</em>{Math.round(r.sessionsPerWeek)} per week
-                      </span>
-                      {r.apiValueUsdPerWeek !== null && <em className="brk">·</em>}
-                    </>
-                  )}
-                  {r.apiValueUsdPerWeek !== null && <span>{fmtUsd(r.apiValueUsdPerWeek)} of API value per week</span>}
-                </div>
               )}
               {data.weekly_windows?.[plan] && (
                 <div className="quiet">
