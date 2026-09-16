@@ -477,10 +477,15 @@ export default function ClaudeUsageTracker() {
               }}
             />
           )}
-          {!unavailable && data && localTime && (
-            <div className="pill">
-              <i />
-              <span>Last sample {localTime}</span>
+          {!unavailable && data && (
+            <div className="pillrow">
+              {localTime && (
+                <div className="pill">
+                  <i />
+                  <span>Last sample {localTime}</span>
+                </div>
+              )}
+              <a className="stats-cta desk" href="#contribute">See your own stats &darr;</a>
             </div>
           )}
           <NotifyForm />
@@ -601,6 +606,9 @@ export default function ClaudeUsageTracker() {
                 Dashed: before measurement began, shown flat at the first measured value.
               </p>
             )}
+            <p className="stats-cta-row mob">
+              <a className="stats-cta" href="#contribute">See your own stats &darr;</a>
+            </p>
           </section>
         )}
 
@@ -690,7 +698,7 @@ export default function ClaudeUsageTracker() {
           </section>
         )}
 
-        <section>
+        <section id="contribute">
           <h2>Contribute your own meter</h2>
           <ContributeMeter />
         </section>
