@@ -15,6 +15,8 @@ export const INTERVALS = [
   { minutes: 60, label: "every hour", phrase: "hourly" },
   { minutes: 120, label: "every 2 hours", phrase: "2-hourly" },
   { minutes: 360, label: "every 6 hours", phrase: "6-hourly" },
+  { minutes: 720, label: "every 12 hours", phrase: "12-hourly" },
+  { minutes: 1440, label: "once a day", phrase: "daily" },
 ] as const;
 export const DEFAULT_INTERVAL_MINUTES = 60;
 

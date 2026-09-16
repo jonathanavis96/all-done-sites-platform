@@ -291,7 +291,7 @@ export default function ClaudeUsageMe() {
             <h2>Tokens per 1% by model, you vs the fleet</h2>
             <p className="sub">
               Your tokens are share-attributed: the newest sample's whole-number meter percent split across models by
-              dollar value, not divided raw against the whole percent. Fleet bars come from the tracker's own probes for{" "}
+              dollar value, not divided raw against the whole percent. Fleet bars are the tracker's own measurement for{" "}
               {PLAN_LABELS[plan] ?? plan}.
             </p>
             <TokensPerPctBars rows={tokensRows} />
