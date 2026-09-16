@@ -361,19 +361,32 @@ export function meterUsd(counts: TokenCounts | undefined, price: ApiPrice | unde
   }
   const oneHour = counts?.cache_write_1h ?? 0;
   if (oneHour < 0 || oneHour > (counts?.cache_write ?? 0)) return null;
+  // The one-hour difference needs the five-minute write price and the input price its default is
+  // built from (the collector reads both); without them there is no figure, never NaN.
+  if (oneHour > 0 && (typeof price.cache_write !== "number" || typeof price.input !== "number")) return null;
   const writeWeight = weights.cache_write ?? 1;
   const oneHourWeight = weights.cache_write_1h ?? writeWeight;
   sum += oneHour * ((price.cache_write_1h ?? price.input * 2) * oneHourWeight - price.cache_write * writeWeight);
   return (sum / 1e6) * price.meter_weight;
 }
 
-/** The price a model id is valued at: its own, or Fable 5.1's for the old Fable id. The alias
- * only picks a price; the sample keeps the id it was observed under. The same rule as the
- * collector's tracker/contributed.py `_price`, so the personal page and the published
- * contributor figures price a sample alike (audit finding 9). */
+/** A transcript model id as the collector's contrib/sample.py `normalize_model` records it: a
+ * trailing `[1m]` marker, then a trailing -YYYYMMDD date, removed; anything that is then not a
+ * claude- id becomes claude-unknown. */
+export function normalizeModelId(model: string): string {
+  const m = model.replace(/\s*\[1m\]$/, "").replace(/-\d{8}$/, "");
+  return /^claude-[a-z0-9-]+$/.test(m) ? m : "claude-unknown";
+}
+
+/** The price a model id is valued at: the price of its normalised id, or Fable 5.1's for the old
+ * Fable id. Normalising and aliasing only pick a price; the sample keeps the id it was observed
+ * under. The same rule as the collector's sampler `normalize_model` followed by
+ * tracker/contributed.py `_price`, so the personal page and the published contributor figures
+ * price a sample alike (audit finding 9). */
 export function priceForModel(model: string, prices: Record<string, ApiPrice>): ApiPrice | undefined {
-  if (prices[model]) return prices[model];
-  return model === "claude-fable-5" ? prices["claude-fable-5-1"] : undefined;
+  const m = normalizeModelId(model);
+  if (Object.prototype.hasOwnProperty.call(prices, m)) return prices[m];
+  return m === "claude-fable-5" ? prices["claude-fable-5-1"] : undefined;
 }
 
 /**

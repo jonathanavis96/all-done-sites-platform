@@ -16,6 +16,8 @@ import {
   mainModel,
   meterUsd,
   modelsIn,
+  normalizeModelId,
+  priceForModel,
   sampleValue,
   shareTokensPerPercent,
   totalTokens,
@@ -228,6 +230,47 @@ describe("pricing a sample", () => {
     expect(v!.total).toBeCloseTo(5.24738175, 5);
     const { "claude-opus-5": _drop, ...missingOpus } = PRICES;
     expect(sampleValue(REAL_SAMPLE, missingOpus)).toBeNull();
+  });
+
+  it("has no figure, never NaN, when the one-hour write needs a cache_write or input price the table lacks", () => {
+    const counts = { input: 0, output: 0, cache_read: 0, cache_write: 1_000_000, cache_write_1h: 400_000 };
+    const weights = { class_weight: { input: 1, output: 1.8, cache_read: 0, cache_write: 1 }, meter_weight: 1 };
+    const noWrite = { input: 2, output: 10, cache_read: 0.2, cache_write_1h: 4, ...weights } as unknown as ApiPrice;
+    const noInput = { output: 10, cache_read: 0.2, cache_write: 2.5, ...weights } as unknown as ApiPrice;
+    const noInputWithOneHour = { output: 10, cache_read: 0.2, cache_write: 2.5, cache_write_1h: 4, ...weights } as unknown as ApiPrice;
+    for (const price of [noWrite, noInput, noInputWithOneHour]) {
+      expect(meterUsd(counts, price)).toBeNull();
+      const sample = { ...REAL_SAMPLE, tokens_since_five_hour_reset: { "claude-sonnet-5": counts } };
+      // The whole sample has no figure, as for any unpriced model, rather than a $NaN total.
+      expect(sampleValue(sample, { "claude-sonnet-5": price })).toBeNull();
+      expect(usdPerPercent(sample, { "claude-sonnet-5": price })).toBeNull();
+    }
+  });
+
+  it("normalises a suffixed model id as the collector's sampler does before pricing it, and keeps the raw id", () => {
+    // Expected ids are contrib/sample.py normalize_model on the same inputs (codex-audit-collector).
+    expect(
+      ["claude-opus-5-20260115", "claude-sonnet-5 [1m]", "claude-sonnet-5[1m]", "claude-opus-5-20260115[1m]", "claude-opus-5[1m]-20260115", "claude-fable-5-20260101", "claude-opus-5-2026011", "Claude-Opus-5", "claude-sonnet-5", "<synthetic>"].map(normalizeModelId),
+    ).toEqual(["claude-opus-5", "claude-sonnet-5", "claude-sonnet-5", "claude-opus-5", "claude-unknown", "claude-fable-5", "claude-opus-5-2026011", "claude-unknown", "claude-sonnet-5", "claude-unknown"]);
+    const t = REAL_SAMPLE.tokens_since_five_hour_reset;
+    const suffixed: PublicSample = {
+      ...REAL_SAMPLE,
+      tokens_since_five_hour_reset: {
+        "claude-fable-5-20260101": t["claude-fable-5-1"],
+        "claude-opus-5-20260115": t["claude-opus-5"],
+        "claude-sonnet-5 [1m]": t["claude-sonnet-5"],
+      },
+    };
+    const v = sampleValue(suffixed, PRICES);
+    expect(v).not.toBeNull();
+    expect(Object.keys(v!.perModel).sort()).toEqual(["claude-fable-5-20260101", "claude-opus-5-20260115", "claude-sonnet-5 [1m]"]);
+    expect(v!.perModel["claude-fable-5-20260101"]).toBeCloseTo(2.776555, 5);
+    expect(v!.perModel["claude-opus-5-20260115"]).toBeCloseTo(0.39485125, 5);
+    expect(v!.perModel["claude-sonnet-5 [1m]"]).toBeCloseTo(2.0759755, 5);
+    expect(usdPerPercent(suffixed, PRICES)).toBeCloseTo(usdPerPercent(REAL_SAMPLE, PRICES)!, 9);
+    // No more than the sampler strips: a marker before the date, or a short date, stays unpriced.
+    expect(priceForModel("claude-opus-5[1m]-20260115", PRICES)).toBeUndefined();
+    expect(priceForModel("claude-opus-5-2026011", PRICES)).toBeUndefined();
   });
 
   it("prices the old Fable alias without replacing the raw sample ID, and never returns a zero-dollar sample", () => {
