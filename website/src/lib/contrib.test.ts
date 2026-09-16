@@ -79,6 +79,12 @@ describe("validateSample", () => {
     const v = validateSample({ ...BODY, plan: "enterprise" }, NOW);
     expect(v).toEqual({ ok: false, reason: "plan must be pro, max5 or max20" });
   });
+
+  it("accepts capture provenance but refuses unknown capture fields", () => {
+    const capture = { collected_at: BODY.ts, five_hour_started_at: "2026-09-09T09:00:00Z", seven_day_started_at: "2026-09-05T14:00:00Z", ownership: "configured_profile" };
+    expect(validateSample({ ...BODY, capture }, NOW).ok).toBe(true);
+    expect(validateSample({ ...BODY, capture: { ...capture, path: "/private" } }, NOW)).toEqual({ ok: false, reason: "capture.path is not a known field" });
+  });
 });
 
 describe("derived figures", () => {
@@ -157,12 +163,23 @@ describe("pricing a sample", () => {
     expect(sampleValue(REAL_SAMPLE, missingOpus)).toBeNull();
   });
 
+  it("prices the old Fable alias without replacing the raw sample ID, and never returns a zero-dollar sample", () => {
+    const old = { ...REAL_SAMPLE, tokens_since_five_hour_reset: { "claude-fable-5": REAL_SAMPLE.tokens_since_five_hour_reset["claude-fable-5-1"] } };
+    expect(sampleValue(old, PRICES)?.perModel["claude-fable-5"]).toBeCloseTo(2.776555, 5);
+    const empty = { ...REAL_SAMPLE, tokens_since_five_hour_reset: {} };
+    expect(sampleValue(empty, PRICES)).toBeNull();
+    expect(usdPerPercent(empty, PRICES)).toBeNull();
+  });
+
   it("hand-computes the real sample's dollars per 1% and Sonnet's share tokens per 1%", () => {
-    expect(usdPerPercent(REAL_SAMPLE, PRICES)).toBeCloseTo(1.749, 2);
-    const shareSonnet = shareTokensPerPercent(REAL_SAMPLE, "claude-sonnet-5", PRICES);
+    // A 3% whole-number meter cannot support a precise per-percent claim.
+    expect(usdPerPercent(REAL_SAMPLE, PRICES)).toBeNull();
+    expect(shareTokensPerPercent(REAL_SAMPLE, "claude-sonnet-5", PRICES)).toBeNull();
+    const precise = { ...REAL_SAMPLE, five_hour: { ...REAL_SAMPLE.five_hour, utilization: 5 } };
+    expect(usdPerPercent(precise, PRICES)).toBeCloseTo(1.049, 2);
+    const shareSonnet = shareTokensPerPercent(precise, "claude-sonnet-5", PRICES);
     expect(shareSonnet).not.toBeNull();
-    expect(shareSonnet!).toBeCloseTo(4_539_838, -5); // within 2% of 4.54M
-    expect(Math.abs(shareSonnet! - 4_539_837.5) / 4_539_837.5).toBeLessThan(0.02);
+    expect(shareSonnet!).toBeCloseTo(2_723_903, -5);
   });
 
   it("returns null for usdPerPercent/shareTokensPerPercent when unpriced or the meter reads 0", () => {
@@ -224,10 +241,10 @@ describe("contributorSentences", () => {
   it("states the median cost and the tracker's own figure, nothing more", () => {
     const two = { ...CONTRIB, contributors: 2, samples: 2, usd_per_pct: { median: 1.3233, spread: null, contributors: 2, samples: 2 } };
     expect(contributorSentences("max20", two, 0.9741)!.cost).toBe(
-      "On average their use came to $1.32 of list-price work per 1% of the five-hour meter. The tracker's own figure is $0.97.",
+      "Their recent, capture-qualified readings median $1.32 of estimated meter work per 1% of the five-hour meter. The tracker's own figure is $0.97.",
     );
     expect(contributorSentences("max20", two, null)!.cost).toBe(
-      "On average their use came to $1.32 of list-price work per 1% of the five-hour meter.",
+      "Their recent, capture-qualified readings median $1.32 of estimated meter work per 1% of the five-hour meter.",
     );
   });
 

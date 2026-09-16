@@ -220,11 +220,11 @@ export default function ClaudeUsageMe() {
   }, [newest, newestModels, plan, prices, usage]);
 
   const chartPoints = useMemo(() => {
-    return samples
+    return samples.filter((s) => s.plan === plan)
       .map((s) => ({ t: Date.parse(s.ts), value: usdPerPercent(s, prices) }))
       .filter((p): p is { t: number; value: number } => Number.isFinite(p.t) && p.value !== null)
       .sort((a, b) => a.t - b.t);
-  }, [samples, prices]);
+  }, [samples, prices, plan]);
 
   return (
     <PageShell>
@@ -277,10 +277,10 @@ export default function ClaudeUsageMe() {
 
         {me && newest && newestValue && newestValue.total > 0 && (
           <section>
-            <h2>Where your last 1% went</h2>
+                <h2>Estimated meter work in your newest sample</h2>
             <p className="sub">
-              The newest sample's meter dollars, split by model: each model's tokens priced by class, as a share of the
-              sample's total.
+              This is an estimated subscription-meter cost from local transcript capture, split by model using published
+              weighting assumptions. It does not establish complete account capture, included billing, API spend, or a bill.
             </p>
             <ShareBar perModel={newestValue.perModel} total={newestValue.total} models={newestModels} />
           </section>
@@ -302,7 +302,7 @@ export default function ClaudeUsageMe() {
           <section>
             <h2>Over time</h2>
             <p className="sub">
-              Combined dollars per 1% across all your models, one point per sample, against the fleet's dashed line.
+              Estimated meter dollars per 1% across all your models, one point per sample, against the fleet reference.
             </p>
             <UsdChart points={chartPoints} fleet={fleetUsd} />
           </section>
@@ -312,8 +312,8 @@ export default function ClaudeUsageMe() {
           <section>
             <h2>Samples</h2>
             <p className="sub">
-              $ per 1% combines every model in that sample. Per-model columns are share-attributed tokens per 1%, blank
-              when unpriced or the meter read 0.
+              Estimated meter dollars per 1% combine every model in that sample. Per-model columns are share-attributed
+              tokens per 1%, blank when a model is unpriced or the meter is below the 5% precision floor.
             </p>
             <div style={{ overflowX: "auto" }}>
               <table>

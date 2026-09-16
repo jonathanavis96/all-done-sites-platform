@@ -157,11 +157,13 @@ describe("POST /api/notify/send without `to` (the list send)", () => {
     expect(e.NOTIFY_KV.store.has("sent:2026-09-11")).toBe(true);
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(sent.to).toEqual(["a@example.com"]);
-    expect(sent.subject).toBe("Anthropic increased Claude's limits by 7%");
+    expect(sent.subject).toBe("Observed Claude five-hour meter budget increased by 7%");
     expect(sent.html).toContain("unsubscribe?token=");
+    expect(sent.text).toContain("not confirmation of an Anthropic-wide policy change");
+    expect(sent.html).toContain("not a proven rollout date");
   });
 
-  it("says weekly limit when scope is weekly", async () => {
+  it("describes an observed ratio without claiming a policy change", async () => {
     const e = env();
     e.NOTIFY_KV.store.set("sub:a@example.com", JSON.stringify({ status: "confirmed" }));
     const change = { date: "2026-08-21", direction: "decreased", percent: 36, scope: "weekly" };
@@ -169,8 +171,8 @@ describe("POST /api/notify/send without `to` (the list send)", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true, date: "2026-08-21", subscribers: 1, sent: 1 });
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(sent.subject).toBe("Anthropic cut Claude's weekly limit by 36%");
-    expect(sent.text).toContain("Anthropic decreased Claude's weekly limit by 36% in the week ending 21 Aug 2026.");
+    expect(sent.subject).toBe("Observed Claude weekly/window ratio decreased by 36%");
+    expect(sent.text).toContain("The observed weekly/window ratio decreased by 36%; evidence dated 21 Aug 2026.");
   });
 
   it("rejects an unrecognised scope", async () => {

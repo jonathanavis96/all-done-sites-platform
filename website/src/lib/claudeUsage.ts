@@ -2,6 +2,29 @@ export type Plan = "pro" | "max5" | "max20";
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export type TokenClass = "input" | "output" | "cache_read" | "cache_write";
 
+export interface MetricEvidence {
+  source?: "passive" | "probe" | "none" | string;
+  observed_from?: string | null;
+  observed_to?: string | null;
+  measured_at?: string | null;
+  account_count?: number;
+  reset_verified?: boolean;
+}
+
+export interface MetricQuality {
+  status?: "measured" | "conditional" | "unavailable" | string;
+  reasons?: string[];
+  capture_complete?: boolean | null;
+  unpriced_work?: boolean;
+  rounding_relative?: number | null;
+}
+
+export interface MetricFreshness {
+  as_of?: string | null;
+  stale_after?: string | null;
+  stale?: boolean | null;
+}
+
 // The meter charges each token class at API list price times a class weight, then the whole
 // thing by a meter weight; older JSON predates both fields, so they are optional.
 export interface ApiPrice extends Record<TokenClass, number> {
@@ -69,9 +92,18 @@ export interface UsageEvent {
   kind: EventKind;
   scope?: EventScope;
   label: string;
+  metric?: "meter_budget_per_window" | "weekly_to_five_hour_ratio" | string;
+  observation_scope?: "account" | string;
+  attribution?: "observed_account_metric_change" | string;
+  onset?: { earliest?: string | null; latest?: string | null; estimate?: string | null };
+  confirmation?: { at?: string | null; evidence_points?: number; seven_day_pct?: number | null };
+  evidence_quality?: "certified" | "legacy_uncertain" | string;
+  provisional?: boolean;
 }
 
 export interface UsageJson {
+  schema_version?: number;
+  rate_basis?: "meter_budget" | "api_value" | string;
   generated_at: string;
   last_sample_at: string | null;
   // When a watched account's meter was last read. Published since 2026-09-16; older
@@ -90,16 +122,27 @@ export interface UsageJson {
   rates: Record<
     string,
     {
-      tokens_per_window: number;
-      // Dollars of API value one full Max 20x window buys, held at the current regime's
-      // level like tokens_per_window; the same for every model. Older JSON omits it.
-      api_value_per_window?: number;
+      tokens_per_window: number | null;
+      // Schema v2 keeps like units separate. In legacy JSON api_value_per_window was actually
+      // meter-weighted dollars; compute() treats it that way and reprices the declared bundle.
+      meter_budget_per_window?: number | null;
+      api_value_per_window?: number | null;
+      api_list_value_per_window?: number | null;
       source: string;
       // ISO timestamp of this model's latest probe, when it has one of its own. Null/absent for
       // a model whose figures are derived from another model's probe rather than probed directly.
       probed_at?: string | null;
       probe_effort: string;
       split: Record<TokenClass, number>;
+      reference_mix?: {
+        kind?: "derived_scenario" | string;
+        source?: "passive_token_mix" | "legacy_passive_token_mix" | string;
+        as_of?: string | null;
+        cache_write_duration?: "observed" | "legacy_assumed_5m" | string;
+      };
+      evidence?: MetricEvidence;
+      quality?: MetricQuality;
+      freshness?: MetricFreshness;
     }
   >;
   effort: Record<string, Record<Effort, number>>;
@@ -109,9 +152,25 @@ export interface UsageJson {
   api_price_per_mtok: Record<string, ApiPrice>;
   history: Record<
     string,
-    { date: string; tokens_per_window: number; api_value_per_window?: number; source: string; interpolated: boolean }[]
+    {
+      date: string;
+      tokens_per_window: number;
+      api_value_per_window?: number;
+      source: string;
+      interpolated: boolean;
+      evidence?: MetricEvidence;
+      quality?: MetricQuality;
+      freshness?: MetricFreshness;
+      reference_mix?: { kind?: string; source?: string; as_of?: string | null };
+    }[]
   >;
-  last_change: { date: string; direction: "increased" | "decreased"; percent: number; model: string; scope?: EventScope } | null;
+  last_change: ({
+    date: string;
+    direction: "increased" | "decreased";
+    percent: number;
+    model: string;
+    scope?: EventScope;
+  } & Partial<Omit<UsageEvent, "date" | "kind" | "label" | "scope">>) | null;
   events?: UsageEvent[];
   // Median total tokens of one real session, per model. Optional: older JSON and models not
   // yet calibrated omit it, in which case sessionsPerWindow/sessionsPerWeek come back null.
@@ -132,7 +191,16 @@ export interface UsageJson {
   weekly_windows?: Record<
     Plan,
     | {
-        current: number;
+        current: number | null;
+        current_estimate?: {
+          value: number | null;
+          source?: string;
+          as_of?: string | null;
+          stale?: boolean | null;
+          assumed?: boolean;
+          quality?: string;
+          reasons?: string[];
+        } | null;
         history: {
           week_ending: string;
           windows: number;
@@ -141,6 +209,12 @@ export interface UsageJson {
           // True when this week is still in progress. Optional: older JSON omits it, in which
           // case it's inferred from week_ending falling after the last sample date.
           partial?: boolean;
+          source?: string;
+          observed_from?: string | null;
+          observed_to?: string | null;
+          assumed?: boolean;
+          quality?: string;
+          reasons?: string[];
         }[];
         assumed?: boolean;
         // Levels, oldest first: what the detector says the limit actually was, each held flat
@@ -153,9 +227,17 @@ export interface UsageJson {
           windows: number;
           seven_day_pct: number;
           points: number;
+          source?: string;
+          assumed?: boolean;
+          quality?: string;
+          reasons?: string[];
         }[];
       }
     | null
+  >;
+  model_plan_limits?: Record<
+    string,
+    Partial<Record<Plan, { included: boolean; weekly_fraction: number; source_url?: string; as_of?: string }>>
   >;
 }
 
@@ -167,66 +249,28 @@ export interface RegimeLevel {
   // plan ratio, rather than measured on this plan's own windows.
   inferred: boolean;
   plan: Plan;
+  provenance?: string;
 }
 
-// Every regime level on one plan's scale, oldest first, gaps included.
-//
-// A plan's own regimes are used where it has them. Everywhere else the other plans' regimes
-// are scaled across by `weekly_window_ratios` and flagged inferred, which is how Max 20x gets
-// a level for the months before the account moved onto it and Max 5x keeps one for the months
-// after. Overlaps resolve in favour of the measured level.
+// Every regime level actually published for one plan, oldest first. Missing spans stay missing:
+// a ratio observed in a different plan/era is not historical evidence for this plan.
 export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
-  const ratioOf = (p: Plan): number | null => {
-    const r = j.weekly_window_ratios?.[p];
-    return typeof r === "number" && r ? r : null;
-  };
-  const own = ratioOf(plan);
-  const out: RegimeLevel[] = [];
-  for (const source of Object.keys(PLAN_LABELS) as Plan[]) {
-    const regimes = j.weekly_windows?.[source]?.regimes;
-    if (!regimes || regimes.length === 0) continue;
-    const isOwn = source === plan;
-    // Pro borrows Max 5x's measured regimes wholesale, exactly as it borrows its weekly rows,
-    // so a ratio of 1 applies and the level is not flagged inferred twice over.
-    const from = ratioOf(source);
-    const scale = isOwn ? 1 : own !== null && from !== null ? own / from : null;
-    if (scale === null) continue;
-    for (const r of regimes) {
-      out.push({ start: r.start, end: r.end, windows: r.windows * scale, inferred: !isOwn, plan: source });
-    }
-  }
-  // A measured level wins any overlap: clip an inferred level to the parts no measured one
-  // covers, rather than dropping it whole. Max 5x's regime ends on the day Max 20x's begins, so
-  // the two always touch at the plan boundary; dropping on contact would lose every month
-  // before the move, and the chart would bridge the gap with the wrong level.
-  const measured = out.filter((r) => !r.inferred);
-  const kept: RegimeLevel[] = [];
-  for (const r of out) {
-    if (!r.inferred) {
-      kept.push(r);
-      continue;
-    }
-    let pieces = [r];
-    for (const m of measured) {
-      pieces = pieces.flatMap((p) => {
-        if (m.start >= p.end || m.end <= p.start) return [p];
-        const before = m.start > p.start ? [{ ...p, end: m.start }] : [];
-        const after = m.end < p.end ? [{ ...p, start: m.end }] : [];
-        return [...before, ...after];
-      });
-    }
-    kept.push(...pieces);
-  }
-  // Pro publishes Max 5x's regimes verbatim, so scaling both onto a third plan yields the same
-  // level twice. Dedupe on the span and the level, keeping whichever arrived first.
-  const seen = new Set<string>();
-  const unique = kept.filter((r) => {
-    const key = `${r.start}|${r.end}|${r.windows.toFixed(4)}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-  return unique.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+  const weekly = j.weekly_windows?.[plan];
+  if (!weekly?.regimes) return [];
+  const levels = weekly.regimes
+    .filter((r) => Number.isFinite(r.windows))
+    .map((r) => ({
+      start: r.start,
+      end: r.end,
+      windows: r.windows,
+      inferred: r.assumed === true || weekly.assumed === true || !r.source,
+      provenance: r.source ?? "legacy / provenance unavailable",
+      plan,
+    }))
+    .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+  const current = currentWeeklyValue(j, plan);
+  if (current !== null && levels.length > 0) levels[levels.length - 1].windows = current;
+  return levels;
 }
 
 export const RANGE_DAYS = [30, 90, 180] as const;
@@ -241,65 +285,111 @@ export const PLAN_LABELS: Record<Plan, string> = { pro: "Pro", max5: "Max 5x", m
 export const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh", "max"];
 export const CLASSES: TokenClass[] = ["input", "output", "cache_read", "cache_write"];
 
+export function contributorModelValue(
+  byModel: Record<string, number> | undefined,
+  model: string,
+  scale = 1,
+): number | null {
+  if (!byModel) return null;
+  const value = byModel[model];
+  return typeof value === "number" ? value * scale : null;
+}
+
+export function modelPlanLimit(j: UsageJson, model: string, plan: Plan) {
+  const published = j.model_plan_limits?.[model]?.[plan];
+  if (published) return published;
+  // The eligibility rule is independently known and must remain safe while an old cached JSON
+  // is being replaced. Other legacy model/plan combinations remain conditional rather than
+  // silently acquiring a model-specific cap we cannot reconstruct.
+  if (model.toLowerCase().includes("fable")) {
+    return plan === "pro"
+      ? { included: false, weekly_fraction: 0 }
+      : { included: true, weekly_fraction: 0.5 };
+  }
+  return { included: true, weekly_fraction: 1 };
+}
+
+export function currentWeeklyValue(j: UsageJson, plan: Plan): number | null {
+  const weekly = j.weekly_windows?.[plan];
+  if (!weekly || weekly.assumed) return null;
+  const estimate = weekly.current_estimate;
+  if (estimate) {
+    if (estimate.assumed || estimate.stale === true || estimate.quality === "unavailable") return null;
+    return typeof estimate.value === "number" ? estimate.value : null;
+  }
+  // v2 makes provenance mandatory for a current estimate. Legacy values are retained as
+  // historical context, but are not silently upgraded into a current measurement.
+  if ((j.schema_version ?? 1) >= 2) return typeof weekly.current === "number" ? weekly.current : null;
+  return null;
+}
+
 export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort) {
   const rate = j.rates[model];
   if (!rate) return null; // no probe data for this model yet: the page shows its unavailable state
-  const tokensPerWindow = rate.tokens_per_window * j.plan_ratios[plan];
-  const split = Object.fromEntries(CLASSES.map((c) => [c, tokensPerWindow * (rate.split?.[c] ?? 0)])) as Record<TokenClass, number>;
+  const limit = modelPlanLimit(j, model, plan);
+  const included = limit.included;
+  const baseTokens = typeof rate.tokens_per_window === "number" ? rate.tokens_per_window : null;
+  const tokensPerWindow = included && baseTokens !== null ? baseTokens * j.plan_ratios[plan] : null;
+  const split = tokensPerWindow === null
+    ? null
+    : Object.fromEntries(CLASSES.map((c) => [c, tokensPerWindow * (rate.split?.[c] ?? 0)])) as Record<TokenClass, number>;
   const perTask = j.effort[model]?.[effort] ?? NaN;
   const perTaskUsd = j.effort_usd?.[model]?.[effort];
-  const mediumTaskUsd = j.effort_usd?.[model]?.medium;
-  // Tasks and sessions scale with effort by the PRICED calibration figures, never the raw
-  // token totals. The token totals carry the cache state of the run that produced them: a
-  // Sonnet cell that happened to run cold reads about twice a warm one, which put Sonnet's
-  // low above its own medium and made the page claim fewer sessions at lower effort. The
-  // meter does not charge cache reads, so the dollar series is free of that and rises with
-  // effort on every model.
   const prices = j.api_price_per_mtok[model];
-  // The publisher's dollar figure is the measured invariant the tokens figure is derived
-  // from, so it is the one shown; list-price arithmetic over the split is only a fallback
-  // for JSON published before the figure existed.
-  const apiValueUsd =
-    typeof rate.api_value_per_window === "number"
-      ? rate.api_value_per_window * j.plan_ratios[plan]
-      : CLASSES.reduce((s, c) => s + (split[c] / 1e6) * (prices?.[c] ?? 0), 0);
-  const tasksPerWindow =
-    typeof perTaskUsd === "number" && perTaskUsd > 0 ? apiValueUsd / perTaskUsd : tokensPerWindow / perTask;
-  // Sessions per window: tokensPerWindow divided by one real session's token cost, scaled from
-  // its medium-effort baseline to the selected effort. Null (not a wrong number) whenever the
-  // session_tokens calibration for this model hasn't landed yet.
-  const sessionBase = j.session_tokens?.[model];
-  const mediumEffort = j.effort[model]?.medium;
-  // The effort multiplier: priced where the JSON carries effort_usd, otherwise the old token
-  // ratio, which is all older JSON has.
-  const effortScale =
-    typeof perTaskUsd === "number" && typeof mediumTaskUsd === "number" && mediumTaskUsd > 0
-      ? perTaskUsd / mediumTaskUsd
-      : typeof mediumEffort === "number" && mediumEffort > 0 && !Number.isNaN(perTask)
-        ? perTask / mediumEffort
-        : null;
-  const sessionsPerWindow =
-    typeof sessionBase === "number" && effortScale !== null && effortScale > 0
-      ? tokensPerWindow / (sessionBase * effortScale)
+  const planRatio = j.plan_ratios[plan];
+  const meterBase = typeof rate.meter_budget_per_window === "number"
+    ? rate.meter_budget_per_window
+    : (j.schema_version ?? 1) < 2 && typeof rate.api_value_per_window === "number"
+      ? rate.api_value_per_window
       : null;
-  // Windows per week is a measured figure, not the theoretical 28 (5-hour windows fit in a
-  // week); the seven-day limit holds far fewer. Null until the daily job has measured it, in
-  // which case every per-week figure below is null rather than guessed.
-  const windowsPerWeek = j.weekly_windows?.[plan]?.current ?? null;
-  const sessionsPerWeek =
-    sessionsPerWindow === null || windowsPerWeek === null ? null : sessionsPerWindow * windowsPerWeek;
-  const tasksPerWeek = windowsPerWeek === null ? null : tasksPerWindow * windowsPerWeek;
-  const apiValueUsdPerWeek = windowsPerWeek === null ? null : apiValueUsd * windowsPerWeek;
+  const meterBudgetUsd = included && meterBase !== null ? meterBase * planRatio : null;
+  const publishedListBase = typeof rate.api_list_value_per_window === "number"
+    ? rate.api_list_value_per_window
+    : (j.schema_version ?? 1) >= 2 && typeof rate.api_value_per_window === "number"
+      ? rate.api_value_per_window
+      : null;
+  // Old files called meter dollars `api_value_per_window`. Reprice the declared bundle for
+  // display rather than relabelling those meter dollars as list value.
+  const repricedList = split && prices
+    ? CLASSES.reduce((sum, tokenClass) => sum + (split[tokenClass] / 1e6) * (prices[tokenClass] ?? 0), 0)
+    : null;
+  const apiListValueUsd = included
+    ? publishedListBase !== null ? publishedListBase * planRatio : repricedList
+    : null;
+  const tasksPerWindow =
+    meterBudgetUsd !== null && typeof perTaskUsd === "number" && perTaskUsd > 0
+      ? meterBudgetUsd / perTaskUsd
+      : tokensPerWindow !== null && Number.isFinite(perTask) && perTask > 0
+        ? tokensPerWindow / perTask
+        : null;
+  // A session count needs measured meter cost per consistently defined session. The legacy
+  // token quotient mixed workload/reference mixes, so it is intentionally never surfaced.
+  const sessionsPerWindow = null;
+  const sessionsPerWeek = null;
+  const rawWeekly = included ? currentWeeklyValue(j, plan) : null;
+  const weeklyFraction = Number.isFinite(limit.weekly_fraction) ? limit.weekly_fraction : 1;
+  const windowsPerWeek = rawWeekly === null ? null : rawWeekly * weeklyFraction;
+  const tasksPerWeek = windowsPerWeek === null || tasksPerWindow === null ? null : tasksPerWindow * windowsPerWeek;
+  const apiListValueUsdPerWeek = windowsPerWeek === null || apiListValueUsd === null ? null : apiListValueUsd * windowsPerWeek;
   return {
+    included,
+    availabilityReason: included ? null : `${MODEL_LABELS[model] ?? model} is not included with ${PLAN_LABELS[plan]}.`,
+    weeklyFraction,
     tokensPerWindow,
     split,
     tasksPerWindow,
     tasksPerWeek,
     sessionsPerWindow,
     sessionsPerWeek,
-    apiValueUsd,
-    apiValueUsdPerWeek,
+    meterBudgetUsd,
+    apiListValueUsd,
+    apiListValueUsdPerWeek,
+    // Compatibility aliases for downstream page code while names migrate to explicit units.
+    apiValueUsd: apiListValueUsd,
+    apiValueUsdPerWeek: apiListValueUsdPerWeek,
     windowsPerWeek,
+    rateQuality: rate.quality?.status ?? ((j.schema_version ?? 1) >= 2 ? "unknown" : "legacy / conditional"),
+    rateFreshness: rate.freshness ?? null,
   };
 }
 
@@ -307,7 +397,14 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
 // itself (measured_at), "probe, 8 Sep" by the model's own probe, or plain "probe"/"derived"
 // when no date is available. A passive figure must never carry a probe's date.
 export function fmtSource(
-  rate: { source: string; probed_at?: string | null; measured_at?: string | null } | undefined,
+  rate: {
+    source: string;
+    probed_at?: string | null;
+    measured_at?: string | null;
+    evidence?: MetricEvidence;
+    quality?: MetricQuality;
+    freshness?: MetricFreshness;
+  } | undefined,
 ): string | null {
   if (!rate) return null;
   const day = (iso: string) => {
@@ -317,13 +414,16 @@ export function fmtSource(
   // A passive figure is the regime median over every account's meter readings; measured_at is
   // the newest of those, not anything this model did on its own. Say so in the fold-out's own
   // words rather than the collector's name for the instrument.
-  if (rate.source === "passive") {
-    return rate.measured_at
-      ? `the account's own meter, newest reading ${day(rate.measured_at)}`
-      : "the account's own meter";
-  }
-  if (rate.probed_at) return `${rate.source}, ${day(rate.probed_at)}`;
-  return rate.source;
+  const evidenceSource = rate.evidence?.source ?? rate.source;
+  const evidenceDate = rate.evidence?.measured_at ?? rate.evidence?.observed_to ?? rate.measured_at ??
+    (evidenceSource === "probe" ? rate.probed_at : null);
+  const base = evidenceSource === "passive" ? "account meter" : evidenceSource;
+  const qualifiers = [
+    evidenceDate ? `evidence to ${day(evidenceDate)}` : "evidence date unavailable",
+    rate.quality?.status,
+    rate.freshness?.stale === true ? "stale" : null,
+  ].filter(Boolean);
+  return `${base}${qualifiers.length ? ` · ${qualifiers.join(" · ")}` : ""}`;
 }
 
 export function fmtUsd(n: number): string {
@@ -351,14 +451,20 @@ export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "f
     const rows = Object.values(j.history ?? {}).flat();
     const firstReal = rows.filter((h) => h.source !== "held").map((h) => h.date).sort()[0];
     const first = firstReal ?? rows.map((h) => h.date).sort()[0];
-    if (!first) return { text: "Anthropic hasn't changed Claude's limits since we started measuring.", tone: "flat" };
-    return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
+    if (!first) return { text: "No account-scoped metric change is currently detected.", tone: "flat" };
+    return { text: `No account-scoped metric change detected above this method's resolution since ${fmtDate(first)}.`, tone: "flat" };
   }
   const tone = c.direction === "increased" ? "up" : "down";
-  if (c.scope === "weekly") {
-    return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
-  }
-  return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
+  const metric = c.scope === "weekly" ? "weekly-to-window ratio" : "window meter estimate";
+  const earliest = c.onset?.earliest;
+  const latest = c.onset?.latest;
+  const onset = earliest && latest && earliest !== latest
+    ? ` between ${fmtDate(earliest)} and ${fmtDate(latest)}`
+    : ` around ${fmtDate(c.onset?.estimate ?? c.date)}`;
+  const legacy = c.evidence_quality === "legacy_uncertain" || !c.onset
+    ? " (legacy event; onset and attribution are uncertain)"
+    : "";
+  return { text: `The observed account's ${metric} ${c.direction} by ${c.percent}%${onset}${legacy}.`, tone };
 }
 
 export function fmtTokens(n: number): string {
@@ -376,6 +482,7 @@ function daysBefore(dateIso: string, days: number): string {
 }
 
 export function seriesFor(j: UsageJson, plan: Plan, model: string, days: number = 90) {
+  if (!modelPlanLimit(j, model, plan).included) return [];
   const ratio = j.plan_ratios[plan];
   const hist = j.history[model] ?? [];
   if (hist.length === 0) return [];
@@ -402,6 +509,7 @@ export interface WeeklyPoint {
   // True when this point was not measured for this plan but inferred from another series'
   // point at the same date, scaled by the ratio of the two plans' current windows-per-week.
   inferred: boolean;
+  provenance?: string;
   // Tokens a full week of windows buys, only populated by weeklyTokenSeriesFor. Undefined
   // (never a wrong number) whenever neither history nor a current rate exists for the model.
   tokens?: number;
@@ -417,17 +525,12 @@ export interface WeeklySeries {
   points: WeeklyPoint[];
 }
 
-function samePoints(a: WeeklyPoint[], b: WeeklyPoint[]): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((p, i) => p.date === b[i].date && p.windows === b[i].windows);
-}
-
 // Unlike seriesFor/eventsFor, the weekly chart is not scoped to the 30/90/180-day range
 // selector: it needs only meter readings (not probes), so its full history is cheap and the
 // range picker would otherwise hide the very history (months back) that justifies the chart.
 export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
   const lastSampleDate = j.last_sample_at ? j.last_sample_at.slice(0, 10) : null;
-  const byPlan = new Map<Plan, { assumed: boolean; points: WeeklyPoint[] }>();
+  const out: WeeklySeries[] = [];
   for (const p of Object.keys(PLAN_LABELS) as Plan[]) {
     const w = j.weekly_windows?.[p];
     if (!w || w.history.length === 0) continue;
@@ -435,71 +538,10 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
       date: h.week_ending,
       windows: h.windows,
       partial: typeof h.partial === "boolean" ? h.partial : lastSampleDate !== null && h.week_ending > lastSampleDate,
-      inferred: false,
+      inferred: h.assumed === true || w.assumed === true || !h.source,
+      provenance: h.source ?? "legacy / provenance unavailable",
     }));
-    byPlan.set(p, { assumed: !!w.assumed, points });
-  }
-  const pro = byPlan.get("pro");
-  const max5 = byPlan.get("max5");
-  // Pro's history today is usually just a copy of Max 5x's, borrowed rather than measured. When
-  // that is literally true (assumed, and every point matches), collapse the two into one labelled
-  // series instead of drawing two identical overlapping lines.
-  const collapse = !!pro && !!max5 && pro.assumed && samePoints(pro.points, max5.points);
-  const out: WeeklySeries[] = [];
-  for (const p of Object.keys(PLAN_LABELS) as Plan[]) {
-    if (p === "pro" && collapse) continue;
-    const w = byPlan.get(p);
-    if (!w) continue;
-    // No "(assumed)" in the label: the dashed stroke and the legend under each chart already
-    // say which spans are inferred rather than measured.
-    const label = p === "max5" && collapse ? "Max 5x and Pro" : PLAN_LABELS[p];
-    out.push({ plan: p, assumed: w.assumed, label, sharedWithPro: p === "max5" && collapse, points: w.points });
-  }
-  // Fill gaps: each series today only spans the weeks its own plan has actually measured, so
-  // two lines can each cover only part of the axis. For every date any series has, a series
-  // missing that date gets an inferred point scaled from another series' point at that date,
-  // so the lines stay aligned as new data lands on one side before the other.
-  //
-  // The scale factor is the published `weekly_window_ratios`, a frozen measurement of how many
-  // windows a week holds on each plan. It must NOT be the quotient of the two plans' `current`
-  // fields, which is what this did until issue #54: max20's current tracks the newest regime
-  // while max5's is a frozen August calendar-week median, so their quotient carries every limit
-  // change that has landed since. It read 2.39 against a true 1.78 -- the extra 1.43 being the
-  // 14 Sep -29% -- which put inferred Max 5x weeks at 15.7 windows against a measured history
-  // that never left 9.5-11.0, and drew a 43% step at the plan boundary in both directions at
-  // once. A plan move is not a limit move, and only the limit belongs in the data.
-  const allDates = Array.from(new Set(out.flatMap((s) => s.points.map((p) => p.date)))).sort();
-  const scaleFrom = (own: Plan, other: Plan): number | null => {
-    const ownRatio = j.weekly_window_ratios?.[own];
-    const otherRatio = j.weekly_window_ratios?.[other];
-    if (typeof ownRatio === "number" && typeof otherRatio === "number" && otherRatio) {
-      return ownRatio / otherRatio;
-    }
-    // JSON published before weekly_window_ratios existed: the old drifting quotient, kept so an
-    // archived file still renders rather than losing its dashed spans entirely.
-    const ownCurrent = j.weekly_windows?.[own]?.current ?? null;
-    const otherCurrent = j.weekly_windows?.[other]?.current ?? null;
-    if (typeof ownCurrent !== "number" || !ownCurrent) return null;
-    if (typeof otherCurrent !== "number" || !otherCurrent) return null;
-    return ownCurrent / otherCurrent;
-  };
-  for (const s of out) {
-    const byDate = new Map(s.points.map((p) => [p.date, p]));
-    for (const date of allDates) {
-      if (byDate.has(date)) continue;
-      const other = out.find((o) => o !== s && o.points.some((p) => p.date === date));
-      if (!other) continue;
-      const otherPoint = other.points.find((p) => p.date === date)!;
-      const scale = scaleFrom(s.plan, other.plan);
-      if (scale === null) continue;
-      s.points.push({
-        date,
-        windows: otherPoint.windows * scale,
-        partial: otherPoint.partial,
-        inferred: true,
-      });
-    }
-    s.points.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    out.push({ plan: p, assumed: !!w.assumed, label: PLAN_LABELS[p], points });
   }
   return out;
 }
@@ -517,14 +559,17 @@ export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[
   const tokensPerWindowAt = (weekEnding: string): number | undefined => {
     if (sorted.length > 0) {
       const atOrBefore = sorted.filter((h) => h.date <= weekEnding);
-      const entry = atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1] : sorted[0];
-      return entry.tokens_per_window;
+      // A later observation cannot prove what an earlier period bought.
+      return atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1].tokens_per_window : undefined;
     }
-    if (rate) return rate.tokens_per_window;
+    if (typeof rate?.tokens_per_window === "number" && rate.evidence?.observed_from && rate.evidence.observed_from <= weekEnding) {
+      return rate.tokens_per_window;
+    }
     return undefined;
   };
   const withTokens = (s: WeeklySeries, plan: Plan, label: string): WeeklySeries => {
     const planRatio = j.plan_ratios[plan];
+    const fraction = modelPlanLimit(j, model, plan).weekly_fraction;
     return {
       ...s,
       plan,
@@ -532,19 +577,16 @@ export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[
       sharedWithPro: false,
       points: s.points.map((p) => {
         const perWindow = tokensPerWindowAt(p.date);
-        return { ...p, tokens: typeof perWindow === "number" ? p.windows * perWindow * planRatio : undefined };
+        return {
+          ...p,
+          tokens: typeof perWindow === "number" ? p.windows * perWindow * planRatio * fraction : undefined,
+        };
       }),
     };
   };
-  // Pro and Max 5x share one line on the windows chart because they are assumed to hold the
-  // same number of windows per week. They do NOT share a tokens line: a window is worth five
-  // times as much on Max 5x, so a collapsed series is expanded back into two here, each
-  // priced with its own plan ratio.
-  return base.flatMap((s) =>
-    s.sharedWithPro
-      ? [withTokens(s, "max5", PLAN_LABELS.max5), withTokens(s, "pro", PLAN_LABELS.pro)]
-      : [withTokens(s, s.plan, s.label)],
-  );
+  return base
+    .filter((s) => modelPlanLimit(j, model, s.plan).included)
+    .map((s) => withTokens(s, s.plan, s.label));
 }
 
 // The same levels priced in tokens: each regime's windows times what one window bought at the
@@ -556,21 +598,32 @@ export function weeklyTokenRegimeLevelsFor(
   model: string,
 ): (RegimeLevel & { tokens: number })[] {
   const hist = [...(j.history[model] ?? [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  const rate = j.rates[model];
   const planRatio = j.plan_ratios[plan];
-  const perWindowAt = (iso: string): number | undefined => {
+  const limit = modelPlanLimit(j, model, plan);
+  if (!limit.included) return [];
+  const historyAt = (iso: string) => {
     const d = iso.slice(0, 10);
-    if (hist.length > 0) {
-      const atOrBefore = hist.filter((h) => h.date <= d);
-      return (atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1] : hist[0]).tokens_per_window;
-    }
-    return rate ? rate.tokens_per_window : undefined;
+    const atOrBefore = hist.filter((h) => h.date <= d);
+    return atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1] : undefined;
   };
   const out: (RegimeLevel & { tokens: number })[] = [];
   for (const r of weeklyRegimeLevelsFor(j, plan)) {
-    const perWindow = perWindowAt(r.start);
-    if (typeof perWindow !== "number") continue;
-    out.push({ ...r, tokens: r.windows * perWindow * planRatio });
+    // The product changes when either the weekly regime or the five-hour rate changes. Split at
+    // the union so a five-hour change can never be hidden inside a flat weekly line.
+    const boundaries = [r.start, ...hist.map((h) => h.date).filter((d) => d > r.start && d < r.end), r.end];
+    for (let i = 0; i < boundaries.length - 1; i++) {
+      const h = historyAt(boundaries[i]);
+      if (!h) continue;
+      const historyUncertain = h.source === "held" || !h.evidence || h.quality?.status === "conditional";
+      out.push({
+        ...r,
+        start: boundaries[i],
+        end: boundaries[i + 1],
+        inferred: r.inferred || historyUncertain,
+        provenance: `${r.provenance ?? "weekly provenance unavailable"}; window ${h.source}${historyUncertain ? " / conditional" : ""}`,
+        tokens: r.windows * h.tokens_per_window * planRatio * limit.weekly_fraction,
+      });
+    }
   }
   return out;
 }

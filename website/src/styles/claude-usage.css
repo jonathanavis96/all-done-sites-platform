@@ -54,6 +54,8 @@
 .cut details p { color: var(--ads-bd); font-size: 14px; line-height: 1.6; margin: 0 0 14px; }
 .cut .stale { color: var(--red); font-size: 13px; margin-top: 8px; }
 .cut .quiet.warn { color: var(--red); }
+.cut .availability { max-width: 620px; margin: 8px auto 28px; padding: 16px 18px; border: 1px solid var(--ads-line); border-radius: 10px; background: var(--ads-surface); color: var(--ads-bd); font-size: 15px; line-height: 1.55; }
+.cut .availability b { display: block; color: var(--ads-tx); margin-bottom: 4px; }
 
 /* Personal page ("me"): dollar share bar, grouped tokens-per-1% bars, coarse-sample rows. */
 .cut svg.share-bar { border-radius: 6px; overflow: hidden; }

@@ -5,11 +5,11 @@ import NotifyForm from "@/components/NotifyForm";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
-  EFFORTS,
   MODEL_LABELS,
   PLAN_LABELS,
   RANGE_DAYS,
   compute,
+  contributorModelValue,
   eventsFor,
   fmtDate,
   fmtSource,
@@ -25,7 +25,6 @@ import {
   weeklyTokenRegimeLevelsFor,
   weeklyTokenSeriesFor,
   type ContribPoint,
-  type Effort,
   type Plan,
   type RangeDays,
   type UsageEvent,
@@ -440,20 +439,15 @@ interface ContribTab {
   legend: string;
 }
 
-// The selected model's own figure when the point carries the per-model split, so the dot
-// and the tracker's line are the same model. A point published before the split existed
-// falls back to its combined figure, which mixes every model that reading used.
+// Only the selected model's own figure is comparable with its reference line. Legacy combined
+// points mixed models and are deliberately unavailable here rather than misattributed.
 function perPct(
   byModel: Record<string, number> | undefined,
-  combined: number | null | undefined,
+  _combined: number | null | undefined,
   model: string,
   scale: number,
 ): number | null {
-  if (byModel) {
-    const own = byModel[model];
-    return typeof own === "number" ? own * scale : null;
-  }
-  return typeof combined === "number" ? combined * scale : null;
+  return contributorModelValue(byModel, model, scale);
 }
 
 const CONTRIB_TABS: ContribTab[] = [
@@ -475,7 +469,7 @@ const CONTRIB_TABS: ContribTab[] = [
     reference: (r) => r?.tokensPerWindow ?? null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
-      "Tokens a full five-hour window buys, read off each contributor's own meter. Hollow dots: meter under 5%. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
+      "Selected-model reference-mix estimates only. Legacy mixed-model points are omitted. Hollow dots: meter under 5%. Dashed line: the tracker's own conditional reference.",
   },
   {
     key: "weekly",
@@ -483,10 +477,10 @@ const CONTRIB_TABS: ContribTab[] = [
     value: (p, model) => perPct(p.tokens_per_pct_week_by_model, p.tokens_per_pct_week, model, 100),
     fmt: fmtTokens,
     reference: (r) =>
-      r && r.windowsPerWeek !== null ? r.tokensPerWindow * r.windowsPerWeek : null,
+      r && r.tokensPerWindow !== null && r.windowsPerWeek !== null ? r.tokensPerWindow * r.windowsPerWeek : null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
-      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
+      "Selected-model weekly reference-mix estimates only. Legacy mixed-model points are omitted. Dashed line: the tracker's own conditional reference.",
   },
   {
     key: "windows",
@@ -496,7 +490,7 @@ const CONTRIB_TABS: ContribTab[] = [
     reference: (r) => r?.windowsPerWeek ?? null,
     refLabel: (v, fmt) => `tracker ${fmt(v)} windows`,
     legend:
-      "Five-hour windows one week holds, from one reading: what a week buys over what a window buys, each measured on its own meter. Both meters step in whole percents, so a low reading swings it. Dashed line: the tracker's own figure.",
+      "Five-hour windows per week from paired simultaneous meter movement. Unpaired cross-workload quotients are omitted. Dashed line: the tracker's own current estimate.",
   },
 ];
 
@@ -603,7 +597,6 @@ export default function ClaudeUsageTracker() {
   const [failed, setFailed] = useState(false);
   const [plan, setPlan] = useState<Plan>("max20");
   const [model, setModel] = useState("claude-sonnet-5");
-  const [effort, setEffort] = useState<Effort>("high");
   const [range, setRange] = useState<RangeDays>(30);
 
   useEffect(() => {
@@ -620,7 +613,7 @@ export default function ClaudeUsageTracker() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
+  const r = useMemo(() => (data ? compute(data, plan, model, "high") : null), [data, plan, model]);
   const [contribMetric, setContribMetric] = useState<ContribMetric>("usd");
   const contribTab = CONTRIB_TABS.find((t) => t.key === contribMetric) ?? CONTRIB_TABS[0];
   const hasContribPoints = !!data?.contributed?.[plan]?.points?.length;
@@ -650,7 +643,13 @@ export default function ClaudeUsageTracker() {
             .map((pl) => ({
               plan: pl,
               label: PLAN_LABELS[pl],
-              levels: weeklyRegimeLevelsFor(data, pl).map((l) => ({ ...l, value: l.windows })),
+              levels: weeklyRegimeLevelsFor(data, pl)
+                .filter(() => data.model_plan_limits?.[model]?.[pl]?.included !== false)
+                .map((l) => ({
+                  ...l,
+                  value: l.windows * (data.model_plan_limits?.[model]?.[pl]?.weekly_fraction ??
+                    (model.toLowerCase().includes("fable") ? (pl === "pro" ? 0 : 0.5) : 1)),
+                })),
             }))
             .filter((p) => p.levels.length > 0)
             // Pro holds the same number of windows as Max 5x (it borrows its figures), so on
@@ -686,9 +685,7 @@ export default function ClaudeUsageTracker() {
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
   // The stale flag depends on the clock, so it is also decided after mount, never in the prerender.
-  const [stale, setStale] = useState(false);
   useEffect(() => {
-    setStale(data ? Date.now() - new Date(data.generated_at).getTime() > 3 * 86400e3 : false);
     // "Last sample" means the meter reading, so show when the meter was last read.
     // The old pair is the fallback for JSON published before meter_read_at existed, and
     // both are the wrong answer to the label: last_sample_at is the end of the newest
@@ -711,7 +708,7 @@ export default function ClaudeUsageTracker() {
     <PageShell>
       <Seo
         title="Claude Usage Tracker: what a Max plan actually buys | All Done Sites"
-        description="Measured daily from a real account: how many tokens a Claude Max 20x plan buys per 5-hour window, and whether Anthropic has changed the limit."
+        description="Account-scoped Claude usage-meter estimates, with evidence dates, uncertainty, and reference-mix token scenarios."
         canonical={`${SITE}/claude-usage-tracker/`}
         image={`${SITE}/og1200x630_v2.jpg`}
       />
@@ -746,7 +743,13 @@ export default function ClaudeUsageTracker() {
             </div>
           )}
           <NotifyForm />
-          {!unavailable && data && r && (
+          {!unavailable && data && r && !r.included && (
+            <div className="availability" role="status">
+              <b>{r.availabilityReason}</b> Fable access on Pro uses paid usage credits, so this page does not present it
+              as included subscription capacity.
+            </div>
+          )}
+          {!unavailable && data && r && r.included && r.tokensPerWindow !== null && r.split !== null && (
             <>
               <div className="sentence">
                 On{" "}
@@ -765,40 +768,21 @@ export default function ClaudeUsageTracker() {
                     ))}
                   </select>
                 </span>{" "}
-                at{" "}
-                <span className="sel">
-                  <select aria-label="Effort" value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
-                    {EFFORTS.map((e) => (
-                      <option key={e} value={e}>{e}</option>
-                    ))}
-                  </select>
-                </span>{" "}
-                effort, you get
+                , the current reference-mix estimate is
               </div>
               <div className="big">
                 {fmtTokens(r.tokensPerWindow)}
                 <span>tokens per 5-hour window</span>
               </div>
-              <div className="big usd">
-                {fmtUsd(r.apiValueUsd)}
-                <span>of API value per 5-hour window</span>
-              </div>
-              {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
+              {r.apiListValueUsd !== null && (
+                <div className="big usd">
+                  {fmtUsd(r.apiListValueUsd)}
+                  <span>API list value of that reference bundle</span>
+                </div>
+              )}
+              {r.apiListValueUsdPerWeek !== null && (
                 <div className="rate">
-                  {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
-                    <>
-                      <span>
-                        about <b>{Math.round(r.sessionsPerWindow)}</b> sessions<em>·</em>
-                        <b>{Math.round(r.sessionsPerWeek)}</b> per week
-                      </span>
-                      {r.apiValueUsdPerWeek !== null && <em className="brk">·</em>}
-                    </>
-                  )}
-                  {r.apiValueUsdPerWeek !== null && (
-                    <span>
-                      <b>{fmtUsd(r.apiValueUsdPerWeek)}</b> of API value per week
-                    </span>
-                  )}
+                  <span><b>{fmtUsd(r.apiListValueUsdPerWeek)}</b> API list value per week</span>
                 </div>
               )}
               <div className="split">
@@ -812,19 +796,26 @@ export default function ClaudeUsageTracker() {
                   <b>{fmtTokens(r.split.cache_write)}</b> cache write
                 </span>
               </div>
+              <div className="quiet">
+                Token estimate derived from the published reference mix; it is not a per-model token measurement.
+                {data.rates[model].reference_mix?.as_of
+                  ? ` Mix dated ${fmtDate(data.rates[model].reference_mix!.as_of!.slice(0, 10))}.`
+                  : " Mix date unavailable."}
+              </div>
               {fmtSource(data.rates[model]) && (
-                <div className="quiet">Source: {fmtSource(data.rates[model])}</div>
+                <div className="quiet">Window evidence: {fmtSource(data.rates[model])}</div>
               )}
-              {data.weekly_windows?.[plan] && (
+              {r.windowsPerWeek !== null ? (
                 <div className="quiet">
-                  A week currently holds about {data.weekly_windows[plan]!.current.toFixed(1)} five-hour windows, measured
-                  from a real account
-                  {data.last_change?.scope === "weekly" ? ` since the change on ${fmtDate(data.last_change.date)}` : ""}.
+                  The current account-scoped estimate is {r.windowsPerWeek.toFixed(1)} applicable five-hour windows per
+                  week{r.weeklyFraction < 1 ? ` after the model's ${Math.round(r.weeklyFraction * 100)}% weekly cap` : ""}.
                 </div>
+              ) : (
+                <div className="quiet warn">No fresh, plan-specific weekly estimate is available.</div>
               )}
-              {stale && (
+              {r.rateFreshness?.stale === true && (
                 <div className="stale">
-                  Last updated {fmtDate(data.generated_at.slice(0, 10))}. The daily job has not run since.
+                  This window estimate is stale as of its own evidence date. The JSON build time does not refresh the evidence.
                 </div>
               )}
             </>
@@ -851,17 +842,10 @@ export default function ClaudeUsageTracker() {
             <div className="sub">
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window
             </div>
-            {r && (
+            {r && r.tokensPerWindow !== null && (
               <div className="rate">
                 <span>
-                  <b>{fmtTokens(r.tokensPerWindow)}</b> tokens
-                  {r.sessionsPerWindow !== null && (
-                    <>
-                      <em>·</em>
-                      <b>{Math.round(r.sessionsPerWindow)}</b> sessions
-                    </>
-                  )}{" "}
-                  per 5-hour window
+                  <b>{fmtTokens(r.tokensPerWindow)}</b> reference-mix tokens per 5-hour window
                 </span>
               </div>
             )}
@@ -895,17 +879,10 @@ export default function ClaudeUsageTracker() {
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} · how many tokens a full week of five-hour windows
               buys. Full history.
             </p>
-            {r && r.windowsPerWeek !== null && (
+            {r && r.tokensPerWindow !== null && r.windowsPerWeek !== null && (
               <div className="rate">
                 <span>
-                  <b>{fmtTokens(r.tokensPerWindow * r.windowsPerWeek)}</b> tokens
-                  {r.sessionsPerWeek !== null && (
-                    <>
-                      <em>·</em>
-                      <b>{Math.round(r.sessionsPerWeek)}</b> sessions
-                    </>
-                  )}{" "}
-                  per week
+                  <b>{fmtTokens(r.tokensPerWindow * r.windowsPerWeek)}</b> reference-mix tokens per week
                 </span>
               </div>
             )}
@@ -918,9 +895,9 @@ export default function ClaudeUsageTracker() {
               title="Tokens per week over time"
             />
             <p className="sub">
-              Each line is the limit itself, held flat between changes: a step means a measured change, and nothing
-              else on the chart moves. Solid and shaded: selected plan. Grey: the others. Dashed: inferred from
-              another plan by the measured plan ratio, not measured on this one. Red: a measured change.
+              Each segment combines a weekly estimate with the window estimate that was supported during the same
+              dates. It splits whenever either factor changes. Dashed segments have assumed, legacy, or incomplete
+              provenance; missing spans stay missing.
             </p>
           </section>
         )}
@@ -948,7 +925,8 @@ export default function ClaudeUsageTracker() {
             />
             {weeklySeries.some((s) => s.points.length >= 2) && (
               <p className="sub chart-legend">
-                Each line is the limit itself, held flat between changes: a step means a measured change. Solid: selected plan. Grey: the others. Dashed: inferred from another plan by the measured plan ratio, not measured on this one. Pro is assumed from Max 5x.
+                Each line uses only that plan's own published history. Dashed spans have assumed or legacy provenance;
+                the page does not scale across plan-change seams to fill missing history.
               </p>
             )}
           </section>
@@ -958,8 +936,8 @@ export default function ClaudeUsageTracker() {
           <section>
             <h2>Plan comparison</h2>
             <div className="sub">
-              {MODEL_LABELS[model] ?? model} at {effort} effort. Max 20x is measured; Pro and Max 5x are scaled from it by
-              Anthropic's published 1:5:20 ratios.
+              {MODEL_LABELS[model] ?? model}. Window scenarios apply the published plan ratio to a common meter budget;
+              weekly cells require a fresh estimate for that plan and apply any model-specific weekly cap.
             </div>
             <table>
               <thead>
@@ -973,40 +951,27 @@ export default function ClaudeUsageTracker() {
               <tbody>
                 {(
                   [
-                    ["Tokens per 5-hour window", (c: ReturnType<typeof compute>) => fmtTokens(c!.tokensPerWindow)],
+                    [
+                      "Reference-mix tokens per 5-hour window",
+                      (c: ReturnType<typeof compute>) => c?.tokensPerWindow === null || !c ? "—" : fmtTokens(c.tokensPerWindow),
+                    ],
                     [
                       "Tokens per week",
                       (c: ReturnType<typeof compute>) =>
-                        c!.windowsPerWeek === null ? "—" : fmtTokens(c!.tokensPerWindow * c!.windowsPerWeek),
+                        !c || c.tokensPerWindow === null || c.windowsPerWeek === null
+                          ? "—"
+                          : fmtTokens(c.tokensPerWindow * c.windowsPerWeek),
                     ],
-                    ...(r.sessionsPerWindow !== null
+                    [
+                      "API list value per 5-hour window",
+                      (c: ReturnType<typeof compute>) => !c || c.apiListValueUsd === null ? "—" : fmtUsd(c.apiListValueUsd),
+                    ],
+                    ...(r.apiListValueUsdPerWeek !== null
                       ? ([
                           [
-                            "Sessions per window",
+                            "API list value per week",
                             (c: ReturnType<typeof compute>) =>
-                              c!.sessionsPerWindow === null
-                                ? "—"
-                                : c!.sessionsPerWindow < 1
-                                  ? "< 1"
-                                  : String(Math.round(c!.sessionsPerWindow)),
-                          ],
-                        ] as [string, (c: ReturnType<typeof compute>) => string][])
-                      : []),
-                    ...(r.sessionsPerWindow !== null && r.windowsPerWeek !== null
-                      ? ([
-                          [
-                            "Sessions per week",
-                            (c: ReturnType<typeof compute>) =>
-                              c!.sessionsPerWeek === null ? "—" : String(Math.round(c!.sessionsPerWeek)),
-                          ],
-                        ] as [string, (c: ReturnType<typeof compute>) => string][])
-                      : []),
-                    ["API value per 5-hour window", (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsd)],
-                    ...(r.windowsPerWeek !== null
-                      ? ([
-                          [
-                            "API value per week",
-                            (c: ReturnType<typeof compute>) => fmtUsd(c!.apiValueUsdPerWeek ?? 0),
+                              !c || c.apiListValueUsdPerWeek === null ? "—" : fmtUsd(c.apiListValueUsdPerWeek),
                           ],
                         ] as [string, (c: ReturnType<typeof compute>) => string][])
                       : []),
@@ -1023,8 +988,8 @@ export default function ClaudeUsageTracker() {
             </table>
             {data.weekly_windows && (
               <div className="quiet">
-                Max 20x and Max 5x weekly figures are measured from real accounts. Pro assumes the Max 5x ratio until
-                it is measured.
+                “—” means the model is ineligible or there is no fresh plan-specific evidence. Historical rows remain
+                visible in the charts with their own provenance.
               </div>
             )}
           </section>
@@ -1102,51 +1067,42 @@ export default function ClaudeUsageTracker() {
           <details>
             <summary>How we measure this</summary>
             <p>
-              Every morning the tracker reads two things off each Max 20x account it watches
-              {data?.passive_account_count ? ` (${data.passive_account_count === 1 ? "one account" : `${data.passive_account_count} accounts`} with usable readings today)` : ""}
-              : the Claude Code transcripts of the work actually done on it, and that account's own usage meter. Between
-              any two meter readings it knows how far the meter moved and which tokens were spent moving it, and that
-              gives a price for one percent of the five-hour window. Readings from every account are pooled by day.
-              Nothing is run to produce these numbers. They come out of ordinary working days.
+              The tracker pairs an account's usage-meter movement with captured Claude Code work over the same reset
+              interval. A qualifying interval estimates meter dollars per percent of the five-hour window. Each metric
+              carries its own evidence dates and quality status; rebuilding the JSON does not make old evidence fresh.
             </p>
             <p>
-              The meter does not treat every token the same. Cache reads cost nothing against it. Input, output and
-              cache writes are charged at Anthropic's list price, the output rate fitted from 60 measured stretches of
-              real work. So every reading here is an API-dollar value per percent of meter, and the token counts are
-              that value converted back through the token mix of real sessions. The effort figures come from one
-              calibration task, run at each effort level on each model.
+              Meter budget and API list value are different units. Calibration work is divided only into the
+              meter-budget figure. The displayed API value prices the declared token bundle at API list rates,
+              including cache reads. Legacy bundles with unknown cache-write duration are explicitly conditional.
             </p>
             <p>
-              The weekly limit is measured the same way, per five-hour window: how far the seven-day meter moves for
-              each full window spent. A change is dated to the day it lands rather than averaged into a calendar week.
+              The weekly-to-window ratio uses simultaneous movement of the account's five-hour and seven-day meters.
+              Events describe a change in that observed account metric. Their onset bounds and confirmation time do
+              not by themselves prove an Anthropic-wide policy change or which underlying cap moved.
             </p>
           </details>
           <details>
             <summary>Caveats</summary>
             <p>
-              Token figures depend on the token mix. Because cache reads cost nothing against the meter, cache-heavy
-              work gets far more tokens per window than cache-light work for the same dollar value. The split shown is
-              one account's real mix; yours will differ, and the dollar figure is the one that carries across. The meter
-              reports whole percent, so each reading carries up to a percent's worth of rounding.
+              Token figures are scenarios derived from the named reference mix. They are not direct per-model token
+              measurements, and a different input/output/cache mix can produce a very different token total for the
+              same meter budget. The API-list value describes only that reference bundle.
             </p>
             <p>
-              The tokens and dollars per window for Pro and Max 5x are scaled from Max 20x by Anthropic's published plan
-              ratios. The weekly window counts are not: Max 20x and Max 5x are both measured from real accounts, Max 5x
-              from the period one of them spent on that plan, and only Pro is assumed, from Max 5x.
-            </p>
-            <p>
-              The effort figures describe one task shape, run seven times at each effort level on each model. On Sonnet
-              the spread between runs is wider than the gap between low, medium and high, so read those three rows as
-              roughly equal rather than in order.
+              Window scenarios can use published plan ratios, but weekly history is never filled across a plan-change
+              seam. A missing or stale current estimate stays unavailable. Fable is excluded from Pro included usage;
+              on Max, its effective weekly scenario applies the published half-week cap.
             </p>
             <p>
               This method is only as good as what it can see. Work done away from the machine being read moves the meter
-              with no transcript to match it. Where that is obvious, because the meter moved with no transcripts at all,
-              the stretch is dropped. Partial use elsewhere is not obvious, and it reads as a cheap day.
+              with no captured transcript to match it. Unknown or unpriced positive work makes monetary estimates
+              unavailable; partial capture and whole-percent meter rounding remain stated quality limits.
             </p>
             <p>
-              The current figure does not wait for a week to finish. It is measured from the five-hour windows since the
-              last confirmed change, so a step is dated to the day it landed rather than blended into a week's average.
+              The weekly-token chart partitions at both weekly-ratio and five-hour-window changes and carries the
+              provenance of both factors. Unsupported early history is left blank rather than backfilled from a later
+              reference mix.
             </p>
             <p>
               Every number on this page comes from the JSON at{" "}

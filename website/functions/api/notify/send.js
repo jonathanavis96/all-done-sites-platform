@@ -99,18 +99,13 @@ export async function onRequestPost({ request, env }) {
   } while (cursor);
 
   const modelLabel = model ? MODEL_LABELS[model] ?? model : null;
-  const verb = direction === "increased" ? "increased" : "cut";
   const isWeekly = scope === "weekly";
-  const subject = isWeekly
-    ? `Anthropic ${verb} Claude's weekly limit by ${percent}%`
-    : `Anthropic ${verb} Claude's limits by ${percent}%`;
-  const headingText = isWeekly
-    ? `Anthropic ${direction} Claude's weekly limit by ${percent}% in the week ending ${fmtDate(date)}.`
-    : `Anthropic ${direction} Claude's limits by ${percent}% on ${fmtDate(date)}.`;
+  const metric = isWeekly ? "weekly/window ratio" : "five-hour meter budget";
+  const subject = `Observed Claude ${metric} ${direction} by ${percent}%`;
+  const headingText = `The observed ${metric} ${direction} by ${percent}%; evidence dated ${fmtDate(date)}.`;
   const heading = escapeHtml(headingText);
-  const intro = modelLabel
-    ? `Measured on ${escapeHtml(modelLabel)} from a real account. The tracker has the full history and what it means for your plan.`
-    : "Measured daily from a real account. The tracker has the full history and what it means for your plan.";
+  const qualification = "This is an estimate from watched accounts, not confirmation of an Anthropic-wide policy change. The event date records the evidence, not a proven rollout date.";
+  const intro = (modelLabel ? `Model context: ${escapeHtml(modelLabel)}. ` : "") + qualification;
 
   let sent = 0;
   const failures = [];
@@ -124,13 +119,13 @@ export async function onRequestPost({ request, env }) {
           to: [email],
           subject,
           headers: { "List-Unsubscribe": `<${unsubUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
-          text: `${headingText}\n\nSee the full history: ${PAGE}\n\nUnsubscribe: ${unsubUrl}`,
+          text: `${headingText}\n\n${qualification}\n\nSee the full history: ${PAGE}\n\nUnsubscribe: ${unsubUrl}`,
           html: emailHtml({
             heading,
             body: intro,
             ctaLabel: "See the tracker",
             ctaUrl: PAGE,
-            footerHtml: `You asked to hear about changes to Claude's limits. <a href="${unsubUrl}" style="color:#8a8f99">Unsubscribe</a>.`,
+            footerHtml: `You asked to hear about changes observed by the Claude usage tracker. <a href="${unsubUrl}" style="color:#8a8f99">Unsubscribe</a>.`,
           }),
         };
       }),

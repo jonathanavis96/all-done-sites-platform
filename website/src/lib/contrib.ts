@@ -32,8 +32,14 @@ export interface Meter {
   utilization: number;
   resets_at: string;
 }
-export type TokenCounts = Record<TokenClass, number>;
+export type TokenCounts = Record<TokenClass, number> & { cache_write_1h?: number };
 export type TokenMap = Record<string, TokenCounts>;
+export interface Capture {
+  collected_at: string;
+  five_hour_started_at: string;
+  seven_day_started_at: string;
+  ownership: "local_transcripts_unverified" | "filtered_local_transcripts";
+}
 
 export interface Sample {
   client_version: string;
@@ -45,6 +51,8 @@ export interface Sample {
   seven_day: Meter;
   tokens_since_five_hour_reset: TokenMap;
   tokens_since_seven_day_reset: TokenMap;
+  /** v2 capture metadata; optional only so old retained samples remain readable. */
+  capture?: Capture;
 }
 
 /** The subset of a stored sample the personal page is given back. */
@@ -56,6 +64,7 @@ export const PUBLIC_FIELDS: (keyof PublicSample)[] = [
   "seven_day",
   "tokens_since_five_hour_reset",
   "tokens_since_seven_day_reset",
+  "capture",
 ];
 
 const TOP_KEYS = [
@@ -68,6 +77,7 @@ const TOP_KEYS = [
   "seven_day",
   "tokens_since_five_hour_reset",
   "tokens_since_seven_day_reset",
+  "capture",
 ] as const;
 
 export type Validation = { ok: true; value: Sample } | { ok: false; reason: string };
@@ -113,7 +123,7 @@ function validateTokens(v: unknown, name: string): { ok: true; value: TokenMap }
     const counts = v[m];
     if (!isPlainObject(counts)) return { ok: false, reason: `${name}.${m} must be an object` };
     for (const k of Object.keys(counts)) {
-      if (!(CLASSES as string[]).includes(k)) return { ok: false, reason: `${name}.${m}.${k} is not a token class` };
+      if (k !== "cache_write_1h" && !(CLASSES as string[]).includes(k)) return { ok: false, reason: `${name}.${m}.${k} is not a token class` };
     }
     const row = {} as TokenCounts;
     for (const c of CLASSES) {
@@ -123,9 +133,31 @@ function validateTokens(v: unknown, name: string): { ok: true; value: TokenMap }
       }
       row[c] = n;
     }
+    if (counts.cache_write_1h !== undefined) {
+      const n = counts.cache_write_1h;
+      if (typeof n !== "number" || !Number.isSafeInteger(n) || n < 0 || n > row.cache_write) {
+        return { ok: false, reason: `${name}.${m}.cache_write_1h must be a subset of cache_write` };
+      }
+      row.cache_write_1h = n;
+    }
     out[m] = row;
   }
   return { ok: true, value: out };
+}
+
+function validateCapture(v: unknown, now: number): { ok: true; value: Capture } | { ok: false; reason: string } {
+  if (!isPlainObject(v)) return { ok: false, reason: "capture must be an object" };
+  const allowed = ["collected_at", "five_hour_started_at", "seven_day_started_at", "ownership"];
+  for (const k of Object.keys(v)) if (!allowed.includes(k)) return { ok: false, reason: `capture.${k} is not a known field` };
+  for (const k of allowed) if (!(k in v)) return { ok: false, reason: `capture.${k} is missing` };
+  for (const k of ["collected_at", "five_hour_started_at", "seven_day_started_at"] as const) {
+    const t = parseIso(v[k]);
+    if (t === null || Math.abs(t - now) > RESETS_WINDOW_MS) return { ok: false, reason: `capture.${k} must be a recent ISO timestamp` };
+  }
+  if (v.ownership !== "local_transcripts_unverified" && v.ownership !== "filtered_local_transcripts") {
+    return { ok: false, reason: "capture.ownership must describe local transcript coverage" };
+  }
+  return { ok: true, value: v as Capture };
 }
 
 /**
@@ -138,7 +170,7 @@ export function validateSample(body: unknown, now: number = Date.now()): Validat
     if (!(TOP_KEYS as readonly string[]).includes(k)) return { ok: false, reason: `${k} is not a known field` };
   }
   for (const k of TOP_KEYS) {
-    if (!(k in body)) return { ok: false, reason: `${k} is missing` };
+    if (k !== "capture" && !(k in body)) return { ok: false, reason: `${k} is missing` };
   }
   const cv = body.client_version;
   if (typeof cv !== "string" || cv.length === 0 || cv.length > 64) {
@@ -156,10 +188,26 @@ export function validateSample(body: unknown, now: number = Date.now()): Validat
   if (fh.ok === false) return { ok: false, reason: fh.reason };
   const sd = validateMeter(body.seven_day, "seven_day", now);
   if (sd.ok === false) return { ok: false, reason: sd.reason };
+  for (const [meter, duration] of [[fh.value, 5 * 3600e3], [sd.value, 7 * 86400e3]] as const) {
+    const delta = Date.parse(meter.resets_at) - ts;
+    if (delta < -120e3 || delta > duration + 120e3) {
+      return { ok: false, reason: "reset time is inconsistent with the sampled window" };
+    }
+  }
   const t5 = validateTokens(body.tokens_since_five_hour_reset, "tokens_since_five_hour_reset");
   if (t5.ok === false) return { ok: false, reason: t5.reason };
   const t7 = validateTokens(body.tokens_since_seven_day_reset, "tokens_since_seven_day_reset");
   if (t7.ok === false) return { ok: false, reason: t7.reason };
+  const capture = body.capture === undefined ? null : validateCapture(body.capture, now);
+  if (capture && capture.ok === false) return { ok: false, reason: capture.reason };
+  if (capture && capture.ok) {
+    const c = capture.value;
+    if (Math.abs(Date.parse(c.collected_at) - ts) > 120e3 ||
+        Math.abs(Date.parse(c.five_hour_started_at) + 5 * 3600e3 - Date.parse(fh.value.resets_at)) > 120e3 ||
+        Math.abs(Date.parse(c.seven_day_started_at) + 7 * 86400e3 - Date.parse(sd.value.resets_at)) > 120e3) {
+      return { ok: false, reason: "capture timestamps must match the sample and reset windows" };
+    }
+  }
   return {
     ok: true,
     value: {
@@ -172,6 +220,7 @@ export function validateSample(body: unknown, now: number = Date.now()): Validat
       seven_day: sd.value,
       tokens_since_five_hour_reset: t5.value,
       tokens_since_seven_day_reset: t7.value,
+      ...(capture ? { capture: capture.value } : {}),
     },
   };
 }
@@ -302,7 +351,18 @@ export function meterUsd(counts: TokenCounts | undefined, price: ApiPrice | unde
     const tokens = counts?.[c] ?? 0;
     sum += tokens * (price[c] ?? 0) * (price.class_weight[c] ?? 0);
   }
+  const oneHour = counts?.cache_write_1h ?? 0;
+  if (oneHour < 0 || oneHour > (counts?.cache_write ?? 0)) return null;
+  sum += oneHour * ((price.cache_write_1h ?? price.input * 2) - price.cache_write) * (price.class_weight.cache_write ?? 1);
   return (sum / 1e6) * price.meter_weight;
+}
+
+/** Keep the observed model ID in samples; aliases only choose a published price. */
+export function priceForModel(model: string, prices: Record<string, ApiPrice>): ApiPrice | undefined {
+  if (prices[model]) return prices[model];
+  const normalized = model.replace(/\s*\[1m\]$/, "").replace(/-\d{8}$/, "");
+  if (prices[normalized]) return prices[normalized];
+  return normalized === "claude-fable-5" ? prices["claude-fable-5-1"] : undefined;
 }
 
 /**
@@ -318,19 +378,19 @@ export function sampleValue(
   let total = 0;
   for (const [model, counts] of Object.entries(sample.tokens_since_five_hour_reset)) {
     if (totalTokens(counts) <= 0) continue;
-    const usd = meterUsd(counts, prices[model]);
+    const usd = meterUsd(counts, priceForModel(model, prices));
     if (usd === null) return null;
     perModel[model] = usd;
     total += usd;
   }
-  return { perModel, total };
+  return Object.keys(perModel).length > 0 && total > 0 ? { perModel, total } : null;
 }
 
 /** Total meter dollars in the sample over its five-hour percent. Null when the percent is 0 or
  * unpriced. */
 export function usdPerPercent(sample: PublicSample, prices: Record<string, ApiPrice>): number | null {
   const u = sample.five_hour.utilization;
-  if (!(u > 0)) return null;
+  if (!(u >= COARSE_BELOW)) return null;
   const v = sampleValue(sample, prices);
   if (v === null) return null;
   return v.total / u;
@@ -346,7 +406,7 @@ export function usdPerPercent(sample: PublicSample, prices: Record<string, ApiPr
  */
 export function shareTokensPerPercent(sample: PublicSample, model: string, prices: Record<string, ApiPrice>): number | null {
   const u = sample.five_hour.utilization;
-  if (!(u > 0)) return null;
+  if (!(u >= COARSE_BELOW)) return null;
   const v = sampleValue(sample, prices);
   if (v === null) return null;
   const valueM = v.perModel[model];
@@ -363,10 +423,11 @@ export function shareTokensPerPercent(sample: PublicSample, model: string, price
 export function fleetUsdPerPercent(j: UsageJson, plan: Plan): number | null {
   const ratio = j.plan_ratios?.[plan];
   if (typeof ratio !== "number") return null;
-  const withValue = Object.values(j.rates ?? {}).filter((r) => typeof r.api_value_per_window === "number");
+  const withValue = Object.values(j.rates ?? {}).filter((r) => typeof r.meter_budget_per_window === "number" || (j.schema_version !== 2 && typeof r.api_value_per_window === "number"));
   if (withValue.length === 0) return null;
   const rate = withValue.find((r) => r.source === "probe") ?? withValue[0];
-  return ((rate.api_value_per_window as number) * ratio) / 100;
+  const meter = typeof rate.meter_budget_per_window === "number" ? rate.meter_budget_per_window : rate.api_value_per_window;
+  return (meter as number * ratio) / 100;
 }
 
 // ---------------------------------------------------------------- "from contributors" chart
@@ -497,16 +558,16 @@ export function contributorSentences(
   if (!contrib || contrib.contributors <= 0) return null;
   const planLabel = PLAN_LABELS[plan];
   const n = contrib.contributors;
-  const who = n === 1 ? "One reader" : `${capitalize(numberWord(n))} readers`;
+  const who = n === 1 ? "One anonymous source" : `${capitalize(numberWord(n))} anonymous sources`;
   const has = n === 1 ? "has" : "have";
-  const intro = `${who} on ${planLabel} ${has} shared their meter so far, measured from their own use of Claude Code.`;
+  const intro = `${who} on ${planLabel} ${has} shared recent meter readings. Source IDs and account ownership are unverified.`;
 
   let cost: string | null = null;
   if (contrib.usd_per_pct === null) {
-    cost = "None of their readings had the meter above 5% yet, so there is no figure to show.";
+    cost = "No usable monetary estimate: readings may be too small, empty, unpriced, or missing capture evidence.";
   } else if (isPlanContribStat(contrib.usd_per_pct)) {
     const median = contrib.usd_per_pct.median;
-    cost = `On average their use came to $${median.toFixed(2)} of list-price work per 1% of the five-hour meter.`;
+    cost = `Their recent local-transcript readings median $${median.toFixed(2)} of estimated meter work per 1% of the five-hour meter; this is conditional on capture and meter-weight assumptions.`;
     if (typeof fleetUsd === "number" && fleetUsd > 0) {
       cost += ` The tracker's own figure is $${fleetUsd.toFixed(2)}.`;
     }
