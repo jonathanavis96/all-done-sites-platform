@@ -589,14 +589,22 @@ const EFFORT = "high";
 
 // `initial` is the prerendered snapshot, and the selectors start on `initialPlan` and
 // `initialModel`; tests render the page with either schema and any selection through them.
-// `now` fixes the clock the stale line reads. The prerender leaves it unset, so its output never
-// depends on when it ran; a test sets it to render the stale line without mounting.
+// The contributor chart starts on `initialContribMetric`. `now` fixes the clock the stale line
+// reads. The prerender leaves it unset, so its output never depends on when it ran; a test sets it
+// to render the stale line without mounting.
 export default function ClaudeUsageTracker({
   initial = initialData,
   initialPlan = "max20",
   initialModel = "claude-sonnet-5",
+  initialContribMetric = "usd",
   now,
-}: { initial?: UsageJson | null; initialPlan?: Plan; initialModel?: string; now?: number } = {}) {
+}: {
+  initial?: UsageJson | null;
+  initialPlan?: Plan;
+  initialModel?: string;
+  initialContribMetric?: ContribMetric;
+  now?: number;
+} = {}) {
   const [data, setData] = useState<UsageJson | null>(initial);
   const [failed, setFailed] = useState(false);
   const [plan, setPlan] = useState<Plan>(initialPlan);
@@ -618,7 +626,7 @@ export default function ClaudeUsageTracker({
   }, []);
 
   const r = useMemo(() => (data ? compute(data, plan, model, EFFORT) : null), [data, plan, model]);
-  const [contribMetric, setContribMetric] = useState<ContribMetric>("usd");
+  const [contribMetric, setContribMetric] = useState<ContribMetric>(initialContribMetric);
   const contribTab = CONTRIB_TABS.find((t) => t.key === contribMetric) ?? CONTRIB_TABS[0];
   const hasContribPoints = !!data?.contributed?.[plan]?.points?.length;
   const contributed = useMemo(
@@ -1035,13 +1043,10 @@ export default function ClaudeUsageTracker({
                 />
               </>
             )}
-            {/* Each sentence belongs to one chart, so it follows its own tab rather than
+            {/* The cost sentence belongs to the cost chart, so it follows its own tab rather than
                 sitting under whichever chart happens to be open. */}
             {contributed.cost && (!hasContribPoints || contribTab.key === "usd") && (
               <p className="sub">{contributed.cost}</p>
-            )}
-            {contributed.weekly && (!hasContribPoints || contribTab.key === "weekly") && (
-              <p className="sub">{contributed.weekly}</p>
             )}
           </section>
         )}

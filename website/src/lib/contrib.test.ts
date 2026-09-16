@@ -350,12 +350,14 @@ describe("contributorSentences", () => {
     expect(contributorSentences("max20", oldShape, 0.97)!.cost).toBeNull();
   });
 
-  it("mentions the weekly figure only once it is measured", () => {
-    expect(contributorSentences("max20", CONTRIB, 0.97)!.weekly).toBeNull();
+  it("never turns a pooled weekly_windows.measured into a sentence, even when schema 1 publishes a number (finding 14)", () => {
+    // Schema 1's measured is a weighted median across contributor IDs with outliers dropped; the
+    // audit withdrew it as a plan figure and schema 2 never publishes one.
     const measured: PlanContrib = { ...CONTRIB, weekly_windows: { ...CONTRIB.weekly_windows, measured: 9.4 } };
-    expect(contributorSentences("max20", measured, null)!.weekly).toBe(
-      "Across their weeks that comes to about 9.4 five-hour windows of use per week.",
-    );
+    const out = contributorSentences("max20", measured, null)!;
+    expect(out).toEqual(contributorSentences("max20", CONTRIB, null));
+    expect(Object.keys(out).sort()).toEqual(["cost", "intro"]);
+    expect(Object.values(out).join(" ")).not.toMatch(/window|9\.4/);
   });
 });
 

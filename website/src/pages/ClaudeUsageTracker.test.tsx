@@ -4,17 +4,18 @@ import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import ClaudeUsageTracker from "./ClaudeUsageTracker";
 import type { Plan, UsageJson } from "@/lib/claudeUsage";
+import type { ContribMetric } from "@/lib/contrib";
 // Schema 1: the published file as of 4401911 (generated 2026-09-16T16:30Z), what the live page
 // renders until the collector change merges. Schema 2: tracker PR #57's offline rebuild from the
 // same inputs, in which max20's weekly figure is unavailable until passive.json is re-paired.
 import schema1 from "@/lib/__fixtures__/claude-usage-schema1.json";
 import schema2 from "@/lib/__fixtures__/claude-usage-schema2.json";
 
-function render(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number): string {
+function render(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
   const html = renderToString(
     <HelmetProvider context={{}}>
       <MemoryRouter>
-        <ClaudeUsageTracker initial={j} initialPlan={plan} initialModel={model} now={now} />
+        <ClaudeUsageTracker initial={j} initialPlan={plan} initialModel={model} now={now} initialContribMetric={contribMetric} />
       </MemoryRouter>
     </HelmetProvider>,
   );
@@ -147,6 +148,28 @@ describe("the tracker page renders both schemas", () => {
     expect(render(REBUILT, "max20", "claude-sonnet-5", Date.parse("2026-09-27T00:00:00Z"))).toContain("Last measured 16 Sep 2026.");
     // Without a fixed clock the prerender never shows it, whatever the evidence's age.
     expect(render(oldOpus, "max20", "claude-opus-5")).not.toContain("Last measured");
+  });
+
+  it("captions no contributor chart with a pooled windows-per-week figure, even when schema 1 publishes one (findings 7, 14)", () => {
+    // The review's case: contributed.max20.weekly_windows.measured is a number, and the tab that
+    // used to carry its sentence now plots tokens per week.
+    const pooled: UsageJson = structuredClone(LIVE);
+    pooled.contributed!.max20!.weekly_windows.measured = 9.4;
+    const weeklyTab = render(pooled, "max20", "claude-sonnet-5", undefined, "weekly");
+    // The tokens-per-week tab is the one open: its dashed line is the tracker's tokens per week, and
+    // neither live reading carries a per-model weekly figure to plot.
+    expect(weeklyTab).toContain("tracker 5929M");
+    expect(weeklyTab).toContain("No contributed reading carries this figure yet");
+    for (const text of [weeklyTab, render(pooled), render(pooled, "max20", "claude-sonnet-5", undefined, "window")]) {
+      expect(text).toContain("Two contributor IDs on Max 20x have shared meter readings.");
+      expect(text).not.toContain("windows of use per week");
+      expect(text).not.toContain("9.4");
+    }
+    // Nor as a lone sentence when the plan has no points to chart.
+    delete pooled.contributed!.max20!.points;
+    const noChart = render(pooled);
+    expect(noChart).toContain("$0.90 of meter budget per 1% of the five-hour meter");
+    expect(noChart).not.toContain("windows of use per week");
   });
 
   it("says the data is unavailable when schema 2 publishes no eligible measurement, rather than substituting one (finding 13)", () => {

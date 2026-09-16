@@ -561,27 +561,22 @@ function capitalize(s: string): string {
 }
 
 /**
- * Plain-English sentence for the weekly-limit block: whether a weekly figure could be shown,
- * and if not, why, in terms of the people involved rather than the raw `reason` string.
- */
-function weeklySentence(w: PlanContrib["weekly_windows"] | undefined): string | null {
-  if (typeof w?.measured === "number") {
-    return `Across their weeks that comes to about ${w.measured.toFixed(1)} five-hour windows of use per week.`;
-  }
-  return null;
-}
-
-/**
- * The sentences for the "From contributors" section on one plan: who has shared their meter,
- * what a percent of it cost them against the tracker's own figure, and, only once measured,
- * what their weeks say about the weekly limit. Short and plain; the reader is not expected to
- * know the jargon. Returns null when there is nothing to say (no contributors on this plan).
+ * The sentences for the "From contributors" section on one plan: who has shared their meter, and
+ * what a percent of it cost them against the tracker's own figure. Short and plain; the reader is
+ * not expected to know the jargon. Returns null when there is nothing to say (no contributors on
+ * this plan).
+ *
+ * There is no sentence for `weekly_windows.measured`. In schema 1 it is one windows-per-week
+ * figure pooled across contributor IDs: an all-history weighted median with outliers dropped,
+ * which the audit's finding 14 says can hide a limit change and stands in for a plan figure the
+ * unverified sources cannot support. Schema 2 never publishes it (measured is always null), and no
+ * chart on the page plots windows per week any more (finding 7).
  */
 export function contributorSentences(
   plan: Plan,
   contrib: PlanContrib | undefined,
   fleetUsd: number | null,
-): { intro: string; cost: string | null; weekly: string | null } | null {
+): { intro: string; cost: string | null } | null {
   if (!contrib || contrib.contributors <= 0) return null;
   const planLabel = PLAN_LABELS[plan];
   const n = contrib.contributors;
@@ -603,5 +598,5 @@ export function contributorSentences(
     }
   }
 
-  return { intro, cost, weekly: weeklySentence(contrib.weekly_windows) };
+  return { intro, cost };
 }
