@@ -16,6 +16,8 @@ import {
   modelPlanLimit,
   currentWeeklyEstimate,
   rateStaleAfter,
+  rateEvidenceAt,
+  staleEvidenceAt,
   type UsageJson,
 } from "./claudeUsage";
 
@@ -429,8 +431,33 @@ describe("rateStaleAfter (finding 16)", () => {
     expect(rateStaleAfter(rebuilt, SONNET)).toBe("2026-09-26T15:23:08+00:00");
     const stale: UsageJson = { ...V2, rates: { [SONNET]: { ...V2.rates[SONNET], freshness: { as_of: "2026-09-01T00:00:00+00:00", stale: true } } } };
     expect(rateStaleAfter(stale, SONNET)).toBe("2026-09-01T00:00:00+00:00");
-    // Schema 1 has only last_sample_at, held for three days.
+    // Schema 1 without a per-model date has only last_sample_at, held for three days.
     expect(rateStaleAfter(J, SONNET)).toBe("2026-09-08T08:00:00.000Z");
+  });
+
+  it("follows the selected model's own date on schema 1, not a fresher reading on another model", () => {
+    // The review's case: the file's newest sample is today, from Sonnet, while Opus's own figure
+    // was last measured 11 days ago. Opus is stale and says so with its own date.
+    const now = Date.parse("2026-09-16T17:00:00Z");
+    const mixed: UsageJson = {
+      ...J,
+      last_sample_at: "2026-09-16T15:00:00+00:00",
+      rates: {
+        [SONNET]: { ...J.rates[SONNET], measured_at: "2026-09-16T15:00:00+00:00" },
+        "claude-opus-5": { ...J.rates[SONNET], measured_at: "2026-09-05T12:00:00+00:00" },
+      },
+    };
+    expect(rateEvidenceAt(mixed, "claude-opus-5")).toBe("2026-09-05T12:00:00+00:00");
+    expect(rateStaleAfter(mixed, "claude-opus-5")).toBe("2026-09-08T12:00:00.000Z");
+    expect(staleEvidenceAt(mixed, "claude-opus-5", now)).toBe("2026-09-05T12:00:00+00:00");
+    expect(staleEvidenceAt(mixed, SONNET, now)).toBeNull();
+  });
+
+  it("shows a schema 2 figure's own freshness date once it is past stale_after or marked stale", () => {
+    expect(staleEvidenceAt(V2, SONNET, Date.parse("2026-09-20T00:00:00Z"))).toBeNull();
+    expect(staleEvidenceAt(V2, SONNET, Date.parse("2026-09-27T00:00:00Z"))).toBe(V2.rates[SONNET].freshness!.as_of);
+    const marked: UsageJson = { ...V2, rates: { [SONNET]: { ...V2.rates[SONNET], freshness: { as_of: "2026-09-01T00:00:00+00:00", stale: true } } } };
+    expect(staleEvidenceAt(marked, SONNET, Date.parse("2026-09-02T00:00:00Z"))).toBe("2026-09-01T00:00:00+00:00");
   });
 });
 
@@ -559,6 +586,25 @@ describe("eventsFor", () => {
   });
   it("returns nothing for a model with no history", () => {
     expect(eventsFor(J, "claude-nonexistent", 90)).toEqual([]);
+  });
+  it("anchors on the same last plotted row as the series when schema 2 ends on unpriced days", () => {
+    // Schema 2 publishes a day with no priced reference mix as tokens_per_window null. The chart
+    // ends on 5 Sep, so a change on 20 Jun is inside its 90 days, and one on 1 Oct is past its end.
+    const trailing: UsageJson = {
+      ...J,
+      history: { [SONNET]: [
+        ...J.history[SONNET],
+        { date: "2026-09-20", tokens_per_window: null, source: "passive", interpolated: false },
+        { date: "2026-10-10", tokens_per_window: null, source: "passive", interpolated: false },
+      ] },
+      events: [
+        { date: "2026-06-20", kind: "change", label: "Early change" },
+        { date: "2026-10-01", kind: "change", label: "After the last plotted day" },
+      ],
+    };
+    const series = seriesFor(trailing, "max20", SONNET, 90);
+    expect(series[series.length - 1].date).toBe("2026-09-05");
+    expect(eventsFor(trailing, SONNET, 90).map((e) => e.date)).toEqual(["2026-06-20"]);
   });
 });
 

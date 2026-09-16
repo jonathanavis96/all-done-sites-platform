@@ -15,7 +15,9 @@ export type TokenClass = "input" | "output" | "cache_read" | "cache_write";
 export interface ApiPrice extends Record<TokenClass, number> {
   cache_write_1h?: number;
   meter_weight?: number;
-  class_weight?: Record<TokenClass, number>;
+  // The collector's rule: a class missing from class_weight weighs 1, and the one-hour cache
+  // write weighs as cache_write unless it has its own entry.
+  class_weight?: Partial<Record<TokenClass | "cache_write_1h", number>>;
 }
 
 // One plan's contributed-sample aggregate, published under `contributed[plan]`. usd_per_pct is
@@ -458,16 +460,34 @@ export function fmtSource(
   return rate.source + suffix;
 }
 
+// The newest evidence behind one model's figure: its own freshness date, else its own
+// measured_at, else the file's last_sample_at for JSON that dates neither.
+export function rateEvidenceAt(j: UsageJson, model: string): string | null {
+  const rate = j.rates[model];
+  return rate?.freshness?.as_of ?? rate?.measured_at ?? j.last_sample_at ?? null;
+}
+
 // When a model's rate stops being current evidence. Schema 2 publishes it per figure; schema 1
-// has only last_sample_at, the newest completed measurement, which the page held for three days.
-// Deliberately not generated_at: rebuilding the file does not make its evidence newer (finding 16).
+// holds the model's own evidence date for three days. Deliberately not generated_at, and not the
+// file-wide last_sample_at when the model has its own date: a rebuilt file, or a fresh reading on
+// another model, does not make this figure's evidence newer (finding 16).
 export function rateStaleAfter(j: UsageJson, model: string): string | null {
   const f = j.rates[model]?.freshness;
   if (f?.stale === true) return f.as_of ?? j.generated_at;
   if (f?.stale_after) return f.stale_after;
-  if (isSchema2(j) || !j.last_sample_at) return null;
-  const t = Date.parse(j.last_sample_at);
+  if (isSchema2(j)) return null;
+  const at = rateEvidenceAt(j, model);
+  const t = at ? Date.parse(at) : NaN;
   return Number.isFinite(t) ? new Date(t + 3 * 86400e3).toISOString() : null;
+}
+
+// The date the page's "Last measured" line shows at `now`, or null while the figure is current.
+// One function decides both whether the line shows and which date it gives, so the two cannot
+// come from different evidence.
+export function staleEvidenceAt(j: UsageJson, model: string, now: number): string | null {
+  const after = rateStaleAfter(j, model);
+  if (after === null || !(now > Date.parse(after))) return null;
+  return rateEvidenceAt(j, model);
 }
 
 export function fmtUsd(n: number): string {
@@ -524,10 +544,16 @@ function daysBefore(dateIso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// The history rows the window chart can plot. Schema 2 publishes a day with no priced reference
+// mix as tokens_per_window null; the series and its markers both anchor on the last plotted row.
+function plottedRows(j: UsageJson, model: string): (HistoryRow & { tokens_per_window: number })[] {
+  return (j.history[model] ?? []).filter((h): h is HistoryRow & { tokens_per_window: number } => typeof h.tokens_per_window === "number");
+}
+
 export function seriesFor(j: UsageJson, plan: Plan, model: string, days: number = 90) {
   if (!modelPlanLimit(j, model, plan).included) return [];
   const ratio = j.plan_ratios[plan];
-  const hist = (j.history[model] ?? []).filter((h) => typeof h.tokens_per_window === "number");
+  const hist = plottedRows(j, model);
   if (hist.length === 0) return [];
   const cutoff = daysBefore(hist[hist.length - 1].date, days);
   return hist
@@ -536,7 +562,7 @@ export function seriesFor(j: UsageJson, plan: Plan, model: string, days: number 
 }
 
 export function eventsFor(j: UsageJson, model: string, days: number = 90): UsageEvent[] {
-  const hist = j.history[model] ?? [];
+  const hist = plottedRows(j, model);
   if (hist.length === 0) return [];
   const anchor = hist[hist.length - 1].date;
   const cutoff = daysBefore(anchor, days);

@@ -10,11 +10,11 @@ import type { Plan, UsageJson } from "@/lib/claudeUsage";
 import schema1 from "@/lib/__fixtures__/claude-usage-schema1.json";
 import schema2 from "@/lib/__fixtures__/claude-usage-schema2.json";
 
-function render(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5"): string {
+function render(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number): string {
   const html = renderToString(
     <HelmetProvider context={{}}>
       <MemoryRouter>
-        <ClaudeUsageTracker initial={j} initialPlan={plan} initialModel={model} />
+        <ClaudeUsageTracker initial={j} initialPlan={plan} initialModel={model} now={now} />
       </MemoryRouter>
     </HelmetProvider>,
   );
@@ -132,6 +132,21 @@ describe("the tracker page renders both schemas", () => {
     expect(text).toContain("6.1 five-hour windows per week");
     // 235,146,113 tokens a window x 6.13 x 0.5.
     expect(row(text, "Tokens per week")).toEqual(["—", "—", "721M"]);
+  });
+
+  it("marks the selected model stale by its own evidence, and dates the line by that same evidence (finding 16)", () => {
+    // Schema 1: the file's newest sample is today, from Sonnet, while Opus was last measured on
+    // 5 Sep. The line shows for Opus with Opus's date, and not for Sonnet.
+    const now = Date.parse("2026-09-16T17:00:00Z");
+    const oldOpus: UsageJson = structuredClone(LIVE);
+    oldOpus.rates["claude-opus-5"].measured_at = "2026-09-05T12:00:00+00:00";
+    expect(render(oldOpus, "max20", "claude-opus-5", now)).toContain("Last measured 5 Sep 2026.");
+    expect(render(oldOpus, "max20", "claude-sonnet-5", now)).not.toContain("Last measured");
+    // Schema 2: current until the figure's own stale_after, then dated by its own as_of.
+    expect(render(REBUILT, "max20", "claude-sonnet-5", Date.parse("2026-09-20T00:00:00Z"))).not.toContain("Last measured");
+    expect(render(REBUILT, "max20", "claude-sonnet-5", Date.parse("2026-09-27T00:00:00Z"))).toContain("Last measured 16 Sep 2026.");
+    // Without a fixed clock the prerender never shows it, whatever the evidence's age.
+    expect(render(oldOpus, "max20", "claude-opus-5")).not.toContain("Last measured");
   });
 
   it("says the data is unavailable when schema 2 publishes no eligible measurement, rather than substituting one (finding 13)", () => {

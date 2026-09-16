@@ -17,7 +17,7 @@ import {
   fmtUsd2,
   headline,
   modelPlanLimit,
-  rateStaleAfter,
+  staleEvidenceAt,
   seriesFor,
   weeklyEventsFor,
   latestWeeklyChange,
@@ -589,11 +589,14 @@ const EFFORT = "high";
 
 // `initial` is the prerendered snapshot, and the selectors start on `initialPlan` and
 // `initialModel`; tests render the page with either schema and any selection through them.
+// `now` fixes the clock the stale line reads. The prerender leaves it unset, so its output never
+// depends on when it ran; a test sets it to render the stale line without mounting.
 export default function ClaudeUsageTracker({
   initial = initialData,
   initialPlan = "max20",
   initialModel = "claude-sonnet-5",
-}: { initial?: UsageJson | null; initialPlan?: Plan; initialModel?: string } = {}) {
+  now,
+}: { initial?: UsageJson | null; initialPlan?: Plan; initialModel?: string; now?: number } = {}) {
   const [data, setData] = useState<UsageJson | null>(initial);
   const [failed, setFailed] = useState(false);
   const [plan, setPlan] = useState<Plan>(initialPlan);
@@ -663,13 +666,15 @@ export default function ClaudeUsageTracker({
   const h = data ? headline(data) : null;
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
-  // The stale flag depends on the clock, so it is also decided after mount, never in the prerender.
-  // It follows the selected figure's own evidence date, not when the file was built (finding 16).
-  const [stale, setStale] = useState(false);
+  // The stale line depends on the clock, so without a fixed `now` it is decided after mount, never
+  // in the prerender. Whether it shows and the date it gives both follow the selected figure's own
+  // evidence, not when the file was built or another model's reading (finding 16).
+  const [staleAt, setStaleAt] = useState<string | null>(() =>
+    now !== undefined && initial ? staleEvidenceAt(initial, initialModel, now) : null,
+  );
   useEffect(() => {
-    const after = data ? rateStaleAfter(data, model) : null;
-    setStale(after !== null && Date.now() > Date.parse(after));
-  }, [data, model]);
+    setStaleAt(data ? staleEvidenceAt(data, model, now ?? Date.now()) : null);
+  }, [data, model, now]);
   useEffect(() => {
     // "Last sample" means the meter reading, so show when the meter was last read.
     // The old pair is the fallback for JSON published before meter_read_at existed, and
@@ -699,7 +704,6 @@ export default function ClaudeUsageTracker({
       {MODEL_LABELS[model] ?? model} is not included with {PLAN_LABELS[plan]}.
     </>
   );
-  const evidenceAt = data ? data.rates[model]?.freshness?.as_of ?? data.rates[model]?.measured_at ?? data.last_sample_at : null;
 
   return (
     <PageShell>
@@ -823,7 +827,7 @@ export default function ClaudeUsageTracker({
                       )}
                     </div>
                   )}
-                  {stale && evidenceAt && <div className="stale">Last measured {fmtDate(evidenceAt.slice(0, 10))}.</div>}
+                  {staleAt && <div className="stale">Last measured {fmtDate(staleAt.slice(0, 10))}.</div>}
                 </>
               )}
             </>
