@@ -230,9 +230,9 @@ function WeeklyChart({
   const [hoverX, setHoverX] = useState<number | null>(null);
   const plotted = series.filter((s) => s.points.length >= 2);
   if (plotted.length === 0) return <p className="sub">Not enough weekly history yet.</p>;
-  // The plot spans the whole viewBox so every chart's box lines up with the text and tables
-  // around it; plan labels sit inside the plot, against the right edge.
-  const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
+  // The plot stops short of the viewBox so each plan's label sits in the right margin, clear of
+  // the lines; the box itself still spans the text column, so the charts line up with it.
+  const W = 840, H = 260, L = 44, R = 732, T = 20, B = 200;
   const vals = plotted.flatMap((s) => s.points.map((p) => p.windows));
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
   const day = (d: string) => Date.parse(d + "T00:00:00Z");
@@ -319,6 +319,12 @@ function WeeklyChart({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
+      <defs>
+        <linearGradient id="windowsfill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="#0EA5E9" stopOpacity=".28" />
+          <stop offset="1" stopColor="#0EA5E9" stopOpacity=".03" />
+        </linearGradient>
+      </defs>
       <g stroke="#E6E9EE" strokeWidth="1">
         {ticks.map((t) => (
           <line key={t} x1={L} x2={R} y1={y(t)} y2={y(t)} />
@@ -370,8 +376,16 @@ function WeeklyChart({
           pts.map((q) => [xDate(q.date)!, y(q.windows)] as [number, number]),
           weeklyChange ? xDate(weeklyChange.date) : null,
         );
+
+        const xy = pts.map((q) => [xDate(q.date)!, y(q.windows)] as [number, number]);
         return (
           <g key={s.plan}>
+            {isSelected && xy.length >= 2 && (
+              <polygon
+                fill="url(#windowsfill)"
+                points={`${xy[0][0]},${B} ${xy.map(([px, py]) => `${px},${py}`).join(" ")} ${xy[xy.length - 1][0]},${B}`}
+              />
+            )}
             {isSelected && drop.length === 2 && (
               <polygon
                 fill="#B42318"
@@ -404,12 +418,7 @@ function WeeklyChart({
                 strokeWidth={2}
               />
             ))}
-            <text
-              x={R - 4}
-              y={(labelY.get(s.plan) ?? y(last.windows)) - 8}
-              textAnchor="end"
-              style={{ fill: color, fontWeight: 600, paintOrder: "stroke", stroke: "#F8FAFC", strokeWidth: 3 }}
-            >
+            <text x={R + 10} y={labelY.get(s.plan) ?? y(last.windows)} style={{ fill: color, fontWeight: 600 }}>
               {s.label}
             </text>
           </g>
@@ -483,9 +492,9 @@ function WeeklyTokensChart({
     .map((s) => ({ ...s, points: s.points.filter(isTokenPoint) }))
     .filter((s) => s.points.length >= 2);
   if (plotted.length === 0) return <p className="sub">Not enough weekly history yet.</p>;
-  // The plot spans the whole viewBox so every chart's box lines up with the text and tables
-  // around it; plan labels sit inside the plot, against the right edge.
-  const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
+  // The plot stops short of the viewBox so each plan's label sits in the right margin, clear of
+  // the lines; the box itself still spans the text column, so the charts line up with it.
+  const W = 840, H = 260, L = 44, R = 732, T = 20, B = 200;
   const vals = plotted.flatMap((s) => s.points.map((p) => p.tokens));
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
   const day = (d: string) => Date.parse(d + "T00:00:00Z");
@@ -615,12 +624,7 @@ function WeeklyTokensChart({
                 strokeWidth={2}
               />
             ))}
-            <text
-              x={R - 4}
-              y={(labelY.get(s.plan) ?? y(last.tokens)) - 8}
-              textAnchor="end"
-              style={{ fill: color, fontWeight: 600, paintOrder: "stroke", stroke: "#F8FAFC", strokeWidth: 3 }}
-            >
+            <text x={R + 10} y={labelY.get(s.plan) ?? y(last.tokens)} style={{ fill: color, fontWeight: 600 }}>
               {s.label}
             </text>
           </g>
