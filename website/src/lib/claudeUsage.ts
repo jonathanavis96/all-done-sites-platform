@@ -274,8 +274,9 @@ export interface UsageJson {
   history: Record<string, HistoryRow[]>;
   last_change: ChangeRecord | null;
   events?: UsageEvent[];
-  // Schema 1 only: median tokens of one session on another account. The page never divides by
-  // it: those sessions do not share the reference mix (audit finding 11).
+  // Median tokens of one session on another account, per model. compute() divides the window
+  // by it (scaled by the priced effort figures) for the sessions per window and per week lines,
+  // as the page did at PR #74; audit finding 11 had dropped that and Jonathan reversed it.
   session_tokens?: Record<string, number>;
   // How many accounts the passive readings rest on. Counts only: the JSON is public and the
   // account names are real people's logins. Optional: older JSON omits it.
@@ -299,14 +300,6 @@ export function isSchema2(j: UsageJson): boolean {
 // The meter budget of one Max 20x window. Schema 1 published it as api_value_per_window.
 export function meterBudgetPerWindow(j: UsageJson, rate: Rate): number | null {
   const v = isSchema2(j) ? rate.meter_budget_per_window : rate.api_value_per_window;
-  return typeof v === "number" ? v : null;
-}
-
-// The API list value of the tokens one Max 20x window holds. Schema 1 has no such figure: its
-// only dollar field is the meter budget, so this is null rather than that number relabelled.
-export function apiListValuePerWindow(j: UsageJson, rate: Rate): number | null {
-  if (!isSchema2(j)) return null;
-  const v = rate.api_list_value_per_window ?? rate.api_value_per_window;
   return typeof v === "number" ? v : null;
 }
 
