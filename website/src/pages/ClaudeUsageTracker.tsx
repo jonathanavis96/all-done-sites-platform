@@ -20,6 +20,7 @@ import {
   seriesFor,
   weeklyEventsFor,
   weeklySeriesFor,
+  weeklyTokenSeriesFor,
   type ContribPoint,
   type Effort,
   type Plan,
@@ -393,6 +394,141 @@ function WeeklyChart({
   );
 }
 
+function WeeklyTokensChart({ series, selectedPlan }: { series: WeeklySeries[]; selectedPlan: Plan }) {
+  type TokenPoint = WeeklyPoint & { tokens: number };
+  const isTokenPoint = (p: WeeklyPoint): p is TokenPoint => typeof p.tokens === "number" && Number.isFinite(p.tokens);
+  const plotted = series
+    .map((s) => ({ ...s, points: s.points.filter(isTokenPoint) }))
+    .filter((s) => s.points.length >= 2);
+  if (plotted.length === 0) return <p className="sub">Not enough weekly history yet.</p>;
+  const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
+  const vals = plotted.flatMap((s) => s.points.map((p) => p.tokens));
+  const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
+  const day = (d: string) => Date.parse(d + "T00:00:00Z");
+  const allDates = Array.from(new Set(plotted.flatMap((s) => s.points.map((p) => p.date)))).sort();
+  const d1 = Math.max(...allDates.map(day));
+  const d0 = Math.min(...allDates.map(day));
+  const span = Math.max(1, d1 - d0);
+  const xDate = (d: string) => {
+    const t = day(d);
+    if (!(t >= d0 && t <= d1)) return null;
+    return L + ((t - d0) / span) * (R - L);
+  };
+  const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
+  const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
+  const dayMs = 86400e3;
+  const spanDays = (d1 - d0) / dayMs;
+  const stepWeeks = spanDays > 300 ? 8 : spanDays > 120 ? 4 : 2;
+  const stepMs = stepWeeks * 7 * dayMs;
+  const xTicks: string[] = [];
+  for (let t = d0; t <= d1; t += stepMs) {
+    xTicks.push(new Date(t).toISOString().slice(0, 10));
+  }
+  const ariaLabel = [
+    "Tokens per week over time",
+    ...plotted.map(
+      (s) =>
+        `${s.label}: ${s.points.map((p) => `${fmtDate(p.date)} ${fmtTokens(p.tokens)}${p.partial ? " (partial week)" : ""}`).join(", ")}`,
+    ),
+  ].join(". ");
+  return (
+    <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
+      <defs>
+        <linearGradient id="weeklyfill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="#0EA5E9" stopOpacity=".28" />
+          <stop offset="1" stopColor="#0EA5E9" stopOpacity=".02" />
+        </linearGradient>
+      </defs>
+      <g stroke="#E6E9EE" strokeWidth="1">
+        {ticks.map((t) => (
+          <line key={t} x1={L} x2={R} y1={y(t)} y2={y(t)} />
+        ))}
+      </g>
+      {ticks.map((t) => (
+        <text key={t} x={0} y={y(t) + 4}>{fmtTokens(t)}</text>
+      ))}
+      {plotted.map((s) => {
+        const pts = s.points.filter((p) => xDate(p.date) !== null);
+        if (pts.length === 0) return null;
+        const isSelected = s.plan === selectedPlan || (!!s.sharedWithPro && (selectedPlan === "pro" || selectedPlan === "max5"));
+        const color = isSelected ? "#0EA5E9" : "#94A3B8";
+        const measuredWidth = isSelected ? 2.5 : 1.5;
+        const inferredWidth = isSelected ? 1.5 : 1.25;
+        // Split into consecutive runs by `inferred`, same as WeeklyChart, so measured spans
+        // draw solid and inferred spans draw dashed with the boundary point shared by both.
+        const runs: { inferred: boolean; pts: TokenPoint[] }[] = [];
+        for (const p of pts) {
+          const prevRun = runs[runs.length - 1];
+          if (!prevRun || prevRun.inferred !== p.inferred) {
+            const boundary = prevRun ? [prevRun.pts[prevRun.pts.length - 1]] : [];
+            runs.push({ inferred: p.inferred, pts: [...boundary, p] });
+          } else {
+            prevRun.pts.push(p);
+          }
+        }
+        const last = pts[pts.length - 1];
+        const lastX = xDate(last.date)!;
+        const nearRightEdge = lastX > R - 120;
+        // The selected plan's area fill covers only its measured (non-inferred) span, never an
+        // inferred one, exactly as the top chart never fills a held/dashed span.
+        const measuredRun = isSelected ? runs.filter((r) => !r.inferred) : [];
+        return (
+          <g key={s.plan}>
+            {isSelected &&
+              measuredRun.map((run, i) => (
+                <polygon
+                  key={`fill-${i}`}
+                  fill="url(#weeklyfill)"
+                  points={`${xDate(run.pts[0].date)},${B} ${run.pts.map((p) => `${xDate(p.date)},${y(p.tokens)}`).join(" ")} ${xDate(run.pts[run.pts.length - 1].date)},${B}`}
+                />
+              ))}
+            {runs.map((run, i) => (
+              <polyline
+                key={i}
+                fill="none"
+                stroke={color}
+                strokeWidth={run.inferred ? inferredWidth : measuredWidth}
+                strokeLinejoin="round"
+                strokeDasharray={run.inferred ? "5 4" : undefined}
+                points={run.pts.map((p) => `${xDate(p.date)},${y(p.tokens)}`).join(" ")}
+              />
+            ))}
+            {pts.filter((p) => p.partial && !p.inferred).map((p) => (
+              <circle
+                key={p.date}
+                cx={xDate(p.date)!}
+                cy={y(p.tokens)}
+                r={isSelected ? 4 : 3}
+                fill="#fff"
+                stroke={color}
+                strokeWidth={2}
+              />
+            ))}
+            <text
+              x={nearRightEdge ? lastX - 6 : lastX + 6}
+              y={y(last.tokens) - 8}
+              textAnchor={nearRightEdge ? "end" : "start"}
+              style={{ fill: color, fontWeight: 600 }}
+            >
+              {s.label}
+            </text>
+          </g>
+        );
+      })}
+      <g style={{ fill: "#0277B5", fontWeight: 500 }}>
+        {xTicks.map((d) => {
+          const xx = xDate(d);
+          if (xx === null) return null;
+          const anchor = xx < L + 20 ? "start" : xx > R - 20 ? "end" : "middle";
+          return (
+            <text key={d} x={xx} y={B + 36} textAnchor={anchor}>{fmtDate(d).slice(0, 6)}</text>
+          );
+        })}
+      </g>
+    </svg>
+  );
+}
+
 /**
  * The "From contributors" chart: one dot per reading, coloured by contributor and joined in
  * time order, against the tracker's own measurement as a dashed reference line.
@@ -522,6 +658,7 @@ export default function ClaudeUsageTracker() {
   const chartPoints = useMemo(() => (data ? seriesFor(data, plan, model, range) : []), [data, plan, model, range]);
   const weeklySeries = useMemo(() => (data ? weeklySeriesFor(data) : []), [data]);
   const weeklyEvents = useMemo(() => (data ? weeklyEventsFor(data) : []), [data]);
+  const weeklyTokenSeries = useMemo(() => (data ? weeklyTokenSeriesFor(data, model) : []), [data, model]);
   const h = data ? headline(data) : null;
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
@@ -711,6 +848,21 @@ export default function ClaudeUsageTracker() {
 
         {!unavailable && data && (
           <section>
+            <h2>Tokens per week</h2>
+            <p className="sub">
+              {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} · how many tokens a full week of five-hour windows
+              buys. Full history.
+            </p>
+            <WeeklyTokensChart series={weeklyTokenSeries} selectedPlan={plan} />
+            <p className="sub">
+              Solid and shaded: selected plan. Grey: the others. Dashed: inferred from another line by the ratio of
+              their weekly figures, not measured. Hollow: a week still in progress.
+            </p>
+          </section>
+        )}
+
+        {!unavailable && data && (
+          <section>
             <h2>Weekly limit, 5-hour windows per week</h2>
             <p className="sub">
               How many 5-hour windows fit in one week, read from the usage meter. Full history.
@@ -744,6 +896,11 @@ export default function ClaudeUsageTracker() {
                 {(
                   [
                     ["Tokens per 5-hour window", (c: ReturnType<typeof compute>) => fmtTokens(c!.tokensPerWindow)],
+                    [
+                      "Tokens per week",
+                      (c: ReturnType<typeof compute>) =>
+                        c!.windowsPerWeek === null ? "—" : fmtTokens(c!.tokensPerWindow * c!.windowsPerWeek),
+                    ],
                     ...(r.sessionsPerWindow !== null
                       ? ([
                           [

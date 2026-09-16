@@ -9,6 +9,7 @@ import {
   eventsFor,
   weeklySeriesFor,
   weeklyEventsFor,
+  weeklyTokenSeriesFor,
   type UsageJson,
 } from "./claudeUsage";
 
@@ -416,6 +417,38 @@ describe("weeklySeriesFor", () => {
   it("returns nothing when weekly_windows is absent entirely", () => {
     const { weekly_windows: _weekly_windows, ...withoutWeekly } = WJ;
     expect(weeklySeriesFor(withoutWeekly as UsageJson)).toEqual([]);
+  });
+});
+
+describe("weeklyTokenSeriesFor", () => {
+  it("scales windows by the history value at or before the week ending, times the plan ratio", () => {
+    // WJ's history for claude-sonnet-5: 2026-05-01 38M, 2026-08-01 40M, 2026-09-05 42M.
+    const s = weeklyTokenSeriesFor(WJ, "claude-sonnet-5");
+    const max5 = s.find((x) => x.plan === "max5")!; // ratio 0.25
+    const aug1 = max5.points.find((p) => p.date === "2026-08-01")!;
+    expect(aug1.tokens).toBeCloseTo(9 * 40_000_000 * 0.25, 5);
+    const sep5 = max5.points.find((p) => p.date === "2026-09-05")!;
+    expect(sep5.tokens).toBeCloseTo(9.4 * 42_000_000 * 0.25, 5);
+  });
+  it("uses the earliest history entry when the week ending predates all of them", () => {
+    const s = weeklyTokenSeriesFor(WJ, "claude-sonnet-5");
+    const max20 = s.find((x) => x.plan === "max20")!; // ratio 1
+    // 2026-07-04 predates the earliest history entry (2026-05-01), which is itself <=
+    // 2026-07-04, so that entry (38M) is used either way.
+    const jul4 = max20.points.find((p) => p.date === "2026-07-04")!;
+    expect(jul4.tokens).toBeCloseTo(10 * 38_000_000, 5);
+  });
+  it("falls back to the current rate when the model has no history", () => {
+    const noHistory: UsageJson = { ...WJ, history: {} };
+    const s = weeklyTokenSeriesFor(noHistory, "claude-sonnet-5");
+    const max20 = s.find((x) => x.plan === "max20")!;
+    const point = max20.points.find((p) => p.date === "2026-09-05")!;
+    expect(point.tokens).toBeCloseTo(11.2 * 42_000_000 * 1, 5);
+  });
+  it("leaves tokens undefined when neither history nor a rate exists for the model", () => {
+    const s = weeklyTokenSeriesFor(WJ, "claude-nonexistent");
+    const max20 = s.find((x) => x.plan === "max20")!;
+    expect(max20.points.every((p) => p.tokens === undefined)).toBe(true);
   });
 });
 
