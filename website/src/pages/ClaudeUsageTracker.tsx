@@ -52,7 +52,7 @@ function Chart({
   days: number;
 }) {
   if (points.length < 2) return <p className="sub">Not enough history yet.</p>;
-  const W = 840, H = 260, L = 44, R = 690, T = 20, B = 200;
+  const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
   const vals = points.map((p) => p.value);
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
   // One date scale for samples and markers: every x is elapsed time between the first and
@@ -157,7 +157,12 @@ function Chart({
         return (
           <g key={`${ev.date}-${ev.label}`}>
             <line x1={xx} x2={xx} y1={T} y2={B} stroke={color} strokeWidth="1.25" strokeDasharray="4 3" />
-            <text x={xx + 6} y={T - 3} textAnchor="start" style={{ fill: color, fontWeight: 500 }}>
+            <text
+              x={xx > W - 130 ? xx - 6 : xx + 6}
+              y={T - 3}
+              textAnchor={xx > W - 130 ? "end" : "start"}
+              style={{ fill: color, fontWeight: 500 }}
+            >
               {shortChangeLabel(ev.label)}
             </text>
           </g>
@@ -182,6 +187,22 @@ function Chart({
 // nothing: a red dashed marker already says something changed there.
 function shortChangeLabel(label: string): string {
   return label.replace(/\s+changed\b/, "");
+}
+
+// The one segment a change lands on: from the change date to the next reading, with the start
+// interpolated along that segment. Only this segment is drawn red. Shading everything after a
+// change would paint the chart red from the change to the end of time, which says nothing.
+function dropSegment(xy: [number, number][], cx: number | null): [number, number][] {
+  if (cx === null || xy.length < 2) return [];
+  const i = xy.findIndex(([px]) => px > cx);
+  if (i <= 0) return [];
+  const [x0, y0] = xy[i - 1];
+  const [x1, y1] = xy[i];
+  const seamY = x1 === x0 ? y1 : y0 + ((y1 - y0) * (cx - x0)) / (x1 - x0);
+  return [
+    [cx, seamY],
+    [x1, y1],
+  ];
 }
 
 function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: number, gap = 16): Map<Plan, number> {
@@ -209,8 +230,9 @@ function WeeklyChart({
   const [hoverX, setHoverX] = useState<number | null>(null);
   const plotted = series.filter((s) => s.points.length >= 2);
   if (plotted.length === 0) return <p className="sub">Not enough weekly history yet.</p>;
-  // R stops short of the viewBox so each plan's label sits in the right margin, clear of the lines.
-  const W = 840, H = 260, L = 44, R = 690, T = 20, B = 200;
+  // The plot spans the whole viewBox so every chart's box lines up with the text and tables
+  // around it; plan labels sit inside the plot, against the right edge.
+  const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
   const vals = plotted.flatMap((s) => s.points.map((p) => p.windows));
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
   const day = (d: string) => Date.parse(d + "T00:00:00Z");
@@ -229,6 +251,7 @@ function WeeklyChart({
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
   const shown = events.filter((ev) => xDate(ev.date) !== null);
+  const weeklyChange = latestWeeklyChange(shown);
   // Right-margin labels, pushed apart so two plans close together never print on top of each
   // other. Anchored to each series' last plotted value, then spaced by at least 16 units.
   const labelY = stackLabels(
@@ -309,7 +332,12 @@ function WeeklyChart({
         return (
           <g key={`${ev.date}-${ev.label}`}>
             <line x1={xx} x2={xx} y1={T} y2={B} stroke="#B42318" strokeWidth="1.25" strokeDasharray="4 3" />
-            <text x={xx + 6} y={T - 3} textAnchor="start" style={{ fill: "#B42318", fontWeight: 500 }}>
+            <text
+              x={xx > W - 130 ? xx - 6 : xx + 6}
+              y={T - 3}
+              textAnchor={xx > W - 130 ? "end" : "start"}
+              style={{ fill: "#B42318", fontWeight: 500 }}
+            >
               {shortChangeLabel(ev.label)}
             </text>
           </g>
@@ -336,8 +364,21 @@ function WeeklyChart({
           }
         }
         const last = pts[pts.length - 1];
+        // The segment the change lands on, red under the line: the same treatment as the tokens
+        // chart above, since a drop in windows per week is what moves that chart.
+        const drop = dropSegment(
+          pts.map((q) => [xDate(q.date)!, y(q.windows)] as [number, number]),
+          weeklyChange ? xDate(weeklyChange.date) : null,
+        );
         return (
           <g key={s.plan}>
+            {isSelected && drop.length === 2 && (
+              <polygon
+                fill="#B42318"
+                fillOpacity=".22"
+                points={`${drop[0][0]},${B} ${drop.map(([px, py]) => `${px},${py}`).join(" ")} ${drop[1][0]},${B}`}
+              />
+            )}
             {runs.map((run, i) => (
               <polyline
                 key={i}
@@ -349,6 +390,9 @@ function WeeklyChart({
                 points={run.pts.map((p) => `${xDate(p.date)},${y(p.windows)}`).join(" ")}
               />
             ))}
+            {isSelected && drop.length === 2 && (
+              <polyline fill="none" stroke="#B42318" strokeWidth={3} points={drop.map(([px, py]) => `${px},${py}`).join(" ")} />
+            )}
             {pts.filter((p) => p.partial && !p.inferred).map((p) => (
               <circle
                 key={p.date}
@@ -360,7 +404,12 @@ function WeeklyChart({
                 strokeWidth={2}
               />
             ))}
-            <text x={R + 10} y={labelY.get(s.plan) ?? y(last.windows)} style={{ fill: color, fontWeight: 600 }}>
+            <text
+              x={R - 4}
+              y={(labelY.get(s.plan) ?? y(last.windows)) - 8}
+              textAnchor="end"
+              style={{ fill: color, fontWeight: 600, paintOrder: "stroke", stroke: "#F8FAFC", strokeWidth: 3 }}
+            >
               {s.label}
             </text>
           </g>
@@ -434,8 +483,9 @@ function WeeklyTokensChart({
     .map((s) => ({ ...s, points: s.points.filter(isTokenPoint) }))
     .filter((s) => s.points.length >= 2);
   if (plotted.length === 0) return <p className="sub">Not enough weekly history yet.</p>;
-  // R stops short of the viewBox so each plan's label sits in the right margin, clear of the lines.
-  const W = 840, H = 260, L = 44, R = 690, T = 20, B = 200;
+  // The plot spans the whole viewBox so every chart's box lines up with the text and tables
+  // around it; plan labels sit inside the plot, against the right edge.
+  const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
   const vals = plotted.flatMap((s) => s.points.map((p) => p.tokens));
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
   const day = (d: string) => Date.parse(d + "T00:00:00Z");
@@ -499,9 +549,9 @@ function WeeklyTokensChart({
         <g>
           <line x1={xDate(change.date)!} x2={xDate(change.date)!} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
           <text
-            x={xDate(change.date)! + 6}
+            x={xDate(change.date)! > W - 130 ? xDate(change.date)! - 6 : xDate(change.date)! + 6}
             y={T - 3}
-            textAnchor="start"
+            textAnchor={xDate(change.date)! > W - 130 ? "end" : "start"}
             style={{ fill: "#B42318", fontWeight: 600 }}
           >
             {shortChangeLabel(change.label)}
@@ -530,28 +580,16 @@ function WeeklyTokensChart({
         const last = pts[pts.length - 1];
         // The selected plan is shaded across its whole span, inferred spans included, so the
         // area reaches the right edge of the plot rather than stopping where the dashes start.
-        // The span from the last weekly change onward is shaded red instead: that is the drop,
-        // and at this scale a 29% fall reads as a gentle slope unless it is coloured.
         const xy = pts.map((q) => [xDate(q.date)!, y(q.tokens)] as [number, number]);
         const areaPath = (run: [number, number][]) =>
           `${run[0][0]},${B} ${run.map(([px, py]) => `${px},${py}`).join(" ")} ${run[run.length - 1][0]},${B}`;
-        // The change rarely lands on a week ending, so the two areas meet at a point
-        // interpolated along the segment that spans it, not at the nearest reading.
-        const cx = changeDate === null ? null : xDate(changeDate);
-        let drop: [number, number][] = [];
-        let seamY: number | null = null;
-        if (cx !== null && cx > xy[0][0] && cx < xy[xy.length - 1][0]) {
-          const i = xy.findIndex(([px]) => px >= cx);
-          const [x0, y0] = xy[i - 1];
-          const [x1, y1] = xy[i];
-          seamY = y0 + ((y1 - y0) * (cx - x0)) / (x1 - x0);
-          drop = [[cx, seamY], ...xy.slice(i)];
-        }
+        const drop = dropSegment(xy, changeDate === null ? null : xDate(changeDate));
         return (
           <g key={s.plan}>
             {isSelected && xy.length >= 2 && <polygon fill="url(#weeklyfill)" points={areaPath(xy)} />}
-            {/* The band between where the line was when the limit changed and where it is since:
-                the loss itself, which a 29% fall spread over one segment does not otherwise show. */}
+            {/* The segment the change lands on, filled red under the line: at this scale a 29%
+                fall over one segment reads as a gentle slope unless it is coloured. */}
+            {isSelected && drop.length === 2 && <polygon fill="#B42318" fillOpacity=".22" points={areaPath(drop)} />}
             {runs.map((run, i) => (
               <polyline
                 key={i}
@@ -563,22 +601,8 @@ function WeeklyTokensChart({
                 points={run.pts.map((p) => `${xDate(p.date)},${y(p.tokens)}`).join(" ")}
               />
             ))}
-            {isSelected && drop.length >= 2 && seamY !== null && (
-              <>
-                <polygon
-                  fill="#B42318"
-                  fillOpacity=".3"
-                  points={`${drop.map(([px, py]) => `${px},${py}`).join(" ")} ${drop[drop.length - 1][0]},${seamY}`}
-                />
-                <line x1={cx!} x2={drop[drop.length - 1][0]} y1={seamY} y2={seamY} stroke="#B42318" strokeWidth="1.25" strokeDasharray="3 3" />
-                <polyline
-                  fill="none"
-                  stroke="#B42318"
-                  strokeWidth={3}
-                  strokeLinejoin="round"
-                  points={drop.map(([px, py]) => `${px},${py}`).join(" ")}
-                />
-              </>
+            {isSelected && drop.length === 2 && (
+              <polyline fill="none" stroke="#B42318" strokeWidth={3} points={drop.map(([px, py]) => `${px},${py}`).join(" ")} />
             )}
             {pts.filter((p) => p.partial && !p.inferred).map((p) => (
               <circle
@@ -591,7 +615,12 @@ function WeeklyTokensChart({
                 strokeWidth={2}
               />
             ))}
-            <text x={R + 10} y={labelY.get(s.plan) ?? y(last.tokens)} style={{ fill: color, fontWeight: 600 }}>
+            <text
+              x={R - 4}
+              y={(labelY.get(s.plan) ?? y(last.tokens)) - 8}
+              textAnchor="end"
+              style={{ fill: color, fontWeight: 600, paintOrder: "stroke", stroke: "#F8FAFC", strokeWidth: 3 }}
+            >
               {s.label}
             </text>
           </g>
@@ -616,7 +645,7 @@ function WeeklyTokensChart({
  * time order, against the tracker's own measurement as a dashed reference line.
  */
 function ContributorsChart({ points, fleetUsd }: { points: ContribPoint[]; fleetUsd: number | null }) {
-  const W = 840, H = 260, L = 44, R = 690, T = 20, B = 200;
+  const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
   const usable = points.filter((p) => typeof p.usd_per_pct === "number");
   const groups = contribGroups(points);
   const { t0, t1, frac } = contribXScale(points);
