@@ -15,10 +15,12 @@ import {
   fmtSource,
   fmtTokens,
   fmtUsd,
+  fmtUsd2,
   headline,
   seriesFor,
   weeklyEventsFor,
   weeklySeriesFor,
+  type ContribPoint,
   type Effort,
   type Plan,
   type RangeDays,
@@ -27,7 +29,7 @@ import {
   type WeeklyPoint,
   type WeeklySeries,
 } from "@/lib/claudeUsage";
-import { contributorSentences, fleetUsdPerPercent } from "@/lib/contrib";
+import { contribColor, contribGroups, contribXScale, contribYMax, contributorSentences, fleetUsdPerPercent } from "@/lib/contrib";
 import "@/styles/home.css";
 import "@/styles/claude-usage.css";
 // Build-time snapshot so the prerendered HTML carries real figures; the fetch below refreshes it.
@@ -409,6 +411,96 @@ function WeeklyChart({
   );
 }
 
+/**
+ * The "From contributors" chart: one dot per reading, coloured by contributor and joined in
+ * time order, against the tracker's own probe figure as a dashed reference line.
+ */
+function ContributorsChart({ points, fleetUsd }: { points: ContribPoint[]; fleetUsd: number | null }) {
+  const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
+  const usable = points.filter((p) => typeof p.usd_per_pct === "number");
+  const groups = contribGroups(points);
+  const { t0, t1, frac } = contribXScale(points);
+  const yMax = contribYMax(points, fleetUsd);
+  const x = (t: string) => L + frac(t) * (R - L);
+  const y = (v: number) => B - (v / yMax) * (B - T);
+  const ticks = [0, 1, 2, 3].map((k) => (yMax * k) / 3);
+  // A few evenly spaced date labels, same convention as the other charts on this page.
+  const dateTicks: number[] = [];
+  const tickCount = 4;
+  for (let i = 0; i <= tickCount; i++) dateTicks.push(t0 + ((t1 - t0) * i) / tickCount);
+  const span =
+    usable.length > 0
+      ? `${fmtDate(new Date(t0).toISOString())} to ${fmtDate(new Date(t1).toISOString())}`
+      : "no readings yet";
+  const ariaLabel = `${usable.length} reading${usable.length === 1 ? "" : "s"} from ${groups.length} ${groups.length === 1 ? "person" : "people"}, ${span}`;
+  return (
+    <>
+      <svg className="chart contrib-chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
+        <g stroke="var(--ads-line)" strokeWidth="1">
+          {ticks.map((t) => (
+            <line key={t} x1={L} x2={R} y1={y(t)} y2={y(t)} />
+          ))}
+        </g>
+        <g style={{ fill: "var(--ads-mut)" }}>
+          {ticks.map((t) => (
+            <text key={t} x={0} y={y(t) + 4}>{fmtUsd2(t)}</text>
+          ))}
+        </g>
+        {typeof fleetUsd === "number" && (
+          <g>
+            <line x1={L} x2={R} y1={y(fleetUsd)} y2={y(fleetUsd)} stroke="var(--ads-ac)" strokeWidth="1.5" strokeDasharray="5 4" />
+            <text x={R} y={y(fleetUsd) - 6} textAnchor="end" style={{ fill: "var(--ads-ac)", fontWeight: 500 }}>
+              probe {fmtUsd2(fleetUsd)} per 1%
+            </text>
+          </g>
+        )}
+        {groups.map((g) => {
+          const drawable = g.points.filter((p) => typeof p.usd_per_pct === "number");
+          const color = contribColor(g.c);
+          return (
+            <g key={g.c}>
+              {drawable.length >= 2 && (
+                <polyline
+                  fill="none"
+                  stroke={color}
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                  points={drawable.map((p) => `${x(p.t)},${y(p.usd_per_pct as number)}`).join(" ")}
+                />
+              )}
+              {drawable.map((p) => (
+                <circle
+                  key={p.t}
+                  cx={x(p.t)}
+                  cy={y(p.usd_per_pct as number)}
+                  r="4"
+                  fill={p.coarse ? "var(--ads-bg)" : color}
+                  stroke={color}
+                  strokeWidth={p.coarse ? 1.5 : 0}
+                />
+              ))}
+            </g>
+          );
+        })}
+        <g style={{ fill: "var(--ads-mut)", fontWeight: 500 }}>
+          {dateTicks.map((t, i) => {
+            const anchor = i === 0 ? "start" : i === dateTicks.length - 1 ? "end" : "middle";
+            return (
+              <text key={t} x={L + (i / tickCount) * (R - L)} y={B + 24} textAnchor={anchor}>
+                {fmtDate(new Date(t).toISOString()).slice(0, 6)}
+              </text>
+            );
+          })}
+        </g>
+      </svg>
+      <p className="sub contrib-chart-legend">
+        Each dot is one reading; dots from the same person are joined. Hollow dots had the meter under 5%. Dashed
+        line: the tracker&apos;s probe.
+      </p>
+    </>
+  );
+}
+
 export default function ClaudeUsageTracker() {
   const [data, setData] = useState<UsageJson | null>(initialData);
   const [failed, setFailed] = useState(false);
@@ -433,7 +525,16 @@ export default function ClaudeUsageTracker() {
 
   const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
   const contributed = useMemo(
-    () => (data ? contributorSentences(plan, data.contributed?.[plan], fleetUsdPerPercent(data, plan)) : null),
+    () =>
+      data
+        ? contributorSentences(
+            plan,
+            data.contributed?.[plan],
+            fleetUsdPerPercent(data, plan),
+            data.contributed?.min_contributors,
+            data.contributed?.max_deviation,
+          )
+        : null,
     [data, plan],
   );
   const chartPoints = useMemo(() => (data ? seriesFor(data, plan, model, range) : []), [data, plan, model, range]);
@@ -711,6 +812,9 @@ export default function ClaudeUsageTracker() {
           <section id="contributors">
             <h2>From contributors</h2>
             <p className="sub">{contributed.intro}</p>
+            {!!data.contributed?.[plan]?.points?.length && (
+              <ContributorsChart points={data.contributed[plan]!.points!} fleetUsd={fleetUsdPerPercent(data, plan)} />
+            )}
             {contributed.cost && <p className="sub">{contributed.cost}</p>}
             <p className="sub">{contributed.weekly}</p>
           </section>

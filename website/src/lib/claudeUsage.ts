@@ -19,11 +19,23 @@ export interface PlanContribStat {
   contributors: number;
   samples: number;
 }
+// One contributor's reading over time, for the "From contributors" chart. `c` is an anonymous
+// per-plan contributor ordinal (not a stable identity across plans or across time); `coarse`
+// mirrors contrib.ts's COARSE_BELOW (meter under 5%, so the dollar figure is unreliable).
+// Optional: a tracker PR landing in parallel adds this field, so it may be absent from the live
+// JSON for a while yet.
+export interface ContribPoint {
+  t: string;
+  usd_per_pct: number | null;
+  c: number;
+  coarse: boolean;
+}
 export interface PlanContrib {
   contributors: number;
   samples: number;
   usd_per_pct: PlanContribStat | null;
   tokens_per_pct: Record<string, PlanContribStat>;
+  points?: ContribPoint[];
   weekly_windows: {
     measured: number | null;
     reason: string | null;
