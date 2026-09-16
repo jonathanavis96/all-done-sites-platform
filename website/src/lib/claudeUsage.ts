@@ -279,6 +279,9 @@ export interface WeeklyPoint {
   // True when this point was not measured for this plan but inferred from another series'
   // point at the same date, scaled by the ratio of the two plans' current windows-per-week.
   inferred: boolean;
+  // Tokens a full week of windows buys, only populated by weeklyTokenSeriesFor. Undefined
+  // (never a wrong number) whenever neither history nor a current rate exists for the model.
+  tokens?: number;
 }
 
 export interface WeeklySeries {
@@ -354,6 +357,37 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
     s.points.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   }
   return out;
+}
+
+// Same series as weeklySeriesFor, with each point's tokens-per-week added: windows times the
+// tokens a single window bought at that week_ending, scaled by the plan's ratio. The
+// per-window figure comes from the LAST history entry at or before week_ending (the earliest
+// entry when week_ending predates all of them), falling back to the model's current rate when
+// there is no history at all, and leaving tokens undefined when neither exists.
+export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[] {
+  const base = weeklySeriesFor(j);
+  const hist = j.history[model] ?? [];
+  const sorted = [...hist].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const rate = j.rates[model];
+  const tokensPerWindowAt = (weekEnding: string): number | undefined => {
+    if (sorted.length > 0) {
+      const atOrBefore = sorted.filter((h) => h.date <= weekEnding);
+      const entry = atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1] : sorted[0];
+      return entry.tokens_per_window;
+    }
+    if (rate) return rate.tokens_per_window;
+    return undefined;
+  };
+  return base.map((s) => {
+    const planRatio = j.plan_ratios[s.plan];
+    return {
+      ...s,
+      points: s.points.map((p) => {
+        const perWindow = tokensPerWindowAt(p.date);
+        return { ...p, tokens: typeof perWindow === "number" ? p.windows * perWindow * planRatio : undefined };
+      }),
+    };
+  });
 }
 
 export function weeklyEventsFor(j: UsageJson): UsageEvent[] {
