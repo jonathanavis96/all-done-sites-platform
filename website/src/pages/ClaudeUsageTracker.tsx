@@ -1014,7 +1014,36 @@ export default function ClaudeUsageTracker() {
 
         {!unavailable && data && contributed && (
           <section id="contributors">
-            <h2>From contributors</h2>
+            {/* The same three pickers as the hero, so a reader comparing their own plan
+                does not have to scroll back up. Plan picks whose readings are plotted;
+                model and effort only move the tracker's own reference line, because a
+                contributed point is one figure across every model in that sample. */}
+            <div className="section-head">
+              <h2>From contributors</h2>
+              <div className="section-sel">
+                <span className="sel">
+                  <select aria-label="Plan" value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
+                    {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => (
+                      <option key={p} value={p}>{PLAN_LABELS[p]}</option>
+                    ))}
+                  </select>
+                </span>
+                <span className="sel">
+                  <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
+                    {Object.keys(data.rates).map((m) => (
+                      <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
+                    ))}
+                  </select>
+                </span>
+                <span className="sel">
+                  <select aria-label="Effort" value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
+                    {EFFORTS.map((e) => (
+                      <option key={e} value={e}>{e}</option>
+                    ))}
+                  </select>
+                </span>
+              </div>
+            </div>
             <p className="sub">{contributed.intro}</p>
             {hasContribPoints && (
               <>
