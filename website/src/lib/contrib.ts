@@ -493,7 +493,7 @@ function weeklySentence(
 
 /**
  * The sentences for the "From contributors" section on one plan: who has contributed, what
- * their meter cost per 1% is against the probe's figure, and what their weeks say about the
+ * their meter cost per 1% is against the tracker's own measurement, and what their weeks say about the
  * weekly limit. Written for a first-time reader, not someone who already knows the jargon.
  * Returns null when there is nothing to say (no contributors on this plan).
  */
@@ -520,13 +520,13 @@ export function contributorSentences(
     const medianText = `$${median.toFixed(2)}`;
     let sentence = `Their real work cost a median ${medianText} of list-price usage for each 1% of the five-hour meter.`;
     if (typeof fleetUsd === "number" && fleetUsd > 0) {
-      const probeText = `$${fleetUsd.toFixed(2)}`;
+      const measuredText = `$${fleetUsd.toFixed(2)}`;
       const diffPct = ((median - fleetUsd) / fleetUsd) * 100;
       const compare =
         Math.abs(diffPct) < 5
-          ? "about the same as the probe"
-          : `about ${Math.round(Math.abs(diffPct))}% ${diffPct > 0 ? "dearer" : "cheaper"} per percent than the probe`;
-      sentence += ` The tracker's own test prompts cost ${probeText} per 1%, so ordinary use is running ${compare}.`;
+          ? "about the same as the tracker's own measurement"
+          : `about ${Math.round(Math.abs(diffPct))}% ${diffPct > 0 ? "dearer" : "cheaper"} per percent`;
+      sentence += ` The tracker's own measurement reads ${measuredText} per 1%, so contributors are running ${compare}.`;
     }
     if (typeof spread === "number") {
       sentence += ` Readings vary by about ±${(spread * 100).toFixed(0)}% around that median.`;

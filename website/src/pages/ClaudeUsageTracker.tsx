@@ -413,7 +413,7 @@ function WeeklyChart({
 
 /**
  * The "From contributors" chart: one dot per reading, coloured by contributor and joined in
- * time order, against the tracker's own probe figure as a dashed reference line.
+ * time order, against the tracker's own measurement as a dashed reference line.
  */
 function ContributorsChart({ points, fleetUsd }: { points: ContribPoint[]; fleetUsd: number | null }) {
   const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
@@ -450,7 +450,7 @@ function ContributorsChart({ points, fleetUsd }: { points: ContribPoint[]; fleet
           <g>
             <line x1={L} x2={R} y1={y(fleetUsd)} y2={y(fleetUsd)} stroke="var(--ads-ac)" strokeWidth="1.5" strokeDasharray="5 4" />
             <text x={R} y={y(fleetUsd) - 6} textAnchor="end" style={{ fill: "var(--ads-ac)", fontWeight: 500 }}>
-              probe {fmtUsd2(fleetUsd)} per 1%
+              tracker {fmtUsd2(fleetUsd)} per 1%
             </text>
           </g>
         )}
@@ -495,7 +495,7 @@ function ContributorsChart({ points, fleetUsd }: { points: ContribPoint[]; fleet
       </svg>
       <p className="sub contrib-chart-legend">
         Each dot is one reading; dots from the same person are joined. Hollow dots had the meter under 5%. Dashed
-        line: the tracker&apos;s probe.
+        line: the tracker&apos;s own measurement.
       </p>
     </>
   );

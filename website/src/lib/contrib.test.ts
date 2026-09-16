@@ -224,15 +224,15 @@ describe("contributorSentences", () => {
     );
   });
 
-  it("computes the percent difference against the probe and calls out dearer/cheaper/about the same", () => {
+  it("computes the percent difference against the tracker's own measurement and calls out dearer/cheaper/about the same", () => {
     const dearer = { ...CONTRIB, contributors: 2, samples: 2, usd_per_pct: { median: 1.3233, spread: null, contributors: 2, samples: 2 } };
     expect(contributorSentences("max20", dearer, 0.9741)!.cost).toBe(
-      "Their real work cost a median $1.32 of list-price usage for each 1% of the five-hour meter. The tracker's own test prompts cost $0.97 per 1%, so ordinary use is running about 36% dearer per percent than the probe.",
+      "Their real work cost a median $1.32 of list-price usage for each 1% of the five-hour meter. The tracker's own measurement reads $0.97 per 1%, so contributors are running about 36% dearer per percent.",
     );
     const cheaper = { ...CONTRIB, usd_per_pct: { median: 0.5, spread: null, contributors: 1, samples: 1 } };
-    expect(contributorSentences("max20", cheaper, 0.97)!.cost).toContain("cheaper per percent than the probe");
+    expect(contributorSentences("max20", cheaper, 0.97)!.cost).toContain("cheaper per percent");
     const close = { ...CONTRIB, usd_per_pct: { median: 1.0, spread: null, contributors: 1, samples: 1 } };
-    expect(contributorSentences("max20", close, 0.97)!.cost).toContain("about the same as the probe");
+    expect(contributorSentences("max20", close, 0.97)!.cost).toContain("about the same as the tracker's own measurement");
   });
 
   it("appends the spread sentence when a spread is present", () => {
