@@ -109,6 +109,8 @@
 .cut .copybox button, .cut .pastebox button { font: inherit; font-size: 13px; font-weight: 600; padding: 5px 12px; border: 1px solid var(--ads-line); border-radius: 999px; background: var(--ads-surface); color: var(--ads-acd); cursor: pointer; }
 .cut .copybox button:hover, .cut .pastebox button:hover:not(:disabled) { border-color: var(--ads-acd); }
 .cut .copybox button:focus-visible, .cut .pastebox button:focus-visible, .cut .copybox pre:focus-visible { outline: 2px solid var(--ads-acd); outline-offset: 2px; }
+.cut .copybox-head .interval { margin-left: auto; font: inherit; font-size: 12.5px; font-weight: 500; padding: 4px 8px; border: 1px solid var(--ads-line); border-radius: 8px; background: var(--ads-surface); color: var(--ads-tx); max-width: 46%; }
+.cut .copybox-head .interval:focus-visible { outline: 2px solid var(--ads-acd); outline-offset: 2px; }
 .cut .copybox pre { margin: 0; padding: 12px; font-family: var(--ads-mono); font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ads-tx); }
 .cut .pastebox textarea { display: block; width: 100%; box-sizing: border-box; min-height: 84px; font-family: var(--ads-mono); font-size: 12.5px; line-height: 1.5; padding: 10px 12px; border: 1px solid var(--ads-line); border-radius: 8px; background: var(--ads-surface); color: var(--ads-tx); resize: vertical; }
 .cut .pastebox textarea:focus-visible { outline: 2px solid var(--ads-acd); outline-offset: 1px; border-color: var(--ads-acd); }
