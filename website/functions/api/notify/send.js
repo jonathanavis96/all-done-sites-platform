@@ -99,13 +99,15 @@ export async function onRequestPost({ request, env }) {
   } while (cursor);
 
   const modelLabel = model ? MODEL_LABELS[model] ?? model : null;
-  const isWeekly = scope === "weekly";
-  const metric = isWeekly ? "weekly/window ratio" : "five-hour meter budget";
-  const subject = `Observed Claude ${metric} ${direction} by ${percent}%`;
-  const headingText = `The observed ${metric} ${direction} by ${percent}%; evidence dated ${fmtDate(date)}.`;
+  // The page headline's words: a change observed on the watched account, not a limit Anthropic
+  // is known to have changed (audit finding 4).
+  const metric = scope === "weekly" ? "weekly-to-window ratio" : "5-hour window budget";
+  const subject = `Claude's observed ${metric} ${direction} by ${percent}%`;
+  const headingText = `Claude's observed ${metric} ${direction} by ${percent}% on ${fmtDate(date)}.`;
   const heading = escapeHtml(headingText);
-  const qualification = "This is an estimate from watched accounts, not confirmation of an Anthropic-wide policy change. The event date records the evidence, not a proven rollout date.";
-  const intro = (modelLabel ? `Model context: ${escapeHtml(modelLabel)}. ` : "") + qualification;
+  const intro = modelLabel
+    ? `Measured on ${escapeHtml(modelLabel)} from a real account. The tracker has the full history.`
+    : "Measured daily from a real account. The tracker has the full history.";
 
   let sent = 0;
   const failures = [];
@@ -119,7 +121,7 @@ export async function onRequestPost({ request, env }) {
           to: [email],
           subject,
           headers: { "List-Unsubscribe": `<${unsubUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
-          text: `${headingText}\n\n${qualification}\n\nSee the full history: ${PAGE}\n\nUnsubscribe: ${unsubUrl}`,
+          text: `${headingText}\n\nSee the full history: ${PAGE}\n\nUnsubscribe: ${unsubUrl}`,
           html: emailHtml({
             heading,
             body: intro,
