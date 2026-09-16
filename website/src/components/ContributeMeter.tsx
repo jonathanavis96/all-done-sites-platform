@@ -1,12 +1,12 @@
 // website/src/components/ContributeMeter.tsx — "Contribute your own meter" on the
 // Claude usage tracker: the two prompts to paste into Claude Code, and the paste box
 // that decodes a `CUT1:` line, shows what is in it, and posts it to /api/contribute.
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { MODEL_LABELS, PLAN_LABELS, fmtTokens } from "@/lib/claudeUsage";
 import { decodeCut1, totalTokens, validateSample, type Sample } from "@/lib/contrib";
-import { CONTINUOUS_PROMPT, ONE_OFF_PROMPT, README_URL, SCRIPT_URL } from "@/lib/contribPrompts";
+import { DEFAULT_INTERVAL_MINUTES, INTERVALS, ONE_OFF_PROMPT, README_URL, SCRIPT_URL, continuousPrompt } from "@/lib/contribPrompts";
 
-function CopyBox({ id, label, text }: { id: string; label: string; text: string }) {
+function CopyBox({ id, label, text, control }: { id: string; label: string; text: string; control?: ReactNode }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   async function copy() {
     try {
@@ -21,6 +21,7 @@ function CopyBox({ id, label, text }: { id: string; label: string; text: string 
     <div className="copybox">
       <div className="copybox-head">
         <span id={`${id}-label`}>{label}</span>
+        {control}
         <button type="button" onClick={copy} aria-describedby={`${id}-label`}>
           {state === "copied" ? "Copied" : state === "failed" ? "Select and copy" : "Copy"}
         </button>
@@ -83,6 +84,7 @@ type Checked = { sample: Sample; cut1: string };
 type Sent = { me_url: string; samples: number };
 
 export default function ContributeMeter() {
+  const [interval, setInterval_] = useState<number>(DEFAULT_INTERVAL_MINUTES);
   const [raw, setRaw] = useState("");
   const [checked, setChecked] = useState<Checked | null>(null);
   const [error, setError] = useState("");
@@ -153,7 +155,25 @@ export default function ContributeMeter() {
       </p>
       <div className="copyboxes">
         <CopyBox id="contrib-one-off" label="One-off" text={ONE_OFF_PROMPT} />
-        <CopyBox id="contrib-continuous" label="Continuous" text={CONTINUOUS_PROMPT} />
+        <CopyBox
+          id="contrib-continuous"
+          label="Continuous"
+          text={continuousPrompt(interval)}
+          control={
+            <select
+              className="interval"
+              aria-label="How often the schedule sends a sample"
+              value={interval}
+              onChange={(e) => setInterval_(Number(e.target.value))}
+            >
+              {INTERVALS.map((i) => (
+                <option key={i.minutes} value={i.minutes}>
+                  {i.label}
+                </option>
+              ))}
+            </select>
+          }
+        />
       </div>
       <div className="pastebox">
         <label className="notify-label" htmlFor="contrib-cut1">
@@ -203,7 +223,8 @@ export default function ContributeMeter() {
       </div>
       <p className="line">
         Every sample gets a personal page: one sample shows where your meter went and your tokens per 1% by model
-        against the fleet's, and a contributor on the 30-minute schedule sees their own line over time.
+        against the fleet's, and a contributor on a schedule (hourly unless you pick another interval above) sees their
+        own line over time.
       </p>
     </div>
   );
