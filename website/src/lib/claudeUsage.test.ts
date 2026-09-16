@@ -384,6 +384,66 @@ describe("weeklySeriesFor", () => {
     expect(max20.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05", "2026-09-12"]);
     expect(max5.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05", "2026-09-12"]);
   });
+  it("scales gap-fill by weekly_window_ratios when published, not by the current quotient", () => {
+    // The two disagree on purpose here: the ratios say max5 holds 2x max20's windows, while the
+    // currents (11.2 and 9.6) say 0.857. Only the published ratio may be used.
+    const withRatios: UsageJson = {
+      ...WJ,
+      weekly_window_ratios: { max20: 1.0, max5: 2.0, pro: 2.0 },
+    };
+    const s = weeklySeriesFor(withRatios);
+    const max20 = s.find((x) => x.plan === "max20")!;
+    const max5 = s.find((x) => x.plan === "max5")!;
+
+    // max20 lacks 2026-09-12; max5 has 9.6 there. 9.6 * (1.0 / 2.0) = 4.8.
+    expect(max20.points.find((p) => p.date === "2026-09-12")!.windows).toBeCloseTo(4.8, 10);
+    // max5 lacks 2026-07-04; max20 has 10 there. 10 * (2.0 / 1.0) = 20.
+    expect(max5.points.find((p) => p.date === "2026-07-04")!.windows).toBeCloseTo(20, 10);
+  });
+  it("does not let a limit change on the measured plan inflate the inferred one (issue #54)", () => {
+    // The shape that produced the bug: max5 frozen at its last measured August weeks, max20 the
+    // live plan whose `current` has been dragged below its own weekly history by a later cut.
+    // Scaling by the current quotient (11.02 / 4.61 = 2.39) put inferred max5 at 15.7 windows,
+    // far outside its measured 9.5-11.0. The frozen ratio keeps it continuous across the seam.
+    const seam: UsageJson = {
+      ...WJ,
+      weekly_window_ratios: { max20: 1.0, max5: 1.78, pro: 1.78 },
+      weekly_windows: {
+        max20: {
+          current: 4.61, // post-cut regime, below every week in this history
+          history: [
+            { week_ending: "2026-08-28", windows: 6.58, five_hour_pct: 250, seven_day_pct: 38 },
+            { week_ending: "2026-09-11", windows: 6.02, five_hour_pct: 373, seven_day_pct: 62 },
+          ],
+        },
+        max5: {
+          current: 11.02,
+          history: [{ week_ending: "2026-08-14", windows: 11.0, five_hour_pct: 506, seven_day_pct: 46 }],
+        },
+        pro: {
+          current: 11.02,
+          assumed: true,
+          history: [{ week_ending: "2026-08-14", windows: 11.0, five_hour_pct: 506, seven_day_pct: 46 }],
+        },
+      },
+    };
+    const s = weeklySeriesFor(seam);
+    const max5 = s.find((x) => x.plan === "max5" || x.sharedWithPro)!;
+
+    const inferred = max5.points.filter((p) => p.inferred);
+    expect(inferred.length).toBeGreaterThan(0);
+    // Every inferred max5 week lands inside the range max5 was actually measured at, rather
+    // than being lifted by a cut that happened to max20 a month after max5 stopped.
+    for (const p of inferred) {
+      expect(p.windows).toBeGreaterThan(9.5);
+      expect(p.windows).toBeLessThan(12.5);
+    }
+    // The first week after the plan seam is continuous with max5's last measured week: a plan
+    // move must not draw a step.
+    const atSeam = max5.points.find((p) => p.date === "2026-08-28")!;
+    expect(atSeam.windows).toBeCloseTo(6.58 * 1.78, 10);
+    expect(Math.abs(atSeam.windows - 11.0)).toBeLessThan(1.0);
+  });
   it("does not infer when either side's current is zero", () => {
     const zeroCurrent: UsageJson = {
       ...WJ,

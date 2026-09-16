@@ -998,9 +998,8 @@ export default function ClaudeUsageTracker() {
             )}
             <WeeklyTokensChart series={weeklyTokenSeries} events={weeklyEvents} selectedPlan={plan} />
             <p className="sub">
-              Solid and shaded: selected plan. Grey: the others. Dashed: inferred from another line by the ratio of
-              their weekly figures, not measured. Hollow: a week still in progress. A step where a dashed span meets a
-              solid one is inference meeting measurement, not a change in the limit; only the red marker is a change.
+              Solid and shaded: selected plan. Grey: the others. Dashed: inferred from another line by a fixed plan
+              ratio, not measured. Hollow: a week still in progress. Red: a measured change in the limit.
             </p>
           </section>
         )}
@@ -1021,7 +1020,7 @@ export default function ClaudeUsageTracker() {
             <WeeklyChart series={weeklySeries} events={weeklyEvents} selectedPlan={plan} />
             {weeklySeries.some((s) => s.points.length >= 2) && (
               <p className="sub chart-legend">
-                Solid: selected plan. Grey: the other. Dashed: inferred from the other line by the ratio of their weekly figures, not measured. Pro is assumed from Max 5x. Hollow: this week so far.
+                Solid: selected plan. Grey: the other. Dashed: inferred from the other line by a fixed plan ratio, not measured. Pro is assumed from Max 5x. Hollow: this week so far.
               </p>
             )}
           </section>

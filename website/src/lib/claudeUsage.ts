@@ -73,6 +73,11 @@ export interface UsageJson {
   passive_generated_at?: string | null;
   plan_measured: Plan;
   plan_ratios: Record<Plan, number>;
+  // How many five-hour windows a week's cap holds, per plan, relative to max20. A frozen
+  // measurement, not the same quantity as plan_ratios (what one window is WORTH). Optional:
+  // JSON published before this field falls back to the quotient of two `current` fields,
+  // which is what it replaces. See weeklySeriesFor.
+  weekly_window_ratios?: Partial<Record<Plan, number>>;
   rates: Record<
     string,
     {
@@ -354,24 +359,44 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
   }
   // Fill gaps: each series today only spans the weeks its own plan has actually measured, so
   // two lines can each cover only part of the axis. For every date any series has, a series
-  // missing that date gets an inferred point scaled from another series' point at that date by
-  // the ratio of their measured windows-per-week (`current`), so the lines stay aligned as new
-  // data lands on one side before the other.
+  // missing that date gets an inferred point scaled from another series' point at that date,
+  // so the lines stay aligned as new data lands on one side before the other.
+  //
+  // The scale factor is the published `weekly_window_ratios`, a frozen measurement of how many
+  // windows a week holds on each plan. It must NOT be the quotient of the two plans' `current`
+  // fields, which is what this did until issue #54: max20's current tracks the newest regime
+  // while max5's is a frozen August calendar-week median, so their quotient carries every limit
+  // change that has landed since. It read 2.39 against a true 1.78 -- the extra 1.43 being the
+  // 14 Sep -29% -- which put inferred Max 5x weeks at 15.7 windows against a measured history
+  // that never left 9.5-11.0, and drew a 43% step at the plan boundary in both directions at
+  // once. A plan move is not a limit move, and only the limit belongs in the data.
   const allDates = Array.from(new Set(out.flatMap((s) => s.points.map((p) => p.date)))).sort();
+  const scaleFrom = (own: Plan, other: Plan): number | null => {
+    const ownRatio = j.weekly_window_ratios?.[own];
+    const otherRatio = j.weekly_window_ratios?.[other];
+    if (typeof ownRatio === "number" && typeof otherRatio === "number" && otherRatio) {
+      return ownRatio / otherRatio;
+    }
+    // JSON published before weekly_window_ratios existed: the old drifting quotient, kept so an
+    // archived file still renders rather than losing its dashed spans entirely.
+    const ownCurrent = j.weekly_windows?.[own]?.current ?? null;
+    const otherCurrent = j.weekly_windows?.[other]?.current ?? null;
+    if (typeof ownCurrent !== "number" || !ownCurrent) return null;
+    if (typeof otherCurrent !== "number" || !otherCurrent) return null;
+    return ownCurrent / otherCurrent;
+  };
   for (const s of out) {
-    const ownCurrent = j.weekly_windows?.[s.plan]?.current ?? null;
     const byDate = new Map(s.points.map((p) => [p.date, p]));
     for (const date of allDates) {
       if (byDate.has(date)) continue;
-      if (typeof ownCurrent !== "number" || !ownCurrent) continue;
       const other = out.find((o) => o !== s && o.points.some((p) => p.date === date));
       if (!other) continue;
       const otherPoint = other.points.find((p) => p.date === date)!;
-      const otherCurrent = j.weekly_windows?.[other.plan]?.current ?? null;
-      if (typeof otherCurrent !== "number" || !otherCurrent) continue;
+      const scale = scaleFrom(s.plan, other.plan);
+      if (scale === null) continue;
       s.points.push({
         date,
-        windows: otherPoint.windows * (ownCurrent / otherCurrent),
+        windows: otherPoint.windows * scale,
         partial: otherPoint.partial,
         inferred: true,
       });
