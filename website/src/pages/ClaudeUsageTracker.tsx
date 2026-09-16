@@ -5,6 +5,7 @@ import NotifyForm from "@/components/NotifyForm";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
+  EFFORTS,
   MODEL_LABELS,
   PLAN_LABELS,
   RANGE_DAYS,
@@ -26,6 +27,7 @@ import {
   weeklyTokenRegimeLevelsFor,
   weeklyTokenSeriesFor,
   type ContribPoint,
+  type Effort,
   type Plan,
   type RangeDays,
   type UsageEvent,
@@ -450,8 +452,6 @@ interface ContribTab {
   fmt: (v: number) => string;
   reference: (r: ReturnType<typeof compute> | null, fleetUsd: number | null) => number | null;
   refLabel: (v: number, fmt: (v: number) => string) => string;
-  // True when the reference is a per-week figure resting on an inferred weekly level.
-  referenceInferred?: (r: ReturnType<typeof compute> | null) => boolean;
   legend: string;
 }
 
@@ -481,8 +481,8 @@ const CONTRIB_TABS: ContribTab[] = [
     label: "Tokens per week",
     value: (p, model) => contribPointValue(p, "weekly", model),
     fmt: fmtTokens,
-    reference: (r) => r?.tokensPerWeek ?? null,
-    referenceInferred: (r) => r?.weeklyInferred === true,
+    reference: (r) =>
+      r && r.tokensPerWindow !== null && r.windowsPerWeek !== null ? r.tokensPerWindow * r.windowsPerWeek : null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
       "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
@@ -492,13 +492,11 @@ const CONTRIB_TABS: ContribTab[] = [
 function ContributorsChart({
   points,
   reference,
-  referenceInferred,
   tab,
   model,
 }: {
   points: ContribPoint[];
   reference: number | null;
-  referenceInferred: boolean;
   tab: ContribTab;
   model: string;
 }) {
@@ -538,7 +536,6 @@ function ContributorsChart({
             <line x1={L} x2={R} y1={y(reference)} y2={y(reference)} stroke="var(--ads-ac)" strokeWidth="1.5" strokeDasharray="5 4" />
             <text x={R} y={y(reference) - 6} textAnchor="end" style={{ fill: "var(--ads-ac)", fontWeight: 500 }}>
               {tab.refLabel(reference, tab.fmt)}
-              {referenceInferred && " inferred"}
             </text>
           </g>
         )}
@@ -590,10 +587,6 @@ function ContributorsChart({
   );
 }
 
-// Nothing on the page depends on effort any more: it only scaled the session count, which is gone
-// (audit finding 11). compute() still takes one for its calibration-task figures.
-const EFFORT = "high";
-
 // `initial` is the prerendered snapshot, and the selectors start on `initialPlan` and
 // `initialModel`; tests render the page with either schema and any selection through them.
 // The contributor chart starts on `initialContribMetric`. `now` fixes the clock the stale line
@@ -616,6 +609,7 @@ export default function ClaudeUsageTracker({
   const [failed, setFailed] = useState(false);
   const [plan, setPlan] = useState<Plan>(initialPlan);
   const [model, setModel] = useState(initialModel);
+  const [effort, setEffort] = useState<Effort>("high");
   const [range, setRange] = useState<RangeDays>(30);
 
   useEffect(() => {
@@ -632,7 +626,7 @@ export default function ClaudeUsageTracker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const r = useMemo(() => (data ? compute(data, plan, model, EFFORT) : null), [data, plan, model]);
+  const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
   const [contribMetric, setContribMetric] = useState<ContribMetric>(initialContribMetric);
   const contribTab = CONTRIB_TABS.find((t) => t.key === contribMetric) ?? CONTRIB_TABS[0];
   const hasContribPoints = !!data?.contributed?.[plan]?.points?.length;
@@ -792,40 +786,46 @@ export default function ClaudeUsageTracker({
                       <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
                     ))}
                   </select>
-                </span>
-                {r.included ? ", you get" : ""}
+                </span>{" "}
+                at{" "}
+                <span className="sel">
+                  <select aria-label="Effort" value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
+                    {EFFORTS.map((e) => (
+                      <option key={e} value={e}>{e}</option>
+                    ))}
+                  </select>
+                </span>{" "}
+                effort{r.included ? ", you get" : ""}
               </div>
               {!r.included && <div className="quiet">{notIncluded}</div>}
-              {r.included && r.tokensPerWindow !== null && (
+              {r.included && r.tokensPerWindow !== null && r.split !== null && (
                 <>
                   <div className="big">
                     {fmtTokens(r.tokensPerWindow)}
-                    <span>tokens per 5-hour window on the reference mix</span>
+                    <span>tokens per 5-hour window</span>
                   </div>
-                  {r.meterBudgetUsd !== null && (
-                    <div className="big usd">
-                      {fmtUsd(r.meterBudgetUsd)}
-                      <span>meter budget per 5-hour window</span>
+                  <div className="big usd">
+                    {fmtUsd(r.apiValueUsd)}
+                    <span>of API value per 5-hour window</span>
+                  </div>
+                  {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
+                    <div className="rate">
+                      {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
+                        <>
+                          <span>
+                            about <b>{Math.round(r.sessionsPerWindow)}</b> sessions<em>·</em>
+                            <b>{Math.round(r.sessionsPerWeek)}</b> per week
+                          </span>
+                          {r.apiValueUsdPerWeek !== null && <em className="brk">·</em>}
+                        </>
+                      )}
+                      {r.apiValueUsdPerWeek !== null && (
+                        <span>
+                          <b>{fmtUsd(r.apiValueUsdPerWeek)}</b> of API value per week
+                        </span>
+                      )}
                     </div>
                   )}
-                  <div className="rate">
-                    {r.apiListValueUsd === null ? (
-                      <span>API list value not published</span>
-                    ) : (
-                      <span>
-                        <b>{fmtUsd(r.apiListValueUsd)}</b> of API list value per 5-hour window
-                      </span>
-                    )}
-                    {r.apiListValueUsdPerWeek !== null && (
-                      <>
-                        <em className="brk">·</em>
-                        <span>
-                          <b>{fmtUsd(r.apiListValueUsdPerWeek)}</b> per week
-                          {r.weeklyInferred && <em>inferred</em>}
-                        </span>
-                      </>
-                    )}
-                  </div>
                   <div className="split">
                     <span>
                       <b>{fmtTokens(r.split.input)}</b> input<em>·</em>
@@ -842,8 +842,10 @@ export default function ClaudeUsageTracker({
                   )}
                   {r.planWindowsPerWeek !== null && (
                     <div className="quiet">
-                      A week currently holds about {r.planWindowsPerWeek.toFixed(1)} five-hour windows,
-                      {r.weeklyInferred ? " inferred." : " measured from a real account."}
+                      A week currently holds about {r.planWindowsPerWeek.toFixed(1)} five-hour windows, measured
+                      from a real account
+                      {data.last_change?.scope === "weekly" ? ` since the change on ${fmtDate(data.last_change.date)}` : ""}.
+                      {/* Fable's half-week cap on Max (audit finding 2, kept). */}
                       {r.weeklyFraction < 1 && (
                         <>
                           {" "}
@@ -888,7 +890,14 @@ export default function ClaudeUsageTracker({
             {r && r.tokensPerWindow !== null && (
               <div className="rate">
                 <span>
-                  <b>{fmtTokens(r.tokensPerWindow)}</b> tokens per 5-hour window
+                  <b>{fmtTokens(r.tokensPerWindow)}</b> tokens
+                  {r.sessionsPerWindow !== null && (
+                    <>
+                      <em>·</em>
+                      <b>{Math.round(r.sessionsPerWindow)}</b> sessions
+                    </>
+                  )}{" "}
+                  per 5-hour window
                 </span>
               </div>
             )}
@@ -927,16 +936,22 @@ export default function ClaudeUsageTracker({
               buys. Full history.
             </p>
             {/* The same notice as the window chart: another plan's line under this plan's heading would
-                read as this plan's figure (finding 2). */}
+                read as this plan's figure (audit finding 2, kept). */}
             {r && !r.included ? (
               <p className="sub">{notIncluded}</p>
             ) : (
               <>
-                {r && r.tokensPerWeek !== null && (
+                {r && r.windowsPerWeek !== null && r.tokensPerWindow !== null && (
                   <div className="rate">
                     <span>
-                      <b>{fmtTokens(r.tokensPerWeek)}</b> tokens per week
-                      {r.weeklyInferred && <em>inferred</em>}
+                      <b>{fmtTokens(r.tokensPerWindow * r.windowsPerWeek)}</b> tokens
+                      {r.sessionsPerWeek !== null && (
+                        <>
+                          <em>·</em>
+                          <b>{Math.round(r.sessionsPerWeek)}</b> sessions
+                        </>
+                      )}{" "}
+                      per week
                     </span>
                   </div>
                 )}
@@ -949,8 +964,9 @@ export default function ClaudeUsageTracker({
                   title="Tokens per week over time"
                 />
                 <p className="sub">
-                  Each line steps when either the weekly limit or a window's tokens change. Solid and shaded: selected
-                  plan. Grey: the others. Dashed: inferred, or a window figure not marked measured. Red: an observed
+                  Each line is the limit itself, held flat between changes: a step means a measured change, and
+                  nothing else on the chart moves. Solid and shaded: selected plan. Grey: the others. Dashed:
+                  inferred from another plan by the measured plan ratio, not measured on this one. Red: a measured
                   change.
                 </p>
               </>
@@ -972,7 +988,6 @@ export default function ClaudeUsageTracker({
                   <div className="rate">
                     <span>
                       <b>{r.planWindowsPerWeek.toFixed(1)}</b> five-hour windows per week
-                      {r.weeklyInferred && <em>inferred</em>}
                     </span>
                   </div>
                 )}
@@ -986,8 +1001,9 @@ export default function ClaudeUsageTracker({
                 />
                 {weeklySeries.some((s) => s.points.length >= 2) && (
                   <p className="sub chart-legend">
-                    Each line is one plan's level, held flat between detected changes. Solid: selected plan. Grey:
-                    the others. Dashed: inferred.
+                    Each line is the limit itself, held flat between changes: a step means a measured change. Solid:
+                    selected plan. Grey: the others. Dashed: inferred from another plan by the measured plan ratio,
+                    not measured on this one. Pro is assumed from Max 5x.
                   </p>
                 )}
               </>
@@ -999,8 +1015,8 @@ export default function ClaudeUsageTracker({
           <section>
             <h2>Plan comparison</h2>
             <div className="sub">
-              {MODEL_LABELS[model] ?? model}. Max 20x is measured; Pro and Max 5x are scaled from it, partly by
-              Anthropic's published 1:5:20 ratios.
+              {MODEL_LABELS[model] ?? model} at {effort} effort. Max 20x is measured; Pro and Max 5x are scaled from
+              it by Anthropic's published 1:5:20 ratios.
             </div>
             <table>
               <thead>
@@ -1014,35 +1030,69 @@ export default function ClaudeUsageTracker({
               <tbody>
                 {(
                   [
-                    ["Tokens per 5-hour window", (c) => c.tokensPerWindow, fmtTokens],
-                    ["Tokens per week", (c) => c.tokensPerWeek, fmtTokens, true],
-                    ["Meter budget per 5-hour window", (c) => c.meterBudgetUsd, fmtUsd],
-                    ["API list value per 5-hour window", (c) => c.apiListValueUsd, fmtUsd],
-                    ["API list value per week", (c) => c.apiListValueUsdPerWeek, fmtUsd, true],
-                  ] as [string, (c: NonNullable<ReturnType<typeof compute>>) => number | null, (v: number) => string, boolean?][]
-                ).map(([label, value, fmt, weekly]) => (
+                    [
+                      "Tokens per 5-hour window",
+                      (c: ReturnType<typeof compute>) => (c!.tokensPerWindow === null ? "—" : fmtTokens(c!.tokensPerWindow)),
+                    ],
+                    [
+                      "Tokens per week",
+                      (c: ReturnType<typeof compute>) =>
+                        c!.tokensPerWindow === null || c!.windowsPerWeek === null
+                          ? "—"
+                          : fmtTokens(c!.tokensPerWindow * c!.windowsPerWeek),
+                    ],
+                    ...(r.sessionsPerWindow !== null
+                      ? ([
+                          [
+                            "Sessions per window",
+                            (c: ReturnType<typeof compute>) =>
+                              c!.sessionsPerWindow === null
+                                ? "—"
+                                : c!.sessionsPerWindow < 1
+                                  ? "< 1"
+                                  : String(Math.round(c!.sessionsPerWindow)),
+                          ],
+                        ] as [string, (c: ReturnType<typeof compute>) => string][])
+                      : []),
+                    ...(r.sessionsPerWindow !== null && r.windowsPerWeek !== null
+                      ? ([
+                          [
+                            "Sessions per week",
+                            (c: ReturnType<typeof compute>) =>
+                              c!.sessionsPerWeek === null ? "—" : String(Math.round(c!.sessionsPerWeek)),
+                          ],
+                        ] as [string, (c: ReturnType<typeof compute>) => string][])
+                      : []),
+                    [
+                      "API value per 5-hour window",
+                      (c: ReturnType<typeof compute>) => (c!.apiValueUsd === null ? "—" : fmtUsd(c!.apiValueUsd)),
+                    ],
+                    ...(r.windowsPerWeek !== null
+                      ? ([
+                          [
+                            "API value per week",
+                            (c: ReturnType<typeof compute>) =>
+                              c!.apiValueUsdPerWeek === null ? "—" : fmtUsd(c!.apiValueUsdPerWeek),
+                          ],
+                        ] as [string, (c: ReturnType<typeof compute>) => string][])
+                      : []),
+                  ] as [string, (c: ReturnType<typeof compute>) => string][]
+                ).map(([label, f]) => (
                   <tr key={label}>
                     <td>{label}</td>
-                    {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => {
-                      const c = compute(data, p, model, EFFORT)!;
-                      const v = value(c);
-                      return (
-                        <td key={p} className={p === plan ? "hl" : ""}>
-                          {v === null ? "—" : fmt(v)}
-                          {/* The table's form of the dashed line the weekly charts draw for an inferred level. */}
-                          {weekly && v !== null && c.weeklyInferred && (
-                            <>
-                              {" "}
-                              <em>inferred</em>
-                            </>
-                          )}
-                        </td>
-                      );
-                    })}
+                    {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => (
+                      <td key={p} className={p === plan ? "hl" : ""}>{f(compute(data, p, model, effort))}</td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
             </table>
+            {data.weekly_windows && (
+              <div className="quiet">
+                Max 20x and Max 5x weekly figures are measured from real accounts. Pro assumes the Max 5x ratio until
+                it is measured.
+              </div>
+            )}
           </section>
         )}
 
@@ -1092,7 +1142,6 @@ export default function ClaudeUsageTracker({
                   points={data.contributed[plan]!.points!}
                   tab={contribTab}
                   reference={contribTab.reference(r, fleetUsdPerPercent(data, plan))}
-                  referenceInferred={contribTab.referenceInferred?.(r) ?? false}
                   model={model}
                 />
               </>
@@ -1115,7 +1164,7 @@ export default function ClaudeUsageTracker({
             <summary>How we measure this</summary>
             <p>
               Every morning the tracker reads two things off each Max 20x account it watches
-              {data?.passive_account_count ? ` (${data.passive_account_count === 1 ? "one account" : `${data.passive_account_count} accounts`} with usable readings)` : ""}
+              {data?.passive_account_count ? ` (${data.passive_account_count === 1 ? "one account" : `${data.passive_account_count} accounts`} with usable readings today)` : ""}
               : the Claude Code transcripts of the work actually done on it, and that account's own usage meter. Between
               any two meter readings it knows how far the meter moved and which tokens were spent moving it, and that
               gives a price for one percent of the five-hour window. Readings from every account are pooled by day.
@@ -1124,26 +1173,32 @@ export default function ClaudeUsageTracker({
             <p>
               The meter does not treat every token the same. Cache reads cost nothing against it. Input, output and
               cache writes are charged at Anthropic's list price, the output rate fitted from 60 measured stretches of
-              real work. So every reading here is a meter-dollar value per percent of meter, the meter budget, and the
-              token counts are that value converted back through one reference mix of real sessions' tokens. The API list
-              value prices those same tokens at list price, cache reads included.
+              real work. So every reading here is an API-dollar value per percent of meter, and the token counts are
+              that value converted back through the token mix of real sessions. The effort figures come from one
+              calibration task, run at each effort level on each model.
             </p>
             <p>
               The weekly limit is measured the same way, per five-hour window: how far the seven-day meter moves for
-              each full window spent.
+              each full window spent. A change is dated to the day it lands rather than averaged into a calendar week.
             </p>
           </details>
           <details>
             <summary>Caveats</summary>
             <p>
               Token figures depend on the token mix. Because cache reads cost nothing against the meter, cache-heavy
-              work gets far more tokens per window than cache-light work for the same meter budget. The split shown is
-              the reference mix; yours will differ, and the meter budget is the figure that carries across. The meter
+              work gets far more tokens per window than cache-light work for the same dollar value. The split shown is
+              one account's real mix; yours will differ, and the dollar figure is the one that carries across. The meter
               reports whole percent, so each reading carries up to a percent's worth of rounding.
             </p>
             <p>
               The tokens and dollars per window for Pro and Max 5x are scaled from Max 20x by Anthropic's published plan
-              ratios. The weekly window counts are not scaled by those ratios.
+              ratios. The weekly window counts are not: Max 20x and Max 5x are both measured from real accounts, Max 5x
+              from the period one of them spent on that plan, and only Pro is assumed, from Max 5x.
+            </p>
+            <p>
+              The effort figures describe one task shape, run seven times at each effort level on each model. On Sonnet
+              the spread between runs is wider than the gap between low, medium and high, so read those three rows as
+              roughly equal rather than in order.
             </p>
             <p>
               This method is only as good as what it can see. Work done away from the machine being read moves the meter
@@ -1152,7 +1207,7 @@ export default function ClaudeUsageTracker({
             </p>
             <p>
               The current figure does not wait for a week to finish. It is measured from the five-hour windows since the
-              last detected change.
+              last confirmed change, so a step is dated to the day it landed rather than blended into a week's average.
             </p>
             <p>
               Every number on this page comes from the JSON at{" "}
