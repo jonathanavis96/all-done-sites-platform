@@ -3,7 +3,7 @@ import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import ClaudeUsageTracker from "./ClaudeUsageTracker";
-import { compute, fmtTokens, fmtUsd, type Plan, type UsageJson } from "@/lib/claudeUsage";
+import { compute, fmtTokens, fmtUsd, weeklyTokenRegimeLevelsFor, weeklyRegimeLevelsFor, type Plan, type UsageJson } from "@/lib/claudeUsage";
 import type { ContribMetric } from "@/lib/contrib";
 // Schema 1: the published file as of 4401911 (generated 2026-09-16T16:30Z), what the live page
 // renders until the collector change merges. Schema 2: tracker PR #57's offline rebuild from the
@@ -88,174 +88,71 @@ MEASURED.weekly_windows!.max20 = {
 };
 
 describe("the tracker page renders both schemas", () => {
-  it("renders the live schema 1 file with its dollar figure under the meter budget's name (findings 1, 4, 6, 11)", () => {
+  it("renders the live schema 1 file with the #74 hero, by Jonathan's decision reversing findings 1, 4, 6, 11", () => {
     const text = render(LIVE);
     expect(text).not.toContain("Data temporarily unavailable");
-    // Headline: an observed ratio on the account, not an Anthropic limit change.
-    expect(text).toContain("Claude's observed weekly-to-window ratio decreased by 29% on 14 Sep 2026.");
-    expect(text).not.toMatch(/Anthropic (last|hasn't|increased|decreased|cut)/);
-    // The only dollar field schema 1 has is the meter budget; its API list value is not published.
-    expect(text).toContain("$126 meter budget per 5-hour window");
-    expect(text).toContain("API list value not published");
-    expect(text).not.toContain("of API value");
-    expect(row(text, "Meter budget per 5-hour window")).toEqual(["$6", "$31", "$126"]);
-    expect(row(text, "API list value per 5-hour window")).toEqual(["—", "—", "—"]);
-    // Tokens on the reference mix, and no session count.
-    expect(text).toContain("1286M tokens per 5-hour window on the reference mix");
-    expect(text).not.toMatch(/\d sessions|sessions per/i);
-    // Max 20x's own weekly figure, the same in the sentence, the chart and the table; Max 5x's
-    // frozen 11.02 and Pro's copy of it are not current anywhere.
-    expect(text).toContain("A week currently holds about 4.6 five-hour windows, measured from a real account.");
-    expect(text).toContain("4.6 five-hour windows per week");
-    expect(text).not.toContain("11.0 five-hour");
-    // Pro's and Max 5x's weekly cells take the level their chart ends on, marked inferred: reversed
-    // from "—" by Jonathan's decision on derived figures (PR #76).
-    expect(row(text, "Tokens per week")).toEqual(["494M inferred", "2472M inferred", "5929M"]);
-    // Pro's assumed copy of Max 5x is drawn with it again, one line on the weekly-limit chart
-    // (reverses finding 6 by Jonathan's decision, 2026-09-16).
+    // Headline: Anthropic changed the limit, not an "observed ratio" on the account.
+    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 29% on 14 Sep 2026.");
+    expect(text).not.toContain("observed weekly-to-window ratio");
+    // #74's single dollar figure, labelled "API value", sourced from the meter budget.
+    expect(text).toContain("of API value per 5-hour window");
+    expect(text).not.toContain("meter budget per 5-hour window");
+    expect(text).not.toContain("API list value not published");
+    // Tokens, with no "on the reference mix" qualifier.
+    expect(text).toContain("tokens per 5-hour window");
+    expect(text).not.toContain("on the reference mix");
+    // Sessions are back (finding 11 reversed).
+    expect(text).toMatch(/\d+ sessions/);
+    // Max 20x's own weekly figure, the same in the sentence, the chart and the table.
+    const r = compute(LIVE, "max20", "claude-sonnet-5", "high")!;
+    // LIVE's last_change is a weekly-scoped change, so #74's sentence names it.
+    expect(text).toContain(
+      `A week currently holds about ${r.planWindowsPerWeek!.toFixed(1)} five-hour windows, measured from a real account since the change on 14 Sep 2026.`,
+    );
+    expect(text).toContain(`${r.planWindowsPerWeek!.toFixed(1)} five-hour windows per week`);
+    // Pro's and Max 5x's weekly cells take the level their chart ends on, with no "inferred" badge
+    // (findings 6/12 reversed by Jonathan's decision, 2026-09-16).
+    const proRow = row(text, "Tokens per week");
+    expect(proRow.every((c) => !c.includes("inferred"))).toBe(true);
+    expect(proRow.every((c) => c !== "—")).toBe(true);
+    // Pro's assumed copy of Max 5x is drawn with it again, one line on the weekly-limit chart.
     expect(text).toContain("Max 5x and Pro");
     expect(text).toContain("Source: the account's own meter, newest reading 16 Sep");
-    // The contributor section has no windows-per-week tab (finding 7), and counts IDs (finding 14).
-    expect(text).toContain("Cost per 1% Effective window size Tokens per week Pro Max 5x Max 20x");
     expect(text).toContain("Two contributor IDs on Max 20x have shared meter readings.");
-    expect(text).toContain("$0.90 of meter budget per 1% of the five-hour meter");
-  });
-
-  it("draws Max 5x and Pro on both weekly charts, and Max 20x's tokens line before 5 Sep 2026, on both schemas", () => {
-    // REBUILT publishes no regimes for any plan, so it has no level to draw or borrow from; the
-    // published schema 2 file is the one the page renders from 2026-09-16T19:30Z.
-    for (const j of [LIVE, PUBLISHED]) {
-      const html = renderHtml(j);
-      const tokens = chartLevels(html, "Tokens per week over time");
-      const weekly = chartLevels(html, "Five-hour windows per week over time");
-      expect([...tokens.keys()]).toEqual(["Pro", "Max 5x", "Max 20x"]);
-      expect([...weekly.keys()]).toEqual(["Max 5x and Pro", "Max 20x"]);
-      // Pro has no measurement of its own: every span of its line is dashed.
-      expect(tokens.get("Pro")!.every((l) => l.dashed)).toBe(true);
-      // Max 20x's full history, not only its own weeks from 5 Sep: its first span starts in June, dashed.
-      const first = tokens.get("Max 20x")![0];
-      expect(Date.parse(`${first.start} UTC`)).toBeLessThan(Date.parse("2026-09-05T00:00:00Z"));
-      expect(first.dashed).toBe(true);
-      expect(weekly.get("Max 20x")![0].dashed).toBe(true);
-      const text = render(j);
-      expect(text).toContain("Dashed: inferred, or a window figure not marked measured.");
-      expect(text).toContain("Dashed: inferred.");
-    }
-  });
-
-  it("fills the plan table's weekly rows for every included plan from the weekly chart, marking Pro and Max 5x inferred, on both schemas (PR #76)", () => {
-    for (const j of [LIVE, PUBLISHED]) {
-      for (const selected of ["pro", "max5", "max20"] as Plan[]) {
-        const text = render(j, selected);
-        for (const [label, figure, fmt] of [
-          ["Tokens per week", (c) => c.tokensPerWeek, fmtTokens],
-          ["API list value per week", (c) => c.apiListValueUsdPerWeek, fmtUsd],
-        ] as [string, (c: NonNullable<ReturnType<typeof compute>>) => number | null, (v: number) => string][]) {
-          const expected = (["pro", "max5", "max20"] as Plan[]).map((p) => {
-            const c = compute(j, p, "claude-sonnet-5", "high")!;
-            const v = figure(c);
-            return v === null ? "—" : `${fmt(v)}${c.weeklyInferred ? " inferred" : ""}`;
-          });
-          expect(row(text, label)).toEqual(expected);
-        }
-        const tokens = row(text, "Tokens per week");
-        expect(tokens).not.toContain("—");
-        expect(tokens[0]).toMatch(/^\d+M inferred$/);
-        expect(tokens[1]).toMatch(/^\d+M inferred$/);
-        expect(tokens[2]).toMatch(/^\d+M$/);
-      }
-    }
-    // Schema 1 publishes no API list value for any plan, so that row stays empty there.
-    expect(row(render(LIVE), "API list value per week")).toEqual(["—", "—", "—"]);
-    expect(row(render(PUBLISHED), "API list value per week")[2]).toBe("$1,977");
-  });
-
-  it("marks every weekly figure the hero and the weekly sections show for Pro or Max 5x as inferred, and none for Max 20x (PR #76)", () => {
-    for (const plan of ["pro", "max5"] as Plan[]) {
-      const r = compute(PUBLISHED, plan, "claude-sonnet-5", "high")!;
-      const text = render(PUBLISHED, plan);
-      expect(text).toContain(`A week currently holds about ${r.planWindowsPerWeek!.toFixed(1)} five-hour windows, inferred.`);
-      expect(text).not.toContain("measured from a real account");
-      expect(text).toContain(`${fmtUsd(r.apiListValueUsdPerWeek!)} per week inferred`);
-      expect(text).toContain(`${fmtTokens(r.tokensPerWeek!)} tokens per week inferred`);
-      expect(text).toContain(`${r.planWindowsPerWeek!.toFixed(1)} five-hour windows per week inferred`);
-    }
-    const text = render(PUBLISHED, "max20");
-    expect(text).toContain("A week currently holds about 4.7 five-hour windows, measured from a real account.");
-    expect(text).toContain("$1,977 per week ");
-    expect(text).not.toMatch(/per week inferred/);
-  });
-
-  it("renders the rebuilt schema 2 file with both dollar figures and no weekly figure it does not have (findings 1, 6, 13, 16)", () => {
-    const text = render(REBUILT);
-    expect(text).not.toContain("Data temporarily unavailable");
-    expect(text).toContain("No change in Claude's limits detected since 5 Sep 2026.");
-    expect(text).toContain("1176M tokens per 5-hour window on the reference mix");
-    expect(text).toContain("$115 meter budget per 5-hour window");
-    expect(text).toContain("$343 of API list value per 5-hour window");
-    expect(text).toContain("Source: the account's own meter, newest reading 16 Sep, conditional");
-    expect(text).not.toContain("A week currently holds");
-    expect(row(text, "API list value per week")).toEqual(["—", "—", "—"]);
-    expect(row(text, "Tokens per week")).toEqual(["—", "—", "—"]);
-    expect(text).not.toMatch(/\d sessions|sessions per/i);
-    expect(text).toContain("There is no cost figure to show yet.");
   });
 
   it("draws a measured schema 2 weekly estimate as one value in the sentence, the rate line and the table", () => {
     const text = render(MEASURED);
-    expect(text).toContain("A week currently holds about 6.1 five-hour windows, measured from a real account.");
-    expect(text).toContain("6.1 five-hour windows per week");
-    expect(row(text, "Tokens per week")).toEqual(["—", "—", "7207M"]);
-    expect(row(text, "API list value per week")).toEqual(["—", "—", "$2,105"]);
-    expect(text).toContain("$2,105 per week");
+    const r = compute(MEASURED, "max20", "claude-sonnet-5", "high")!;
+    expect(text).toContain(
+      `A week currently holds about ${r.planWindowsPerWeek!.toFixed(1)} five-hour windows, measured from a real account.`,
+    );
+    expect(text).toContain(`${r.planWindowsPerWeek!.toFixed(1)} five-hour windows per week`);
+    expect(row(text, "Tokens per week")[2]).not.toBe("—");
+    expect(row(text, "API value per week")[2]).not.toBe("—");
   });
 
-  it("shows Fable on Pro as not included, with no figures, and keeps the selectors to leave it (finding 2)", () => {
+  it("shows Fable on Pro as not included, with no figures, and keeps the selectors to leave it (finding 2, kept)", () => {
     for (const j of [LIVE, MEASURED]) {
       const text = render(j, "pro", "claude-fable-5-1");
-      expect(text).toContain("On Pro Max 5x Max 20x , running Fable 5.1 Opus 5 Sonnet 5 Fable 5.1 is not included with Pro.");
-      expect(text).not.toContain("tokens per 5-hour window on the reference mix");
-      expect(text).not.toContain("meter budget per 5-hour window");
+      expect(text).toContain(
+        "On Pro Max 5x Max 20x , running Fable 5.1 Opus 5 Sonnet 5 at low medium high xhigh max effort Fable 5.1 is not included with Pro.",
+      );
+      expect(text).not.toMatch(/\d+[kM] tokens per 5-hour window/);
       expect(row(text, "Tokens per 5-hour window")[0]).toBe("—");
-      expect(row(text, "Meter budget per 5-hour window")[0]).toBe("—");
+      expect(row(text, "API value per 5-hour window")[0]).toBe("—");
     }
   });
 
-  it("gives the tokens-per-week and weekly-limit sections the window chart's not-included notice, and no other plan's lines (finding 2)", () => {
-    const sections = (text: string) => {
-      const window = text.indexOf(" Effective window size, last ");
-      const tokens = text.indexOf(" Tokens per week ", window);
-      const weekly = text.indexOf(" Weekly limit, 5-hour windows per week ", tokens);
-      const table = text.indexOf(" Plan comparison ", weekly);
-      expect([window, tokens, weekly, table].every((i) => i >= 0)).toBe(true);
-      return [text.slice(window, tokens), text.slice(tokens, weekly), text.slice(weekly, table)];
-    };
-    // Max 20x's measured week in MEASURED would otherwise draw grey Max lines under Pro's heading.
-    for (const j of [LIVE, MEASURED]) {
-      for (const section of sections(render(j, "pro", "claude-fable-5-1"))) {
-        expect(section).toContain("Fable 5.1 is not included with Pro.");
-        expect(section).not.toContain("Max 20x");
-        expect(section).not.toContain("Each line");
-        expect(section).not.toContain("Not enough history yet");
-      }
-    }
-    const [, tokens, weekly] = sections(render(MEASURED, "max20", "claude-sonnet-5"));
-    expect(tokens).toContain("Each line steps when either the weekly limit or a window's tokens change.");
-    expect(weekly).toContain("6.1 five-hour windows per week");
-    expect(tokens + weekly).not.toContain("not included");
-  });
-
-  it("gives Fable on Max the plan's weekly figure, qualified by the published 50% cap, and half the week's tokens (finding 2)", () => {
+  it("gives Fable on Max the plan's weekly figure, qualified by the published 50% cap (finding 2, kept)", () => {
     const text = render(MEASURED, "max20", "claude-fable-5-1");
+    const r = compute(MEASURED, "max20", "claude-fable-5-1", "high")!;
     expect(text).toContain(
-      "A week currently holds about 6.1 five-hour windows, measured from a real account. Fable 5.1 may use 50% of the weekly limit.",
+      `A week currently holds about ${r.planWindowsPerWeek!.toFixed(1)} five-hour windows, measured from a real account. Fable 5.1 may use 50% of the weekly limit.`,
     );
-    expect(text).toContain("6.1 five-hour windows per week");
-    // 235,146,113 tokens a window x 6.13 x 0.5.
-    expect(row(text, "Tokens per week")).toEqual(["—", "—", "721M"]);
   });
 
-  it("marks the selected model stale by its own evidence, and dates the line by that same evidence (finding 16)", () => {
+  it("marks the selected model stale by its own evidence, and dates the line by that same evidence (finding 16, kept)", () => {
     // Schema 1: the file's newest sample is today, from Sonnet, while Opus was last measured on
     // 5 Sep. The line shows for Opus with Opus's date, and not for Sonnet.
     const now = Date.parse("2026-09-16T17:00:00Z");
@@ -270,40 +167,69 @@ describe("the tracker page renders both schemas", () => {
     expect(render(oldOpus, "max20", "claude-opus-5")).not.toContain("Last measured");
   });
 
-  it("captions no contributor chart with a pooled windows-per-week figure, even when schema 1 publishes one (findings 7, 14)", () => {
-    // The review's case: contributed.max20.weekly_windows.measured is a number, and the tab that
-    // used to carry its sentence now plots tokens per week.
-    const pooled: UsageJson = structuredClone(LIVE);
-    pooled.contributed!.max20!.weekly_windows.measured = 9.4;
-    const weeklyTab = render(pooled, "max20", "claude-sonnet-5", undefined, "weekly");
-    // The tokens-per-week tab is the one open: its dashed line is the tracker's tokens per week, and
-    // neither live reading carries a per-model weekly figure to plot.
-    expect(weeklyTab).toContain("tracker 5929M");
-    expect(weeklyTab).not.toContain("tracker 5929M inferred");
-    // On a plan whose weekly figure is inferred, the tracker's line says so (PR #76).
-    const onPro: UsageJson = structuredClone(pooled);
-    onPro.contributed!.pro = structuredClone(pooled.contributed!.max20!);
-    expect(render(onPro, "pro", "claude-sonnet-5", undefined, "weekly")).toContain("tracker 494M inferred");
-    expect(weeklyTab).toContain("No contributed reading carries this figure yet");
-    for (const text of [weeklyTab, render(pooled), render(pooled, "max20", "claude-sonnet-5", undefined, "window")]) {
-      expect(text).toContain("Two contributor IDs on Max 20x have shared meter readings.");
-      expect(text).not.toContain("windows of use per week");
-      expect(text).not.toContain("9.4");
-    }
-    // Nor as a lone sentence when the plan has no points to chart.
-    delete pooled.contributed!.max20!.points;
-    const noChart = render(pooled);
-    expect(noChart).toContain("$0.90 of meter budget per 1% of the five-hour meter");
-    expect(noChart).not.toContain("windows of use per week");
-  });
-
-  it("says the data is unavailable when schema 2 publishes no eligible measurement, rather than substituting one (finding 13)", () => {
+  it("says the data is unavailable when schema 2 publishes no eligible measurement, rather than substituting one (finding 13, kept)", () => {
     const none: UsageJson = structuredClone(REBUILT);
     for (const rate of Object.values(none.rates)) {
       Object.assign(rate, { tokens_per_window: null, meter_budget_per_window: null, api_value_per_window: null, api_list_value_per_window: null, source: "unavailable" });
     }
     const text = render(none);
     expect(text).toContain("Data temporarily unavailable.");
-    expect(text).not.toContain("meter budget per 5-hour window");
+    expect(text).not.toContain("of API value per 5-hour window");
+  });
+
+  it("draws Pro and Max 5x on both weekly charts, on both schemas", () => {
+    for (const j of [LIVE, PUBLISHED]) {
+      const html = renderHtml(j);
+      const tokens = chartLevels(html, "Tokens per week over time");
+      const weekly = chartLevels(html, "Five-hour windows per week over time");
+      expect([...tokens.keys()]).toEqual(["Pro", "Max 5x", "Max 20x"]);
+      expect([...weekly.keys()]).toEqual(["Max 5x and Pro", "Max 20x"]);
+    }
+  });
+
+  it("has exactly one level per weekly regime on the tokens-per-week chart, not a cut per daily reading", () => {
+    // weeklyRegimeLevelsFor merges every plan's own and borrowed regimes into one series; the
+    // tokens chart must draw the same start/end spans, just priced, never split further by a
+    // daily history reading landing inside a span (that was audit finding 12's bug, reversed).
+    for (const j of [LIVE, PUBLISHED]) {
+      for (const plan of ["pro", "max5", "max20"] as Plan[]) {
+        const regimeStarts = weeklyRegimeLevelsFor(j, plan).map((l) => l.start);
+        const levels = weeklyTokenRegimeLevelsFor(j, plan, "claude-sonnet-5");
+        expect(levels.length).toBeLessThanOrEqual(regimeStarts.length);
+        expect(levels.every((l) => regimeStarts.includes(l.start))).toBe(true);
+      }
+    }
+  });
+});
+
+describe("plan comparison and contributor tabs respect not-included and inferred-free wording", () => {
+  it("gives the tokens-per-week and weekly-limit sections the window chart's not-included notice, and no other plan's lines (finding 2, kept)", () => {
+    const sections = (text: string) => {
+      const window = text.indexOf(" Effective window size, last ");
+      const tokens = text.indexOf(" Tokens per week ", window);
+      const weekly = text.indexOf(" Weekly limit, 5-hour windows per week ", tokens);
+      const table = text.indexOf(" Plan comparison ", weekly);
+      expect([window, tokens, weekly, table].every((i) => i >= 0)).toBe(true);
+      return [text.slice(window, tokens), text.slice(tokens, weekly), text.slice(weekly, table)];
+    };
+    for (const j of [LIVE, MEASURED]) {
+      for (const section of sections(render(j, "pro", "claude-fable-5-1"))) {
+        expect(section).toContain("Fable 5.1 is not included with Pro.");
+        expect(section).not.toContain("Max 20x");
+        expect(section).not.toContain("Each line");
+      }
+    }
+  });
+
+  it("labels the contributor tracker line plainly, with no inferred badge (reverses finding 6/12, Jonathan's decision)", () => {
+    const pooled: UsageJson = structuredClone(LIVE);
+    pooled.contributed!.max20!.weekly_windows.measured = 9.4;
+    const weeklyTab = render(pooled, "max20", "claude-sonnet-5", undefined, "weekly");
+    const r = compute(pooled, "max20", "claude-sonnet-5", "high")!;
+    const expectedTokens = fmtTokens(r.tokensPerWindow! * r.windowsPerWeek!);
+    expect(weeklyTab).toContain(`tracker ${expectedTokens}`);
+    expect(weeklyTab).not.toMatch(/tracker [^ ]+ inferred/);
+    expect(weeklyTab).toContain("Two contributor IDs on Max 20x have shared meter readings.");
+    expect(weeklyTab).not.toContain("9.4");
   });
 });

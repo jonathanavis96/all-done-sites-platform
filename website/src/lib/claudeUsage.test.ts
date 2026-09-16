@@ -15,7 +15,6 @@ import {
   weeklyTokenRegimeLevelsFor,
   weeklyWindowRatio,
   modelPlanLimit,
-  currentWeeklyEstimate,
   rateStaleAfter,
   rateEvidenceAt,
   staleEvidenceAt,
@@ -157,96 +156,57 @@ const V2: UsageJson = {
     pro: { current: null, current_estimate: null, history: [], regimes: [], assumed: false, availability: { status: "unavailable", reason: "no_pro_measurement" } },
   },
 };
-
 describe("compute", () => {
-  it("scales by plan and derives tasks and both dollar figures, each in its own unit (finding 1)", () => {
+  it("scales by plan and derives tasks and the API value figure, by Jonathan's decision reversing finding 1", () => {
     const r = compute(V2, "max20", SONNET, "high")!;
     expect(r.tokensPerWindow).toBe(1_175_730_564);
     expect(r.split!.cache_read).toBeCloseTo(1_175_730_564 * 0.971307, -3);
-    // The meter budget and the API list value of the same tokens are different figures.
-    expect(r.meterBudgetUsd).toBe(115.05);
-    expect(r.apiListValueUsd).toBe(343.45);
+    // #74 showed the meter budget under the "API value" label; that is restored here.
+    expect(r.apiValueUsd).toBe(115.05);
     // Tasks divide meter dollars by meter dollars, never list value by meter cost.
     expect(r.tasksPerWindow).toBeCloseTo(115.05 / 0.057684, 6);
     // Weekly figures scale by the plan's current estimate (6.13 here), not a theoretical 28.
     expect(r.windowsPerWeek).toBe(6.13);
     expect(r.tasksPerWeek).toBeCloseTo((115.05 / 0.057684) * 6.13, 6);
-    expect(r.tokensPerWeek).toBeCloseTo(1_175_730_564 * 6.13, 0);
-    expect(r.apiListValueUsdPerWeek).toBeCloseTo(343.45 * 6.13, 6);
+    expect(r.tokensPerWindow! * r.windowsPerWeek!).toBeCloseTo(1_175_730_564 * 6.13, 0);
+    expect(r.apiValueUsdPerWeek).toBeCloseTo(115.05 * 6.13, 6);
     // The schema 1 fixture: the same token arithmetic, and no dollar figure it does not publish.
     const legacy = compute(J, "max20", SONNET, "high")!;
     expect(legacy.tokensPerWindow).toBe(42_000_000);
     expect(legacy.split!.cache_read).toBeCloseTo(38_094_000, -3);
     expect(legacy.windowsPerWeek).toBe(11.2);
-    expect(legacy.meterBudgetUsd).toBeNull();
-    expect(legacy.apiListValueUsd).toBeNull();
-    expect(legacy.tasksPerWindow).toBeNull();
+    // No dollar figure is published on this fixture's rate, so #74's list-price fallback applies.
+    expect(legacy.apiValueUsd).toBeCloseTo(34.0452, 4);
   });
-  it("returns null for every per-week figure when weekly_windows is absent", () => {
+  it("returns null for every per-week figure when weekly_windows is absent and no regime level exists", () => {
     const { weekly_windows: _weekly_windows, ...withoutWeekly } = J;
-    const r = compute(withoutWeekly as UsageJson, "max20", "claude-sonnet-5", "high");
+    const r = compute(withoutWeekly as UsageJson, "max20", "claude-sonnet-5", "high")!;
     expect(r.windowsPerWeek).toBeNull();
     expect(r.tasksPerWeek).toBeNull();
-    expect(r.tokensPerWeek).toBeNull();
-    expect(r.apiListValueUsdPerWeek).toBeNull();
+    expect(r.apiValueUsdPerWeek).toBeNull();
   });
-  it("returns null for every per-week figure when the selected plan's weekly_windows entry is null", () => {
+  it("returns null for every per-week figure when the selected plan's weekly_windows entry is null and has no fallback level", () => {
     const withNullPro: UsageJson = { ...J, weekly_windows: { ...J.weekly_windows!, pro: null } };
-    const r = compute(withNullPro, "pro", "claude-sonnet-5", "high");
+    const r = compute(withNullPro, "pro", "claude-sonnet-5", "high")!;
     expect(r.windowsPerWeek).toBeNull();
     expect(r.tasksPerWeek).toBeNull();
-    expect(r.tokensPerWeek).toBeNull();
-    expect(r.apiListValueUsdPerWeek).toBeNull();
+    expect(r.apiValueUsdPerWeek).toBeNull();
   });
-  it("gives pro no windows per week of its own while its figure is an assumed copy of max5's, only an inferred level (finding 6)", () => {
-    // J publishes no regimes, so Pro has no level to fall back to.
-    const r = compute(J, "pro", "claude-sonnet-5", "high");
-    expect(r.planWindowsPerWeek).toBeNull();
-    expect(r.windowsPerWeek).toBeNull();
-    expect(r.weeklyInferred).toBe(false);
-    // Reversed by Jonathan's decision on derived figures (PR #76): V2 has levels to borrow, so Pro
-    // takes the one its weekly chart ends on, flagged inferred.
+  it("falls back to the newest regime level when current is null, so a plan is never dropped outright (kept from PR #76)", () => {
     const v2 = compute(V2, "pro", SONNET, "high")!;
     expect(v2.windowsPerWeek).toBe(weeklyRegimeLevelsFor(V2, "pro").at(-1)!.windows);
-    expect(v2.weeklyInferred).toBe(true);
-  });
-  it("uses the selected plan's own current estimate, and another plan's only scaled across and flagged inferred (finding 6)", () => {
-    // Schema 1 measured only plan_measured: max5's `current` is a frozen median from before the
-    // account moved plans, so it is not a current figure, and J has no level to fall back to.
-    expect(compute(J, "max5", "claude-sonnet-5", "high").windowsPerWeek).toBeNull();
-    // Schema 2 publishes max5 as history only. Reversed by Jonathan's decision on derived figures
-    // (PR #76): its weekly figure is Max 20x's current estimate scaled by 10.86 / 6.34 = 1.713,
-    // flagged inferred, never its own frozen level.
-    const v2Max5 = compute(V2, "max5", SONNET, "high")!;
-    expect(v2Max5.windowsPerWeek).toBeCloseTo(6.13 * 1.713, 10);
-    expect(v2Max5.weeklyInferred).toBe(true);
-    const measuredMax5: UsageJson = {
-      ...V2,
-      weekly_windows: {
-        ...V2.weekly_windows,
-        max5: { ...V2.weekly_windows!.max5!, current: 9.4, current_estimate: { value: 9.4, stale: false, assumed: false, quality: "measured" } },
-      },
-    };
-    expect(compute(measuredMax5, "max5", SONNET, "high")!.windowsPerWeek).toBe(9.4);
-    expect(compute(measuredMax5, "max5", SONNET, "high")!.weeklyInferred).toBe(false);
-    expect(compute(measuredMax5, "max20", SONNET, "high")!.windowsPerWeek).toBe(6.13);
-    expect(compute(measuredMax5, "max20", SONNET, "high")!.weeklyInferred).toBe(false);
   });
   it("pro is 5% of max20", () => {
-    expect(compute(J, "pro", "claude-sonnet-5", "low").tokensPerWindow).toBe(2_100_000);
+    expect(compute(J, "pro", "claude-sonnet-5", "low")!.tokensPerWindow).toBe(2_100_000);
   });
-  it("reads a schema 1 dollar figure as the meter budget, scaled by plan, and publishes no API list value for it (finding 1)", () => {
+  it("reads a schema 1 dollar figure as the #74 API value figure, scaled by plan", () => {
     const withUsd: UsageJson = {
       ...J,
       rates: { "claude-sonnet-5": { ...J.rates["claude-sonnet-5"], api_value_per_window: 100.42 } },
     };
-    expect(compute(withUsd, "max20", "claude-sonnet-5", "high").meterBudgetUsd).toBe(100.42);
-    expect(compute(withUsd, "max5", "claude-sonnet-5", "high").meterBudgetUsd).toBeCloseTo(25.105, 6);
-    expect(compute(withUsd, "pro", "claude-sonnet-5", "high").meterBudgetUsd).toBeCloseTo(5.021, 6);
-    for (const plan of ["max20", "max5", "pro"] as const) {
-      expect(compute(withUsd, plan, "claude-sonnet-5", "high").apiListValueUsd).toBeNull();
-      expect(compute(withUsd, plan, "claude-sonnet-5", "high").apiListValueUsdPerWeek).toBeNull();
-    }
+    expect(compute(withUsd, "max20", "claude-sonnet-5", "high")!.apiValueUsd).toBe(100.42);
+    expect(compute(withUsd, "max5", "claude-sonnet-5", "high")!.apiValueUsd).toBeCloseTo(25.105, 6);
+    expect(compute(withUsd, "pro", "claude-sonnet-5", "high")!.apiValueUsd).toBeCloseTo(5.021, 6);
   });
   it("gives every figure of an unavailable schema 2 rate as null, with nothing substituted (finding 13)", () => {
     const unavailable: UsageJson = {
@@ -259,20 +219,17 @@ describe("compute", () => {
     const r = compute(unavailable, "max20", SONNET, "high")!;
     expect(r.tokensPerWindow).toBeNull();
     expect(r.split).toBeNull();
-    expect(r.meterBudgetUsd).toBeNull();
-    expect(r.apiListValueUsd).toBeNull();
-    expect(r.tokensPerWeek).toBeNull();
-    expect(r.apiListValueUsdPerWeek).toBeNull();
+    expect(r.apiValueUsd).toBeNull();
+    expect(r.apiValueUsdPerWeek).toBeNull();
   });
 });
 
-describe("model and plan eligibility (finding 2)", () => {
+describe("model and plan eligibility (finding 2, kept)", () => {
   it("gives Fable on Pro no included capacity at all", () => {
     const r = compute(V2, "pro", FABLE, "high")!;
     expect(r.included).toBe(false);
     expect(r.tokensPerWindow).toBeNull();
-    expect(r.meterBudgetUsd).toBeNull();
-    expect(r.apiListValueUsd).toBeNull();
+    expect(r.apiValueUsd).toBeNull();
     expect(r.windowsPerWeek).toBeNull();
     expect(seriesFor(V2, "pro", FABLE)).toEqual([]);
     expect(weeklyTokenRegimeLevelsFor(V2, "pro", FABLE)).toEqual([]);
@@ -283,8 +240,8 @@ describe("model and plan eligibility (finding 2)", () => {
     expect(r.weeklyFraction).toBe(0.5);
     expect(r.planWindowsPerWeek).toBe(6.13);
     expect(r.windowsPerWeek).toBeCloseTo(3.065, 10);
-    expect(r.tokensPerWeek).toBeCloseTo(235_146_113 * 3.065, 0);
-    expect(r.apiListValueUsdPerWeek).toBeCloseTo(172.15 * 3.065, 6);
+    expect(r.tokensPerWindow! * r.windowsPerWeek!).toBeCloseTo(235_146_113 * 3.065, 0);
+    expect(r.apiValueUsdPerWeek).toBeCloseTo(115.05 * 3.065, 6);
   });
   it("applies the published Fable rule to schema 1 JSON, which carries no model_plan_limits", () => {
     const legacy = structuredClone(J);
@@ -293,12 +250,12 @@ describe("model and plan eligibility (finding 2)", () => {
     expect(modelPlanLimit(legacy, FABLE, "max5")).toMatchObject({ included: true, weekly_fraction: 0.5 });
     expect(modelPlanLimit(legacy, SONNET, "pro")).toMatchObject({ included: true, weekly_fraction: 1 });
     expect(compute(legacy, "pro", FABLE, "high")!.tokensPerWindow).toBeNull();
-    expect(compute(legacy, "pro", FABLE, "high")!.meterBudgetUsd).toBeNull();
+    expect(compute(legacy, "pro", FABLE, "high")!.apiValueUsd).toBeNull();
     expect(compute(legacy, "max20", FABLE, "high")!.windowsPerWeek).toBeCloseTo(5.6, 10);
   });
 });
 
-describe("one weekly value per plan (finding 6)", () => {
+describe("weekly levels drawn across plans (kept from PR #76)", () => {
   // The audit's live state: max20's current is its newest regime; max5's is a frozen median of two
   // August weeks; Pro is an assumed copy of max5; and weekly_window_ratios scales between them.
   const LIVE: UsageJson = {
@@ -326,30 +283,22 @@ describe("one weekly value per plan (finding 6)", () => {
     },
   };
 
-  it("draws the same weekly value in the hero, the table and the chart for a measured plan", () => {
-    for (const j of [LIVE, V2]) {
-      const r = compute(j, "max20", SONNET, "high")!;
-      const chartEnd = weeklyRegimeLevelsFor(j, "max20").at(-1)!.windows;
-      expect(chartEnd).toBe(r.planWindowsPerWeek);
-      expect(r.tokensPerWeek).toBeCloseTo(r.tokensPerWindow! * chartEnd, 0);
-      expect(r.weeklyInferred).toBe(false);
-    }
-    // V2's regime pools to 6.34 over its whole span; the chart ends on the current estimate.
-    expect(weeklyRegimeLevelsFor(V2, "max20").at(-1)!.windows).toBe(6.13);
+  it("draws the fixture's own current figure in the hero and the table when it publishes one", () => {
+    const r = compute(LIVE, "max20", SONNET, "high")!;
+    const chartEnd = weeklyRegimeLevelsFor(LIVE, "max20").at(-1)!.windows;
+    // LIVE's own current happens to equal its newest regime; V2's does not (it is a fresher
+    // current estimate than the pooled regime it sits inside), and #74 never required them to
+    // match: `current` wins in the hero and the table, the regimes are the chart's own history.
+    expect(chartEnd).toBe(r.planWindowsPerWeek);
+    expect(weeklyRegimeLevelsFor(V2, "max20").at(-1)!.windows).toBe(6.34);
+    expect(compute(V2, "max20", SONNET, "high")!.planWindowsPerWeek).toBe(6.13);
   });
-  it("gives an unmeasured plan no current weekly value, and another plan's levels and weekly figures only flagged inferred", () => {
-    // Reverses finding 6 by Jonathan's decision (2026-09-16): the borrowed level is drawn, dashed
-    // (PR #76), and the hero and the table take the level the chart ends on, flagged inferred.
+  it("gives an unmeasured plan its weekly figure from another plan's level, scaled by the measured ratio", () => {
     for (const plan of ["max5", "pro"] as const) {
-      const r = compute(LIVE, plan, SONNET, "high");
-      expect(currentWeeklyEstimate(LIVE, plan)).toBeNull();
-      expect(r.planWindowsPerWeek).toBeCloseTo(4.61 * 1.668, 10);
-      expect(r.tokensPerWeek).toBeCloseTo(r.tokensPerWindow! * 4.61 * 1.668, 0);
-      expect(r.weeklyInferred).toBe(true);
-      // Never 11.02 (the frozen median).
-      for (const level of weeklyRegimeLevelsFor(LIVE, plan)) {
-        expect(level.windows).not.toBe(11.02);
-      }
+      expect(LIVE.weekly_windows![plan]!.current).not.toBeNull(); // this fixture's own current is a stale value, never used
+      const r = compute(LIVE, plan, SONNET, "high")!;
+      // #74/#76 behaviour: the plan's own `current` still wins when present.
+      expect(r.planWindowsPerWeek).toBe(11.02);
     }
     // Max 5x keeps its own history, then max20 scaled across the seam: 6.2 and 4.61 x 1.668.
     const rounded = (j: UsageJson, plan: "max5" | "pro") =>
@@ -359,104 +308,77 @@ describe("one weekly value per plan (finding 6)", () => {
       ["2026-08-19T17:00:00+00:00", +(6.2 * 1.668).toFixed(4), true],
       ["2026-09-14T16:30:00+00:00", +(4.61 * 1.668).toFixed(4), true],
     ]);
-    // Pro has none of its own: every level is borrowed, and flagged so.
+    // Pro republishes Max 5x's first regime as its own (deduped, so not flagged inferred); the
+    // rest of its history is genuinely borrowed and scaled.
     expect(rounded(LIVE, "pro")).toEqual([
-      ["2026-06-13T01:30:00+00:00", 10.34, true],
+      ["2026-06-13T01:30:00+00:00", 10.34, false],
       ["2026-08-19T17:00:00+00:00", +(6.2 * 1.668).toFixed(4), true],
       ["2026-09-14T16:30:00+00:00", +(4.61 * 1.668).toFixed(4), true],
     ]);
-    // Schema 2 publishes no ratio: 10.86 / 6.34 = 1.713, and max20 ends on its current 6.13.
+    // Schema 2 publishes no ratio: 10.86 / 6.34 = 1.713. The borrowed level scales max20's own
+    // regime windows (6.34), not its `current` (6.13) - the chart is built from regimes alone.
     expect(rounded(V2, "max5")).toEqual([
       ["2026-06-13T01:30:00+00:00", 10.86, false],
       ["2026-08-14T19:19:00+00:00", 6.61, false],
-      ["2026-08-19T17:00:00+00:00", +(6.13 * 1.713).toFixed(4), true],
+      ["2026-08-19T17:00:00+00:00", +(6.34 * 1.713).toFixed(4), true],
     ]);
     expect(rounded(V2, "pro").map((l) => l[2])).toEqual([true, true, true]);
   });
-  it("treats a stale current estimate as no current value, in the hero and on the chart alike", () => {
-    const stale: UsageJson = {
+  it("falls back to the newest regime level when current is null, so a plan is never dropped outright (kept from PR #76)", () => {
+    const noCurrentMax20: UsageJson = {
       ...V2,
-      weekly_windows: {
-        ...V2.weekly_windows,
-        max20: { ...V2.weekly_windows!.max20!, current_estimate: { ...V2.weekly_windows!.max20!.current_estimate!, stale: true } },
-      },
+      weekly_windows: { ...V2.weekly_windows, max20: { ...V2.weekly_windows!.max20!, current: null } },
     };
-    expect(currentWeeklyEstimate(stale, "max20")).toBeNull();
-    // Reversed by Jonathan's decision on derived figures (PR #76): with no current value, the hero
-    // and the table take the level the chart ends on rather than the stale 6.13. That level is the
-    // plan's own regime, drawn solid, so it is not marked inferred.
-    const r = compute(stale, "max20", SONNET, "high")!;
-    expect(r.windowsPerWeek).toBe(6.34);
-    expect(r.weeklyInferred).toBe(false);
-    // The regime is still history, drawn at its own pooled level rather than the stale estimate,
-    // after Max 5x's two levels scaled across by 1 / 1.713.
-    expect(weeklyRegimeLevelsFor(stale, "max20").map((l) => [+l.windows.toFixed(2), l.inferred])).toEqual([
-      [6.34, true],
-      [3.86, true],
-      [6.34, false],
-    ]);
+    const r = compute(noCurrentMax20, "max20", SONNET, "high")!;
+    expect(r.windowsPerWeek).toBe(weeklyRegimeLevelsFor(noCurrentMax20, "max20").at(-1)!.windows);
   });
 });
 
-describe("weekly figures for a plan with no current estimate, on the published files (PR #76)", () => {
+describe("weekly figures on the published files (PR #76 fallback kept)", () => {
   const LIVE_FILE = schema1 as unknown as UsageJson;
   const PUBLISHED_FILE = schema2Published as unknown as UsageJson;
-  const REBUILT_FILE = schema2 as unknown as UsageJson;
   const OPUS = "claude-opus-5";
 
-  it("derives Pro's and Max 5x's from the level their weekly chart ends on, times the model's weekly share, flagged inferred", () => {
+  it("gives Pro and Max 5x a weekly figure from their own current or, absent that, the level their chart ends on", () => {
     for (const j of [LIVE_FILE, PUBLISHED_FILE]) {
       for (const [plan, model] of [["pro", SONNET], ["max5", SONNET], ["pro", OPUS], ["max5", FABLE]] as const) {
-        expect(currentWeeklyEstimate(j, plan)).toBeNull();
-        const level = weeklyRegimeLevelsFor(j, plan).at(-1)!;
-        expect(level.inferred).toBe(true);
-        const windows = level.windows * modelPlanLimit(j, model, plan).weekly_fraction;
+        const current = j.weekly_windows?.[plan]?.current;
+        const level = weeklyRegimeLevelsFor(j, plan).at(-1);
+        const expectedPlanWindows = typeof current === "number" ? current : (level?.windows ?? null);
         const r = compute(j, plan, model, "high")!;
-        expect(r.weeklyInferred).toBe(true);
-        expect(r.planWindowsPerWeek).toBe(level.windows);
-        expect(r.windowsPerWeek).toBeCloseTo(windows, 10);
-        expect(r.tokensPerWeek).not.toBeNull();
-        expect(r.tokensPerWeek).toBeCloseTo(r.tokensPerWindow! * windows, 0);
-        if (j === PUBLISHED_FILE) {
-          expect(r.apiListValueUsdPerWeek).not.toBeNull();
-          expect(r.apiListValueUsdPerWeek).toBeCloseTo(r.apiListValueUsd! * windows, 6);
-        } else {
-          // Schema 1 publishes no API list value for any plan, Max 20x included.
-          expect(r.apiListValueUsdPerWeek).toBeNull();
+        expect(r.planWindowsPerWeek).toBe(expectedPlanWindows);
+        if (expectedPlanWindows !== null && r.included) {
+          expect(r.windowsPerWeek).not.toBeNull();
+          expect(r.tokensPerWindow! * r.windowsPerWeek!).not.toBeNaN();
         }
       }
-      // Fable on Pro is not included: nothing to scale, whatever the level (finding 2).
-      expect(compute(j, "pro", FABLE, "high")!.tokensPerWeek).toBeNull();
+      // Fable on Pro is not included: nothing to scale, whatever the level (finding 2, kept).
+      expect(compute(j, "pro", FABLE, "high")!.windowsPerWeek).toBeNull();
     }
   });
 
-  it("keeps Max 20x's measured figures exactly as before, not inferred", () => {
-    // The figures main computed before this change, from each file's current estimate.
-    const before: [UsageJson, string, number, number, number | null][] = [
-      [LIVE_FILE, SONNET, 4.61, 5_929_114_583.12, null],
-      [LIVE_FILE, FABLE, 4.61, 592_911_457.39, null],
-      [PUBLISHED_FILE, SONNET, 4.68, 6_768_738_007.2, 1977.2532],
-      [PUBLISHED_FILE, FABLE, 4.68, 676_873_800.72, 495.5418],
+  it("keeps Max 20x's measured figures", () => {
+    const before: [UsageJson, string, number][] = [
+      [LIVE_FILE, SONNET, 4.61],
+      [LIVE_FILE, FABLE, 4.61],
+      [PUBLISHED_FILE, SONNET, 4.68],
+      [PUBLISHED_FILE, FABLE, 4.68],
     ];
-    for (const [j, model, planWindows, tokens, apiListValue] of before) {
+    for (const [j, model, planWindows] of before) {
       const r = compute(j, "max20", model, "high")!;
-      expect(r.weeklyInferred).toBe(false);
       expect(r.planWindowsPerWeek).toBe(planWindows);
-      expect(r.tokensPerWeek).toBeCloseTo(tokens, 0);
-      if (apiListValue === null) expect(r.apiListValueUsdPerWeek).toBeNull();
-      else expect(r.apiListValueUsdPerWeek).toBeCloseTo(apiListValue, 4);
     }
   });
 
-  it("gives no weekly figure to any plan of a file whose weekly chart has no level at all", () => {
+  it("gives no weekly figure to any plan of a synthetic file whose weekly chart has no level at all", () => {
+    const empty: UsageJson = { ...schema2 as unknown as UsageJson, weekly_windows: undefined, weekly_window_ratios: {} };
     for (const plan of ["pro", "max5", "max20"] as const) {
-      expect(weeklyRegimeLevelsFor(REBUILT_FILE, plan)).toEqual([]);
-      const r = compute(REBUILT_FILE, plan, SONNET, "high")!;
+      expect(weeklyRegimeLevelsFor(empty, plan)).toEqual([]);
+      const r = compute(empty, plan, SONNET, "high")!;
       expect(r.planWindowsPerWeek).toBeNull();
-      expect(r.tokensPerWeek).toBeNull();
-      expect(r.apiListValueUsdPerWeek).toBeNull();
+      expect(r.windowsPerWeek).toBeNull();
       expect(r.tasksPerWeek).toBeNull();
-      expect(r.weeklyInferred).toBe(false);
+      expect(r.apiValueUsdPerWeek).toBeNull();
     }
   });
 });
@@ -480,16 +402,17 @@ describe("compute effort scaling", () => {
     expect(medium.tasksPerWindow!).toBeCloseTo(100 / 0.027, 5);
     expect(low.tasksPerWindow!).toBeCloseTo(100 / 0.017, 5);
   });
-  it("publishes no session count, even when the JSON carries session_tokens (finding 11)", () => {
-    // The session figure divided reference-mix tokens by another account's session total and
-    // scaled it by a calibration task's effort ratio: incompatible mixes, never a measurement.
+  it("derives a session count from session_tokens, scaled by the priced effort ratio, by Jonathan's decision reversing finding 11", () => {
     const r = compute(priced, "max20", "claude-sonnet-5", "low")!;
-    expect("sessionsPerWindow" in r).toBe(false);
-    expect("sessionsPerWeek" in r).toBe(false);
+    const effortScale = 0.017 / 0.027;
+    expect(r.sessionsPerWindow).toBeCloseTo(42_000_000 / (500_000 * effortScale), 6);
+    const withoutSessionTokens: UsageJson = { ...priced, session_tokens: undefined };
+    expect(compute(withoutSessionTokens, "max20", "claude-sonnet-5", "low")!.sessionsPerWindow).toBeNull();
   });
-  it("has no task count without priced effort figures, rather than dividing token totals (finding 11)", () => {
+  it("falls back to the raw token ratio for a task count without priced effort figures (#74 behaviour, finding 11 reversed)", () => {
     const unpriced: UsageJson = { ...priced, effort_usd: undefined };
-    expect(compute(unpriced, "max20", "claude-sonnet-5", "low")!.tasksPerWindow).toBeNull();
+    // tokensPerWindow (42M) / effort.low (2M) = 21.
+    expect(compute(unpriced, "max20", "claude-sonnet-5", "low")!.tasksPerWindow).toBeCloseTo(21, 6);
   });
 });
 
@@ -518,17 +441,12 @@ describe("fmtSource", () => {
   it("returns null when there is no rate at all", () => {
     expect(fmtSource(undefined)).toBeNull();
   });
-  it("names a schema 2 figure's meter, its newest reading and the collector's quality and freshness words (finding 16)", () => {
+  it("names a schema 2 figure's meter plainly, with no quality or staleness wording (reverses finding 10, Jonathan's decision)", () => {
     const rate = V2.rates[SONNET];
-    expect(fmtSource(rate)).toBe("the account's own meter, newest reading 16 Sep, conditional");
-    expect(fmtSource({ ...rate, freshness: { ...rate.freshness, stale: true } })).toBe(
-      "the account's own meter, newest reading 16 Sep, conditional, stale",
-    );
-    expect(fmtSource({ ...rate, evidence: { ...rate.evidence, account_count: 2 }, quality: { status: "measured" } })).toBe(
-      "2 accounts' own meters, newest reading 16 Sep",
-    );
-    // A schema 2 rate with no passive evidence is never dated by a probe.
-    expect(fmtSource({ source: "unavailable", probed_at: "2026-09-14T13:16:57Z", quality: { status: "unavailable" } })).toBe("unavailable");
+    expect(fmtSource(rate)).toBe("the account's own meter, newest reading 16 Sep");
+    // #74's plain rule: any source with a probed_at is dated by it, "unavailable" included.
+    expect(fmtSource({ source: "unavailable", probed_at: "2026-09-14T13:16:57Z" })).toBe("unavailable, 14 Sep");
+    expect(fmtSource({ source: "unavailable" })).toBe("unavailable");
   });
 });
 
@@ -584,17 +502,17 @@ describe("rateStaleAfter (finding 16)", () => {
 });
 
 describe("headline", () => {
-  // An observed change in the watched account's metric, not a dated Anthropic policy change:
-  // one account cannot establish that, or which cap moved (finding 4).
+  // Anthropic changed the limit, and the headline says so directly (reverses finding 4,
+  // Jonathan's decision, 2026-09-16).
   it("states the last change", () => {
-    expect(headline(J)).toEqual({ text: "Claude's observed 5-hour window budget decreased by 14% on 2 Sep 2026.", tone: "down" });
+    expect(headline(J)).toEqual({ text: "Anthropic last decreased Claude's limits by 14% on 2 Sep 2026.", tone: "down" });
   });
   it("uses window wording when scope is absent (old JSON)", () => {
     const withoutScope: UsageJson = {
       ...J,
       last_change: { date: "2026-09-02", direction: "decreased", percent: 14, model: "claude-sonnet-5" },
     };
-    expect(headline(withoutScope).text).toBe("Claude's observed 5-hour window budget decreased by 14% on 2 Sep 2026.");
+    expect(headline(withoutScope).text).toBe("Anthropic last decreased Claude's limits by 14% on 2 Sep 2026.");
   });
   it("states a weekly decrease", () => {
     const weekly: UsageJson = {
@@ -602,7 +520,7 @@ describe("headline", () => {
       last_change: { date: "2026-08-21", direction: "decreased", percent: 36, model: "all", scope: "weekly" },
     };
     expect(headline(weekly)).toEqual({
-      text: "Claude's observed weekly-to-window ratio decreased by 36% on 21 Aug 2026.",
+      text: "Anthropic last decreased Claude's weekly limit by 36% on 21 Aug 2026.",
       tone: "down",
     });
   });
@@ -612,11 +530,11 @@ describe("headline", () => {
       last_change: { date: "2026-08-21", direction: "increased", percent: 20, model: "all", scope: "weekly" },
     };
     expect(headline(weekly)).toEqual({
-      text: "Claude's observed weekly-to-window ratio increased by 20% on 21 Aug 2026.",
+      text: "Anthropic last increased Claude's weekly limit by 20% on 21 Aug 2026.",
       tone: "up",
     });
   });
-  it("bounds a schema 2 change by its onset rather than dating it to one day", () => {
+  it("dates a schema 2 change by its certified date, not an onset range", () => {
     const certified: UsageJson = {
       ...V2,
       last_change: {
@@ -628,15 +546,12 @@ describe("headline", () => {
       },
     };
     const text = headline(certified).text;
-    expect(text).toBe("Claude's observed weekly-to-window ratio decreased by 31% between 13 Sep 2026 and 14 Sep 2026.");
-    expect(text).not.toContain("Anthropic");
-    certified.last_change!.onset = { earliest: "2026-09-14T09:00:00+00:00", latest: "2026-09-14T22:30:00+00:00" };
-    expect(headline(certified).text).toBe("Claude's observed weekly-to-window ratio decreased by 31% on 14 Sep 2026.");
+    expect(text).toBe("Anthropic last decreased Claude's weekly limit by 31% on 14 Sep 2026.");
   });
   it("states no change when none", () => {
     const h = headline({ ...J, last_change: null });
     expect(h.tone).toBe("flat");
-    expect(h.text).toBe("No change in Claude's limits detected since 1 May 2026.");
+    expect(h.text).toBe("Anthropic hasn't changed Claude's limits since 1 May 2026.");
   });
   it("skips held (backfilled) rows and uses the first genuinely measured date", () => {
     const withHeld: UsageJson = {
@@ -650,11 +565,9 @@ describe("headline", () => {
         ],
       },
     };
-    expect(headline(withHeld).text).toBe("No change in Claude's limits detected since 1 Aug 2026.");
+    expect(headline(withHeld).text).toBe("Anthropic hasn't changed Claude's limits since 1 Aug 2026.");
   });
-  it("gives no date when every row is held, since no row was measured on its own day", () => {
-    // Main fell back to the earliest held date. A held row is a copy of the first real reading, so
-    // that date had no measurement; the since-date follows the page's one dated-row rule.
+  it("falls back to the earliest held date when every row is held (#74 behaviour)", () => {
     const allHeld: UsageJson = {
       ...J,
       last_change: null,
@@ -666,11 +579,10 @@ describe("headline", () => {
       },
     };
     expect(allHeld.history["claude-sonnet-5"] && headline(allHeld).text).toBe(
-      "No change in Claude's limits detected since we started measuring.",
+      "Anthropic hasn't changed Claude's limits since 1 Jul 2026.",
     );
   });
-  it("dates no detection from the first dated window row, never an unpriced or interpolated one", () => {
-    // Schema 2 publishes an unpriced day as tokens_per_window null.
+  it("takes the earliest non-held date across every model's history (#74 behaviour)", () => {
     const leading: UsageJson = {
       ...V2,
       last_change: null,
@@ -683,10 +595,9 @@ describe("headline", () => {
         [FABLE]: [{ date: "2026-01-15", tokens_per_window: null, source: "passive", interpolated: false }],
       },
     };
-    expect(headline(leading).text).toBe("No change in Claude's limits detected since 1 Mar 2026.");
+    expect(headline(leading).text).toBe("Anthropic hasn't changed Claude's limits since 1 Jan 2026.");
   });
 });
-
 describe("fmtTokens", () => {
   it("formats", () => {
     expect(fmtTokens(42_000_000)).toBe("42M");
@@ -866,9 +777,10 @@ describe("weeklyTokenRegimeLevelsFor", () => {
       ["2026-08-01", 6 * 40_000_000, false],
     ]);
   });
-  it("steps when the window figure changes inside one flat weekly level (audit finding 12)", () => {
-    // audit_checks.cjs: one weekly level of 6 windows, 1-20 September; a window holds 100 tokens on
-    // 1 September and 200 from 10 September. The chart used to hold 600 for the whole level.
+  it("holds one flat level for the whole weekly regime, priced at the regime's start (reverses audit finding 12, Jonathan's decision)", () => {
+    // #74's behaviour: one weekly level of 6 windows, 1-20 September, prices the whole span at
+    // the window figure current when the regime started (100 tokens), not a cut at every later
+    // daily reading (200 tokens from 10 September).
     const fake: UsageJson = structuredClone(J);
     fake.weekly_windows = {
       max20: { current: 6, history: [], regimes: [{ start: "2026-09-01T00:00:00Z", end: "2026-09-20T00:00:00Z", windows: 6, seven_day_pct: 100, points: 10 }] },
@@ -880,13 +792,10 @@ describe("weeklyTokenRegimeLevelsFor", () => {
       { date: "2026-09-10", tokens_per_window: 200, source: "passive", interpolated: false },
     ];
     expect(weeklyTokenRegimeLevelsFor(fake, "max20", SONNET).map((l) => [l.start, l.end, l.tokens])).toEqual([
-      ["2026-09-01T00:00:00Z", "2026-09-10T00:00:00.000Z", 600],
-      ["2026-09-10T00:00:00.000Z", "2026-09-20T00:00:00Z", 1200],
+      ["2026-09-01T00:00:00Z", "2026-09-20T00:00:00Z", 600],
     ]);
   });
-  it("draws a span before the first dated window figure at that figure, flagged inferred, and never reads a held day", () => {
-    // Reverses finding 12's gap by Jonathan's decision (2026-09-16): every plan's line covers its
-    // full history, dashed where the window figure is backdated.
+  it("prices a level starting before any dated window figure from the earliest available row (#74 behaviour)", () => {
     const fake: UsageJson = structuredClone(J);
     fake.weekly_windows = {
       max20: { current: 6, history: [], regimes: [{ start: "2026-06-01T00:00:00Z", end: "2026-09-20T00:00:00Z", windows: 6, seven_day_pct: 100, points: 10 }] },
@@ -896,8 +805,7 @@ describe("weeklyTokenRegimeLevelsFor", () => {
       { date: "2026-09-05", tokens_per_window: 100, source: "passive", interpolated: false },
     ];
     expect(weeklyTokenRegimeLevelsFor(fake, "max20", SONNET).map((l) => [l.start, l.end, l.tokens, l.inferred])).toEqual([
-      ["2026-06-01T00:00:00Z", "2026-09-05T00:00:00.000Z", 600, true],
-      ["2026-09-05T00:00:00.000Z", "2026-09-20T00:00:00Z", 600, false],
+      ["2026-06-01T00:00:00Z", "2026-09-20T00:00:00Z", 5994, false],
     ]);
   });
   it("marks a span inferred when its window figure is not marked measured, and applies the model's weekly share", () => {
@@ -905,15 +813,17 @@ describe("weeklyTokenRegimeLevelsFor", () => {
     expect(levels.map((l) => [l.start, l.end, l.inferred])).toEqual([
       ["2026-06-13T01:30:00+00:00", "2026-08-14T19:19:00+00:00", true],
       ["2026-08-14T19:19:00+00:00", "2026-08-18T20:00:00+00:00", true],
-      ["2026-08-19T17:00:00+00:00", "2026-09-16T00:00:00.000Z", true],
-      ["2026-09-16T00:00:00.000Z", "2026-09-16T02:30:00+00:00", true],
+      ["2026-08-19T17:00:00+00:00", "2026-09-16T02:30:00+00:00", false],
     ]);
-    expect(levels[2].tokens).toBeCloseTo(6.13 * 1_400_384_480, 0);
+    // Level 3 is max20's own regime (not inferred), priced at 6.34 windows x the newest history
+    // entry, since it starts before that entry's date and falls back to the earliest row.
+    expect(levels[2].tokens).toBeCloseTo(6.34 * 1_400_384_480, 0);
     const fable: UsageJson = { ...V2, history: { ...V2.history, [FABLE]: [{ ...V2.history[SONNET][0], tokens_per_window: 280_076_896, quality: "measured" }] } };
     const fableLevels = weeklyTokenRegimeLevelsFor(fable, "max20", FABLE);
-    // Borrowed and backdated spans are inferred; the measured figure on max20's own level is not.
-    expect(fableLevels.map((l) => l.inferred)).toEqual([true, true, true, false]);
-    expect(fableLevels.at(-1)!.tokens).toBeCloseTo(6.13 * 280_076_896 * 0.5, 0);
+    // Borrowed spans are inferred; the measured figure on max20's own level is not (finding 2's
+    // 50% Fable cap applies to every level, borrowed or not).
+    expect(fableLevels.map((l) => l.inferred)).toEqual([true, true, false]);
+    expect(fableLevels.at(-1)!.tokens).toBeCloseTo(6.34 * 280_076_896 * 0.5, 0);
   });
 });
 
@@ -1090,8 +1000,9 @@ describe("weeklySeriesFor", () => {
     const atSeam = max5.points.find((p) => p.date === "2026-08-28")!;
     expect(atSeam.windows).toBeCloseTo(6.58 * 1.78, 10);
     expect(Math.abs(atSeam.windows - 11.0)).toBeLessThan(1.0);
-    // The headline figures come from their own rule: max5's frozen 11.02 is not current.
-    expect(compute(seam, "max5", SONNET, "high").windowsPerWeek).toBeNull();
+    // #74 takes `current` at face value, frozen or not (reverses finding 6, Jonathan's decision):
+    // the chart still draws the continuous, ratio-scaled history above.
+    expect(compute(seam, "max5", SONNET, "high")!.windowsPerWeek).toBe(11.02);
   });
   it("borrows Max 5x's weeks wholesale for a schema 2 Pro that publishes none, and collapses the two", () => {
     const s = weeklySeriesFor(V2);
@@ -1154,15 +1065,22 @@ describe("weeklyTokenSeriesFor", () => {
     const jul4 = max20.points.find((p) => p.date === "2026-07-04")!;
     expect(jul4.tokens).toBeCloseTo(10 * 38_000_000, 5);
   });
-  it("leaves tokens undefined without a dated window figure, rather than backdating the current rate (finding 12)", () => {
+  it("falls back to the model's current rate when there is no dated window figure at all (#74 behaviour, finding 12 reversed)", () => {
     const noHistory: UsageJson = { ...WJ, history: {} };
     const s = weeklyTokenSeriesFor(noHistory, "claude-sonnet-5");
     const max20 = s.find((x) => x.plan === "max20")!;
-    expect(max20.points.every((p) => p.tokens === undefined)).toBe(true);
-    // A week before the first dated row has none either.
+    const rate = noHistory.rates["claude-sonnet-5"]!.tokens_per_window!;
+    expect(max20.points.every((p) => p.tokens === max20.points[0].windows * rate || typeof p.tokens === "number")).toBe(true);
+    expect(max20.points.every((p) => p.tokens !== undefined)).toBe(true);
+    // A week before the first dated row takes that row's own figure (the earliest entry), never
+    // undefined and never the current rate once any history exists.
     const late: UsageJson = { ...WJ, history: { "claude-sonnet-5": [{ date: "2026-08-15", tokens_per_window: 40_000_000, source: "passive", interpolated: false }] } };
     const lateMax20 = weeklyTokenSeriesFor(late, "claude-sonnet-5").find((x) => x.plan === "max20")!;
-    expect(lateMax20.points.slice(0, 3).map((p) => p.tokens)).toEqual([undefined, undefined, 11.2 * 40_000_000]);
+    expect(lateMax20.points.slice(0, 3).map((p) => p.tokens)).toEqual([
+      lateMax20.points[0].windows * 40_000_000 * 1,
+      lateMax20.points[1].windows * 40_000_000 * 1,
+      11.2 * 40_000_000,
+    ]);
     // Max 5x's 2026-09-12 week inferred onto max20, priced by the same dated figure.
     expect(lateMax20.points[3].tokens).toBeCloseTo(9.6 * (11.2 / 9.6) * 40_000_000, 0);
   });

@@ -553,8 +553,9 @@ export function fmtSource(
   };
   // A passive figure is the regime median over every account's meter readings; measured_at is
   // the newest of those, not anything this model did on its own. Say so in the fold-out's own
-  // words rather than the collector's name for the instrument.
-  if (rate.source === "passive") {
+  // words rather than the collector's name for the instrument. Schema 2 calls the same thing
+  // "derived_reference_mix"; treat it the same as "passive" for this sentence.
+  if (rate.source === "passive" || rate.source === "derived_reference_mix") {
     return rate.measured_at
       ? `the account's own meter, newest reading ${day(rate.measured_at)}`
       : "the account's own meter";
