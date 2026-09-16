@@ -11,6 +11,8 @@ import {
   weeklyEventsFor,
   latestWeeklyChange,
   weeklyTokenSeriesFor,
+  weeklyRegimeLevelsFor,
+  weeklyTokenRegimeLevelsFor,
   type UsageJson,
 } from "./claudeUsage";
 
@@ -272,6 +274,80 @@ const WJ: UsageJson = {
     { date: "2026-01-01", kind: "change", scope: "weekly", label: "Too old weekly" },
   ],
 };
+
+// Regimes: Max 20x is measured only from August; Max 5x (and Pro, which borrows it verbatim)
+// carries one level from January to the day the account moved plans.
+const RJ: UsageJson = {
+  ...WJ,
+  weekly_window_ratios: { pro: 1.78, max5: 1.78, max20: 1 },
+  weekly_windows: {
+    max20: { ...WJ.weekly_windows!.max20!, regimes: [{ start: "2026-08-01", end: "2026-09-05", windows: 6, seven_day_pct: 300, points: 5 }] },
+    max5: { ...WJ.weekly_windows!.max5!, regimes: [{ start: "2026-01-01", end: "2026-08-01", windows: 10.68, seven_day_pct: 900, points: 12 }] },
+    pro: { ...WJ.weekly_windows!.pro!, regimes: [{ start: "2026-01-01", end: "2026-08-01", windows: 10.68, seven_day_pct: 900, points: 12 }] },
+  },
+};
+
+describe("weeklyRegimeLevelsFor", () => {
+  it("keeps an inferred level that only touches a measured one at the plan boundary", () => {
+    // Max 5x's regime ends on the day Max 20x's starts. Sharing that one day is not an overlap
+    // worth dropping the whole January-to-July level for.
+    const levels = weeklyRegimeLevelsFor(RJ, "max20");
+    expect(levels.map((l) => [l.start, l.end, l.inferred, +l.windows.toFixed(2)])).toEqual([
+      ["2026-01-01", "2026-08-01", true, 6],
+      ["2026-08-01", "2026-09-05", false, 6],
+    ]);
+  });
+  it("clips an inferred level to the part no measured level covers, rather than dropping it", () => {
+    const overlapping: UsageJson = {
+      ...RJ,
+      weekly_windows: {
+        ...RJ.weekly_windows!,
+        max5: { ...RJ.weekly_windows!.max5!, regimes: [{ start: "2026-01-01", end: "2026-09-01", windows: 10.68, seven_day_pct: 900, points: 12 }] },
+        pro: { ...RJ.weekly_windows!.pro!, regimes: [] },
+      },
+    };
+    const levels = weeklyRegimeLevelsFor(overlapping, "max20");
+    expect(levels.map((l) => [l.start, l.end, l.inferred])).toEqual([
+      ["2026-01-01", "2026-08-01", true],
+      ["2026-08-01", "2026-09-05", false],
+    ]);
+  });
+  it("splits an inferred level around a measured one inside it", () => {
+    const inside: UsageJson = {
+      ...RJ,
+      weekly_windows: {
+        ...RJ.weekly_windows!,
+        max20: { ...RJ.weekly_windows!.max20!, regimes: [{ start: "2026-03-01", end: "2026-05-01", windows: 6, seven_day_pct: 300, points: 5 }] },
+        pro: { ...RJ.weekly_windows!.pro!, regimes: [] },
+      },
+    };
+    const levels = weeklyRegimeLevelsFor(inside, "max20");
+    expect(levels.map((l) => [l.start, l.end, l.inferred])).toEqual([
+      ["2026-01-01", "2026-03-01", true],
+      ["2026-03-01", "2026-05-01", false],
+      ["2026-05-01", "2026-08-01", true],
+    ]);
+  });
+  it("scales a borrowed level onto the plan's own ratio and dedupes Pro's copy of Max 5x", () => {
+    const levels = weeklyRegimeLevelsFor(RJ, "max5");
+    // Max 20x's 6 windows become 6 * 1.78 on Max 5x; Pro's regime is Max 5x's own, so it appears once.
+    expect(levels.map((l) => [l.start, l.inferred, +l.windows.toFixed(2)])).toEqual([
+      ["2026-01-01", false, 10.68],
+      ["2026-08-01", true, 10.68],
+    ]);
+  });
+});
+
+describe("weeklyTokenRegimeLevelsFor", () => {
+  it("prices each level by what one window bought at the level's start", () => {
+    const levels = weeklyTokenRegimeLevelsFor(RJ, "max20", "claude-sonnet-5");
+    // January predates the first history row, so it takes that row's figure; August has its own.
+    expect(levels.map((l) => [l.start, Math.round(l.tokens)])).toEqual([
+      ["2026-01-01", Math.round(6 * 38_000_000)],
+      ["2026-08-01", 6 * 40_000_000],
+    ]);
+  });
+});
 
 describe("weeklySeriesFor", () => {
   it("is not scoped by any range: returns the plan's full weekly history", () => {

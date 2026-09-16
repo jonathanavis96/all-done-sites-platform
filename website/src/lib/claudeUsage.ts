@@ -195,11 +195,28 @@ export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
       out.push({ start: r.start, end: r.end, windows: r.windows * scale, inferred: !isOwn, plan: source });
     }
   }
-  // A measured level wins any overlap: drop an inferred level whose span a measured one covers.
+  // A measured level wins any overlap: clip an inferred level to the parts no measured one
+  // covers, rather than dropping it whole. Max 5x's regime ends on the day Max 20x's begins, so
+  // the two always touch at the plan boundary; dropping on contact would lose every month
+  // before the move, and the chart would bridge the gap with the wrong level.
   const measured = out.filter((r) => !r.inferred);
-  const kept = out.filter(
-    (r) => !r.inferred || !measured.some((m) => m.start <= r.end && r.start <= m.end),
-  );
+  const kept: RegimeLevel[] = [];
+  for (const r of out) {
+    if (!r.inferred) {
+      kept.push(r);
+      continue;
+    }
+    let pieces = [r];
+    for (const m of measured) {
+      pieces = pieces.flatMap((p) => {
+        if (m.start >= p.end || m.end <= p.start) return [p];
+        const before = m.start > p.start ? [{ ...p, end: m.start }] : [];
+        const after = m.end < p.end ? [{ ...p, start: m.end }] : [];
+        return [...before, ...after];
+      });
+    }
+    kept.push(...pieces);
+  }
   // Pro publishes Max 5x's regimes verbatim, so scaling both onto a third plan yields the same
   // level twice. Dedupe on the span and the level, keeping whichever arrived first.
   const seen = new Set<string>();
