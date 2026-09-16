@@ -7,7 +7,13 @@
 .cut .lockup small { color: var(--ads-mut); font-family: var(--ads-body); font-weight: 500; font-size: 13px; }
 .cut h1 { font-family: var(--ads-disp); font-size: 36px; line-height: 1.2; letter-spacing: -.02em; margin: 0 0 16px; text-wrap: balance; }
 .cut h1 .down { color: var(--red); } .cut h1 .up { color: var(--green); } .cut h1 .claude { color: var(--claude); }
-.cut .pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(5,150,105,.10); color: #047857; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px; margin-bottom: 48px; }
+.cut .pillrow { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 48px; }
+.cut .pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(5,150,105,.10); color: #047857; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px; }
+.cut .stats-cta { display: inline-flex; align-items: center; font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 999px; color: var(--ads-acd); border: 1.5px solid var(--ads-acd); background: var(--ads-surface); text-decoration: none; }
+.cut .stats-cta:hover { background: rgba(14,165,233,.08); }
+.cut .stats-cta-row { text-align: center; margin: 18px 0 0; }
+.cut .stats-cta.desk { display: inline-flex; } .cut .stats-cta-row.mob { display: none; }
+#contribute { scroll-margin-top: calc(var(--ads-navh, 64px) + 16px); }
 .cut .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
 .cut .sentence { font-size: 18px; margin-bottom: 22px; }
 .cut .sel { position: relative; display: inline-block; }
@@ -46,7 +52,9 @@
 @media (max-width: 640px) {
   .adsx .pagewrap:has(.cut) { padding-top: 8px; }
   .cut .hero { padding: 8px 0 36px; } .cut h1 { font-size: 28px; }
-  .cut .pill { padding: 6px 14px; margin-bottom: 20px; }
+  .cut .pillrow { margin-bottom: 20px; }
+  .cut .pill { padding: 6px 14px; }
+  .cut .stats-cta.desk { display: none; } .cut .stats-cta-row.mob { display: block; }
   .cut .sentence { font-size: 16px; line-height: 1.7; }
   .cut .big { font-size: 52px; } .cut .big span { display: block; margin: 10px 0 0; font-size: 22px; }
   .cut .big.usd { font-size: 36px; } .cut .big.usd span { font-size: 18px; }
