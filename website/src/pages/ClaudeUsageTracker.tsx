@@ -172,6 +172,24 @@ function Chart({
   );
 }
 
+/**
+ * Vertical positions for the right-margin plan labels. Each label wants to sit at its own
+ * line's last value; where two would collide they are pushed apart by `gap` and the whole set
+ * is kept inside the plot area, so a label never leaves the chart or covers another.
+ */
+function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: number, gap = 16): Map<Plan, number> {
+  const sorted = [...items].sort((a, b) => a.y - b.y);
+  let prev = -Infinity;
+  for (const it of sorted) {
+    it.y = Math.max(it.y, prev + gap);
+    prev = it.y;
+  }
+  const overflow = sorted.length > 0 ? sorted[sorted.length - 1].y - bottom : 0;
+  if (overflow > 0) for (const it of sorted) it.y -= overflow;
+  for (const it of sorted) it.y = Math.max(it.y, top);
+  return new Map(sorted.map((it) => [it.plan, it.y]));
+}
+
 function WeeklyChart({
   series,
   events,
@@ -184,7 +202,8 @@ function WeeklyChart({
   const [hoverX, setHoverX] = useState<number | null>(null);
   const plotted = series.filter((s) => s.points.length >= 2);
   if (plotted.length === 0) return <p className="sub">Not enough weekly history yet.</p>;
-  const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
+  // R stops short of the viewBox so each plan's label sits in the right margin, clear of the lines.
+  const W = 840, H = 260, L = 44, R = 690, T = 20, B = 200;
   const vals = plotted.flatMap((s) => s.points.map((p) => p.windows));
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
   const day = (d: string) => Date.parse(d + "T00:00:00Z");
@@ -203,6 +222,17 @@ function WeeklyChart({
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
   const shown = events.filter((ev) => xDate(ev.date) !== null);
+  // Right-margin labels, pushed apart so two plans close together never print on top of each
+  // other. Anchored to each series' last plotted value, then spaced by at least 16 units.
+  const labelY = stackLabels(
+    plotted.map((s) => {
+      const pts = s.points.filter((p) => xDate(p.date) !== null);
+      return { plan: s.plan, y: y(pts[pts.length - 1].windows) };
+    }),
+    T,
+    B,
+  );
+
   // Calendar-aligned x-axis ticks, not every Nth data point: spacing stays regular regardless
   // of how the samples fall, and the step widens as the span gets long. The span is the one
   // actually mapped onto the SVG (d0 to d1), which an old event marker can stretch well before
@@ -304,8 +334,6 @@ function WeeklyChart({
           }
         }
         const last = pts[pts.length - 1];
-        const lastX = xDate(last.date)!;
-        const nearRightEdge = lastX > R - 120;
         return (
           <g key={s.plan}>
             {runs.map((run, i) => (
@@ -330,12 +358,7 @@ function WeeklyChart({
                 strokeWidth={2}
               />
             ))}
-            <text
-              x={nearRightEdge ? lastX - 6 : lastX + 6}
-              y={y(last.windows) - 8}
-              textAnchor={nearRightEdge ? "end" : "start"}
-              style={{ fill: color, fontWeight: 600 }}
-            >
+            <text x={R + 10} y={labelY.get(s.plan) ?? y(last.windows)} style={{ fill: color, fontWeight: 600 }}>
               {s.label}
             </text>
           </g>
@@ -401,7 +424,8 @@ function WeeklyTokensChart({ series, selectedPlan }: { series: WeeklySeries[]; s
     .map((s) => ({ ...s, points: s.points.filter(isTokenPoint) }))
     .filter((s) => s.points.length >= 2);
   if (plotted.length === 0) return <p className="sub">Not enough weekly history yet.</p>;
-  const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
+  // R stops short of the viewBox so each plan's label sits in the right margin, clear of the lines.
+  const W = 840, H = 260, L = 44, R = 690, T = 20, B = 200;
   const vals = plotted.flatMap((s) => s.points.map((p) => p.tokens));
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
   const day = (d: string) => Date.parse(d + "T00:00:00Z");
@@ -424,6 +448,14 @@ function WeeklyTokensChart({ series, selectedPlan }: { series: WeeklySeries[]; s
   for (let t = d0; t <= d1; t += stepMs) {
     xTicks.push(new Date(t).toISOString().slice(0, 10));
   }
+  const labelY = stackLabels(
+    plotted.map((s) => {
+      const pts = s.points.filter((p) => xDate(p.date) !== null);
+      return { plan: s.plan, y: y(pts[pts.length - 1].tokens) };
+    }),
+    T,
+    B,
+  );
   const ariaLabel = [
     "Tokens per week over time",
     ...plotted.map(
@@ -467,8 +499,6 @@ function WeeklyTokensChart({ series, selectedPlan }: { series: WeeklySeries[]; s
           }
         }
         const last = pts[pts.length - 1];
-        const lastX = xDate(last.date)!;
-        const nearRightEdge = lastX > R - 120;
         // The selected plan's area fill covers only its measured (non-inferred) span, never an
         // inferred one, exactly as the top chart never fills a held/dashed span.
         const measuredRun = isSelected ? runs.filter((r) => !r.inferred) : [];
@@ -504,12 +534,7 @@ function WeeklyTokensChart({ series, selectedPlan }: { series: WeeklySeries[]; s
                 strokeWidth={2}
               />
             ))}
-            <text
-              x={nearRightEdge ? lastX - 6 : lastX + 6}
-              y={y(last.tokens) - 8}
-              textAnchor={nearRightEdge ? "end" : "start"}
-              style={{ fill: color, fontWeight: 600 }}
-            >
+            <text x={R + 10} y={labelY.get(s.plan) ?? y(last.tokens)} style={{ fill: color, fontWeight: 600 }}>
               {s.label}
             </text>
           </g>
@@ -823,6 +848,20 @@ export default function ClaudeUsageTracker() {
             <div className="sub">
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window
             </div>
+            {r && (
+              <div className="rate">
+                <span>
+                  <b>{fmtTokens(r.tokensPerWindow)}</b> tokens
+                  {r.sessionsPerWindow !== null && (
+                    <>
+                      <em>·</em>
+                      <b>{Math.round(r.sessionsPerWindow)}</b> sessions
+                    </>
+                  )}{" "}
+                  per 5-hour window
+                </span>
+              </div>
+            )}
             <Chart
               points={chartPoints}
               change={
@@ -853,6 +892,20 @@ export default function ClaudeUsageTracker() {
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} · how many tokens a full week of five-hour windows
               buys. Full history.
             </p>
+            {r && r.windowsPerWeek !== null && (
+              <div className="rate">
+                <span>
+                  <b>{fmtTokens(r.tokensPerWindow * r.windowsPerWeek)}</b> tokens
+                  {r.sessionsPerWeek !== null && (
+                    <>
+                      <em>·</em>
+                      <b>{Math.round(r.sessionsPerWeek)}</b> sessions
+                    </>
+                  )}{" "}
+                  per week
+                </span>
+              </div>
+            )}
             <WeeklyTokensChart series={weeklyTokenSeries} selectedPlan={plan} />
             <p className="sub">
               Solid and shaded: selected plan. Grey: the others. Dashed: inferred from another line by the ratio of
@@ -867,6 +920,13 @@ export default function ClaudeUsageTracker() {
             <p className="sub">
               How many 5-hour windows fit in one week, read from the usage meter. Full history.
             </p>
+            {r && r.windowsPerWeek !== null && (
+              <div className="rate">
+                <span>
+                  <b>{r.windowsPerWeek.toFixed(1)}</b> five-hour windows per week
+                </span>
+              </div>
+            )}
             <WeeklyChart series={weeklySeries} events={weeklyEvents} selectedPlan={plan} />
             {weeklySeries.some((s) => s.points.length >= 2) && (
               <p className="sub chart-legend">

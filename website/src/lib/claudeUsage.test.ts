@@ -312,7 +312,7 @@ describe("weeklySeriesFor", () => {
     const s = weeklySeriesFor(WJ);
     expect(s.some((x) => x.plan === "pro")).toBe(false);
     const max5 = s.find((x) => x.plan === "max5")!;
-    expect(max5.label).toBe("Max 5x and Pro (assumed)");
+    expect(max5.label).toBe("Max 5x and Pro");
     expect(max5.sharedWithPro).toBe(true);
     expect(max5.assumed).toBe(false);
   });
@@ -449,6 +449,51 @@ describe("weeklyTokenSeriesFor", () => {
     const s = weeklyTokenSeriesFor(WJ, "claude-nonexistent");
     const max20 = s.find((x) => x.plan === "max20")!;
     expect(max20.points.every((p) => p.tokens === undefined)).toBe(true);
+  });
+  it("splits a shared Max 5x and Pro line into two, each priced by its own plan ratio", () => {
+    // The windows chart collapses the two because they hold the same windows per week. A
+    // window is worth five times as much on Max 5x, so the tokens chart must not.
+    const shared: UsageJson = {
+      ...WJ,
+      weekly_windows: {
+        ...WJ.weekly_windows,
+        pro: { ...WJ.weekly_windows!.max5!, assumed: true },
+      },
+    };
+    const s = weeklyTokenSeriesFor(shared, "claude-sonnet-5");
+    const max5 = s.find((x) => x.plan === "max5")!;
+    const pro = s.find((x) => x.plan === "pro")!;
+    expect(max5.label).toBe("Max 5x");
+    expect(pro.label).toBe("Pro");
+    expect(max5.sharedWithPro).toBe(false);
+    const max5Aug = max5.points.find((p) => p.date === "2026-08-01")!;
+    const proAug = pro.points.find((p) => p.date === "2026-08-01")!;
+    expect(proAug.tokens).toBeCloseTo(max5Aug.tokens! * (0.05 / 0.25), 5);
+  });
+});
+
+describe("compute effort scaling", () => {
+  const priced: UsageJson = {
+    ...J,
+    session_tokens: { "claude-sonnet-5": 500_000 },
+    // The shape that broke the page: the token totals put low ABOVE medium because that cell
+    // happened to run cold-cache, while the priced figures rise with effort as they should.
+    effort: { "claude-sonnet-5": { low: 2_000_000, medium: 1_400_000, high: 2_520_000, xhigh: 3_900_000, max: 5_600_000 } },
+    effort_usd: { "claude-sonnet-5": { low: 0.017, medium: 0.027, high: 0.058, xhigh: 0.075, max: 0.28 } },
+  };
+  it("gives more sessions at lower effort, scaling by the priced series not the token totals", () => {
+    const low = compute(priced, "max20", "claude-sonnet-5", "low")!;
+    const medium = compute(priced, "max20", "claude-sonnet-5", "medium")!;
+    const high = compute(priced, "max20", "claude-sonnet-5", "high")!;
+    expect(low.sessionsPerWindow!).toBeGreaterThan(medium.sessionsPerWindow!);
+    expect(medium.sessionsPerWindow!).toBeGreaterThan(high.sessionsPerWindow!);
+    expect(medium.sessionsPerWindow!).toBeCloseTo(42_000_000 / 500_000, 5);
+    expect(low.sessionsPerWindow!).toBeCloseTo(42_000_000 / (500_000 * (0.017 / 0.027)), 5);
+  });
+  it("falls back to the token ratio when the JSON has no priced effort figures", () => {
+    const unpriced: UsageJson = { ...priced, effort_usd: undefined };
+    const low = compute(unpriced, "max20", "claude-sonnet-5", "low")!;
+    expect(low.sessionsPerWindow!).toBeCloseTo(42_000_000 / (500_000 * (2_000_000 / 1_400_000)), 5);
   });
 });
 
