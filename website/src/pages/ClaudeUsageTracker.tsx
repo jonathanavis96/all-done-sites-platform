@@ -302,10 +302,6 @@ function WeeklyChart({
             prevRun.pts.push(p);
           }
         }
-        let lastPartialIdx = -1;
-        for (let i = pts.length - 1; i >= 0; i--) {
-          if (pts[i].partial && !pts[i].inferred) { lastPartialIdx = i; break; }
-        }
         const last = pts[pts.length - 1];
         const lastX = xDate(last.date)!;
         const nearRightEdge = lastX > R - 120;
@@ -333,23 +329,9 @@ function WeeklyChart({
                 strokeWidth={2}
               />
             ))}
-            {lastPartialIdx !== -1 && (() => {
-              const px = xDate(pts[lastPartialIdx].date) ?? 0;
-              const partialNearRight = px > R - 120;
-              return (
-                <text
-                  x={partialNearRight ? px - 6 : px + 6}
-                  y={y(pts[lastPartialIdx].windows) - 8}
-                  textAnchor={partialNearRight ? "end" : "start"}
-                  style={{ fill: "#64748B", fontWeight: 500 }}
-                >
-                  this week so far
-                </text>
-              );
-            })()}
             <text
               x={nearRightEdge ? lastX - 6 : lastX + 6}
-              y={y(last.windows) - (lastPartialIdx === pts.length - 1 ? 20 : 8)}
+              y={y(last.windows) - 8}
               textAnchor={nearRightEdge ? "end" : "start"}
               style={{ fill: color, fontWeight: 600 }}
             >
