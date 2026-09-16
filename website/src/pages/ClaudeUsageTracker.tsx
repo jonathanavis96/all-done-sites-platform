@@ -52,7 +52,7 @@ function Chart({
   days: number;
 }) {
   if (points.length < 2) return <p className="sub">Not enough history yet.</p>;
-  const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
+  const W = 840, H = 260, L = 44, R = 690, T = 20, B = 200;
   const vals = points.map((p) => p.value);
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
   // One date scale for samples and markers: every x is elapsed time between the first and
@@ -157,8 +157,8 @@ function Chart({
         return (
           <g key={`${ev.date}-${ev.label}`}>
             <line x1={xx} x2={xx} y1={T} y2={B} stroke={color} strokeWidth="1.25" strokeDasharray="4 3" />
-            <text x={xx > R - 140 ? xx - 4 : xx + 4} y={T + 10} textAnchor={xx > R - 140 ? "end" : "start"} style={{ fill: color, fontWeight: 500 }}>
-              {ev.label}
+            <text x={xx + 6} y={T - 3} textAnchor="start" style={{ fill: color, fontWeight: 500 }}>
+              {shortChangeLabel(ev.label)}
             </text>
           </g>
         );
@@ -178,6 +178,12 @@ function Chart({
  * line's last value; where two would collide they are pushed apart by `gap` and the whole set
  * is kept inside the plot area, so a label never leaves the chart or covers another.
  */
+// The published event label reads "Weekly limit changed -29%". On a chart the word adds
+// nothing: a red dashed marker already says something changed there.
+function shortChangeLabel(label: string): string {
+  return label.replace(/\s+changed\b/, "");
+}
+
 function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: number, gap = 16): Map<Plan, number> {
   const sorted = [...items].sort((a, b) => a.y - b.y);
   let prev = -Infinity;
@@ -303,13 +309,8 @@ function WeeklyChart({
         return (
           <g key={`${ev.date}-${ev.label}`}>
             <line x1={xx} x2={xx} y1={T} y2={B} stroke="#B42318" strokeWidth="1.25" strokeDasharray="4 3" />
-            <text
-              x={xx > R - 140 ? xx - 4 : xx + 4}
-              y={T + 10}
-              textAnchor={xx > R - 140 ? "end" : "start"}
-              style={{ fill: "#B42318", fontWeight: 500 }}
-            >
-              {ev.label}
+            <text x={xx + 6} y={T - 3} textAnchor="start" style={{ fill: "#B42318", fontWeight: 500 }}>
+              {shortChangeLabel(ev.label)}
             </text>
           </g>
         );
@@ -498,12 +499,12 @@ function WeeklyTokensChart({
         <g>
           <line x1={xDate(change.date)!} x2={xDate(change.date)!} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
           <text
-            x={xDate(change.date)! > R - 140 ? xDate(change.date)! - 6 : xDate(change.date)! + 6}
-            y={T + 10}
-            textAnchor={xDate(change.date)! > R - 140 ? "end" : "start"}
+            x={xDate(change.date)! + 6}
+            y={T - 3}
+            textAnchor="start"
             style={{ fill: "#B42318", fontWeight: 600 }}
           >
-            {change.label}
+            {shortChangeLabel(change.label)}
           </text>
         </g>
       )}
@@ -615,7 +616,7 @@ function WeeklyTokensChart({
  * time order, against the tracker's own measurement as a dashed reference line.
  */
 function ContributorsChart({ points, fleetUsd }: { points: ContribPoint[]; fleetUsd: number | null }) {
-  const W = 840, H = 260, L = 44, R = 820, T = 20, B = 200;
+  const W = 840, H = 260, L = 44, R = 690, T = 20, B = 200;
   const usable = points.filter((p) => typeof p.usd_per_pct === "number");
   const groups = contribGroups(points);
   const { t0, t1, frac } = contribXScale(points);
@@ -965,7 +966,8 @@ export default function ClaudeUsageTracker() {
             <WeeklyTokensChart series={weeklyTokenSeries} events={weeklyEvents} selectedPlan={plan} />
             <p className="sub">
               Solid and shaded: selected plan. Grey: the others. Dashed: inferred from another line by the ratio of
-              their weekly figures, not measured. Hollow: a week still in progress.
+              their weekly figures, not measured. Hollow: a week still in progress. A step where a dashed span meets a
+              solid one is inference meeting measurement, not a change in the limit; only the red marker is a change.
             </p>
           </section>
         )}
