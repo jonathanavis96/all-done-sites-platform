@@ -464,16 +464,20 @@ export function fmtSource(
 // measured_at, else the file's last_sample_at for JSON that dates neither.
 export function rateEvidenceAt(j: UsageJson, model: string): string | null {
   const rate = j.rates[model];
-  return rate?.freshness?.as_of ?? rate?.measured_at ?? j.last_sample_at ?? null;
+  const own = rate?.freshness?.as_of ?? rate?.measured_at;
+  if (own) return own;
+  // Schema 2 dates every figure it publishes, so a figure without a date has no evidence date.
+  return isSchema2(j) ? null : j.last_sample_at ?? null;
 }
 
-// When a model's rate stops being current evidence. Schema 2 publishes it per figure; schema 1
-// holds the model's own evidence date for three days. Deliberately not generated_at, and not the
+// When a model's rate stops being current evidence. Schema 2 publishes it per figure, and a figure
+// it marks stale has been stale since its own evidence date; schema 1 holds the model's own
+// evidence date for three days. Deliberately not generated_at, and not the
 // file-wide last_sample_at when the model has its own date: a rebuilt file, or a fresh reading on
 // another model, does not make this figure's evidence newer (finding 16).
 export function rateStaleAfter(j: UsageJson, model: string): string | null {
   const f = j.rates[model]?.freshness;
-  if (f?.stale === true) return f.as_of ?? j.generated_at;
+  if (f?.stale === true) return rateEvidenceAt(j, model);
   if (f?.stale_after) return f.stale_after;
   if (isSchema2(j)) return null;
   const at = rateEvidenceAt(j, model);
@@ -513,11 +517,11 @@ export function fmtDate(iso: string): string {
 export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "flat" } {
   const c = j.last_change;
   if (!c) {
-    // "held" rows are backfilled with the first real reading, not measured on that day, so
-    // the "since" date must come from the first genuinely measured row.
-    const rows = Object.values(j.history ?? {}).flat();
-    const firstReal = rows.filter((h) => h.source !== "held").map((h) => h.date).sort()[0];
-    const first = firstReal ?? rows.map((h) => h.date).sort()[0];
+    // The "since" date is the first dated window measurement, by the same rule as every other date
+    // on the page: a held (backfilled), interpolated or unpriced row was not measured that day.
+    const first = Object.keys(j.history ?? {})
+      .flatMap((m) => datedWindowRows(j, m).map((h) => h.date))
+      .sort()[0];
     if (!first) return { text: "No change in Claude's limits detected since we started measuring.", tone: "flat" };
     return { text: `No change in Claude's limits detected since ${fmtDate(first)}.`, tone: "flat" };
   }

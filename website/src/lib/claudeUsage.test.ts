@@ -453,6 +453,20 @@ describe("rateStaleAfter (finding 16)", () => {
     expect(staleEvidenceAt(mixed, SONNET, now)).toBeNull();
   });
 
+  it("never falls back to the file's build or sample time for a schema 2 figure", () => {
+    const later = { generated_at: "2026-10-30T00:00:00+00:00", last_sample_at: "2026-10-29T00:00:00+00:00" };
+    // Marked stale without as_of: stale since its own measured_at.
+    const markedNoAsOf: UsageJson = { ...V2, ...later, rates: { [SONNET]: { ...V2.rates[SONNET], freshness: { stale: true } } } };
+    expect(rateStaleAfter(markedNoAsOf, SONNET)).toBe(V2.rates[SONNET].measured_at);
+    expect(staleEvidenceAt(markedNoAsOf, SONNET, Date.parse("2026-09-17T00:00:00Z"))).toBe(V2.rates[SONNET].measured_at);
+    // No date of its own at all: no evidence date, so no stale line rather than a borrowed date.
+    const { measured_at: _m, freshness: _f, ...undated } = V2.rates[SONNET];
+    const noDate: UsageJson = { ...V2, ...later, rates: { [SONNET]: { ...undated, freshness: { stale: true } } } };
+    expect(rateEvidenceAt(noDate, SONNET)).toBeNull();
+    expect(rateStaleAfter(noDate, SONNET)).toBeNull();
+    expect(staleEvidenceAt(noDate, SONNET, Date.parse("2027-01-01T00:00:00Z"))).toBeNull();
+  });
+
   it("shows a schema 2 figure's own freshness date once it is past stale_after or marked stale", () => {
     expect(staleEvidenceAt(V2, SONNET, Date.parse("2026-09-20T00:00:00Z"))).toBeNull();
     expect(staleEvidenceAt(V2, SONNET, Date.parse("2026-09-27T00:00:00Z"))).toBe(V2.rates[SONNET].freshness!.as_of);
@@ -530,7 +544,9 @@ describe("headline", () => {
     };
     expect(headline(withHeld).text).toBe("No change in Claude's limits detected since 1 Aug 2026.");
   });
-  it("falls back to the earliest date when every row is held", () => {
+  it("gives no date when every row is held, since no row was measured on its own day", () => {
+    // Main fell back to the earliest held date. A held row is a copy of the first real reading, so
+    // that date had no measurement; the since-date follows the page's one dated-row rule.
     const allHeld: UsageJson = {
       ...J,
       last_change: null,
@@ -542,8 +558,24 @@ describe("headline", () => {
       },
     };
     expect(allHeld.history["claude-sonnet-5"] && headline(allHeld).text).toBe(
-      "No change in Claude's limits detected since 1 Jul 2026.",
+      "No change in Claude's limits detected since we started measuring.",
     );
+  });
+  it("dates no detection from the first dated window row, never an unpriced or interpolated one", () => {
+    // Schema 2 publishes an unpriced day as tokens_per_window null.
+    const leading: UsageJson = {
+      ...V2,
+      last_change: null,
+      history: {
+        [SONNET]: [
+          { date: "2026-01-01", tokens_per_window: null, source: "passive", interpolated: false },
+          { date: "2026-02-01", tokens_per_window: 40_000_000, source: "passive", interpolated: true },
+          { date: "2026-03-01", tokens_per_window: 42_000_000, source: "passive", quality: "measured", interpolated: false },
+        ],
+        [FABLE]: [{ date: "2026-01-15", tokens_per_window: null, source: "passive", interpolated: false }],
+      },
+    };
+    expect(headline(leading).text).toBe("No change in Claude's limits detected since 1 Mar 2026.");
   });
 });
 
