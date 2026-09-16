@@ -623,12 +623,17 @@ export default function ClaudeUsageTracker() {
                   {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
                     <>
                       <span>
-                        about {Math.round(r.sessionsPerWindow)} sessions<em>·</em>{Math.round(r.sessionsPerWeek)} per week
+                        about <b>{Math.round(r.sessionsPerWindow)}</b> sessions<em>·</em>
+                        <b>{Math.round(r.sessionsPerWeek)}</b> per week
                       </span>
                       {r.apiValueUsdPerWeek !== null && <em className="brk">·</em>}
                     </>
                   )}
-                  {r.apiValueUsdPerWeek !== null && <span>{fmtUsd(r.apiValueUsdPerWeek)} of API value per week</span>}
+                  {r.apiValueUsdPerWeek !== null && (
+                    <span>
+                      <b>{fmtUsd(r.apiValueUsdPerWeek)}</b> of API value per week
+                    </span>
+                  )}
                 </div>
               )}
               <div className="split">
