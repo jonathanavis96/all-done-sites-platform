@@ -187,12 +187,16 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
   };
 }
 
-// Short label for a model's rate source, e.g. "probe, 8 Sep" when it has its own dated probe,
-// or plain "probe"/"derived" when no date is available.
-export function fmtSource(rate: { source: string; probed_at?: string | null } | undefined): string | null {
+// Short label for a model's rate source: "passive, 15 Sep" dated by the passive reading
+// itself (measured_at), "probe, 8 Sep" by the model's own probe, or plain "probe"/"derived"
+// when no date is available. A passive figure must never carry a probe's date.
+export function fmtSource(
+  rate: { source: string; probed_at?: string | null; measured_at?: string | null } | undefined,
+): string | null {
   if (!rate) return null;
-  if (rate.probed_at) {
-    const d = new Date(rate.probed_at);
+  const at = rate.source === "passive" ? rate.measured_at : rate.probed_at;
+  if (at) {
+    const d = new Date(at);
     return `${rate.source}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
   }
   return rate.source;
