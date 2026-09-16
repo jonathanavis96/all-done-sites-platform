@@ -459,7 +459,7 @@ const CONTRIB_TABS: ContribTab[] = [
     reference: (r) => r?.tokensPerWindow ?? null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
-      "Tokens a full five-hour window buys, read off each contributor's own meter. Hollow dots: meter under 5%. Dashed line: the tracker's own figure. The tracker's line is one model at one effort; a dot is that reader's own mix, so a heavier mix reads lower.",
+      "Tokens a full five-hour window buys, read off each contributor's own meter. Hollow dots: meter under 5%. Dashed line: the tracker's own figure. The tracker's line is one model at one effort; a dot is that reader's own mix. The meter does not charge cache reads, so a reader whose work is mostly cache reads shows a far larger token figure for the same meter percent.",
   },
   {
     key: "weekly",
@@ -470,7 +470,7 @@ const CONTRIB_TABS: ContribTab[] = [
       r && r.windowsPerWeek !== null ? r.tokensPerWindow * r.windowsPerWeek : null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
-      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. The tracker's line is one model at one effort; a dot is that reader's own mix, so a heavier mix reads lower.",
+      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. The tracker's line is one model at one effort; a dot is that reader's own mix. The meter does not charge cache reads, so a reader whose work is mostly cache reads shows a far larger token figure for the same meter percent.",
   },
   {
     key: "windows",
