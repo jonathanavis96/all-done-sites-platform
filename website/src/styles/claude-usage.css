@@ -132,3 +132,14 @@
 @media (max-width: 640px) {
   .cut .copyboxes { grid-template-columns: 1fr; }
 }
+
+/* Tabs over a chart (the "from contributors" section swaps one chart for another). */
+.cut .chart-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+.cut .chart-tabs button { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 13px; border: 1px solid var(--ads-line); border-radius: 999px; background: var(--ads-surface); color: var(--ads-mut); cursor: pointer; }
+.cut .chart-tabs button:hover { border-color: var(--ads-acd); color: var(--ads-acd); }
+.cut .chart-tabs button:focus-visible { outline: 2px solid var(--ads-acd); outline-offset: 2px; }
+.cut .chart-tabs button.on { background: var(--ads-acd); border-color: transparent; color: #fff; }
+/* The pickers sit on the tab row, pushed to its right edge. */
+.cut .section-sel { display: flex; align-items: baseline; gap: 14px; font-size: 15px; margin-left: auto; }
+.cut .chart-tabs { align-items: baseline; }
+@media (max-width: 640px) { .cut .section-sel { margin-left: 0; } }
