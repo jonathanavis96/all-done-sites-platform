@@ -27,6 +27,7 @@ import {
   type WeeklyPoint,
   type WeeklySeries,
 } from "@/lib/claudeUsage";
+import { contributorSentences, fleetUsdPerPercent } from "@/lib/contrib";
 import "@/styles/home.css";
 import "@/styles/claude-usage.css";
 // Build-time snapshot so the prerendered HTML carries real figures; the fetch below refreshes it.
@@ -431,6 +432,10 @@ export default function ClaudeUsageTracker() {
   }, []);
 
   const r = useMemo(() => (data ? compute(data, plan, model, effort) : null), [data, plan, model, effort]);
+  const contributed = useMemo(
+    () => (data ? contributorSentences(plan, data.contributed?.[plan], fleetUsdPerPercent(data, plan)) : null),
+    [data, plan],
+  );
   const chartPoints = useMemo(() => (data ? seriesFor(data, plan, model, range) : []), [data, plan, model, range]);
   const weeklySeries = useMemo(() => (data ? weeklySeriesFor(data) : []), [data]);
   const weeklyEvents = useMemo(() => (data ? weeklyEventsFor(data) : []), [data]);
@@ -441,9 +446,13 @@ export default function ClaudeUsageTracker() {
   const [stale, setStale] = useState(false);
   useEffect(() => {
     setStale(data ? Date.now() - new Date(data.generated_at).getTime() > 3 * 86400e3 : false);
+    // The pill shows whichever measurement is newer: a probe sample or a passive reading.
+    const lastSampleT = data?.last_sample_at ? Date.parse(data.last_sample_at) : NaN;
+    const passiveT = data?.passive_generated_at ? Date.parse(data.passive_generated_at) : NaN;
+    const newestT = [lastSampleT, passiveT].filter(Number.isFinite);
     setLocalTime(
-      data?.last_sample_at
-        ? new Date(data.last_sample_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      newestT.length > 0
+        ? new Date(Math.max(...newestT)).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
         : null,
     );
   }, [data]);
@@ -695,6 +704,15 @@ export default function ClaudeUsageTracker() {
                 it is measured.
               </div>
             )}
+          </section>
+        )}
+
+        {!unavailable && data && contributed && (
+          <section id="contributors">
+            <h2>From contributors</h2>
+            <p className="sub">{contributed.intro}</p>
+            {contributed.cost && <p className="sub">{contributed.cost}</p>}
+            <p className="sub">{contributed.weekly}</p>
           </section>
         )}
 
