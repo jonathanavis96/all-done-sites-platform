@@ -7,7 +7,15 @@
 // the reader's own meter percentages plus token counts since each window started.
 // The validator here is the whole privacy guarantee: it rejects any key it does not
 // know at every level, so nothing beyond the documented fields can ever be stored.
-import { CLASSES, type Plan, type TokenClass, type UsageJson } from "./claudeUsage";
+import {
+  CLASSES,
+  PLAN_LABELS,
+  type ApiPrice,
+  type Plan,
+  type PlanContrib,
+  type TokenClass,
+  type UsageJson,
+} from "./claudeUsage";
 
 export const PLANS: Plan[] = ["pro", "max5", "max20"];
 export const PLAN_SOURCES = ["endpoint", "stored", "flag"] as const;
@@ -227,17 +235,6 @@ export function totalTokens(counts: TokenCounts | undefined): number {
   return CLASSES.reduce((s, c) => s + (counts[c] ?? 0), 0);
 }
 
-/**
- * Tokens per 1% of the five-hour meter for one model in one sample: tokens since the
- * window started over the meter's current percent. Null when the meter reads 0, since
- * dividing by zero says nothing.
- */
-export function tokensPerPercent(sample: PublicSample, model: string): number | null {
-  const u = sample.five_hour.utilization;
-  if (!(u > 0)) return null;
-  return totalTokens(sample.tokens_since_five_hour_reset[model]) / u;
-}
-
 /** The model the contributor has spent the most tokens on across all their samples. */
 export function mainModel(samples: PublicSample[]): string | null {
   const totals = new Map<string, number>();
@@ -274,4 +271,145 @@ export function fleetTokensPerPercent(j: UsageJson, plan: Plan, model: string): 
   const ratio = j.plan_ratios?.[plan];
   if (!rate || typeof ratio !== "number") return null;
   return (rate.tokens_per_window * ratio) / 100;
+}
+
+// ---------------------------------------------------------------- pricing a sample
+//
+// The meter is priced, not counted: each token class is charged at API list price times a
+// per-class weight (cache reads currently weighted to 0, output to about 1.8x), then the whole
+// total by a meter weight. This is the same pricing the daily job uses to turn the probe's
+// tokens-per-window into api_value_per_window, applied here to one contributed sample so a
+// single reading can be compared in dollars, the one unit that is comparable across models.
+
+/** A sample reads a whole-number meter percent; below this the rounding error dominates any
+ * dollar or token figure derived from it, so callers should show it with a caveat rather than
+ * hide it. */
+export const COARSE_BELOW = 5;
+
+export function isCoarse(sample: Pick<PublicSample, "five_hour">): boolean {
+  return sample.five_hour.utilization < COARSE_BELOW;
+}
+
+/**
+ * Meter dollars for one model's token counts: Σ_class tokens × price[class] × class_weight[class]
+ * / 1e6, scaled by price.meter_weight. Null when the price has no class_weight/meter_weight
+ * (older published JSON, before the meter was priced this way).
+ */
+export function meterUsd(counts: TokenCounts | undefined, price: ApiPrice | undefined): number | null {
+  if (!price || !price.class_weight || typeof price.meter_weight !== "number") return null;
+  let sum = 0;
+  for (const c of CLASSES) {
+    const tokens = counts?.[c] ?? 0;
+    sum += tokens * (price[c] ?? 0) * (price.class_weight[c] ?? 0);
+  }
+  return (sum / 1e6) * price.meter_weight;
+}
+
+/**
+ * Meter dollars for every model in one sample's five-hour token map, and their total. Null
+ * (the whole result, not a per-model hole) when any model with tokens > 0 has no price, since a
+ * partial total would understate the sample the same way the unpriced-percent bug did.
+ */
+export function sampleValue(
+  sample: PublicSample,
+  prices: Record<string, ApiPrice>,
+): { perModel: Record<string, number>; total: number } | null {
+  const perModel: Record<string, number> = {};
+  let total = 0;
+  for (const [model, counts] of Object.entries(sample.tokens_since_five_hour_reset)) {
+    if (totalTokens(counts) <= 0) continue;
+    const usd = meterUsd(counts, prices[model]);
+    if (usd === null) return null;
+    perModel[model] = usd;
+    total += usd;
+  }
+  return { perModel, total };
+}
+
+/** Total meter dollars in the sample over its five-hour percent. Null when the percent is 0 or
+ * unpriced. */
+export function usdPerPercent(sample: PublicSample, prices: Record<string, ApiPrice>): number | null {
+  const u = sample.five_hour.utilization;
+  if (!(u > 0)) return null;
+  const v = sampleValue(sample, prices);
+  if (v === null) return null;
+  return v.total / u;
+}
+
+/**
+ * One model's share-attributed tokens per 1%: that model's tokens, scaled by the sample's
+ * total dollar value over that model's own dollar value, over the meter percent. This spreads
+ * the whole-sample percent across models by their dollar share rather than dividing the model's
+ * raw tokens by the whole percent (which understates every model but the priciest one, since the
+ * percent covers every model at once). Null when the percent is 0, the model's value is 0, or
+ * either is unpriced.
+ */
+export function shareTokensPerPercent(sample: PublicSample, model: string, prices: Record<string, ApiPrice>): number | null {
+  const u = sample.five_hour.utilization;
+  if (!(u > 0)) return null;
+  const v = sampleValue(sample, prices);
+  if (v === null) return null;
+  const valueM = v.perModel[model];
+  if (!valueM) return null;
+  const tokensM = totalTokens(sample.tokens_since_five_hour_reset[model]);
+  return (tokensM * v.total) / (valueM * u);
+}
+
+/**
+ * The fleet's meter dollars per 1%: a probed model's api_value_per_window (preferring one whose
+ * rate source is literally "probe"), scaled by the plan ratio, over 100 percent. Null when no
+ * rate carries that figure yet.
+ */
+export function fleetUsdPerPercent(j: UsageJson, plan: Plan): number | null {
+  const ratio = j.plan_ratios?.[plan];
+  if (typeof ratio !== "number") return null;
+  const withValue = Object.values(j.rates ?? {}).filter((r) => typeof r.api_value_per_window === "number");
+  if (withValue.length === 0) return null;
+  const rate = withValue.find((r) => r.source === "probe") ?? withValue[0];
+  return ((rate.api_value_per_window as number) * ratio) / 100;
+}
+
+// ---------------------------------------------------------------- "from contributors" copy
+
+/** A `usd_per_pct`/tokens_per_pct stat with a numeric median, the shape the aggregator's PR
+ * publishes. The live JSON still sometimes carries the old per-model record instead, so this
+ * guard is what keeps the page from crashing on it. */
+function isPlanContribStat(v: unknown): v is { median: number; spread: number | null } {
+  return !!v && typeof v === "object" && typeof (v as { median?: unknown }).median === "number";
+}
+
+/**
+ * The sentences for the "From contributors" section on one plan: who has contributed, what
+ * their meter cost per 1% is against the probe's figure, and what their weeks say about the
+ * weekly limit. Returns null when there is nothing to say (no contributors on this plan).
+ */
+export function contributorSentences(
+  plan: Plan,
+  contrib: PlanContrib | undefined,
+  fleetUsd: number | null,
+): { intro: string; cost: string | null; weekly: string } | null {
+  if (!contrib || contrib.contributors <= 0) return null;
+  const planLabel = PLAN_LABELS[plan];
+  const intro = `${contrib.contributors} contributor${contrib.contributors === 1 ? "" : "s"}, ${contrib.samples} sample${contrib.samples === 1 ? "" : "s"} on ${planLabel}.`;
+  let cost: string | null = null;
+  if (isPlanContribStat(contrib.usd_per_pct)) {
+    const median = contrib.usd_per_pct.median;
+    const spread = contrib.usd_per_pct.spread;
+    const spreadText = typeof spread === "number" ? ` (±${(spread * 100).toFixed(0)}%)` : "";
+    const fleetText = typeof fleetUsd === "number" ? `$${fleetUsd.toFixed(2)}/1%` : "not yet published";
+    cost = `Contributors' meter cost: $${median.toFixed(2)}/1%${spreadText} (median), the probe reads ${fleetText}.`;
+  }
+  const w = contrib.weekly_windows;
+  const weekly =
+    typeof w?.measured === "number"
+      ? `Contributors' weeks pair into ${w.measured.toFixed(1)} five-hour windows.`
+      : sentenceCase(w?.reason ?? "not enough contributor weeks yet");
+  return { intro, cost, weekly };
+}
+
+function sentenceCase(s: string): string {
+  const t = s.trim();
+  if (t.length === 0) return t;
+  const cased = t[0].toUpperCase() + t.slice(1);
+  return /[.!?]$/.test(cased) ? cased : `${cased}.`;
 }
