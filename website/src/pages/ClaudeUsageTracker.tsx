@@ -587,12 +587,17 @@ function ContributorsChart({
 // (audit finding 11). compute() still takes one for its calibration-task figures.
 const EFFORT = "high";
 
-// `initial` is the prerendered snapshot; tests render the page with either schema through it.
-export default function ClaudeUsageTracker({ initial = initialData }: { initial?: UsageJson | null } = {}) {
+// `initial` is the prerendered snapshot, and the selectors start on `initialPlan` and
+// `initialModel`; tests render the page with either schema and any selection through them.
+export default function ClaudeUsageTracker({
+  initial = initialData,
+  initialPlan = "max20",
+  initialModel = "claude-sonnet-5",
+}: { initial?: UsageJson | null; initialPlan?: Plan; initialModel?: string } = {}) {
   const [data, setData] = useState<UsageJson | null>(initial);
   const [failed, setFailed] = useState(false);
-  const [plan, setPlan] = useState<Plan>("max20");
-  const [model, setModel] = useState("claude-sonnet-5");
+  const [plan, setPlan] = useState<Plan>(initialPlan);
+  const [model, setModel] = useState(initialModel);
   const [range, setRange] = useState<RangeDays>(30);
 
   useEffect(() => {

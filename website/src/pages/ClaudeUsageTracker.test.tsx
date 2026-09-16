@@ -3,18 +3,18 @@ import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import ClaudeUsageTracker from "./ClaudeUsageTracker";
-import type { UsageJson } from "@/lib/claudeUsage";
+import type { Plan, UsageJson } from "@/lib/claudeUsage";
 // Schema 1: the published file as of 4401911 (generated 2026-09-16T16:30Z), what the live page
 // renders until the collector change merges. Schema 2: tracker PR #57's offline rebuild from the
 // same inputs, in which max20's weekly figure is unavailable until passive.json is re-paired.
 import schema1 from "@/lib/__fixtures__/claude-usage-schema1.json";
 import schema2 from "@/lib/__fixtures__/claude-usage-schema2.json";
 
-function render(j: UsageJson): string {
+function render(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5"): string {
   const html = renderToString(
     <HelmetProvider context={{}}>
       <MemoryRouter>
-        <ClaudeUsageTracker initial={j} />
+        <ClaudeUsageTracker initial={j} initialPlan={plan} initialModel={model} />
       </MemoryRouter>
     </HelmetProvider>,
   );
@@ -23,6 +23,8 @@ function render(j: UsageJson): string {
     .replace(/<!-- -->/g, "")
     // The headline's highlight spans sit inside words.
     .replace(/<span class="(claude|down|up)">([^<]*)<\/span>/g, "$2")
+    // Links sit inside sentences.
+    .replace(/<\/?a(\s[^>]*)?>/g, "")
     .replace(/<[^>]+>/g, " ")
     .replace(/&#x27;/g, "'")
     .replace(/&amp;/g, "&")
@@ -82,7 +84,7 @@ describe("the tracker page renders both schemas", () => {
     expect(text).not.toContain("Max 5x and Pro");
     expect(text).toContain("Source: the account's own meter, newest reading 16 Sep");
     // The contributor section has no windows-per-week tab (finding 7), and counts IDs (finding 14).
-    expect(text).not.toContain("Weekly limit Max 20x");
+    expect(text).toContain("Cost per 1% Effective window size Tokens per week Pro Max 5x Max 20x");
     expect(text).toContain("Two contributor IDs on Max 20x have shared meter readings.");
     expect(text).toContain("$0.90 of meter budget per 1% of the five-hour meter");
   });
@@ -109,6 +111,27 @@ describe("the tracker page renders both schemas", () => {
     expect(row(text, "Tokens per week")).toEqual(["—", "—", "7207M"]);
     expect(row(text, "API list value per week")).toEqual(["—", "—", "$2,105"]);
     expect(text).toContain("$2,105 per week");
+  });
+
+  it("shows Fable on Pro as not included, with no figures, and keeps the selectors to leave it (finding 2)", () => {
+    for (const j of [LIVE, MEASURED]) {
+      const text = render(j, "pro", "claude-fable-5-1");
+      expect(text).toContain("On Pro Max 5x Max 20x , running Fable 5.1 Opus 5 Sonnet 5 Fable 5.1 is not included with Pro.");
+      expect(text).not.toContain("tokens per 5-hour window on the reference mix");
+      expect(text).not.toContain("meter budget per 5-hour window");
+      expect(row(text, "Tokens per 5-hour window")[0]).toBe("—");
+      expect(row(text, "Meter budget per 5-hour window")[0]).toBe("—");
+    }
+  });
+
+  it("gives Fable on Max the plan's weekly figure, qualified by the published 50% cap, and half the week's tokens (finding 2)", () => {
+    const text = render(MEASURED, "max20", "claude-fable-5-1");
+    expect(text).toContain(
+      "A week currently holds about 6.1 five-hour windows, measured from a real account. Fable 5.1 may use 50% of the weekly limit.",
+    );
+    expect(text).toContain("6.1 five-hour windows per week");
+    // 235,146,113 tokens a window x 6.13 x 0.5.
+    expect(row(text, "Tokens per week")).toEqual(["—", "—", "721M"]);
   });
 
   it("says the data is unavailable when schema 2 publishes no eligible measurement, rather than substituting one (finding 13)", () => {
