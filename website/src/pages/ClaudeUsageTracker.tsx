@@ -903,25 +903,33 @@ export default function ClaudeUsageTracker({
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} · how many tokens a full week of five-hour windows
               buys. Full history.
             </p>
-            {r && r.tokensPerWeek !== null && (
-              <div className="rate">
-                <span>
-                  <b>{fmtTokens(r.tokensPerWeek)}</b> tokens per week
-                </span>
-              </div>
+            {/* The same notice as the window chart: another plan's line under this plan's heading would
+                read as this plan's figure (finding 2). */}
+            {r && !r.included ? (
+              <p className="sub">{notIncluded}</p>
+            ) : (
+              <>
+                {r && r.tokensPerWeek !== null && (
+                  <div className="rate">
+                    <span>
+                      <b>{fmtTokens(r.tokensPerWeek)}</b> tokens per week
+                    </span>
+                  </div>
+                )}
+                <LevelChart
+                  levelsByPlan={weeklyTokenLevels}
+                  events={weeklyEvents}
+                  selectedPlan={plan}
+                  fmtValue={fmtTokens}
+                  plotRight={732}
+                  title="Tokens per week over time"
+                />
+                <p className="sub">
+                  Each line steps when either the weekly limit or a window's tokens change. Solid and shaded: selected
+                  plan. Grey: the others. Dashed: a window figure not marked measured. Red: an observed change.
+                </p>
+              </>
             )}
-            <LevelChart
-              levelsByPlan={weeklyTokenLevels}
-              events={weeklyEvents}
-              selectedPlan={plan}
-              fmtValue={fmtTokens}
-              plotRight={732}
-              title="Tokens per week over time"
-            />
-            <p className="sub">
-              Each line steps when either the weekly limit or a window's tokens change. Solid and shaded: selected plan.
-              Grey: the others. Dashed: a window figure not marked measured. Red: an observed change.
-            </p>
           </section>
         )}
 
@@ -931,26 +939,32 @@ export default function ClaudeUsageTracker({
             <p className="sub">
               How many 5-hour windows fit in one week, read from the usage meter. Full history.
             </p>
-            {r && r.planWindowsPerWeek !== null && (
-              <div className="rate">
-                <span>
-                  <b>{r.planWindowsPerWeek.toFixed(1)}</b> five-hour windows per week
-                </span>
-              </div>
-            )}
-            <LevelChart
-              levelsByPlan={weeklyLevels}
-              events={weeklyEvents}
-              selectedPlan={plan}
-              fmtValue={(v) => v.toFixed(1)}
-              plotRight={732}
-              title="Five-hour windows per week over time"
-            />
-            {weeklySeries.some((s) => s.points.length >= 2) && (
-              <p className="sub chart-legend">
-                Each line is one plan's own measured level, held flat between detected changes. Solid: selected plan.
-                Grey: the others.
-              </p>
+            {r && !r.included ? (
+              <p className="sub">{notIncluded}</p>
+            ) : (
+              <>
+                {r && r.planWindowsPerWeek !== null && (
+                  <div className="rate">
+                    <span>
+                      <b>{r.planWindowsPerWeek.toFixed(1)}</b> five-hour windows per week
+                    </span>
+                  </div>
+                )}
+                <LevelChart
+                  levelsByPlan={weeklyLevels}
+                  events={weeklyEvents}
+                  selectedPlan={plan}
+                  fmtValue={(v) => v.toFixed(1)}
+                  plotRight={732}
+                  title="Five-hour windows per week over time"
+                />
+                {weeklySeries.some((s) => s.points.length >= 2) && (
+                  <p className="sub chart-legend">
+                    Each line is one plan's own measured level, held flat between detected changes. Solid: selected
+                    plan. Grey: the others.
+                  </p>
+                )}
+              </>
             )}
           </section>
         )}

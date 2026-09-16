@@ -125,6 +125,30 @@ describe("the tracker page renders both schemas", () => {
     }
   });
 
+  it("gives the tokens-per-week and weekly-limit sections the window chart's not-included notice, and no other plan's lines (finding 2)", () => {
+    const sections = (text: string) => {
+      const window = text.indexOf(" Effective window size, last ");
+      const tokens = text.indexOf(" Tokens per week ", window);
+      const weekly = text.indexOf(" Weekly limit, 5-hour windows per week ", tokens);
+      const table = text.indexOf(" Plan comparison ", weekly);
+      expect([window, tokens, weekly, table].every((i) => i >= 0)).toBe(true);
+      return [text.slice(window, tokens), text.slice(tokens, weekly), text.slice(weekly, table)];
+    };
+    // Max 20x's measured week in MEASURED would otherwise draw grey Max lines under Pro's heading.
+    for (const j of [LIVE, MEASURED]) {
+      for (const section of sections(render(j, "pro", "claude-fable-5-1"))) {
+        expect(section).toContain("Fable 5.1 is not included with Pro.");
+        expect(section).not.toContain("Max 20x");
+        expect(section).not.toContain("Each line");
+        expect(section).not.toContain("Not enough history yet");
+      }
+    }
+    const [, tokens, weekly] = sections(render(MEASURED, "max20", "claude-sonnet-5"));
+    expect(tokens).toContain("Each line steps when either the weekly limit or a window's tokens change.");
+    expect(weekly).toContain("6.1 five-hour windows per week");
+    expect(tokens + weekly).not.toContain("not included");
+  });
+
   it("gives Fable on Max the plan's weekly figure, qualified by the published 50% cap, and half the week's tokens (finding 2)", () => {
     const text = render(MEASURED, "max20", "claude-fable-5-1");
     expect(text).toContain(
