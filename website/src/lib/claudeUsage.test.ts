@@ -113,11 +113,11 @@ describe("fmtSource", () => {
   it("appends the probe date when probed_at is present", () => {
     expect(fmtSource({ source: "probe", probed_at: "2026-09-08T12:00:00Z" })).toBe("probe, 8 Sep");
   });
-  it("dates a passive figure by its own reading, never by the model's probe", () => {
+  it("names the meter for a passive figure, dated by its newest reading, never by the model's probe", () => {
     expect(fmtSource({ source: "passive", probed_at: "2026-09-14T13:16:00Z", measured_at: "2026-09-15T22:58:00Z" })).toBe(
-      "passive, 15 Sep",
+      "the account's own meter, newest reading 15 Sep",
     );
-    expect(fmtSource({ source: "passive", probed_at: "2026-09-14T13:16:00Z" })).toBe("passive");
+    expect(fmtSource({ source: "passive", probed_at: "2026-09-14T13:16:00Z" })).toBe("the account's own meter");
   });
   it("falls back to the plain source when probed_at is absent", () => {
     expect(fmtSource({ source: "derived" })).toBe("derived");
