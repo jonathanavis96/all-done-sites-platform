@@ -13,6 +13,7 @@ import {
   weeklyTokenSeriesFor,
   weeklyRegimeLevelsFor,
   weeklyTokenRegimeLevelsFor,
+  weeklyWindowRatio,
   modelPlanLimit,
   currentWeeklyEstimate,
   rateStaleAfter,
@@ -320,23 +321,39 @@ describe("one weekly value per plan (finding 6)", () => {
     // V2's regime pools to 6.34 over its whole span; the chart ends on the current estimate.
     expect(weeklyRegimeLevelsFor(V2, "max20").at(-1)!.windows).toBe(6.13);
   });
-  it("gives an unmeasured plan no weekly value anywhere, never another plan's number", () => {
+  it("gives an unmeasured plan no current weekly value, and draws another plan's levels for it only flagged inferred", () => {
+    // Reverses finding 6's chart half by Jonathan's decision (2026-09-16): the borrowed level is
+    // drawn, dashed. The hero and the table still give an unmeasured plan no weekly figure.
     for (const plan of ["max5", "pro"] as const) {
       const r = compute(LIVE, plan, SONNET, "high");
       expect(r.planWindowsPerWeek).toBeNull();
       expect(r.tokensPerWeek).toBeNull();
-      // Not 11.02 (the frozen median), and not 4.61 x 1.668 = 7.69 (max20 scaled across the seam).
+      // Never 11.02 (the frozen median).
       for (const level of weeklyRegimeLevelsFor(LIVE, plan)) {
-        expect(level.windows).not.toBeCloseTo(4.61 * 1.668, 2);
         expect(level.windows).not.toBe(11.02);
       }
     }
-    // Max 5x keeps its own history; Pro has none of its own.
-    expect(weeklyRegimeLevelsFor(LIVE, "max5").map((l) => [l.start, l.windows, l.inferred])).toEqual([
+    // Max 5x keeps its own history, then max20 scaled across the seam: 6.2 and 4.61 x 1.668.
+    const rounded = (j: UsageJson, plan: "max5" | "pro") =>
+      weeklyRegimeLevelsFor(j, plan).map((l) => [l.start, +l.windows.toFixed(4), l.inferred]);
+    expect(rounded(LIVE, "max5")).toEqual([
       ["2026-06-13T01:30:00+00:00", 10.34, false],
+      ["2026-08-19T17:00:00+00:00", +(6.2 * 1.668).toFixed(4), true],
+      ["2026-09-14T16:30:00+00:00", +(4.61 * 1.668).toFixed(4), true],
     ]);
-    expect(weeklyRegimeLevelsFor(LIVE, "pro")).toEqual([]);
-    expect(weeklyRegimeLevelsFor(V2, "max5").map((l) => l.windows)).toEqual([10.86, 6.61]);
+    // Pro has none of its own: every level is borrowed, and flagged so.
+    expect(rounded(LIVE, "pro")).toEqual([
+      ["2026-06-13T01:30:00+00:00", 10.34, true],
+      ["2026-08-19T17:00:00+00:00", +(6.2 * 1.668).toFixed(4), true],
+      ["2026-09-14T16:30:00+00:00", +(4.61 * 1.668).toFixed(4), true],
+    ]);
+    // Schema 2 publishes no ratio: 10.86 / 6.34 = 1.713, and max20 ends on its current 6.13.
+    expect(rounded(V2, "max5")).toEqual([
+      ["2026-06-13T01:30:00+00:00", 10.86, false],
+      ["2026-08-14T19:19:00+00:00", 6.61, false],
+      ["2026-08-19T17:00:00+00:00", +(6.13 * 1.713).toFixed(4), true],
+    ]);
+    expect(rounded(V2, "pro").map((l) => l[2])).toEqual([true, true, true]);
   });
   it("treats a stale current estimate as no current value, in the hero and on the chart alike", () => {
     const stale: UsageJson = {
@@ -348,8 +365,13 @@ describe("one weekly value per plan (finding 6)", () => {
     };
     expect(currentWeeklyEstimate(stale, "max20")).toBeNull();
     expect(compute(stale, "max20", SONNET, "high")!.windowsPerWeek).toBeNull();
-    // The regime is still history, drawn at its own pooled level rather than the stale estimate.
-    expect(weeklyRegimeLevelsFor(stale, "max20").map((l) => l.windows)).toEqual([6.34]);
+    // The regime is still history, drawn at its own pooled level rather than the stale estimate,
+    // after Max 5x's two levels scaled across by 1 / 1.713.
+    expect(weeklyRegimeLevelsFor(stale, "max20").map((l) => [+l.windows.toFixed(2), l.inferred])).toEqual([
+      [6.34, true],
+      [3.86, true],
+      [6.34, false],
+    ]);
   });
 });
 
@@ -691,18 +713,17 @@ const RJ: UsageJson = {
   },
 };
 
-// Until the audit these levels were filled across plans by weekly_window_ratios, clipped where a
-// measured level overlapped. The ratio (10.34/6.20 live) divides two plans' levels measured in
-// different periods, so it makes the plan seam continuous by construction and a limit change at
-// the seam disappears into it (finding 6). Each plan now draws its own levels only.
 describe("weeklyRegimeLevelsFor", () => {
-  it("draws only the plan's own level, never another plan's scaled across the boundary it touches", () => {
+  it("keeps an inferred level that only touches a measured one at the plan boundary", () => {
+    // Max 5x's regime ends on the day Max 20x's starts. Sharing that one day is not an overlap
+    // worth dropping the whole January-to-July level for.
     const levels = weeklyRegimeLevelsFor(RJ, "max20");
     expect(levels.map((l) => [l.start, l.end, l.inferred, +l.windows.toFixed(2)])).toEqual([
+      ["2026-01-01", "2026-08-01", true, 6],
       ["2026-08-01", "2026-09-05", false, 6],
     ]);
   });
-  it("keeps each plan's own level whole where another plan's overlaps it, rather than clipping either", () => {
+  it("clips an inferred level to the part no measured level covers, rather than dropping it", () => {
     const overlapping: UsageJson = {
       ...RJ,
       weekly_windows: {
@@ -711,14 +732,13 @@ describe("weeklyRegimeLevelsFor", () => {
         pro: { ...RJ.weekly_windows!.pro!, regimes: [] },
       },
     };
-    expect(weeklyRegimeLevelsFor(overlapping, "max20").map((l) => [l.start, l.end, l.inferred])).toEqual([
+    const levels = weeklyRegimeLevelsFor(overlapping, "max20");
+    expect(levels.map((l) => [l.start, l.end, l.inferred])).toEqual([
+      ["2026-01-01", "2026-08-01", true],
       ["2026-08-01", "2026-09-05", false],
     ]);
-    expect(weeklyRegimeLevelsFor(overlapping, "max5").map((l) => [l.start, l.end, l.inferred])).toEqual([
-      ["2026-01-01", "2026-09-01", false],
-    ]);
   });
-  it("leaves the months around a plan's own level empty rather than filling them from another plan", () => {
+  it("splits an inferred level around a measured one inside it", () => {
     const inside: UsageJson = {
       ...RJ,
       weekly_windows: {
@@ -728,21 +748,37 @@ describe("weeklyRegimeLevelsFor", () => {
       },
     };
     const levels = weeklyRegimeLevelsFor(inside, "max20");
-    expect(levels.map((l) => [l.start, l.end, l.inferred])).toEqual([["2026-03-01", "2026-05-01", false]]);
-  });
-  it("draws Max 5x's own level once, and nothing for Pro's assumed copy of it", () => {
-    expect(weeklyRegimeLevelsFor(RJ, "max5").map((l) => [l.start, l.inferred, +l.windows.toFixed(2)])).toEqual([
-      ["2026-01-01", false, 10.68],
+    expect(levels.map((l) => [l.start, l.end, l.inferred])).toEqual([
+      ["2026-01-01", "2026-03-01", true],
+      ["2026-03-01", "2026-05-01", false],
+      ["2026-05-01", "2026-08-01", true],
     ]);
-    expect(weeklyRegimeLevelsFor(RJ, "pro")).toEqual([]);
+  });
+  it("scales a borrowed level onto the plan's own ratio and dedupes Pro's copy of Max 5x", () => {
+    const levels = weeklyRegimeLevelsFor(RJ, "max5");
+    // Max 20x's 6 windows become 6 * 1.78 on Max 5x; Pro's regime is Max 5x's own, so it appears once.
+    expect(levels.map((l) => [l.start, l.inferred, +l.windows.toFixed(2)])).toEqual([
+      ["2026-01-01", false, 10.68],
+      ["2026-08-01", true, 10.68],
+    ]);
+  });
+  it("derives schema 2's missing ratio from the first Max 5x and Max 20x levels, with Pro taking Max 5x's", () => {
+    expect(weeklyWindowRatio(RJ, "max5")).toBe(1.78);
+    expect(weeklyWindowRatio(V2, "max20")).toBe(1);
+    expect(weeklyWindowRatio(V2, "max5")).toBe(1.713);
+    expect(weeklyWindowRatio(V2, "pro")).toBe(1.713);
+    expect(weeklyWindowRatio(WJ, "max5")).toBeNull();
   });
 });
 
 describe("weeklyTokenRegimeLevelsFor", () => {
-  it("prices each level by what one window bought during it, on the plan's own levels only", () => {
+  it("prices each level by what one window bought during it, including a level borrowed from another plan", () => {
     const levels = weeklyTokenRegimeLevelsFor(RJ, "max20", "claude-sonnet-5");
-    // August's own 40M row; no January level borrowed from Max 5x.
-    expect(levels.map((l) => [l.start, Math.round(l.tokens)])).toEqual([["2026-08-01", 6 * 40_000_000]]);
+    // January predates the first history row, so it takes that row's figure; August has its own.
+    expect(levels.map((l) => [l.start, Math.round(l.tokens), l.inferred])).toEqual([
+      ["2026-01-01", Math.round(6 * 38_000_000), true],
+      ["2026-08-01", 6 * 40_000_000, false],
+    ]);
   });
   it("steps when the window figure changes inside one flat weekly level (audit finding 12)", () => {
     // audit_checks.cjs: one weekly level of 6 windows, 1-20 September; a window holds 100 tokens on
@@ -762,30 +798,36 @@ describe("weeklyTokenRegimeLevelsFor", () => {
       ["2026-09-10T00:00:00.000Z", "2026-09-20T00:00:00Z", 1200],
     ]);
   });
-  it("leaves out a span before the first dated window figure, and a held day, rather than backfilling them", () => {
+  it("draws a span before the first dated window figure at that figure, flagged inferred, and never reads a held day", () => {
+    // Reverses finding 12's gap by Jonathan's decision (2026-09-16): every plan's line covers its
+    // full history, dashed where the window figure is backdated.
     const fake: UsageJson = structuredClone(J);
     fake.weekly_windows = {
       max20: { current: 6, history: [], regimes: [{ start: "2026-06-01T00:00:00Z", end: "2026-09-20T00:00:00Z", windows: 6, seven_day_pct: 100, points: 10 }] },
     };
     fake.history[SONNET] = [
-      { date: "2026-08-11", tokens_per_window: 100, source: "held", interpolated: false },
+      { date: "2026-08-11", tokens_per_window: 999, source: "held", interpolated: false },
       { date: "2026-09-05", tokens_per_window: 100, source: "passive", interpolated: false },
     ];
-    expect(weeklyTokenRegimeLevelsFor(fake, "max20", SONNET).map((l) => [l.start, l.end, l.tokens])).toEqual([
-      ["2026-09-05T00:00:00.000Z", "2026-09-20T00:00:00Z", 600],
+    expect(weeklyTokenRegimeLevelsFor(fake, "max20", SONNET).map((l) => [l.start, l.end, l.tokens, l.inferred])).toEqual([
+      ["2026-06-01T00:00:00Z", "2026-09-05T00:00:00.000Z", 600, true],
+      ["2026-09-05T00:00:00.000Z", "2026-09-20T00:00:00Z", 600, false],
     ]);
   });
   it("marks a span inferred when its window figure is not marked measured, and applies the model's weekly share", () => {
     const levels = weeklyTokenRegimeLevelsFor(V2, "max20", SONNET);
     expect(levels.map((l) => [l.start, l.end, l.inferred])).toEqual([
-      ["2026-09-05T00:00:00.000Z", "2026-09-16T00:00:00.000Z", true],
+      ["2026-06-13T01:30:00+00:00", "2026-08-14T19:19:00+00:00", true],
+      ["2026-08-14T19:19:00+00:00", "2026-08-18T20:00:00+00:00", true],
+      ["2026-08-19T17:00:00+00:00", "2026-09-16T00:00:00.000Z", true],
       ["2026-09-16T00:00:00.000Z", "2026-09-16T02:30:00+00:00", true],
     ]);
-    expect(levels[0].tokens).toBeCloseTo(6.13 * 1_400_384_480, 0);
+    expect(levels[2].tokens).toBeCloseTo(6.13 * 1_400_384_480, 0);
     const fable: UsageJson = { ...V2, history: { ...V2.history, [FABLE]: [{ ...V2.history[SONNET][0], tokens_per_window: 280_076_896, quality: "measured" }] } };
     const fableLevels = weeklyTokenRegimeLevelsFor(fable, "max20", FABLE);
-    expect(fableLevels.map((l) => l.inferred)).toEqual([false]);
-    expect(fableLevels[0].tokens).toBeCloseTo(6.13 * 280_076_896 * 0.5, 0);
+    // Borrowed and backdated spans are inferred; the measured figure on max20's own level is not.
+    expect(fableLevels.map((l) => l.inferred)).toEqual([true, true, true, false]);
+    expect(fableLevels.at(-1)!.tokens).toBeCloseTo(6.13 * 280_076_896 * 0.5, 0);
   });
 });
 
@@ -795,14 +837,15 @@ describe("weeklySeriesFor", () => {
     // 30/90/180-day range picker, since it needs only meter readings, not probes.
     const s = weeklySeriesFor(WJ);
     const max20 = s.find((x) => x.plan === "max20")!;
-    // Only its own weeks: max5's 2026-09-12 is no longer copied across (finding 6).
-    expect(max20.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05"]);
+    // 2026-09-12 is filled in as an inferred point (max5/pro has it, max20 doesn't).
+    expect(max20.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05", "2026-09-12"]);
   });
   it("flags a week as partial when its week_ending falls after last_sample_at", () => {
-    // last_sample_at is 2026-09-05, so max5's 2026-09-12 week is still in progress.
+    // last_sample_at is 2026-09-05, so max5's 2026-09-12 week is still in progress. max5 also
+    // gains an inferred, non-partial point at 2026-07-04 (max20's earliest date).
     const s = weeklySeriesFor(WJ);
     const max5 = s.find((x) => x.plan === "max5")!;
-    expect(max5.points.map((p) => p.partial)).toEqual([false, false, true]);
+    expect(max5.points.map((p) => p.partial)).toEqual([false, false, false, true]);
   });
   it("prefers an explicit partial flag over the last_sample_at inference when present", () => {
     const withExplicit: UsageJson = {
@@ -822,14 +865,17 @@ describe("weeklySeriesFor", () => {
     const point = max20.points.find((p) => p.date === "2026-09-05")!;
     expect(point.partial).toBe(true);
   });
-  it("draws no Pro series while Pro is an assumed copy of max5, and labels max5 as itself (finding 6)", () => {
+  it("collapses pro into max5 when pro is assumed and identical to max5, labelling the shared series", () => {
+    // WJ's pro history is a copy of max5's and flagged assumed, matching the live data shape
+    // today: two overlapping lines are pointless, so they draw as one labelled series.
     const s = weeklySeriesFor(WJ);
     expect(s.some((x) => x.plan === "pro")).toBe(false);
     const max5 = s.find((x) => x.plan === "max5")!;
-    expect(max5.label).toBe("Max 5x");
+    expect(max5.label).toBe("Max 5x and Pro");
+    expect(max5.sharedWithPro).toBe(true);
     expect(max5.assumed).toBe(false);
   });
-  it("draws no Pro series while Pro is assumed, even when its points differ from max5's (finding 6)", () => {
+  it("keeps pro and max5 as separate labelled series when pro's points differ from max5's", () => {
     const withDifferingPro: UsageJson = {
       ...WJ,
       weekly_windows: {
@@ -846,25 +892,47 @@ describe("weeklySeriesFor", () => {
       },
     };
     const s = weeklySeriesFor(withDifferingPro);
-    expect(s.find((x) => x.plan === "pro")).toBeUndefined();
-    expect(s.find((x) => x.plan === "max5")!.label).toBe("Max 5x");
+    const pro = s.find((x) => x.plan === "pro")!;
+    const max5 = s.find((x) => x.plan === "max5")!;
+    expect(pro).toBeDefined();
+    expect(max5).toBeDefined();
+    expect(pro.label).toBe("Pro");
+    expect(pro.sharedWithPro).toBeFalsy();
+    expect(max5.label).toBe("Max 5x");
+    expect(max5.sharedWithPro).toBeFalsy();
     // A measured Pro series is drawn under its own label.
     const measuredPro: UsageJson = { ...withDifferingPro, weekly_windows: { ...withDifferingPro.weekly_windows!, pro: { ...withDifferingPro.weekly_windows!.pro!, assumed: false } } };
     expect(weeklySeriesFor(measuredPro).find((x) => x.plan === "pro")!.label).toBe("Pro");
   });
-  it("leaves max20's own points untouched", () => {
+  it("leaves max20 unaffected by the pro/max5 collapse", () => {
     const s = weeklySeriesFor(WJ);
     const max20 = s.find((x) => x.plan === "max20")!;
     expect(max20.label).toBe("Max 20x");
-    expect(max20.points.map((p) => p.windows)).toEqual([10, 10.5, 11.2]);
-    expect(max20.points.every((p) => !p.inferred)).toBe(true);
+    expect(max20.sharedWithPro).toBeFalsy();
+    // The trailing 11.2 is max20's own inferred 2026-09-12 point (9.6 * 11.2/9.6), not its
+    // measured 2026-09-05 figure, hence toBeCloseTo rather than toEqual for that one.
+    expect(max20.points[0].windows).toBe(10);
+    expect(max20.points[1].windows).toBe(10.5);
+    expect(max20.points[2].windows).toBe(11.2);
+    expect(max20.points[3].windows).toBeCloseTo(11.2, 10);
   });
-  it("fills no gaps: a series missing a date stays missing it rather than borrowing another plan's point (finding 6)", () => {
+  it("fills gaps: a series missing a date gets an inferred point scaled by the ratio of current windows-per-week", () => {
     const s = weeklySeriesFor(WJ);
     const max20 = s.find((x) => x.plan === "max20")!;
-    const max5 = s.find((x) => x.plan === "max5")!;
-    expect(max20.points.find((p) => p.date === "2026-09-12")).toBeUndefined();
-    expect(max5.points.find((p) => p.date === "2026-07-04")).toBeUndefined();
+    const max5 = s.find((x) => x.plan === "max5")!; // shared with Pro, current 9.6
+
+    // max20 lacks 2026-09-12 (only max5/pro has it): infer from max5's point there.
+    const inferredMax20 = max20.points.find((p) => p.date === "2026-09-12")!;
+    expect(inferredMax20.inferred).toBe(true);
+    expect(inferredMax20.windows).toBeCloseTo(9.6 * (11.2 / 9.6), 10);
+    expect(inferredMax20.partial).toBe(true); // copied from max5's in-progress week
+
+    // max5 lacks 2026-07-04 (only max20 has it): infer from max20's point there.
+    const inferredMax5 = max5.points.find((p) => p.date === "2026-07-04")!;
+    expect(inferredMax5.inferred).toBe(true);
+    expect(inferredMax5.windows).toBeCloseTo(10 * (9.6 / 11.2), 10);
+    expect(inferredMax5.partial).toBe(false);
+
     // Measured points are untouched and flagged not inferred.
     const measuredMax20 = max20.points.find((p) => p.date === "2026-09-05")!;
     expect(measuredMax20.inferred).toBe(false);
@@ -872,25 +940,32 @@ describe("weeklySeriesFor", () => {
     const measuredMax5 = max5.points.find((p) => p.date === "2026-08-01")!;
     expect(measuredMax5.inferred).toBe(false);
     expect(measuredMax5.windows).toBe(9);
-    expect(max20.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05"]);
-    expect(max5.points.map((p) => p.date)).toEqual(["2026-08-01", "2026-09-05", "2026-09-12"]);
+
+    // Points stay sorted by date after gap-filling.
+    expect(max20.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05", "2026-09-12"]);
+    expect(max5.points.map((p) => p.date)).toEqual(["2026-07-04", "2026-08-01", "2026-09-05", "2026-09-12"]);
   });
-  it("fills no gaps from published weekly_window_ratios either (finding 6)", () => {
+  it("scales gap-fill by weekly_window_ratios when published, not by the current quotient", () => {
+    // The two disagree on purpose here: the ratios say max5 holds 2x max20's windows, while the
+    // currents (11.2 and 9.6) say 0.857. Only the published ratio may be used.
     const withRatios: UsageJson = {
       ...WJ,
       weekly_window_ratios: { max20: 1.0, max5: 2.0, pro: 2.0 },
     };
     const s = weeklySeriesFor(withRatios);
-    expect(s.find((x) => x.plan === "max20")!.points.find((p) => p.date === "2026-09-12")).toBeUndefined();
-    expect(s.find((x) => x.plan === "max5")!.points.find((p) => p.date === "2026-07-04")).toBeUndefined();
+    const max20 = s.find((x) => x.plan === "max20")!;
+    const max5 = s.find((x) => x.plan === "max5")!;
+
+    // max20 lacks 2026-09-12; max5 has 9.6 there. 9.6 * (1.0 / 2.0) = 4.8.
+    expect(max20.points.find((p) => p.date === "2026-09-12")!.windows).toBeCloseTo(4.8, 10);
+    // max5 lacks 2026-07-04; max20 has 10 there. 10 * (2.0 / 1.0) = 20.
+    expect(max5.points.find((p) => p.date === "2026-07-04")!.windows).toBeCloseTo(20, 10);
   });
-  it("does not let a limit change on the measured plan inflate the other one, by drawing neither from the other (issue #54)", () => {
-    // The shape that produced issue #54: max5 frozen at its last measured August weeks, max20 the
+  it("does not let a limit change on the measured plan inflate the inferred one (issue #54)", () => {
+    // The shape that produced the bug: max5 frozen at its last measured August weeks, max20 the
     // live plan whose `current` has been dragged below its own weekly history by a later cut.
-    // Scaling by the current quotient (11.02 / 4.61 = 2.39) put inferred max5 at 15.7 windows; the
-    // #54 fix scaled by a frozen 1.78 instead, which made the seam continuous by construction. The
-    // audit showed that quotient cannot tell the plan move from a limit change at the move, so
-    // neither plan's line is drawn from the other's: max5 keeps its measured week and nothing more.
+    // Scaling by the current quotient (11.02 / 4.61 = 2.39) put inferred max5 at 15.7 windows,
+    // far outside its measured 9.5-11.0. The frozen ratio keeps it continuous across the seam.
     const seam: UsageJson = {
       ...WJ,
       weekly_window_ratios: { max20: 1.0, max5: 1.78, pro: 1.78 },
@@ -914,17 +989,29 @@ describe("weeklySeriesFor", () => {
       },
     };
     const s = weeklySeriesFor(seam);
-    const max5 = s.find((x) => x.plan === "max5")!;
-    expect(max5.points.filter((p) => p.inferred)).toEqual([]);
-    expect(max5.points.map((p) => [p.date, p.windows])).toEqual([["2026-08-14", 11.0]]);
-    // No max5 week after the plan seam, so no max5 week inflated by max20's cut.
-    expect(max5.points.find((p) => p.date === "2026-08-28")).toBeUndefined();
-    expect(s.find((x) => x.plan === "max20")!.points.map((p) => [p.date, p.windows])).toEqual([
-      ["2026-08-28", 6.58],
-      ["2026-09-11", 6.02],
-    ]);
-    // The headline figures for both plans come from the same rule: max5's frozen 11.02 is not current.
+    const max5 = s.find((x) => x.plan === "max5" || x.sharedWithPro)!;
+
+    const inferred = max5.points.filter((p) => p.inferred);
+    expect(inferred.length).toBeGreaterThan(0);
+    // Every inferred max5 week lands inside the range max5 was actually measured at, rather
+    // than being lifted by a cut that happened to max20 a month after max5 stopped.
+    for (const p of inferred) {
+      expect(p.windows).toBeGreaterThan(9.5);
+      expect(p.windows).toBeLessThan(12.5);
+    }
+    // The first week after the plan seam is continuous with max5's last measured week: a plan
+    // move must not draw a step.
+    const atSeam = max5.points.find((p) => p.date === "2026-08-28")!;
+    expect(atSeam.windows).toBeCloseTo(6.58 * 1.78, 10);
+    expect(Math.abs(atSeam.windows - 11.0)).toBeLessThan(1.0);
+    // The headline figures come from their own rule: max5's frozen 11.02 is not current.
     expect(compute(seam, "max5", SONNET, "high").windowsPerWeek).toBeNull();
+  });
+  it("borrows Max 5x's weeks wholesale for a schema 2 Pro that publishes none, and collapses the two", () => {
+    const s = weeklySeriesFor(V2);
+    expect(s.some((x) => x.plan === "pro")).toBe(false);
+    expect(s.find((x) => x.plan === "max5")!.label).toBe("Max 5x and Pro");
+    expect(weeklyTokenSeriesFor(V2, SONNET).map((x) => x.label)).toEqual(["Max 5x", "Pro", "Max 20x"]);
   });
   it("does not infer when either side's current is zero", () => {
     const zeroCurrent: UsageJson = {
@@ -989,14 +1076,18 @@ describe("weeklyTokenSeriesFor", () => {
     // A week before the first dated row has none either.
     const late: UsageJson = { ...WJ, history: { "claude-sonnet-5": [{ date: "2026-08-15", tokens_per_window: 40_000_000, source: "passive", interpolated: false }] } };
     const lateMax20 = weeklyTokenSeriesFor(late, "claude-sonnet-5").find((x) => x.plan === "max20")!;
-    expect(lateMax20.points.map((p) => p.tokens)).toEqual([undefined, undefined, 11.2 * 40_000_000]);
+    expect(lateMax20.points.slice(0, 3).map((p) => p.tokens)).toEqual([undefined, undefined, 11.2 * 40_000_000]);
+    // Max 5x's 2026-09-12 week inferred onto max20, priced by the same dated figure.
+    expect(lateMax20.points[3].tokens).toBeCloseTo(9.6 * (11.2 / 9.6) * 40_000_000, 0);
   });
   it("leaves tokens undefined when neither history nor a rate exists for the model", () => {
     const s = weeklyTokenSeriesFor(WJ, "claude-nonexistent");
     const max20 = s.find((x) => x.plan === "max20")!;
     expect(max20.points.every((p) => p.tokens === undefined)).toBe(true);
   });
-  it("prices max5's own line by its own plan ratio, and draws no line for an assumed Pro (finding 6)", () => {
+  it("splits a shared Max 5x and Pro line into two, each priced by its own plan ratio", () => {
+    // The windows chart collapses the two because they hold the same windows per week. A
+    // window is worth five times as much on Max 5x, so the tokens chart must not.
     const shared: UsageJson = {
       ...WJ,
       weekly_windows: {
@@ -1006,10 +1097,13 @@ describe("weeklyTokenSeriesFor", () => {
     };
     const s = weeklyTokenSeriesFor(shared, "claude-sonnet-5");
     const max5 = s.find((x) => x.plan === "max5")!;
+    const pro = s.find((x) => x.plan === "pro")!;
     expect(max5.label).toBe("Max 5x");
-    expect(s.find((x) => x.plan === "pro")).toBeUndefined();
+    expect(pro.label).toBe("Pro");
+    expect(max5.sharedWithPro).toBe(false);
     const max5Aug = max5.points.find((p) => p.date === "2026-08-01")!;
-    expect(max5Aug.tokens).toBeCloseTo(9 * 40_000_000 * 0.25, 5);
+    const proAug = pro.points.find((p) => p.date === "2026-08-01")!;
+    expect(proAug.tokens).toBeCloseTo(max5Aug.tokens! * (0.05 / 0.25), 5);
   });
 });
 

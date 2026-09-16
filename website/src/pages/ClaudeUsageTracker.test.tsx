@@ -8,17 +8,23 @@ import type { ContribMetric } from "@/lib/contrib";
 // Schema 1: the published file as of 4401911 (generated 2026-09-16T16:30Z), what the live page
 // renders until the collector change merges. Schema 2: tracker PR #57's offline rebuild from the
 // same inputs, in which max20's weekly figure is unavailable until passive.json is re-paired.
+// Published schema 2: the file the collector published at 2026-09-16T19:30Z (df10f70), re-paired.
 import schema1 from "@/lib/__fixtures__/claude-usage-schema1.json";
 import schema2 from "@/lib/__fixtures__/claude-usage-schema2.json";
+import schema2Published from "@/lib/__fixtures__/claude-usage-schema2-published.json";
 
-function render(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
-  const html = renderToString(
+function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
+  return renderToString(
     <HelmetProvider context={{}}>
       <MemoryRouter>
         <ClaudeUsageTracker initial={j} initialPlan={plan} initialModel={model} now={now} initialContribMetric={contribMetric} />
       </MemoryRouter>
     </HelmetProvider>,
   );
+}
+
+function render(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
+  const html = renderHtml(j, plan, model, now, contribMetric);
   // Text only, one space between elements, so assertions read as the page does.
   return html
     .replace(/<!-- -->/g, "")
@@ -41,6 +47,22 @@ function row(text: string, label: string): string[] {
 
 const LIVE = schema1 as unknown as UsageJson;
 const REBUILT = schema2 as unknown as UsageJson;
+const PUBLISHED = schema2Published as unknown as UsageJson;
+
+// Each plan's levels on one level chart, read off its accessible label: "Max 20x: 13 Jun 2026 to
+// 14 Aug 2026 6.2 (dashed), 19 Aug 2026 to ...". The label is the only per-level text an SVG carries.
+function chartLevels(html: string, title: string): Map<string, { start: string; dashed: boolean }[]> {
+  const label = html.match(new RegExp(`aria-label="${title}\\. ([^"]*)"`))?.[1].replace(/&#x27;/g, "'");
+  expect(label).toBeDefined();
+  const plans = new Map<string, { start: string; dashed: boolean }[]>();
+  for (const part of label!.split(/\. (?=[A-Z][^:]*: \d)/)) {
+    const m = part.match(/^([A-Za-z0-9 ]+): (\d.*)$/);
+    if (!m) continue;
+    const levels = m[2].split(", ").map((l) => ({ start: l.split(" to ")[0], dashed: l.endsWith("(dashed)") }));
+    plans.set(m[1], levels);
+  }
+  return plans;
+}
 
 // The rebuilt JSON once max20's weekly log is re-paired: the PR body's measured estimate.
 const MEASURED: UsageJson = structuredClone(REBUILT);
@@ -81,13 +103,36 @@ describe("the tracker page renders both schemas", () => {
     expect(text).not.toContain("11.0 five-hour");
     expect(row(text, "Tokens per week").slice(0, 2)).toEqual(["—", "—"]);
     expect(row(text, "Tokens per week")[2]).toBe("5929M");
-    // Pro's assumed copy of Max 5x draws no line; Max 5x keeps its own history.
-    expect(text).not.toContain("Max 5x and Pro");
+    // Pro's assumed copy of Max 5x is drawn with it again, one line on the weekly-limit chart
+    // (reverses finding 6 by Jonathan's decision, 2026-09-16).
+    expect(text).toContain("Max 5x and Pro");
     expect(text).toContain("Source: the account's own meter, newest reading 16 Sep");
     // The contributor section has no windows-per-week tab (finding 7), and counts IDs (finding 14).
     expect(text).toContain("Cost per 1% Effective window size Tokens per week Pro Max 5x Max 20x");
     expect(text).toContain("Two contributor IDs on Max 20x have shared meter readings.");
     expect(text).toContain("$0.90 of meter budget per 1% of the five-hour meter");
+  });
+
+  it("draws Max 5x and Pro on both weekly charts, and Max 20x's tokens line before 5 Sep 2026, on both schemas", () => {
+    // REBUILT publishes no regimes for any plan, so it has no level to draw or borrow from; the
+    // published schema 2 file is the one the page renders from 2026-09-16T19:30Z.
+    for (const j of [LIVE, PUBLISHED]) {
+      const html = renderHtml(j);
+      const tokens = chartLevels(html, "Tokens per week over time");
+      const weekly = chartLevels(html, "Five-hour windows per week over time");
+      expect([...tokens.keys()]).toEqual(["Pro", "Max 5x", "Max 20x"]);
+      expect([...weekly.keys()]).toEqual(["Max 5x and Pro", "Max 20x"]);
+      // Pro has no measurement of its own: every span of its line is dashed.
+      expect(tokens.get("Pro")!.every((l) => l.dashed)).toBe(true);
+      // Max 20x's full history, not only its own weeks from 5 Sep: its first span starts in June, dashed.
+      const first = tokens.get("Max 20x")![0];
+      expect(Date.parse(`${first.start} UTC`)).toBeLessThan(Date.parse("2026-09-05T00:00:00Z"));
+      expect(first.dashed).toBe(true);
+      expect(weekly.get("Max 20x")![0].dashed).toBe(true);
+      const text = render(j);
+      expect(text).toContain("Dashed: inferred, or a window figure not marked measured.");
+      expect(text).toContain("Dashed: inferred.");
+    }
   });
 
   it("renders the rebuilt schema 2 file with both dollar figures and no weekly figure it does not have (findings 1, 6, 13, 16)", () => {
