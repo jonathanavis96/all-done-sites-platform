@@ -202,8 +202,8 @@ export default function ContributeMeter() {
         )}
       </div>
       <p className="line">
-        Every sample gets a personal link that draws your own tokens per 1% against everyone else's, and a continuous
-        contributor gets a line rather than a point.
+        Every sample gets a personal page: one sample shows where your meter went and your tokens per 1% by model
+        against the fleet's, and a contributor on the 30-minute schedule sees their own line over time.
       </p>
     </div>
   );
