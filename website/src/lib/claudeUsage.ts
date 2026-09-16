@@ -99,8 +99,9 @@ export interface UsageJson {
   // Median total tokens of one real session, per model. Optional: older JSON and models not
   // yet calibrated omit it, in which case sessionsPerWindow/sessionsPerWeek come back null.
   session_tokens?: Record<string, number>;
-  // Accounts that run the fixed-prompt probes, e.g. ["dave","jwork"]. Optional: older JSON omits it.
-  probe_accounts?: string[];
+  // How many accounts the passive readings rest on. Counts only: the JSON is public and the
+  // account names are real people's logins. Optional: older JSON omits it.
+  passive_account_count?: number;
   // Contributed-sample aggregate, once at least one contributor has posted. Optional: older
   // JSON and a freshly-deployed collector with zero contributors omit it.
   contributed?: ContributedBlock;

@@ -816,62 +816,48 @@ export default function ClaudeUsageTracker() {
           <details>
             <summary>How we measure this</summary>
             <p>
-              Twice a day a fixed prompt is run repeatedly on an otherwise idle Max 20x account until Anthropic's own
-              usage meter ticks from one whole percent to the next, three times over. The tokens spent across those ticks
-              are what one percent of the 5-hour window buys. The run rotates across Sonnet 5, Opus 5 and Fable 5.1 and
-              skips any account that is busy or already past 90% of its weekly limit.
+              Every morning the tracker reads two things off one Max 20x account: the Claude Code transcripts of the
+              work actually done on it, and the account's own usage meter. Between any two meter readings it knows how
+              far the meter moved and which tokens were spent moving it, and that gives a price for one percent of the
+              five-hour window. Nothing is run to produce these numbers. They come out of ordinary working days.
             </p>
             <p>
-              The meter is priced, not counted: it charges each token class at Anthropic's API list price with its own
-              weight. Measured against 111 five-hour windows of real work, cache reads are not charged at all, output
-              tokens are charged at about 1.8 times list, and input and cache writes at list. Every reading on this page
-              is therefore an API-dollar value per percent of the meter, and the token figures are that value converted
-              through the input, output and cache split of real working sessions on a second Max 20x account. Effort
-              figures come from one calibration task run at every effort level on every model.
+              The meter does not treat every token the same. Cache reads cost nothing against it. Input, output and
+              cache writes are charged at Anthropic's list price, the output rate fitted from 60 measured stretches of
+              real work. So every reading here is an API-dollar value per percent of meter, and the token counts are
+              that value converted back through the token mix of real sessions. The effort figures come from one
+              calibration task, run at each effort level on each model.
             </p>
             <p>
-              The weekly limit is measured per 5-hour window from a real account's meter (how far the seven-day meter moves
-              for every full 5-hour window spent), so a change is dated to the day it lands rather than averaged into a
-              calendar week.
+              The weekly limit is measured the same way, per five-hour window: how far the seven-day meter moves for
+              each full window spent. A change is dated to the day it lands rather than averaged into a calendar week.
             </p>
           </details>
           <details>
             <summary>Caveats</summary>
             <p>
-              The token figures depend on the token mix: because the meter does not charge cache reads, a cache-heavy
-              workload gets far more tokens per window than a cache-light one for the same dollar value. The split shown
-              is one account's real working mix; yours will differ, and the API-dollar figure is the number that carries
-              across. The usage meter reports whole percent, so every probe carries about one small prompt's worth of
-              rounding error. Effort figures describe one calibration task shape, not your actual work. Pro and Max 5x are
-              scaled from Max 20x using Anthropic's published plan ratios, not measured directly.
+              Token figures depend on the token mix. Because cache reads cost nothing against the meter, cache-heavy
+              work gets far more tokens per window than cache-light work for the same dollar value. The split shown is
+              one account's real mix; yours will differ, and the dollar figure is the one that carries across. The meter
+              reports whole percent, so each reading carries up to a percent's worth of rounding. Pro and Max 5x are
+              scaled from Max 20x by Anthropic's published plan ratios, not measured directly.
             </p>
             <p>
-              Probes run on{" "}
-              {data?.probe_accounts?.length
-                ? `two Max 20x accounts (${data.probe_accounts.join(" and ")})`
-                : "two Max 20x accounts"}
-              ; their readings feed into one shared median, not a per-account figure.
+              The effort figures describe one task shape, run seven times at each effort level on each model. On Sonnet
+              the spread between runs is wider than the gap between low, medium and high, so read those three rows as
+              roughly equal rather than in order.
             </p>
-            {(() => {
-              // "probe" is a raw JSON key alongside the Plan keys, not itself a Plan the page
-              // lets you select — read it loosely rather than widening the Plan union for it.
-              const probeWeekly = (data?.weekly_windows as Record<string, { history: unknown[] } | null> | undefined)?.probe;
-              return !probeWeekly || probeWeekly.history.length === 0;
-            })() && (
-              <p>
-                The weekly-limit chart above comes from passive observation of one account's real use, not from probes.
-              </p>
-            )}
-            {weeklySeries.some((s) => s.points.some((p) => p.partial && !p.inferred)) && (
-              <p>
-                The hollow point is this week so far. The current figure above does not wait for it: it is measured
-                from the five-hour windows since the last confirmed change, so a mid-week step is dated to the day it
-                landed rather than blended into a week's average.
-              </p>
-            )}
             <p>
-              Methodology: probes are fixed-size prompts run on an idle account until the usage meter ticks; every number
-              on this page is derived from the JSON at{" "}
+              This method is only as good as what it can see. Work done on the account away from the machine being read
+              moves the meter with no transcript to match it. A day like that is left out when it is obvious and reads
+              as a cheap day when it is not.
+            </p>
+            <p>
+              The current figure does not wait for a week to finish. It is measured from the five-hour windows since the
+              last confirmed change, so a step is dated to the day it landed rather than blended into a week's average.
+            </p>
+            <p>
+              Every number on this page comes from the JSON at{" "}
               <a href="/data/claude-usage.json">/data/claude-usage.json</a>.
             </p>
             <p>
