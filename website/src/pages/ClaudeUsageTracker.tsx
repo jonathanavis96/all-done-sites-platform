@@ -371,7 +371,8 @@ function LevelChart({
         </g>
       )}
       {plotted.map((p) => {
-        const isSelected = p.plan === selectedPlan;
+        const isSelected =
+          p.plan === selectedPlan || (selectedPlan === "pro" && p.plan === "max5" && !levelsByPlan.some((o) => o.plan === "pro"));
         const color = isSelected ? "#0EA5E9" : "#94A3B8";
         const runs = stepRuns(p.levels, xAt, (l) => y(l.value));
         // Shade under the selected plan's own steps, so the eye lands on the plan in view.
@@ -640,21 +641,36 @@ export default function ClaudeUsageTracker({
   const weeklySeries = useMemo(() => (data ? weeklySeriesFor(data) : []), [data]);
   const weeklyEvents = useMemo(() => (data ? weeklyEventsFor(data) : []), [data]);
   const weeklyTokenSeries = useMemo(() => (data ? weeklyTokenSeriesFor(data, model) : []), [data, model]);
-  // Levels for every plan, not just the selected one: the chart draws each plan's own levels,
-  // the selected one solid and the others grey. A plan's windows per week is a property of the
-  // plan, so this chart does not change with the model; a model's share of the week (Fable's
-  // half on Max) applies to the per-week token and dollar figures instead. A plan with no levels
-  // of its own draws nothing: nothing is borrowed from another plan (audit finding 6).
+  // Levels for every plan, not just the selected one: the chart draws all three, the selected
+  // one solid and the others grey, each plan's own levels solid and the ones borrowed from another
+  // plan dashed. A plan's windows per week is a property of the plan, so this chart does not
+  // change with the model; a model's share of the week (Fable's half on Max) applies to the
+  // per-week token and dollar figures instead.
   const weeklyLevels = useMemo(
     () =>
       data
-        ? (Object.keys(PLAN_LABELS) as Plan[])
+        ? // Max 5x before Pro, so the line the two collapse into below keeps Max 5x's own measured
+          // spans solid and reads "Max 5x and Pro".
+          (["max5", "pro", "max20"] as Plan[])
             .map((pl) => ({
               plan: pl,
               label: PLAN_LABELS[pl],
               levels: weeklyRegimeLevelsFor(data, pl).map((l) => ({ ...l, value: l.windows })),
             }))
             .filter((p) => p.levels.length > 0)
+            // Pro holds the same number of windows as Max 5x (it borrows its figures), so on
+            // this chart the two are one line. Collapsed into a single labelled series rather
+            // than drawn twice at identical y, which only stacks two labels on one line.
+            .reduce<PlanLevels[]>((acc, cur) => {
+              const same = acc.find(
+                (a) =>
+                  a.levels.length === cur.levels.length &&
+                  a.levels.every((l, i) => l.value === cur.levels[i].value && l.start === cur.levels[i].start),
+              );
+              if (same) same.label = `${same.label} and ${PLAN_LABELS[cur.plan]}`;
+              else acc.push(cur);
+              return acc;
+            }, [])
         : [],
     [data],
   );
@@ -926,7 +942,8 @@ export default function ClaudeUsageTracker({
                 />
                 <p className="sub">
                   Each line steps when either the weekly limit or a window's tokens change. Solid and shaded: selected
-                  plan. Grey: the others. Dashed: a window figure not marked measured. Red: an observed change.
+                  plan. Grey: the others. Dashed: inferred, or a window figure not marked measured. Red: an observed
+                  change.
                 </p>
               </>
             )}
@@ -960,8 +977,8 @@ export default function ClaudeUsageTracker({
                 />
                 {weeklySeries.some((s) => s.points.length >= 2) && (
                   <p className="sub chart-legend">
-                    Each line is one plan's own measured level, held flat between detected changes. Solid: selected
-                    plan. Grey: the others.
+                    Each line is one plan's level, held flat between detected changes. Solid: selected plan. Grey:
+                    the others. Dashed: inferred.
                   </p>
                 )}
               </>
@@ -1103,7 +1120,7 @@ export default function ClaudeUsageTracker({
             </p>
             <p>
               The tokens and dollars per window for Pro and Max 5x are scaled from Max 20x by Anthropic's published plan
-              ratios. The weekly window counts are not scaled: each plan shows only its own measurements.
+              ratios. The weekly window counts are not scaled by those ratios.
             </p>
             <p>
               This method is only as good as what it can see. Work done away from the machine being read moves the meter
