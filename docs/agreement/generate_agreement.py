@@ -141,6 +141,8 @@ def render(snapshot, sections, order, today):
           </div>
         </div>
       </div>
+      <a class="sendback" href="https://wa.me/27822227457?text=Hi%20Jonathan%2C%20here%20is%20the%20signed%20agreement.">Send the signed agreement &#8594;</a>
+      <p class="sendnote">Tap the button, then attach a photo or a scan of these signed pages. Or email them to hello@alldonesites.com.</p>
     </section>'''
 
     return f'''<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
@@ -189,6 +191,10 @@ def render(snapshot, sections, order, today):
   .rule {{ display:block; border-bottom:1px solid #b9c7d4; min-height:17px;
            font-size:9.5pt; color:{INK}; }}
   .f.sign .rule {{ min-height:38px; }}
+  .sendback {{ display:inline-block; margin-top:18px; padding:9px 17px; border-radius:9px;
+    background:{CYAN}; border:1px solid {CYAN}; color:#fff; font-size:11pt; font-weight:600;
+    text-decoration:none; }}
+  .sendnote {{ margin-top:8px; font-size:9pt; color:{MUTED}; }}
   .two {{ display:flex; gap:12px; }} .two .f {{ flex:1; }}
 </style></head><body>
 <div class="cover">
