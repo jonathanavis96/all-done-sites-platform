@@ -15,7 +15,6 @@ Requires WeasyPrint: pip install -r docs/agreement/requirements.txt
 """
 import argparse
 import base64
-import datetime
 import html
 import json
 import pathlib
@@ -24,6 +23,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 TERMS = ROOT / "website" / "public" / "terms.txt"
+PRICING_TS = ROOT / "website" / "src" / "lib" / "pricing.ts"
 LOGO = ROOT / "website" / "public" / "logo.png"
 # The blank agreement is a served asset: the whole point of generating it from
 # terms.txt is defeated if the default run writes somewhere the site never
@@ -247,15 +247,21 @@ def main():
             "A clause heading has probably stopped matching the parser. Aborting."
         )
 
-    today = datetime.date.today().isoformat()
-    html_doc = render(snapshot, sections, order, today)
+    # The document version must be the legal terms version, not the day the PDF
+    # happened to be generated: regenerating an unchanged contract must not make
+    # it look like a different version from the one the checkout recorded.
+    m = re.search(r'TERMS_VERSION\s*=\s*"([^"]+)"', PRICING_TS.read_text(encoding="utf-8"))
+    if not m:
+        sys.exit(f"Could not read TERMS_VERSION from {PRICING_TS}. Aborting.")
+    html_doc = render(snapshot, sections, order, m.group(1))
     try:
         from weasyprint import HTML
-    except ImportError:
+    except (ImportError, OSError) as exc:
         sys.exit(
             "WeasyPrint is not installed. Run:\n"
             "    pip install -r docs/agreement/requirements.txt\n"
-            "It also needs the system libraries pango and cairo."
+            "It also needs the system libraries pango and cairo.\n"
+            f"Underlying error: {exc}"
         )
     out.parent.mkdir(parents=True, exist_ok=True)
     HTML(string=html_doc, base_url=str(ROOT)).write_pdf(out)
