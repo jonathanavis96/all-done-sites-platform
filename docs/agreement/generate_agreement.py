@@ -6,7 +6,8 @@ handles branding, layout and the signature page, so the PDF can never drift
 away from the terms the website serves.
 
 Usage:
-    python3 generate_agreement.py                      # blank agreement
+    python3 generate_agreement.py                      # blank agreement, written
+                                                       # straight to the served asset
     python3 generate_agreement.py --order order.json   # with a Schedule A
 """
 import argparse
@@ -21,6 +22,10 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 TERMS = ROOT / "website" / "public" / "terms.txt"
 LOGO = ROOT / "website" / "public" / "logo.png"
+# The blank agreement is a served asset: the whole point of generating it from
+# terms.txt is defeated if the default run writes somewhere the site never
+# deploys, because the live PDF then drifts again exactly as it did before.
+DEPLOYED_PDF = ROOT / "website" / "public" / "AllDoneSites_Subscription_Agreement.pdf"
 
 CYAN, INK, BODY, MUTED, LINE = "#11a6e6", "#13202d", "#37444f", "#7c879a", "#e3ebf2"
 
@@ -195,13 +200,25 @@ def render(snapshot, sections, order, today):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--order")
-    ap.add_argument("--out", default=str(ROOT / "docs" / "agreement" / "AllDoneSites_Subscription_Agreement.pdf"))
+    ap.add_argument("--out", default=str(DEPLOYED_PDF))
     a = ap.parse_args()
 
     order = json.loads(pathlib.Path(a.order).read_text()) if a.order else None
     snapshot, sections = parse_terms(TERMS.read_text(encoding="utf-8"))
-    if len(sections) < 15:
-        sys.exit(f"Only parsed {len(sections)} clauses from terms.txt, expected 19. Aborting.")
+    # Every clause must be present, not merely most of them. The failure this
+    # guards against is a heading that stops matching the uppercase-heading
+    # parser, which drops that clause silently and yields a shorter contract
+    # than the one the site serves. Checking the numbers run 1..N contiguously
+    # catches a dropped clause at any position without pinning the count, so
+    # terms.txt can still grow a clause 20 without editing this script.
+    numbers = [int(n) for n, _, _ in sections]
+    if numbers != list(range(1, len(numbers) + 1)):
+        missing = sorted(set(range(1, max(numbers, default=0) + 1)) - set(numbers))
+        sys.exit(
+            f"terms.txt parsed as clauses {numbers}, which is not a contiguous "
+            f"1..{len(numbers)} run (missing: {missing or 'none, but out of order'}). "
+            "A clause heading has probably stopped matching the parser. Aborting."
+        )
 
     today = datetime.date.today().isoformat()
     html_doc = render(snapshot, sections, order, today)
