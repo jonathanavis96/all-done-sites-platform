@@ -8,7 +8,10 @@ away from the terms the website serves.
 Usage:
     python3 generate_agreement.py                      # blank agreement, written
                                                        # straight to the served asset
-    python3 generate_agreement.py --order order.json   # with a Schedule A
+    python3 generate_agreement.py --order order.json   # client copy, written beside
+                                                       # the Order and never deployed
+
+Requires WeasyPrint: pip install -r docs/agreement/requirements.txt
 """
 import argparse
 import base64
@@ -26,6 +29,9 @@ LOGO = ROOT / "website" / "public" / "logo.png"
 # terms.txt is defeated if the default run writes somewhere the site never
 # deploys, because the live PDF then drifts again exactly as it did before.
 DEPLOYED_PDF = ROOT / "website" / "public" / "AllDoneSites_Subscription_Agreement.pdf"
+# terms.txt has 19 clauses. Used as a floor, not an equality, so the contract can
+# gain a clause 20 without a code change, while losing the last one still aborts.
+MIN_CLAUSES = 19
 
 CYAN, INK, BODY, MUTED, LINE = "#11a6e6", "#13202d", "#37444f", "#7c879a", "#e3ebf2"
 
@@ -200,18 +206,39 @@ def render(snapshot, sections, order, today):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--order")
-    ap.add_argument("--out", default=str(DEPLOYED_PDF))
+    ap.add_argument("--out")
     a = ap.parse_args()
 
     order = json.loads(pathlib.Path(a.order).read_text()) if a.order else None
+    if a.out:
+        out = pathlib.Path(a.out)
+    elif order:
+        # A client copy carries that client's Schedule A, with their prices in it.
+        # It must never default to the deployed blank asset, or generating one
+        # quietly publishes the client's commercial terms to the live site. It
+        # lands beside its Order instead, where .gitignore already excludes it.
+        out = pathlib.Path(a.order).resolve().with_name(
+            "AllDoneSites_Agreement_" + pathlib.Path(a.order).stem.replace("order-", "") + ".pdf")
+    else:
+        out = DEPLOYED_PDF
+    if order and out.resolve() == DEPLOYED_PDF.resolve():
+        sys.exit(f"Refusing to write a client agreement over the deployed blank asset at {DEPLOYED_PDF}.")
     snapshot, sections = parse_terms(TERMS.read_text(encoding="utf-8"))
     # Every clause must be present, not merely most of them. The failure this
     # guards against is a heading that stops matching the uppercase-heading
     # parser, which drops that clause silently and yields a shorter contract
     # than the one the site serves. Checking the numbers run 1..N contiguously
     # catches a dropped clause at any position without pinning the count, so
-    # terms.txt can still grow a clause 20 without editing this script.
+    # terms.txt can still grow a clause 20 without editing this script. It cannot
+    # see a dropped *final* clause, though, because 1..18 is still contiguous, so
+    # MIN_CLAUSES above is checked first and covers that end.
     numbers = [int(n) for n, _, _ in sections]
+    if len(numbers) < MIN_CLAUSES:
+        sys.exit(
+            f"Only parsed {len(numbers)} clauses from terms.txt, expected at least "
+            f"{MIN_CLAUSES}. A trailing clause heading has probably stopped matching "
+            "the parser. Aborting."
+        )
     if numbers != list(range(1, len(numbers) + 1)):
         missing = sorted(set(range(1, max(numbers, default=0) + 1)) - set(numbers))
         sys.exit(
@@ -222,9 +249,17 @@ def main():
 
     today = datetime.date.today().isoformat()
     html_doc = render(snapshot, sections, order, today)
-    from weasyprint import HTML
-    HTML(string=html_doc, base_url=str(ROOT)).write_pdf(a.out)
-    print(f"{len(sections)} clauses -> {a.out}")
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        sys.exit(
+            "WeasyPrint is not installed. Run:\n"
+            "    pip install -r docs/agreement/requirements.txt\n"
+            "It also needs the system libraries pango and cairo."
+        )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    HTML(string=html_doc, base_url=str(ROOT)).write_pdf(out)
+    print(f"{len(sections)} clauses -> {out}")
 
 
 if __name__ == "__main__":

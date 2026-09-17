@@ -1,18 +1,21 @@
+# Client quote pages (/leroux/ and friends) are private links. They are kept out
+# of search by the noindex meta tag and the X-Robots-Tag in _headers, NOT by a
+# Disallow here: a disallowed URL cannot be fetched, so a crawler never reads the
+# noindex and can still list the bare URL if it finds a link to it. The AI
+# training crawlers below are the opposite case, where not fetching at all is the
+# outcome we want, so they do carry a Disallow.
+
 User-agent: Googlebot
 Allow: /
-Disallow: /leroux/
 
 User-agent: Bingbot
 Allow: /
-Disallow: /leroux/
 
 User-agent: Twitterbot
 Allow: /
-Disallow: /leroux/
 
 User-agent: facebookexternalhit
 Allow: /
-Disallow: /leroux/
 
 # AI assistants and AI search are welcome to read and reference our content
 User-agent: GPTBot
@@ -53,6 +56,5 @@ Disallow: /leroux/
 
 User-agent: *
 Allow: /
-Disallow: /leroux/
 
 Sitemap: https://alldonesites.com/sitemap.xml
