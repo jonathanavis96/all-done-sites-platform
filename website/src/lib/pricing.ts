@@ -78,7 +78,7 @@ export const OLD_WAY_QUOTE: Record<RegionKey, string> = {
   OTHER: "$5k+",
 };
 
-export const TERMS_VERSION = "2026-06-07";
+export const TERMS_VERSION = "2026-09-17";
 
 export function detectRegion(): RegionKey {
   try {

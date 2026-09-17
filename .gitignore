@@ -41,3 +41,11 @@ dist-ssr
 .dev.vars
 .dev.vars.*
 .wrangler/
+
+# Client-facing deliverables (quotes, handoffs) — never commit to this public repo
+/docs/deliverables/
+
+# Agreement generator output and per-client Orders. The script is tracked; the
+# generated PDFs and the client Schedule A data are not (public repo).
+/docs/agreement/*.pdf
+/docs/agreement/order-*.json
