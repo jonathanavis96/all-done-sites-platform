@@ -45,7 +45,10 @@ dist-ssr
 # Client-facing deliverables (quotes, handoffs) — never commit to this public repo
 /docs/deliverables/
 
-# Agreement generator output and per-client Orders. The script is tracked; the
-# generated PDFs and the client Schedule A data are not (public repo).
-/docs/agreement/*.pdf
-/docs/agreement/order-*.json
+# Agreement generator output and per-client Orders. An allowlist, not a
+# blocklist: an Order holds a client's prices and this repo is public, so
+# anything new in this folder must be ignored by default rather than only when
+# its filename happens to match a pattern. Only the generator itself is tracked.
+/docs/agreement/*
+!/docs/agreement/generate_agreement.py
+!/docs/agreement/requirements.txt

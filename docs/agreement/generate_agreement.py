@@ -8,8 +8,8 @@ away from the terms the website serves.
 Usage:
     python3 generate_agreement.py                      # blank agreement, written
                                                        # straight to the served asset
-    python3 generate_agreement.py --order order.json   # client copy, written beside
-                                                       # the Order and never deployed
+    python3 generate_agreement.py --order order-acme.json   # client copy, beside
+                                                          # the Order, never deployed
 
 Requires WeasyPrint: pip install -r docs/agreement/requirements.txt
 """
