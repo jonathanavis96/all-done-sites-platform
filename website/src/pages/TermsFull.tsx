@@ -2,13 +2,14 @@
 import { Link } from "react-router-dom";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
+import { TERMS_UPDATED_LABEL } from "@/lib/pricing";
 
 export default function TermsFull() {
   return (
     <PageShell
       eyebrow="Legal"
       title="Master Subscription Agreement"
-      sub="Last updated: June 7, 2026"
+      sub={`Last updated: ${TERMS_UPDATED_LABEL}`}
     >
       <Seo
         title="Subscription Agreement | All Done Sites"
@@ -86,7 +87,7 @@ export default function TermsFull() {
           <h2>3. Scope of Services</h2>
           <p>
             Provider will design, build and host the Website and provide maintenance and support during the
-            Term according to the plan tier selected: Starter, Business, or Premium. Most sites are ready in
+            Term according to the plan tier selected: Launch, Business, or Premium. Most sites are ready in
             7–14 days depending on complexity and timely Client approvals and content. Small Content Updates
             are included as part of ongoing maintenance; Additional Work is out of scope and will be quoted and
             billed separately. Provider can connect Client's existing domain or assist with registration and set up
@@ -120,7 +121,7 @@ export default function TermsFull() {
         <section id="s6">
           <h2>6. SEO Levels</h2>
           <p>
-            <strong>Starter Plan</strong> — Basic SEO setup for launch. <strong>Business Plan</strong> — Solid SEO optimisation for
+            <strong>Launch Plan</strong> — Basic SEO setup for launch. <strong>Business Plan</strong> — Solid SEO optimisation for
             good search visibility, without ongoing analytics or performance enhancements. <strong>Premium Plan</strong> —
             Enhanced SEO with ongoing analytics, reporting, and performance improvements. No specific rankings
             are guaranteed.

@@ -1,0 +1,4 @@
+# Client quote pages are private links: never index them, and PDFs cannot carry
+# a noindex meta tag, so the header is the only way to mark them.
+/leroux/*
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
