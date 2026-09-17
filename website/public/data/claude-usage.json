@@ -53,8 +53,8 @@
   "max20": {
    "contributors": 2,
    "evidence": {
-    "as_of": "2026-09-17T00:03:19+00:00",
-    "current_since": "2026-08-18T00:03:19+00:00",
+    "as_of": "2026-09-17T00:25:36+00:00",
+    "current_since": "2026-08-18T00:25:36+00:00",
     "freshest_sample_at": "2026-09-16T00:11:31+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -118,8 +118,8 @@
   "max5": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-17T00:03:19+00:00",
-    "current_since": "2026-08-18T00:03:19+00:00",
+    "as_of": "2026-09-17T00:25:36+00:00",
+    "current_since": "2026-08-18T00:25:36+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -151,8 +151,8 @@
   "pro": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-17T00:03:19+00:00",
-    "current_since": "2026-08-18T00:03:19+00:00",
+    "as_of": "2026-09-17T00:25:36+00:00",
+    "current_since": "2026-08-18T00:25:36+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -180,7 +180,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-09-17T00:03:19+00:00"
+  "updated_at": "2026-09-17T00:25:36+00:00"
  },
  "effort": {
   "claude-fable-5-1": {
@@ -233,7 +233,7 @@
    "attribution": "observed_account_metric_change",
    "confirmation": {
     "at": "2026-09-15",
-    "evidence_points": 103,
+    "evidence_points": 118,
     "seven_day_pct": 31.0
    },
    "date": "2026-09-14",
@@ -256,13 +256,13 @@
     5.695
    ],
    "rounding_interval_before": [
-    6.1258,
-    6.9156
+    6.1892,
+    6.8754
    ],
    "scope": "weekly"
   }
  ],
- "generated_at": "2026-09-17T00:03:28.627822+00:00",
+ "generated_at": "2026-09-17T00:25:45.679848+00:00",
  "history": {
   "claude-fable-5-1": [
    {
@@ -1530,7 +1530,7 @@
   "attribution": "observed_account_metric_change",
   "confirmation": {
    "at": "2026-09-15",
-   "evidence_points": 103,
+   "evidence_points": 118,
    "seven_day_pct": 31.0
   },
   "date": "2026-09-14",
@@ -1551,13 +1551,13 @@
    5.695
   ],
   "rounding_interval_before": [
-   6.1258,
-   6.9156
+   6.1892,
+   6.8754
   ],
   "scope": "weekly"
  },
  "last_sample_at": "2026-09-16T19:46:39+00:00",
- "meter_read_at": "2026-09-16T23:59:39+00:00",
+ "meter_read_at": "2026-09-17T00:21:39+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -1837,8 +1837,8 @@
  },
  "weekly_window_ratios": {
   "max20": 1.0,
-  "max5": 1.671,
-  "pro": 1.671
+  "max5": 1.666,
+  "pro": 1.666
  },
  "weekly_windows": {
   "max20": {
@@ -1867,6 +1867,23 @@
     "value": 4.68
    },
    "history": [
+    {
+     "assumed": false,
+     "five_hour_pct": 702.0,
+     "partial": false,
+     "pieces": 25,
+     "quality": "measured",
+     "reasons": [],
+     "reset_verified": true,
+     "rounding_interval": [
+      6.4673,
+      8.1839
+     ],
+     "seven_day_pct": 97.0,
+     "source": "passive_paired_deltas",
+     "week_ending": "2026-08-21",
+     "windows": 7.24
+    },
     {
      "assumed": false,
      "five_hour_pct": 547.0,
@@ -1940,17 +1957,17 @@
     {
      "assumed": false,
      "end": "2026-09-13T21:30:00.476685+00:00",
-     "pieces": 94,
-     "points": 94,
+     "pieces": 109,
+     "points": 109,
      "quality": "bounded",
      "rounding_interval": [
-      6.1258,
-      6.9156
+      6.1892,
+      6.8754
      ],
-     "seven_day_pct": 290.0,
+     "seven_day_pct": 360.0,
      "source": "passive_paired_deltas",
-     "start": "2026-08-19T17:00:00.577192+00:00",
-     "windows": 6.5
+     "start": "2026-08-15T00:20:00.078325+00:00",
+     "windows": 6.52
     },
     {
      "assumed": false,
@@ -2133,9 +2150,9 @@
     }
    ],
    "plan_change": {
-    "date": "2026-08-18",
+    "date": "2026-08-14",
     "independently_verified": false,
-    "source": "account owner's record"
+    "source": "the meter's own step"
    },
    "regimes": [
     {
@@ -2152,21 +2169,6 @@
      "source": "passive_paired_deltas",
      "start": "2026-06-13T01:30:00.625452+00:00",
      "windows": 10.86
-    },
-    {
-     "assumed": false,
-     "end": "2026-08-18T21:20:00.491983+00:00",
-     "pieces": 15,
-     "points": 15,
-     "quality": "bounded",
-     "rounding_interval": [
-      6.0637,
-      7.2422
-     ],
-     "seven_day_pct": 79.0,
-     "source": "passive_paired_deltas",
-     "start": "2026-08-14T19:19:59.630755+00:00",
-     "windows": 6.61
     }
    ]
   },
