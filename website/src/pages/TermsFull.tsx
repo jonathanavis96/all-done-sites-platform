@@ -2,13 +2,14 @@
 import { Link } from "react-router-dom";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
+import { TERMS_UPDATED_LABEL } from "@/lib/pricing";
 
 export default function TermsFull() {
   return (
     <PageShell
       eyebrow="Legal"
       title="Master Subscription Agreement"
-      sub="Last updated: June 7, 2026"
+      sub={`Last updated: ${TERMS_UPDATED_LABEL}`}
     >
       <Seo
         title="Subscription Agreement | All Done Sites"

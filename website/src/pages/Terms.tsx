@@ -2,10 +2,11 @@
 import { Link } from "react-router-dom";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
+import { TERMS_UPDATED_LABEL } from "@/lib/pricing";
 
 export default function Terms() {
   return (
-    <PageShell eyebrow="Legal" title="Terms & Policies" sub="Last updated: June 7, 2026">
+    <PageShell eyebrow="Legal" title="Terms & Policies" sub={`Last updated: ${TERMS_UPDATED_LABEL}`}>
       <Seo
         title="Terms & Policies | All Done Sites"
         description="All Done Sites terms of service, including our refund and cancellation policies."

@@ -80,6 +80,18 @@ export const OLD_WAY_QUOTE: Record<RegionKey, string> = {
 
 export const TERMS_VERSION = "2026-09-17";
 
+/**
+ * The TERMS_VERSION date as clients read it. Derived rather than written out, so
+ * a version bump cannot leave the terms pages advertising the previous version
+ * of wording a client has already accepted under the new one.
+ */
+export const TERMS_UPDATED_LABEL = new Date(TERMS_VERSION + "T00:00:00Z").toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
 export function detectRegion(): RegionKey {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
