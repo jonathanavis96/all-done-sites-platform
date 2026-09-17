@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="googlebot" content="noindex, nofollow">
+<title>Three Websites, One Monthly Fee · Lounah, Baie Goeters and Monarch · All Done Sites</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --cyan:#11a6e6; --cyan-dark:#0b82cc; --cyan-deep:#0284c7;
+    --ink:#13202d; --body:#37444f; --muted:#7c879a;
+    --line:#e3ebf2; --line-2:#d7e2ec; --surface:#f4f7fa; --tint:#f3fafe;
+    --green:#16a34a; --green-bg:#f1fbf4; --green-ink:#15803d;
+    --amber:#f59e0b; --amber-bg:#fffbeb; --amber-ink:#92400e;
+    --code-bg:#eef4f9; --code-ink:#42566a;
+    --disp:'Bricolage Grotesque',system-ui,-apple-system,Segoe UI,sans-serif;
+    --sans:'Inter',system-ui,-apple-system,Segoe UI,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  }
+  html{scroll-behavior:smooth;} @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
+  body{font-family:var(--sans);color:var(--body);background:var(--surface);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased;}
+  .progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;background:linear-gradient(90deg,var(--cyan),var(--cyan-deep));transition:width .08s linear;}
+  .cover{width:100%;color:#fff;padding:44px 24px 40px;background:radial-gradient(120% 140% at 85% -10%,rgba(17,166,230,.45),transparent 60%),linear-gradient(120deg,#0c1a26 0%,#14344a 55%,#0b6196 100%);}
+  .cover-in{max-width:1040px;margin:0 auto;}
+  .brand{display:flex;align-items:center;gap:13px;margin-bottom:26px;}
+  .brand img{width:42px;height:42px;border-radius:10px;display:block;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .brand .bn{font-family:var(--disp);font-size:19px;font-weight:700;color:#fff;}
+  .cyan-bar{width:52px;height:4px;background:var(--cyan);border-radius:2px;margin-bottom:20px;}
+  .cover h1{font-family:var(--disp);font-size:clamp(30px,5vw,46px);font-weight:800;line-height:1.05;letter-spacing:-.5px;margin-bottom:10px;max-width:16ch;}
+  .cover .subtitle{font-size:19px;color:#bfe0f4;font-weight:500;margin-bottom:6px;}
+  .cover .rtype{color:var(--cyan);font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:18px;}
+  .cover .meta{font-family:var(--mono);font-size:12.5px;color:#9fc4dc;}
+  .topnav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.93);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);}
+  .topnav-in{max-width:1040px;margin:0 auto;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:0 12px;}
+  .topnav-in::-webkit-scrollbar{display:none;}
+  .topnav a{flex:0 0 auto;font-family:var(--sans);font-size:13.5px;font-weight:600;color:var(--muted);text-decoration:none;border-bottom:2.5px solid transparent;padding:13px 13px 11px;white-space:nowrap;transition:color .12s;}
+  .topnav a:hover{color:var(--ink);} .topnav a.active{color:var(--cyan-deep);border-bottom-color:var(--cyan);}
+  .topnav a .tn{font-family:var(--mono);font-size:11px;color:var(--cyan);margin-right:6px;}
+  .rail{position:fixed;left:16px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:3px;}
+  .rail a{display:flex;align-items:center;gap:10px;text-decoration:none;padding:4px 5px;border-radius:8px;}
+  .rail .dot{width:9px;height:9px;border-radius:50%;background:var(--line-2);flex:none;transition:transform .15s,background .15s;}
+  .rail a:hover .dot,.rail a.active .dot{background:var(--cyan);transform:scale(1.3);}
+  .rail a.active .dot{box-shadow:0 0 0 4px rgba(17,166,230,.18);}
+  .rail .rl{font-family:var(--sans);font-size:12px;font-weight:600;white-space:nowrap;color:var(--muted);background:#fff;padding:3px 9px;border-radius:7px;border:1px solid var(--line);box-shadow:0 2px 10px rgba(19,32,45,.10);opacity:0;transform:translateX(-5px);transition:opacity .14s,transform .14s;pointer-events:none;}
+  .rail a:hover .rl{opacity:1;transform:none;color:var(--ink);}
+  .rail a.active .rl{opacity:1;transform:none;color:var(--cyan-deep);}
+  @media (max-width:1180px){.rail{display:none;}}
+  .wrap{max-width:1040px;margin:0 auto;padding:30px 24px 10px;}
+  .overview{background:#fff;border:1px solid var(--line);border-left:4px solid var(--cyan);padding:24px 28px;border-radius:0 12px 12px 0;box-shadow:0 1px 3px rgba(19,32,45,.04);}
+  .overview h2{font-family:var(--disp);font-size:20px;font-weight:700;color:var(--ink);margin-bottom:8px;}
+  .overview p{margin-bottom:10px;max-width:70ch;} .overview ul{list-style:none;margin-top:8px;}
+  .overview li{position:relative;padding-left:22px;margin-bottom:6px;font-size:14.5px;}
+  .overview li::before{content:"";position:absolute;left:2px;top:8px;width:7px;height:7px;border-radius:50%;background:var(--cyan);}
+  .overview li strong{color:var(--ink);}
+  .toolbar{display:flex;align-items:center;gap:12px;margin:16px 0 4px;flex-wrap:wrap;}
+  .toolbar .lbl{font-size:13px;color:var(--muted);}
+  .toolbar button{font-family:var(--sans);font-size:12.5px;font-weight:600;color:var(--cyan-deep);background:#fff;border:1px solid var(--line-2);padding:7px 14px;border-radius:8px;cursor:pointer;}
+  .toolbar button:hover{background:var(--tint);border-color:var(--cyan);}
+  .sec{scroll-margin-top:66px;padding:34px 0 6px;border-top:1px solid var(--line);margin-top:26px;}
+  .sec.first{border-top:none;margin-top:0;padding-top:6px;}
+  html.js .sec{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease;}
+  html.js .sec.in{opacity:1;transform:none;}
+  @media (prefers-reduced-motion:reduce){html.js .sec{opacity:1;transform:none;transition:none;}}
+  .sec h2{font-family:var(--disp);font-size:26px;font-weight:700;color:var(--ink);margin-bottom:8px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .sec h2 .num{font-family:var(--mono);font-size:16px;color:var(--cyan);font-weight:600;}
+  .sec h2 .tagn{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--muted);}
+  .sec .intro{color:var(--body);margin-bottom:16px;max-width:66ch;}
+  .viewlink{display:inline-flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600;color:#fff;background:var(--cyan);border:1px solid var(--cyan);border-radius:9px;padding:9px 17px;margin-bottom:22px;text-decoration:none;box-shadow:0 2px 8px rgba(17,166,230,.25);transition:background .12s,box-shadow .12s;}
+  .viewlink:hover{background:var(--cyan-deep);box-shadow:0 4px 14px rgba(17,166,230,.35);}
+  .changes{display:grid;gap:11px;}
+  .change{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px 18px;box-shadow:0 1px 3px rgba(19,32,45,.04);}
+  .change .row{display:flex;gap:11px;align-items:flex-start;}
+  .change .mk{flex:none;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-top:1px;}
+  .change .mk.done{background:var(--green-bg);color:var(--green);border:1px solid #c9ecd4;}
+  .change .mk.wait{background:var(--amber-bg);color:var(--amber-ink);border:1px solid #f4e2bd;}
+  .change .txt .h{font-weight:600;color:var(--ink);} .change .txt .d{color:var(--body);}
+  details.dev{margin:9px 0 0 33px;}
+  details.dev summary{font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px;}
+  details.dev summary::-webkit-details-marker{display:none;}
+  details.dev summary::before{content:"›";color:var(--cyan);font-size:14px;display:inline-block;transition:transform .15s;}
+  details.dev[open] summary::before{transform:rotate(90deg);}
+  details.dev .body{font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--muted);margin-top:6px;}
+  .commit{display:inline-block;font-family:var(--mono);font-size:10.5px;background:var(--code-bg);color:var(--code-ink);padding:1px 6px;border-radius:5px;border:1px solid var(--line-2);}
+  code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:12px;color:var(--code-ink);}
+  .highlight-box{background:var(--amber-bg);border:1px solid #f4e2bd;border-left:4px solid var(--amber);padding:15px 19px;margin:18px 0 6px;border-radius:0 10px 10px 0;}
+  .highlight-box strong{color:var(--amber-ink);}
+  .success-box{background:var(--green-bg);border:1px solid #c9ecd4;border-left:4px solid var(--green);padding:15px 19px;margin:18px 0 6px;border-radius:0 10px 10px 0;}
+  .success-box strong{color:var(--green-ink);}
+  .waitgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;}
+  .wait-item{background:#fff;border:1px solid var(--line);border-radius:11px;padding:14px 17px;}
+  .wait-item .wh{font-weight:600;color:var(--ink);} .wait-item p{margin-top:4px;font-size:13px;color:var(--muted);}
+  .totop{display:inline-flex;align-items:center;gap:7px;margin:26px 0 8px;font-size:13px;font-weight:600;color:var(--cyan-deep);background:#fff;border:1px solid var(--line-2);padding:9px 15px;border-radius:9px;text-decoration:none;}
+  .totop:hover{background:var(--tint);border-color:var(--cyan);}
+  footer{background:#0c1a26;color:#9fc4dc;margin-top:34px;}
+  footer .fin{max-width:1040px;margin:0 auto;padding:26px 24px;display:flex;align-items:center;gap:13px;flex-wrap:wrap;font-size:12.5px;}
+  footer img{width:26px;height:26px;border-radius:6px;} footer .fn{font-family:var(--disp);font-weight:600;color:#fff;font-size:14px;}
+  footer .fm{font-family:var(--mono);margin-left:auto;color:#7fa6c0;}
+  /* price table */
+  .ptable{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(19,32,45,.04);margin-bottom:22px;}
+  .ptable table{width:100%;border-collapse:collapse;}
+  .ptable th{font-family:var(--sans);font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);text-align:right;padding:13px 16px;border-bottom:1px solid var(--line);background:var(--tint);}
+  .ptable th:first-child{text-align:left;}
+  .ptable td{padding:14px 16px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono);font-size:14px;color:var(--body);}
+  .ptable td:first-child{text-align:left;font-family:var(--sans);font-weight:600;color:var(--ink);}
+  .ptable td.was{color:var(--muted);text-decoration:line-through;}
+  .ptable tr:last-child td{border-bottom:none;}
+  .ptable tr.tot td{background:var(--tint);font-weight:700;color:var(--ink);border-top:2px solid var(--cyan);}
+  .ptable tr.tot td:first-child{color:var(--ink);}
+  /* option panels */
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:8px 0 6px;}
+  .opt{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 24px 24px;position:relative;box-shadow:0 1px 3px rgba(19,32,45,.04);}
+  .opt.pick{border:2px solid var(--cyan);box-shadow:0 6px 22px rgba(17,166,230,.16);}
+  .opt .tag{position:absolute;top:-11px;left:22px;background:var(--cyan);color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 11px;border-radius:20px;}
+  .opt .oname{font-family:var(--disp);font-size:19px;font-weight:700;color:var(--ink);margin-bottom:3px;}
+  .opt .osub{font-size:13px;color:var(--muted);margin-bottom:16px;}
+  .opt .big{font-family:var(--disp);font-size:34px;font-weight:800;color:var(--cyan-deep);line-height:1.1;letter-spacing:-.5px;}
+  .opt .bigsub{font-size:13px;color:var(--muted);margin-bottom:12px;}
+  .opt .plus{font-size:13.5px;color:var(--body);border-top:1px dashed var(--line-2);padding-top:11px;margin-bottom:14px;}
+  .opt .plus strong{color:var(--ink);}
+  .monthband{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;background:var(--tint);border:1px solid var(--line);border-left:4px solid var(--cyan);border-radius:0 12px 12px 0;padding:16px 20px;margin-bottom:20px;}
+  .monthband .mv{font-family:var(--disp);font-size:26px;font-weight:800;color:var(--cyan-deep);line-height:1;}
+  .monthband .mt{font-size:14px;color:var(--body);}
+  .monthband .mt strong{color:var(--ink);}
+  .opt ul{list-style:none;}
+  .opt li{position:relative;padding-left:21px;margin-bottom:8px;font-size:13.5px;line-height:1.55;}
+  .opt li::before{content:"";position:absolute;left:1px;top:7px;width:7px;height:7px;border-radius:50%;background:var(--cyan);}
+  .opt li strong{color:var(--ink);}
+  .extras{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;}
+  .extra{background:#fff;border:1px solid var(--line);border-radius:11px;padding:14px 16px;}
+  .extra .eh{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:3px;}
+  .extra p{font-size:12.5px;color:var(--muted);line-height:1.5;}
+  .steps{display:grid;gap:12px;margin-bottom:20px;}
+  .step{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 20px;display:flex;gap:15px;align-items:flex-start;box-shadow:0 1px 3px rgba(19,32,45,.04);}
+  .step .sn{flex:none;width:28px;height:28px;border-radius:50%;background:var(--cyan);color:#fff;font-family:var(--mono);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;}
+  .step .sh{font-weight:600;color:var(--ink);margin-bottom:3px;}
+  .step .sd{font-size:13.5px;color:var(--body);}
+  .step .sd a{color:var(--cyan-deep);font-weight:600;}
+  .bank{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:6px;}
+  .bank .bt{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px;}
+  .bankgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;}
+  .bankrow .bl{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);}
+  .bankrow .bv{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--ink);}
+  .qgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;}
+  .qitem{background:#fff;border:1px solid var(--line);border-radius:11px;padding:14px 17px;}
+  .qitem .qh{font-weight:600;color:var(--ink);font-size:13.5px;margin-bottom:3px;}
+  .qitem p{font-size:12.5px;color:var(--muted);line-height:1.5;}
+  @media (max-width:840px){.opts{grid-template-columns:1fr;}.extras{grid-template-columns:1fr;}.bankgrid{grid-template-columns:1fr;}.qgrid{grid-template-columns:1fr;}}
+  @media (max-width:640px){.cover{padding:34px 20px 30px;}.wrap{padding:24px 18px 8px;}.waitgrid{grid-template-columns:1fr;}.sec h2{font-size:22px;}}
+  @media print{.topnav,.rail,.progress,.toolbar,.totop{display:none!important;}html.js .sec{opacity:1!important;transform:none!important;}body{background:#fff;}details.dev{display:none;}}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+
+<header class="cover" id="top"><div class="cover-in">
+  <div class="brand"><img src="data:image/png;base64,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" alt="All Done Sites logo"><span class="bn">All Done Sites</span></div>
+  <div class="cyan-bar"></div>
+  <h1>Three websites, one monthly fee</h1>
+  <div class="subtitle">Lounah Collective, Baie Goeters and Monarch Coffee Cartel</div>
+  <div class="rtype">Proposal and pricing</div>
+  <div class="meta"><span>Prepared for Anelma le Roux and Irusha Kr&ouml;hn-Eksteen</span> &nbsp;&middot;&nbsp; <span>September 2026</span> &nbsp;&middot;&nbsp; <span>Status: For your review</span></div>
+</div></header>
+
+<!-- Sticky top jump-nav -->
+<nav class="topnav" aria-label="Jump to section"><div class="topnav-in">
+  <a href="#p0"><span class="tn">00</span>Overview</a>
+  <a href="#p1"><span class="tn">01</span>Monarch</a>
+  <a href="#p2"><span class="tn">02</span>Lounah Collective</a>
+  <a href="#p3"><span class="tn">03</span>Baie Goeters</a>
+  <a href="#p4"><span class="tn">04</span>The price</a>
+  <a href="#p5"><span class="tn">05</span>What is included</a>
+  <a href="#p6"><span class="tn">06</span>What I need</a>
+  <a href="#pA"><span class="tn">&#9670;</span>Accept and pay</a>
+</div></nav>
+
+<!-- Left vertical hover dot-rail -->
+<nav class="rail" aria-label="Section rail">
+  <a href="#p0"><span class="dot"></span><span class="rl">Overview</span></a>
+  <a href="#p1"><span class="dot"></span><span class="rl">Monarch</span></a>
+  <a href="#p2"><span class="dot"></span><span class="rl">Lounah Collective</span></a>
+  <a href="#p3"><span class="dot"></span><span class="rl">Baie Goeters</span></a>
+  <a href="#p4"><span class="dot"></span><span class="rl">The price</span></a>
+  <a href="#p5"><span class="dot"></span><span class="rl">What is included</span></a>
+  <a href="#p6"><span class="dot"></span><span class="rl">What I need</span></a>
+  <a href="#pA"><span class="dot"></span><span class="rl">Accept and pay</span></a>
+</nav>
+
+<div class="wrap">
+
+  <section class="sec first" id="p0">
+    <div class="overview">
+      <h2>The short version</h2>
+      <p>Three websites, built and looked after for you. There is nothing to pay up front. Monarch is first, as you asked. Lounah and Baie Goeters are already built and ready for you to look at.</p>
+      <ul>
+        <li><strong>Normal price to build all three:</strong> R70,000. Together: R49,000.</li>
+        <li><strong>Up front:</strong> nothing.</li>
+        <li><strong>First year:</strong> R8,000 a month, everything included.</li>
+        <li><strong>After that:</strong> R3,900 a month, and the websites are yours.</li>
+        <li><strong>Have a look:</strong> <a href="https://lounah.alldonesites.com" target="_blank" rel="noopener">Lounah</a> and <a href="https://baiegoeters.alldonesites.com" target="_blank" rel="noopener">Baie Goeters</a>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec" id="p1">
+    <h2><span class="num">01</span> Monarch Coffee Cartel <span class="tagn">First job</span></h2>
+    <p class="intro">You asked for this one first, so it is where I start. A new look, and a much shorter path from landing on the site to buying coffee.</p>
+    <div class="changes">
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">The coffee goes on the home page.</span> <span class="d">Not behind a menu. Checkout in as few taps as possible.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">Apple Pay and SnapScan, plus the rest.</span> <span class="d">Card, Apple Pay, SnapScan, Scan to Pay, and payment straight from a bank account.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">Prices and stock stay current.</span> <span class="d">New blends, price changes and sold-out items are included in the monthly fee.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk wait">&#9203;</span><div class="txt"><span class="h">Two things to switch on.</span> <span class="d">International payments on the Paystack account, and the domain registered with Apple. I do both, I just need access.</span></div></div></div>
+    </div>
+    <div class="highlight-box"><strong>One thing to know:</strong> Paystack charges a fee on each sale, currently 2.9% plus R1 for Apple Pay. That goes to Paystack, not to me, and comes off each order.</div>
+  </section>
+
+  <section class="sec" id="p2">
+    <h2><span class="num">02</span> Lounah Collective <span class="tagn">Ready to look at</span></h2>
+    <p class="intro">One website for the whole family: both Lounah venues, the Lounah Cup shop, and the smaller Cup shops as they open.</p>
+    <a class="viewlink" href="https://lounah.alldonesites.com" target="_blank" rel="noopener">View the site <span class="arw">&rarr;</span></a>
+    <div class="changes">
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">The site is built.</span> <span class="d">Menu, Lounah Cup, Events and Contact, with the hand-drawn illustrations.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">It is quick on a phone.</span> <span class="d">97 out of 100 for speed, which is where most people will open it.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk wait">&#9203;</span><div class="txt"><span class="h">Still to do: the Collective layout.</span> <span class="d">A page each for the two venues and the Cup shop, once you send me the details listed further down.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk wait">&#9203;</span><div class="txt"><span class="h">Still to do: room for the new Cup shops.</span> <span class="d">Adding one later takes minutes, not a rebuild. Schools can enquire through a form.</span></div></div></div>
+    </div>
+  </section>
+
+  <section class="sec" id="p3">
+    <h2><span class="num">03</span> Baie Goeters <span class="tagn">Ready to look at</span></h2>
+    <p class="intro">The event hire site, built to Anelma&rsquo;s own design.</p>
+    <a class="viewlink" href="https://baiegoeters.alldonesites.com" target="_blank" rel="noopener">View the site <span class="arw">&rarr;</span></a>
+    <div class="changes">
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">Built from your own layout.</span> <span class="d">The three spreads follow the design you sent, so it looks like Baie Goeters.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">The hire catalogue is on.</span> <span class="d">Your products and categories are in and easy to keep current.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk wait">&#9203;</span><div class="txt"><span class="h">Two details to confirm.</span> <span class="d">The studio address to show, and the year the business started.</span></div></div></div>
+    </div>
+  </section>
+
+  <section class="sec" id="p4">
+    <h2><span class="num">04</span> The price</h2>
+    <p class="intro">Built one at a time, these three sites come to R70,000. Taken together I can do all three for R49,000, and you do not pay it up front.</p>
+
+    <div class="ptable">
+      <table>
+        <thead><tr><th>Website</th><th>Normal build</th><th>Yours</th></tr></thead>
+        <tbody>
+          <tr><td>Lounah Collective</td><td class="was">R24,000</td><td>R17,000</td></tr>
+          <tr><td>Baie Goeters</td><td class="was">R14,000</td><td>R10,000</td></tr>
+          <tr><td>Monarch Coffee Cartel</td><td class="was">R32,000</td><td>R22,000</td></tr>
+          <tr class="tot"><td>All three</td><td class="was">R70,000</td><td>R49,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="monthband">
+      <span class="mv">R3,900</span>
+      <span class="mt">a month looks after all three sites. Hosting, updates, support and email, for as long as you want me on them. <strong>That part does not change.</strong></span>
+    </div>
+
+    <p class="intro">The only choice is how you pay for the R49,000 of building. No VAT either way.</p>
+
+    <div class="opts">
+      <div class="opt pick">
+        <span class="tag">Nothing up front</span>
+        <div class="oname">Spread it over the first year</div>
+        <div class="osub">The build is added to the monthly for twelve months.</div>
+        <div class="big">R4,100</div>
+        <div class="bigsub">a month towards the build, for twelve months</div>
+        <div class="plus">Plus the R3,900 a month above, so <strong>R8,000 a month</strong> for the first year, then R3,900.</div>
+        <ul>
+          <li><strong>R0</strong> to start. Work begins as soon as you say yes.</li>
+          <li><strong>The websites become yours</strong> after twelve months, code and all.</li>
+          <li>No contract tying you in. You can stop whenever you like.</li>
+        </ul>
+      </div>
+      <div class="opt">
+        <div class="oname">Pay for the build</div>
+        <div class="osub">Half on signing, half when the work is done.</div>
+        <div class="big">R44,100</div>
+        <div class="bigsub">once off, instead of paying it monthly</div>
+        <div class="plus">Plus the R3,900 a month above, from the day the sites go live.</div>
+        <ul>
+          <li><strong>A further 10% off</strong> for paying the build directly.</li>
+          <li><strong>R22,050</strong> on signing and <strong>R22,050</strong> when the work is done.</li>
+          <li><strong>The websites are yours from day one</strong>, not after a year.</li>
+          <li>Over two years this works out about <strong>R5,100 cheaper</strong>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="intro" style="margin-top:20px;">Either way you end up in the same place: R3,900 a month, and the websites are yours.</p>
+
+    <div class="extras">
+      <div class="extra"><div class="eh">Paying a year at a time</div><p>If you would rather pay the monthly a year in advance, that takes 5% off: R91,200 instead of R96,000.</p></div>
+      <div class="extra"><div class="eh">More sites later</div><p>R1,200 a month each, or R1,800 if the site sells online.</p></div>
+      <div class="extra"><div class="eh">Extra email addresses</div><p>R40 a month each, at your own domain, added whenever you need one.</p></div>
+      <div class="extra"><div class="eh">Bigger jobs</div><p>A brand new page or a new feature is quoted first, and only started once you say yes.</p></div>
+    </div>
+  </section>
+
+  <section class="sec" id="p5">
+    <h2><span class="num">05</span> What is included</h2>
+    <p class="intro">Everything needed to keep the three sites running. No separate invoices afterwards.</p>
+    <div class="changes">
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">Hosting, security and backups.</span> <span class="d">All three sites, handled for you.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">Two content updates a month, per site.</span> <span class="d">New photos, new wording, changed hours, a new menu.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">Four shop updates a month for Monarch.</span> <span class="d">Prices, new blends and stock. Busier months are easy to move up.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">Being found online.</span> <span class="d">Written so Google finds you, and so assistants like ChatGPT can recommend you.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">Support within 24 hours.</span> <span class="d">For anything affecting a live site.</span></div></div></div>
+      <div class="change"><div class="row"><span class="mk done">&#10003;</span><div class="txt"><span class="h">Email at your own domain.</span> <span class="d">Included, with extra addresses at R40 a month each.</span></div></div></div>
+    </div>
+    <p class="intro" style="margin-top:16px;">Bigger jobs, like a brand new page or a new feature, I quote first and only start once you say yes.</p>
+  </section>
+
+  <section class="sec" id="p6">
+    <h2><span class="num">06</span> What I need from you</h2>
+    <p class="intro">Monarch starts as soon as I have access. Everything below can be answered in writing, no call needed, though I am happy to talk it through if that is easier.</p>
+
+    <div class="highlight-box"><strong>To start Monarch:</strong> access to the Paystack account and the domain. That is all I need to begin.</div>
+
+    <p class="intro" style="margin-top:20px;"><strong>For Lounah Collective</strong>, please send me the following for each of the two venues and the Cup shop. Typing it into an email is perfect.</p>
+    <div class="qgrid">
+      <div class="qitem"><div class="qh">Name of each place</div><p>Exactly how you want it written on the site.</p></div>
+      <div class="qitem"><div class="qh">Address of each place</div><p>Including the Cup shop, and the ones opening soon if you know where they will be.</p></div>
+      <div class="qitem"><div class="qh">Opening hours for each</div><p>Any days closed.</p></div>
+      <div class="qitem"><div class="qh">Menus</div><p>Do they all share one menu, or does each place have its own?</p></div>
+      <div class="qitem"><div class="qh">The word Collective</div><p>Do you have artwork or lettering for it, or should I set it in the Lounah script?</p></div>
+      <div class="qitem"><div class="qh">Photographs</div><p>Any originals you have. The current ones come off social media and print small.</p></div>
+    </div>
+
+    <p class="intro" style="margin-top:22px;"><strong>For Baie Goeters</strong>, two small things: the studio address to show publicly, and the year the business started.</p>
+    <p class="intro">And whenever you have a moment, look through the two sites and tell me what you would like changed. Changes are included, so please be direct.</p>
+  </section>
+
+  <section class="sec" id="pA">
+    <h2><span class="num">&#9670;</span> Accept and pay</h2>
+    <p class="intro">Whichever option you choose, nothing is charged until you have signed.</p>
+
+    <div class="steps">
+      <div class="step"><span class="sn">1</span><div><div class="sh">Read the agreement</div><div class="sd">One short agreement covers all three sites. You can <a href="AllDoneSites_Agreement_LeRoux.pdf" target="_blank" rel="noopener">read it here</a>. It sets out what is included, how the websites transfer to you, and how to cancel. Schedule A at the back lists the three sites and the prices exactly as above.</div></div></div>
+      <div class="step"><span class="sn">2</span><div><div class="sh">Sign it</div><div class="sd">The last page has a block for your name, signature, date and place. Sign it and send it back, and I will sign my side and return a copy.</div></div></div>
+      <div class="step"><span class="sn">3</span><div><div class="sh">Set up the payment</div><div class="sd">Details below, depending on which option you pick.</div></div></div>
+      <div class="step"><span class="sn">4</span><div><div class="sh">I start on Monarch</div><div class="sd">Work begins the same week.</div></div></div>
+    </div>
+
+    <p class="intro" style="margin-top:22px;"><strong>If you are paying monthly</strong>, there are two debit orders. They are kept separate so the build one simply stops after twelve months and the other carries on unchanged.</p>
+    <div class="opts">
+      <div class="opt">
+        <div class="oname">Looking after the sites</div>
+        <div class="big">R3,900</div>
+        <div class="bigsub">a month, ongoing</div>
+        <a class="viewlink" href="https://paystack.shop/pay/alldonesites-care-leroux" target="_blank" rel="noopener">Set up this debit order <span class="arw">&rarr;</span></a>
+      </div>
+      <div class="opt">
+        <div class="oname">Paying off the build</div>
+        <div class="big">R4,100</div>
+        <div class="bigsub">a month, for twelve months only</div>
+        <a class="viewlink" href="https://paystack.shop/pay/alldonesites-build-leroux" target="_blank" rel="noopener">Set up this debit order <span class="arw">&rarr;</span></a>
+      </div>
+    </div>
+
+    <p class="intro" style="margin-top:22px;"><strong>If you are paying for the build directly</strong>, the R44,100 is paid by transfer, R22,050 on signing and R22,050 when the work is done. The R3,900 a month is still set up by debit order using the first link above.</p>
+    <div class="bank">
+      <div class="bt">Banking details</div>
+      <p style="margin:0 0 14px;">Message me and I will send them straight through, along with an invoice for the first R22,050.</p>
+      <a class="viewlink" href="https://wa.me/27822227457?text=Hi%20Jonathan%2C%20please%20send%20me%20the%20banking%20details%20for%20the%20website%20build." target="_blank" rel="noopener">Ask for the banking details <span class="arw">&rarr;</span></a>
+    </div>
+
+    <div class="success-box"><strong>Nothing is charged until you say yes.</strong> The two sites stay up for you to look at for as long as you need. Let me know what you think.</div>
+    <a class="totop" href="#top">&uarr; Back to top</a>
+  </section>
+
+</div>
+
+<footer><div class="fin">
+  <img src="data:image/png;base64,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" alt=""><span class="fn">All Done Sites</span>
+  <span class="fm">Confidential · Prepared September 2026</span>
+</div></footer>
+
+<script>
+  document.documentElement.classList.add('js');
+  var navlinks=[].slice.call(document.querySelectorAll('.topnav a, .rail a'));
+  var secs=[].slice.call(document.querySelectorAll('.sec'));
+  var spy=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting)e.target.classList.add('in');});},{rootMargin:'0px 0px -10% 0px',threshold:.05});
+  secs.forEach(function(s){spy.observe(s);});
+  function setActive(){
+    var best=null,bt=Infinity;
+    secs.forEach(function(s){var t=s.getBoundingClientRect().top-80;if(t<=0&&Math.abs(t)<bt){bt=Math.abs(t);best=s;}});
+    if(!best)best=secs[0];var id='#'+best.id;
+    navlinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')===id);});
+    var at=document.querySelector('.topnav a.active'); if(at&&at.scrollIntoView)at.scrollIntoView({block:'nearest',inline:'center'});
+  }
+  var pb=document.getElementById('progress');
+  function onScroll(){var h=document.documentElement,mx=h.scrollHeight-h.clientHeight;pb.style.width=(mx>0?(h.scrollTop/mx*100):0)+'%';setActive();}
+  window.addEventListener('scroll',onScroll,{passive:true});window.addEventListener('resize',onScroll);onScroll();
+  (function(){var btn=document.getElementById('devtoggle');if(!btn)return;var open=false;
+    btn.addEventListener('click',function(){open=!open;document.querySelectorAll('details.dev').forEach(function(d){d.open=open;});
+      btn.textContent=open?'Hide all dev notes':'Show all dev notes';});})();
+</script>
+</body>
+</html>
