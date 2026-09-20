@@ -18,8 +18,12 @@ import {
   rateStaleAfter,
   rateEvidenceAt,
   staleEvidenceAt,
+  weeklyReadingsFor,
+  weeklyCurrentFor,
+  planScaling,
   type UsageJson,
 } from "./claudeUsage";
+import { withWf50 } from "./__fixtures__/wf50";
 import schema1 from "./__fixtures__/claude-usage-schema1.json";
 import schema2 from "./__fixtures__/claude-usage-schema2.json";
 import schema2Published from "./__fixtures__/claude-usage-schema2-published.json";
@@ -1144,4 +1148,57 @@ it("does not throw on a missing model or an empty history", () => {
   expect(compute(J, "max20", "claude-nonexistent", "high")).toBeNull();
   const empty = { ...J, last_change: null, history: {} };
   expect(headline(empty).tone).toBe("flat");
+});
+
+// Tracker wf-50 adds per-window readings, weekly pooled points, per-account steps, credits-table
+// ratios and inferred marks on Max 5x's and Pro's current figure. The page reads them when they
+// are there and changes nothing when they are not.
+describe("tracker wf-50 fields", () => {
+  const PUBLISHED = schema2Published as unknown as UsageJson;
+  const WF50 = withWf50(PUBLISHED);
+
+  it("changes nothing on JSON published before them", () => {
+    expect(weeklyReadingsFor(PUBLISHED, "max20")).toEqual({ readings: [], weekly: [], onsets: [] });
+    expect(planScaling(PUBLISHED, ":")).toMatchObject({ credits: false, perWindow: "1:5:20" });
+    for (const plan of ["pro", "max5", "max20"] as const) {
+      expect(compute(PUBLISHED, plan, "claude-sonnet-5", "high")!.weeklyInferred).toBe(false);
+    }
+    // Pro's plan-level `assumed` is the old mark, which the page stopped badging at PR #78.
+    expect(weeklyCurrentFor(PUBLISHED, "pro")).toMatchObject({ inferred: false, inferredFrom: null });
+  });
+
+  it("returns a plan's own readings, without the windows that have no ratio, and never another plan's", () => {
+    const { readings, weekly, onsets } = weeklyReadingsFor(WF50, "max20");
+    const published = WF50.weekly_windows!.max20!.by_window!;
+    expect(published.some((r) => r.windows === null)).toBe(true);
+    expect(readings).toHaveLength(published.filter((r) => typeof r.windows === "number").length);
+    expect(readings.every((r) => ["a1", "a2", "a3"].includes(r.account!))).toBe(true);
+    expect(weekly).toHaveLength(WF50.weekly_windows!.max20!.weekly!.length);
+    // a3 saw no step, so it has no onset; the other two come back oldest first.
+    expect(onsets.map((o) => [o.account, o.onset])).toEqual([["a1", "2026-09-13"], ["a2", "2026-09-14"]]);
+    expect(weeklyReadingsFor(WF50, "max5")).toEqual({ readings: [], weekly: [], onsets: [] });
+  });
+
+  it("reads the inferred marks off the figure or the plan, whichever carries them", () => {
+    for (const j of [WF50, withWf50(PUBLISHED, { currentAsObject: true })]) {
+      const max20 = weeklyCurrentFor(j, "max20")!;
+      expect(max20.inferred).toBe(false);
+      for (const plan of ["max5", "pro"] as const) {
+        const cur = weeklyCurrentFor(j, plan)!;
+        expect(cur).toMatchObject({ inferred: true, inferredFrom: "max20" });
+        expect(cur.value).toBeCloseTo(max20.value * j.weekly_window_ratios![plan]!, 1);
+        const r = compute(j, plan, "claude-sonnet-5", "high")!;
+        expect(r.weeklyInferred).toBe(true);
+        expect(r.planWindowsPerWeek).toBe(cur.value);
+      }
+      expect(compute(j, "max20", "claude-sonnet-5", "high")!.weeklyInferred).toBe(false);
+    }
+  });
+
+  it("scales Pro and Max 5x by the published ratios, and words them from the same numbers", () => {
+    const max20 = compute(WF50, "max20", "claude-sonnet-5", "high")!;
+    expect(compute(WF50, "max5", "claude-sonnet-5", "high")!.tokensPerWindow).toBeCloseTo(max20.tokensPerWindow! * 0.3, 6);
+    expect(compute(WF50, "pro", "claude-sonnet-5", "high")!.tokensPerWindow).toBeCloseTo(max20.tokensPerWindow! * 0.05, 6);
+    expect(planScaling(WF50)).toEqual({ credits: true, perWindow: "1 : 6 : 20", perWeek: "1 : 8.33 : 16.67" });
+  });
 });

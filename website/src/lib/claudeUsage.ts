@@ -201,10 +201,52 @@ export interface WeeklyEstimate {
   reasons?: string[];
 }
 
+// One five-hour window's paired reading: how far the seven-day meter moved for the window spent.
+// `windows` is null when the seven-day meter did not move, so there is no ratio to plot. `account`
+// is an anonymous label ("a1"), never a login.
+export interface WindowReading {
+  window_ending: string;
+  windows: number | null;
+  five_hour_pct: number;
+  seven_day_pct: number;
+  rounding_interval?: (number | null)[] | null;
+  account?: string;
+  reset_verified?: boolean;
+}
+
+// One calendar week of those readings pooled across accounts; `n` is how many went in.
+export interface WeeklyPooledPoint {
+  week_ending: string;
+  windows: number;
+  rounding_interval?: (number | null)[] | null;
+  n?: number;
+  five_hour_pct?: number;
+  seven_day_pct?: number;
+  partial?: boolean;
+}
+
+// One account's own view of the weekly level, and the step it saw, if it saw one.
+export interface AccountWeekly {
+  n?: number;
+  current?: number | null;
+  regimes?: unknown[];
+  step?: { onset: string; before: number; after: number; percent: number } | null;
+}
+
+// A `current` that says where it came from. Tracker wf-50 marks Max 5x's and Pro's current figure
+// as inferred from Max 20x; the brief leaves open whether the marks sit on `current` itself or
+// beside it on the plan, so weeklyCurrentFor reads either.
+export interface WeeklyCurrent {
+  value: number | null;
+  assumed?: boolean;
+  inferred_from?: Plan;
+  availability?: { status: string; reason?: string | null };
+}
+
 export interface WeeklyPlan {
   // Schema 1 publishes a number for every plan, including Max 5x's frozen August median and
   // Pro's copy of it. Schema 2 publishes null wherever the plan has no current measurement.
-  current: number | null;
+  current: number | WeeklyCurrent | null;
   current_estimate?: WeeklyEstimate | null;
   history: {
     week_ending: string;
@@ -238,6 +280,13 @@ export interface WeeklyPlan {
   }[];
   availability?: { status: string; reason: string | null };
   plan_change?: { date: string; source: string; independently_verified: boolean };
+  inferred_from?: Plan;
+  // Tracker wf-50, Max 20x only so far: every per-window reading with the accounts pooled, the
+  // same readings pooled by calendar week, and each account's own level and step. All optional:
+  // JSON published before wf-50 has none of them and the weekly chart draws its levels alone.
+  by_window?: WindowReading[];
+  weekly?: WeeklyPooledPoint[];
+  by_account?: Record<string, AccountWeekly | null>;
 }
 
 export interface PlanLimit {
@@ -260,6 +309,10 @@ export interface UsageJson {
   passive_generated_at?: string | null;
   plan_measured: Plan;
   plan_ratios: Record<Plan, number>;
+  // What plan_ratios rests on. "credits_table" since tracker wf-50 (she-llac.com/claude-limits);
+  // "published_plan_scaling" (Anthropic's 1:5:20) before it.
+  plan_ratios_basis?: { kind?: string; scope?: string; source_url?: string; credits_per_window?: Partial<Record<Plan, number>> };
+  weekly_window_ratios_basis?: { kind?: string; source_url?: string; [k: string]: unknown };
   // How many five-hour windows a week's cap holds, per plan, relative to max20: a quotient of
   // two plans' weekly levels, used to draw one plan's weekly line from another's. Schema 2
   // publishes it empty, so the page derives it from the regimes; see weeklyWindowRatio.
@@ -412,12 +465,42 @@ function scaleFrom(j: UsageJson, own: Plan, other: Plan): number | null {
   const ownRatio = weeklyWindowRatio(j, own);
   const otherRatio = weeklyWindowRatio(j, other);
   if (ownRatio !== null && otherRatio !== null) return ownRatio / otherRatio;
-  const ownCurrent = j.weekly_windows?.[own]?.current ?? null;
-  const otherCurrent = j.weekly_windows?.[other]?.current ?? null;
-  if (typeof ownCurrent !== "number" || !ownCurrent) return null;
-  if (typeof otherCurrent !== "number" || !otherCurrent) return null;
+  const ownCurrent = weeklyCurrentFor(j, own)?.value ?? null;
+  const otherCurrent = weeklyCurrentFor(j, other)?.value ?? null;
+  if (!ownCurrent || !otherCurrent) return null;
   return ownCurrent / otherCurrent;
 }
+
+// A plan's published current windows per week, and whether the collector marks it as inferred
+// from another plan: an availability status of "inferred", an `inferred_from`, or `assumed` on the
+// figure itself. The plan-level `assumed` that JSON before tracker wf-50 sets on Pro is not one of
+// the marks: Jonathan took the "inferred" badge off those figures on 2026-09-16 (PR #78), and the
+// page keeps that presentation until the collector publishes the new marks. Null when the plan
+// publishes no figure.
+export function weeklyCurrentFor(
+  j: UsageJson,
+  plan: Plan,
+): { value: number; inferred: boolean; inferredFrom: Plan | null } | null {
+  const w = j.weekly_windows?.[plan];
+  if (!w) return null;
+  const cur = w.current;
+  const own: WeeklyCurrent | null = cur !== null && typeof cur === "object" ? cur : null;
+  const value = own ? own.value : cur;
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const status = own?.availability?.status ?? w.availability?.status;
+  const inferredFrom = own?.inferred_from ?? w.inferred_from ?? null;
+  const inferred = own?.assumed === true || inferredFrom !== null || status === "inferred";
+  return { value, inferred, inferredFrom };
+}
+
+// Documented reference levels, five-hour windows per week (she-llac.com/claude-limits, undated).
+// Drawn beside the measured figures, never in their place, and never used in any arithmetic.
+export const DOCUMENTED_WINDOWS_PER_WEEK: Record<Plan, number> = { pro: 9.09, max5: 12.63, max20: 7.58 };
+export const DOCUMENTED_SOURCE = "she-llac, undated";
+// The same table's credits per week, Pro : Max 5x : Max 20x, as the source gives them. Quoted, not
+// derived: plan_ratios times the published three-place weekly_window_ratios comes to 8.335 for
+// Max 5x, a rounding artefact that would print as 8.34 against the table's 8.33.
+export const CREDITS_TABLE_PER_WEEK = "1 : 8.33 : 16.67";
 
 export const RANGE_DAYS = [30, 90, 180] as const;
 export type RangeDays = (typeof RANGE_DAYS)[number];
@@ -506,9 +589,13 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
   // to the newest level its own weekly chart ends on (kept from PR #76, so the page never loses
   // a plan outright); a plan with no level at all still has no weekly figure. `planWindowsPerWeek`
   // is the plan's own figure; `windowsPerWeek` is this model's usable share of it.
-  const currentVal = j.weekly_windows?.[plan]?.current;
-  const fallbackLevel = typeof currentVal === "number" ? null : weeklyRegimeLevelsFor(j, plan).at(-1) ?? null;
-  const planWindowsPerWeek = typeof currentVal === "number" ? currentVal : (fallbackLevel?.windows ?? null);
+  const current = weeklyCurrentFor(j, plan);
+  const fallbackLevel = current !== null ? null : weeklyRegimeLevelsFor(j, plan).at(-1) ?? null;
+  const planWindowsPerWeek = current !== null ? current.value : (fallbackLevel?.windows ?? null);
+  // True when the collector marks the current figure as inferred from another plan, so every
+  // per-week figure below rests on that plan's measurement. The table marks those cells. The
+  // fallback level carries no mark, as before (PR #78).
+  const weeklyInferred = current?.inferred === true;
   const windowsPerWeek =
     limit.included && planWindowsPerWeek !== null ? planWindowsPerWeek * limit.weekly_fraction : null;
   const sessionsPerWeek =
@@ -528,7 +615,25 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
     apiValueUsdPerWeek,
     planWindowsPerWeek,
     windowsPerWeek,
+    weeklyInferred: planWindowsPerWeek !== null && weeklyInferred,
   };
+}
+
+// "1 : 6 : 20": Pro, Max 5x and Max 20x against Pro, to two places at most.
+function ratioText(values: Record<Plan, number>, sep: string): string | null {
+  const base = values.pro;
+  if (!(base > 0)) return null;
+  return (["pro", "max5", "max20"] as Plan[])
+    .map((p) => (values[p] / base).toFixed(2).replace(/\.?0+$/, ""))
+    .join(sep);
+}
+
+// The plan scaling the page applies to a five-hour window, in words, read off plan_ratios so the
+// copy cannot drift from the arithmetic. `credits` says whether the collector took the ratios from
+// the credits table; only then does the per-week citation apply.
+export function planScaling(j: UsageJson, sep = " : "): { credits: boolean; perWindow: string | null; perWeek: string | null } {
+  const credits = j.plan_ratios_basis?.kind === "credits_table";
+  return { credits, perWindow: ratioText(j.plan_ratios, sep), perWeek: credits ? CREDITS_TABLE_PER_WEEK : null };
 }
 
 // Short label for a model's rate source: "passive, 15 Sep" dated by the passive reading
@@ -847,6 +952,30 @@ export function weeklyTokenRegimeLevelsFor(
     out.push({ ...r, tokens: r.windows * perWindow * scale });
   }
   return out;
+}
+
+export interface AccountOnset {
+  account: string;
+  onset: string;
+  before: number;
+  after: number;
+  percent: number;
+}
+
+// What the weekly chart draws beneath a plan's levels, all of it measured on that plan: every
+// per-window reading that has a ratio, the calendar-week pooled points, and each account's step
+// onset. Empty arrays for JSON published before tracker wf-50, and for a plan with no readings of
+// its own: another plan's readings are never scaled across to stand in for them.
+export function weeklyReadingsFor(j: UsageJson, plan: Plan) {
+  const w = j.weekly_windows?.[plan];
+  const readings = (w?.by_window ?? []).filter(
+    (r): r is WindowReading & { windows: number } => typeof r.windows === "number" && Number.isFinite(r.windows),
+  );
+  const weekly = (w?.weekly ?? []).filter((p) => typeof p.windows === "number" && Number.isFinite(p.windows));
+  const onsets: AccountOnset[] = Object.entries(w?.by_account ?? {})
+    .flatMap(([account, a]) => (a?.step?.onset ? [{ account, ...a.step }] : []))
+    .sort((a, b) => Date.parse(a.onset) - Date.parse(b.onset));
+  return { readings, weekly, onsets };
 }
 
 export function weeklyEventsFor(j: UsageJson): UsageEvent[] {
