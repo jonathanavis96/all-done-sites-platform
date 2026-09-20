@@ -53,8 +53,8 @@
   "max20": {
    "contributors": 2,
    "evidence": {
-    "as_of": "2026-09-20T02:30:12+00:00",
-    "current_since": "2026-08-21T02:30:12+00:00",
+    "as_of": "2026-09-20T03:30:11+00:00",
+    "current_since": "2026-08-21T03:30:11+00:00",
     "freshest_sample_at": "2026-09-16T00:11:31+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -118,8 +118,8 @@
   "max5": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-20T02:30:12+00:00",
-    "current_since": "2026-08-21T02:30:12+00:00",
+    "as_of": "2026-09-20T03:30:11+00:00",
+    "current_since": "2026-08-21T03:30:11+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -151,8 +151,8 @@
   "pro": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-20T02:30:12+00:00",
-    "current_since": "2026-08-21T02:30:12+00:00",
+    "as_of": "2026-09-20T03:30:11+00:00",
+    "current_since": "2026-08-21T03:30:11+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -180,7 +180,871 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-09-20T02:30:12+00:00"
+  "updated_at": "2026-09-20T03:30:11+00:00"
+ },
+ "credits": {
+  "derivation": "credits",
+  "effort_cache_mix": {
+   "claude-fable-5-1": {
+    "high": {
+     "cache_read_share": 0.715,
+     "cold_cache_runs": 2,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    },
+    "low": {
+     "cache_read_share": 0.8214,
+     "cold_cache_runs": 1,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    },
+    "max": {
+     "cache_read_share": 0.5995,
+     "cold_cache_runs": 5,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 6
+    },
+    "medium": {
+     "cache_read_share": 0.7555,
+     "cold_cache_runs": 2,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    },
+    "xhigh": {
+     "cache_read_share": 0.5606,
+     "cold_cache_runs": 2,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    }
+   },
+   "claude-opus-5": {
+    "high": {
+     "cache_read_share": 0.6099,
+     "cold_cache_runs": 6,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    },
+    "low": {
+     "cache_read_share": 0.6898,
+     "cold_cache_runs": 2,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    },
+    "max": {
+     "cache_read_share": 0.6844,
+     "cold_cache_runs": 7,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    },
+    "medium": {
+     "cache_read_share": 0.7288,
+     "cold_cache_runs": 1,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    },
+    "xhigh": {
+     "cache_read_share": 0.5432,
+     "cold_cache_runs": 3,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    }
+   },
+   "claude-sonnet-5": {
+    "high": {
+     "cache_read_share": 0.7562,
+     "cold_cache_runs": 2,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    },
+    "low": {
+     "cache_read_share": 0.9147,
+     "cold_cache_runs": 4,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    },
+    "max": {
+     "cache_read_share": 0.7005,
+     "cold_cache_runs": 7,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    },
+    "medium": {
+     "cache_read_share": 0.8043,
+     "cold_cache_runs": 3,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    },
+    "xhigh": {
+     "cache_read_share": 0.7056,
+     "cold_cache_runs": 2,
+     "note": "share of the cell's own run tokens that were cache reads; a cold run writes cache where a warm one reads it",
+     "runs": 7
+    }
+   }
+  },
+  "fable_interval": {
+   "fable_heavy_share": 0.5,
+   "input_high": 2.3631,
+   "input_low": 1.1935,
+   "method": "solved per Fable-heavy stretch (Fable over 50% of the tokens the meter charges for) against the measured window; the interval runs from the lowest per-account p25 at output 5x input to the highest per-account p25 at output 3x. Both edges are a p25 because the solve is inflated wherever the meter counts machines the transcripts never saw.",
+   "output_ratio": [
+    3,
+    5
+   ],
+   "per_account": {
+    "a1": {
+     "output_3x": {
+      "median": 3.8453,
+      "n": 49,
+      "p25": 2.3631
+     },
+     "output_5x": {
+      "median": 3.2623,
+      "n": 49,
+      "p25": 1.8318
+     }
+    },
+    "a2": {
+     "output_3x": {
+      "median": 1.6847,
+      "n": 3,
+      "p25": 1.4051
+     },
+     "output_5x": {
+      "median": 1.301,
+      "n": 3,
+      "p25": 1.1935
+     }
+    },
+    "a3": {
+     "output_3x": {
+      "median": null,
+      "n": 0,
+      "p25": null
+     },
+     "output_5x": {
+      "median": null,
+      "n": 0,
+      "p25": null
+     }
+    }
+   },
+   "status": "interval, not yet separable",
+   "times_opus": [
+    1.79,
+    3.54
+   ],
+   "unresolved": null,
+   "window_credits_per_pct": 195439
+  },
+  "five_hour_window_across_cut": {
+   "cut_at": "2026-09-14T12:00:00+00:00",
+   "fable_rate_held": {
+    "input": 1.667,
+    "output": 5.0,
+    "why": "tools/reconcile_window.py section 3 holds this one rate on both sides of 2026-09-14 so the before and after medians can be compared with each other. It is not a claim about Fable's rate -- that is the interval above -- and it sits below the interval's low end; what makes the comparison work is that the same rate is in both medians."
+   },
+   "largest_move_pct": 12.8,
+   "method": "median credits per 1% over every clean stretch of the account, split on the announced change; one Fable rate held constant on both sides so the two medians are comparable to each other. An account whose n_with_capture is 0 has no usable capture column, so its meter movement includes work this host never saw and its level reads low; the comparison of its own two sides is still its own.",
+   "per_account": {
+    "a1": {
+     "after": 139377,
+     "before": 123599,
+     "change_pct": 12.8,
+     "n_after": 24,
+     "n_before": 166,
+     "n_with_capture": 0
+    },
+    "a2": {
+     "after": 204632,
+     "before": 187797,
+     "change_pct": 9.0,
+     "n_after": 14,
+     "n_before": 40,
+     "n_with_capture": 55
+    },
+    "a3": {
+     "after": 158809,
+     "before": null,
+     "change_pct": null,
+     "n_after": 14,
+     "n_before": 0,
+     "n_with_capture": 14
+    }
+   },
+   "resolved": false,
+   "spread_after_pct": 46.8,
+   "unit": "credits per 1% of the five-hour meter",
+   "unresolved": "the accounts differ from each other by 46.8% after the change, more than the largest per-account move across it (12.8%), so the five-hour and weekly meters cannot be separated from these stretches"
+  },
+  "harness_runs_excluded": [
+   {
+    "account_label": "a3",
+    "end": "2026-09-05T23:28:37.188099+00:00",
+    "reason": "probe claude-sonnet-5/low completed from 2026-09-05T23:04:47Z",
+    "start": "2026-09-05T23:04:47.304378+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-06T04:17:52.209867+00:00",
+    "reason": "probe claude-sonnet-5/low completed from 2026-09-06T04:07:08Z",
+    "start": "2026-09-06T04:07:08.928539+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-06T10:58:28.974738+00:00",
+    "reason": "probe claude-sonnet-5/low completed from 2026-09-06T09:39:26Z",
+    "start": "2026-09-06T09:39:26.287942+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-06T11:50:52.987741+00:00",
+    "reason": "probe claude-fable-5-1/low completed from 2026-09-06T11:16:29Z",
+    "start": "2026-09-06T11:16:29.286577+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-06T12:37:45.021747+00:00",
+    "reason": "probe claude-fable-5-1/low completed from 2026-09-06T12:06:58Z",
+    "start": "2026-09-06T12:06:58.599078+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-06T14:59:15.152334+00:00",
+    "reason": "probe claude-sonnet-5/low completed from 2026-09-06T14:33:05Z",
+    "start": "2026-09-06T14:33:05.254749+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-07T05:00:00.487759+00:00",
+    "reason": "probe crashed: urllib.error.HTTPError: HTTP Error 429: Too Many Requests from 2026-09-07T00:00:00Z",
+    "start": "2026-09-07T00:00:00.487759+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-07T12:17:00.950346+00:00",
+    "reason": "probe claude-opus-5/low completed from 2026-09-07T12:02:09Z",
+    "start": "2026-09-07T12:02:09.304517+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-08T02:40:00.352478+00:00",
+    "reason": "probe crashed: urllib.error.HTTPError: HTTP Error 429: Too Many Requests from 2026-09-07T21:40:00Z",
+    "start": "2026-09-07T21:40:00.352478+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-08T00:24:41.356978+00:00",
+    "reason": "probe claude-fable-5-1/low completed from 2026-09-08T00:02:08Z",
+    "start": "2026-09-08T00:02:08.316146+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-09T00:12:05.121336+00:00",
+    "reason": "probe claude-fable-5-1/low completed from 2026-09-09T00:02:08Z",
+    "start": "2026-09-09T00:02:08.409127+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-09T00:29:19.930677+00:00",
+    "reason": "probe claude-fable-5-1/low completed from 2026-09-09T00:14:11Z",
+    "start": "2026-09-09T00:14:11.932199+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-09T16:19:59.705592+00:00",
+    "reason": "probe aborted: tick too early from 2026-09-09T11:19:59Z",
+    "start": "2026-09-09T11:19:59.705592+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-13T02:30:00.995961+00:00",
+    "reason": "probe crashed: urllib.error.HTTPError: HTTP Error 401: Unauthorized from 2026-09-12T21:30:00Z",
+    "start": "2026-09-12T21:30:00.995961+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-13T07:30:00.327512+00:00",
+    "reason": "output-probe aborted: utilization jumped 2.0% after 1 prompt; account not idle from 2026-09-13T02:30:00Z",
+    "start": "2026-09-13T02:30:00.327512+00:00"
+   },
+   {
+    "account_label": "a3",
+    "end": "2026-09-13T17:30:00.335043+00:00",
+    "reason": "probe aborted: window reset during probe from 2026-09-13T12:30:00Z",
+    "start": "2026-09-13T12:30:00.335043+00:00"
+   },
+   {
+    "account_label": "a2",
+    "end": "2026-09-08T12:28:43.330976+00:00",
+    "reason": "probe claude-sonnet-5/low completed from 2026-09-08T11:36:02Z",
+    "start": "2026-09-08T11:36:02.985415+00:00"
+   },
+   {
+    "account_label": "a2",
+    "end": "2026-09-08T13:08:02.351819+00:00",
+    "reason": "probe claude-opus-5/low completed from 2026-09-08T12:32:29Z",
+    "start": "2026-09-08T12:32:29.571179+00:00"
+   },
+   {
+    "account_label": "a2",
+    "end": "2026-09-09T14:53:22.399540+00:00",
+    "reason": "effort-matrix completed from 2026-09-09T11:28:37Z",
+    "start": "2026-09-09T11:28:37.136014+00:00"
+   },
+   {
+    "account_label": "a2",
+    "end": "2026-09-10T00:57:14+00:00",
+    "reason": "probe crashed: FileNotFoundError: [Errno 2] No such file or directory: 'claude' from 2026-09-10T00:02:18Z",
+    "start": "2026-09-10T00:02:18+00:00"
+   },
+   {
+    "account_label": "a2",
+    "end": "2026-09-14T13:13:20.996659+00:00",
+    "reason": "probe claude-sonnet-5/low completed from 2026-09-14T12:02:07Z",
+    "start": "2026-09-14T12:02:07.915369+00:00"
+   },
+   {
+    "account_label": "a2",
+    "end": "2026-09-14T15:06:57.679572+00:00",
+    "reason": "probe claude-sonnet-5/low completed from 2026-09-14T13:16:57Z",
+    "start": "2026-09-14T13:16:57.472646+00:00"
+   },
+   {
+    "account_label": "a2",
+    "end": "2026-09-15T02:13:32+00:00",
+    "reason": "probe aborted: no second tick after 80 prompts from 2026-09-15T00:03:13Z",
+    "start": "2026-09-15T00:03:13+00:00"
+   },
+   {
+    "account_label": "a2",
+    "end": "2026-09-15T12:58:20.419811+00:00",
+    "reason": "probe claude-opus-5/low completed from 2026-09-15T12:02:08Z",
+    "start": "2026-09-15T12:02:08.019387+00:00"
+   },
+   {
+    "account_label": "a2",
+    "end": "2026-09-15T15:27:25+00:00",
+    "reason": "probe aborted: tick too early from 2026-09-15T13:16:32Z",
+    "start": "2026-09-15T13:16:32+00:00"
+   },
+   {
+    "account_label": "a2",
+    "end": "2026-09-16T00:47:50+00:00",
+    "reason": "probe aborted: account not idle: pid 443172 started and exited from 2026-09-16T00:20:15Z",
+    "start": "2026-09-16T00:20:15+00:00"
+   }
+  ],
+  "per_model": {
+   "fable": {
+    "api_value_per_window_usd": {
+     "input": {
+      "interval": [
+       73.0,
+       174.44
+      ],
+      "status": "rate not yet identified",
+      "value": null
+     },
+     "output": {
+      "interval": [
+       73.0,
+       290.74
+      ],
+      "status": "rate not yet identified",
+      "value": null
+     }
+    },
+    "credits_per_token": {
+     "input": null,
+     "output": null
+    },
+    "credits_per_token_interval": {
+     "input": [
+      1.1935,
+      2.3631
+     ],
+     "output": [
+      3.5805,
+      11.8155
+     ]
+    },
+    "derivation": "credits",
+    "interval_rule": "computed at publish time by tracker/credits.py fable_interval, never stored here: the rate is solved per Fable-heavy stretch against the measured window, and the interval runs from the lowest per-account p25 at output 5x input to the highest per-account p25 at output 3x. Storing the endpoints would freeze a measurement into a table of reference rates, and it narrows as clean Fable-heavy stretches accrue from ordinary use.",
+    "interval_source": "docs/findings-2026-09-20-reconciliation.md, \"Fable's rate\". Only three stretches on the account with a usable capture column survive the capture gate, and the solve is inflated wherever the meter counts machines the transcripts never saw, so both edges are a p25.",
+    "list_price_model": "claude-fable-5-1",
+    "status": "rate not yet identified",
+    "tokens_per_window": {
+     "input": {
+      "interval": [
+       7299741,
+       17444234
+      ],
+      "status": "rate not yet identified",
+      "value": null
+     },
+     "output": {
+      "interval": [
+       1459948,
+       5814745
+      ],
+      "status": "rate not yet identified",
+      "value": null
+     }
+    }
+   },
+   "haiku": {
+    "api_value_per_window_usd": {
+     "input": {
+      "interval": null,
+      "status": "no row in the dollar table, so no list price to value the tokens at",
+      "value": null
+     },
+     "output": {
+      "interval": null,
+      "status": "no row in the dollar table, so no list price to value the tokens at",
+      "value": null
+     }
+    },
+    "credits_per_token": {
+     "input": 0.13333333333333333,
+     "output": 0.6666666666666666
+    },
+    "credits_per_token_interval": null,
+    "derivation": "credits",
+    "interval_rule": null,
+    "interval_source": null,
+    "list_price_model": null,
+    "status": null,
+    "tokens_per_window": {
+     "input": {
+      "interval": [
+       129375135,
+       156147698
+      ],
+      "status": null,
+      "value": 146579152
+     },
+     "output": {
+      "interval": [
+       25875027,
+       31229540
+      ],
+      "status": null,
+      "value": 29315830
+     }
+    }
+   },
+   "opus": {
+    "api_value_per_window_usd": {
+     "input": {
+      "interval": [
+       129.38,
+       156.15
+      ],
+      "status": null,
+      "value": 146.58
+     },
+     "output": {
+      "interval": [
+       129.38,
+       156.15
+      ],
+      "status": null,
+      "value": 146.58
+     }
+    },
+    "credits_per_token": {
+     "input": 0.6666666666666666,
+     "output": 3.3333333333333335
+    },
+    "credits_per_token_interval": null,
+    "derivation": "credits",
+    "interval_rule": null,
+    "interval_source": null,
+    "list_price_model": "claude-opus-5",
+    "status": null,
+    "tokens_per_window": {
+     "input": {
+      "interval": [
+       25875027,
+       31229540
+      ],
+      "status": null,
+      "value": 29315830
+     },
+     "output": {
+      "interval": [
+       5175005,
+       6245908
+      ],
+      "status": null,
+      "value": 5863166
+     }
+    }
+   },
+   "sonnet": {
+    "api_value_per_window_usd": {
+     "input": {
+      "interval": [
+       86.25,
+       104.1
+      ],
+      "status": null,
+      "value": 97.72
+     },
+     "output": {
+      "interval": [
+       86.25,
+       104.1
+      ],
+      "status": null,
+      "value": 97.72
+     }
+    },
+    "credits_per_token": {
+     "input": 0.4,
+     "output": 2.0
+    },
+    "credits_per_token_interval": null,
+    "derivation": "credits",
+    "interval_rule": null,
+    "interval_source": null,
+    "list_price_model": "claude-sonnet-5",
+    "status": null,
+    "tokens_per_window": {
+     "input": {
+      "interval": [
+       43125045,
+       52049232
+      ],
+      "status": null,
+      "value": 48859718
+     },
+     "output": {
+      "interval": [
+       8625009,
+       10409846
+      ],
+      "status": null,
+      "value": 9771944
+     }
+    }
+   }
+  },
+  "rates": {
+   "cache_read_weight": 0,
+   "cache_read_weight_range": [
+    0,
+    0.015
+   ],
+   "cache_write": "charged at the model's plain input rate, not the API's 1.25x write premium",
+   "per_family": {
+    "fable": {
+     "input": null,
+     "interval": {
+      "fable_heavy_share": 0.5,
+      "input_high": 2.3631,
+      "input_low": 1.1935,
+      "method": "solved per Fable-heavy stretch (Fable over 50% of the tokens the meter charges for) against the measured window; the interval runs from the lowest per-account p25 at output 5x input to the highest per-account p25 at output 3x. Both edges are a p25 because the solve is inflated wherever the meter counts machines the transcripts never saw.",
+      "output_ratio": [
+       3,
+       5
+      ],
+      "per_account": {
+       "a1": {
+        "output_3x": {
+         "median": 3.8453,
+         "n": 49,
+         "p25": 2.3631
+        },
+        "output_5x": {
+         "median": 3.2623,
+         "n": 49,
+         "p25": 1.8318
+        }
+       },
+       "a2": {
+        "output_3x": {
+         "median": 1.6847,
+         "n": 3,
+         "p25": 1.4051
+        },
+        "output_5x": {
+         "median": 1.301,
+         "n": 3,
+         "p25": 1.1935
+        }
+       },
+       "a3": {
+        "output_3x": {
+         "median": null,
+         "n": 0,
+         "p25": null
+        },
+        "output_5x": {
+         "median": null,
+         "n": 0,
+         "p25": null
+        }
+       }
+      },
+      "status": "interval, not yet separable",
+      "times_opus": [
+       1.79,
+       3.54
+      ],
+      "unresolved": null,
+      "window_credits_per_pct": 195439
+     },
+     "interval_rule": "computed at publish time by tracker/credits.py fable_interval, never stored here: the rate is solved per Fable-heavy stretch against the measured window, and the interval runs from the lowest per-account p25 at output 5x input to the highest per-account p25 at output 3x. Storing the endpoints would freeze a measurement into a table of reference rates, and it narrows as clean Fable-heavy stretches accrue from ordinary use.",
+     "interval_source": "docs/findings-2026-09-20-reconciliation.md, \"Fable's rate\". Only three stretches on the account with a usable capture column survive the capture gate, and the solve is inflated wherever the meter counts machines the transcripts never saw, so both edges are a p25.",
+     "matches": "fable",
+     "output": null,
+     "output_ratio_candidates": [
+      3,
+      5
+     ],
+     "output_ratio_source": "docs/reference-2026-09-20-shellac-credits-model.md: every model in the article's table uses output = 5x input; the same note fits 3 for Fable with a bootstrap interval of [3, 3]. docs/findings-2026-09-20-reconciliation.md: the output ratio (3x or 5x) is not separable from our stretches, so both candidates are carried and neither is chosen."
+    },
+    "haiku": {
+     "input": [
+      2,
+      15
+     ],
+     "matches": "haiku",
+     "output": [
+      10,
+      15
+     ]
+    },
+    "opus": {
+     "input": [
+      10,
+      15
+     ],
+     "matches": "opus",
+     "note": "every Opus version prices as Opus, which is why this table is keyed by family",
+     "output": [
+      50,
+      15
+     ]
+    },
+    "sonnet": {
+     "input": [
+      6,
+      15
+     ],
+     "matches": "sonnet",
+     "output": [
+      30,
+      15
+     ]
+    }
+   },
+   "source": "data/prices.json `_credits`; rates from https://she-llac.com/claude-limits, a January 2026 reference, measured against in docs/findings-2026-09-20-reconciliation.md"
+  },
+  "sessions": {
+   "claude-fable-5-1": {
+    "cache_normalised": true,
+    "credits_per_token_at_split": null,
+    "credits_per_token_at_split_interval": [
+     0.04547235,
+     0.10988415
+    ],
+    "derivation": "credits",
+    "median_session_tokens": 6852277,
+    "per_week": {
+     "interval": [
+      113.6,
+      331.4
+     ],
+     "status": "rate not yet identified",
+     "value": null
+    },
+    "per_window": {
+     "interval": [
+      22.9,
+      66.8
+     ],
+     "status": "rate not yet identified",
+     "value": null
+    },
+    "split": {
+     "cache_read": 0.9702,
+     "cache_write": 0.0254,
+     "input": 0.0001,
+     "output": 0.0042
+    },
+    "split_source": "history/passive.json `split`, the watched accounts' own token-class shares",
+    "status": "rate not yet identified",
+    "tokens_per_window_at_split": {
+     "interval": [
+      156983678,
+      457853905
+     ],
+     "status": "rate not yet identified",
+     "value": null
+    },
+    "windows_per_week": 4.96
+   },
+   "claude-opus-5": {
+    "cache_normalised": true,
+    "credits_per_token_at_split": 0.031,
+    "credits_per_token_at_split_interval": null,
+    "derivation": "credits",
+    "median_session_tokens": 1781778,
+    "per_week": {
+     "interval": [
+      1549.0,
+      1869.6
+     ],
+     "status": null,
+     "value": 1755.0
+    },
+    "per_window": {
+     "interval": [
+      312.3,
+      376.9
+     ],
+     "status": null,
+     "value": 353.8
+    },
+    "split": {
+     "cache_read": 0.9702,
+     "cache_write": 0.0254,
+     "input": 0.0001,
+     "output": 0.0042
+    },
+    "split_source": "history/passive.json `split`, the watched accounts' own token-class shares",
+    "status": null,
+    "tokens_per_window_at_split": {
+     "interval": [
+      556452194,
+      671603000
+     ],
+     "status": null,
+     "value": 630447968
+    },
+    "windows_per_week": 4.96
+   },
+   "claude-sonnet-5": {
+    "cache_normalised": true,
+    "credits_per_token_at_split": 0.0186,
+    "credits_per_token_at_split_interval": null,
+    "derivation": "credits",
+    "median_session_tokens": 578088,
+    "per_week": {
+     "interval": [
+      7957.3,
+      9603.9
+     ],
+     "status": null,
+     "value": 9015.4
+    },
+    "per_window": {
+     "interval": [
+      1604.3,
+      1936.3
+     ],
+     "status": null,
+     "value": 1817.6
+    },
+    "split": {
+     "cache_read": 0.9702,
+     "cache_write": 0.0254,
+     "input": 0.0001,
+     "output": 0.0042
+    },
+    "split_source": "history/passive.json `split`, the watched accounts' own token-class shares",
+    "status": null,
+    "tokens_per_window_at_split": {
+     "interval": [
+      927420323,
+      1119338333
+     ],
+     "status": null,
+     "value": 1050746613
+    },
+    "windows_per_week": 4.96
+   }
+  },
+  "window_credits": {
+   "accounts": {
+    "a1": {
+     "interval": null,
+     "n": 0,
+     "value": null
+    },
+    "a2": {
+     "interval": [
+      17593418,
+      20819693
+     ],
+     "n": 10,
+     "value": 19698917
+    },
+    "a3": {
+     "interval": [
+      17250018,
+      17250018
+     ],
+     "n": 1,
+     "value": 17250018
+    }
+   },
+   "cache_read_weight": 0.0,
+   "cache_read_weight_range": [
+    0,
+    0.015
+   ],
+   "credits_per_pct": 195439,
+   "derivation": "credits",
+   "interval": [
+    17250018,
+    20819693
+   ],
+   "method": "median credits per 1% of the five-hour meter over the pure-opus stretches of every watched account's passive stretch file, times 100. A stretch counts when it moved the meter at least 3%, carries tokens, does not overlap one of the tracker's own runs on its own account (a probe row or the effort-matrix run), and reads capture_status 'accepted'. Every token in a pure-opus stretch is priced at a rate data/prices.json publishes, so the figure carries no fitted parameter. Cache writes at the input rate, cache reads at 0 of it.",
+   "n": 11,
+   "pure_family": "opus",
+   "status": null,
+   "value": 19543887
+  },
+  "window_credits_from_weekly": {
+   "after": {
+    "announced_weekly_cap_credits": 104166625,
+    "from": "2026-09-14T11:30:00.088328+00:00",
+    "to": "2026-09-20T07:30:00.883214+00:00",
+    "value": 21001336,
+    "weekly_cap_multiplier": 1.25,
+    "windows_per_week_measured": 4.96,
+    "windows_per_week_rounding_interval": [
+     4.6572,
+     5.3048
+    ]
+   },
+   "before": {
+    "announced_weekly_cap_credits": 124999950,
+    "from": "2026-08-15T00:20:00.078325+00:00",
+    "to": "2026-09-14T03:45:24+00:00",
+    "value": 19290116,
+    "weekly_cap_multiplier": 1.5,
+    "windows_per_week_measured": 6.48,
+    "windows_per_week_rounding_interval": [
+     6.2214,
+     6.7656
+    ]
+   },
+   "derivation": "credits",
+   "kind": "cross_check",
+   "method": "the announced weekly cap -- the January baseline times the multiplier in force (x1.5 from May, x1.25 from 14 September) -- divided by this tracker's own measured windows per week for the regime either side of the certified change. It shares no input with window_credits, which is why it is a cross-check.",
+   "status": null,
+   "weekly_cap_baseline_credits": 83333300,
+   "weekly_cap_baseline_source": {
+    "as_of": "2026-01-25",
+    "url": "https://she-llac.com/claude-limits"
+   }
+  }
  },
  "effort": {
   "claude-fable-5-1": {
@@ -230,17 +1094,65 @@
  },
  "events": [
   {
+   "announced": {
+    "also_quoted": "Starting September 14, we're permanently raising standard weekly limits in Claude Code by 25% for Pro, Max, Team, and seat-based Enterprise plans",
+    "announced_change_pct": -17,
+    "date": "2026-09-14",
+    "quote": "Compared to today, this works out to a 17% reduction in weekly limits on Claude Code",
+    "scope": "weekly",
+    "source": "Anthropic on X, quoted by BleepingComputer; recorded in docs/findings-2026-09-20-reconciliation.md"
+   },
    "attribution": "observed_account_metric_change_dated_from_per_account_onsets",
    "confirmation": {
     "at": "2026-09-16",
-    "evidence_points": 200,
-    "seven_day_pct": 217.0
+    "evidence_points": 201,
+    "seven_day_pct": 219.0
    },
    "date": "2026-09-11",
    "direction": "decreased",
    "evidence_quality": "certified",
+   "five_hour_window_credits": {
+    "cut_at": "2026-09-14T12:00:00+00:00",
+    "fable_rate_held": {
+     "input": 1.667,
+     "output": 5.0,
+     "why": "tools/reconcile_window.py section 3 holds this one rate on both sides of 2026-09-14 so the before and after medians can be compared with each other. It is not a claim about Fable's rate -- that is the interval above -- and it sits below the interval's low end; what makes the comparison work is that the same rate is in both medians."
+    },
+    "largest_move_pct": 12.8,
+    "method": "median credits per 1% over every clean stretch of the account, split on the announced change; one Fable rate held constant on both sides so the two medians are comparable to each other. An account whose n_with_capture is 0 has no usable capture column, so its meter movement includes work this host never saw and its level reads low; the comparison of its own two sides is still its own.",
+    "per_account": {
+     "a1": {
+      "after": 139377,
+      "before": 123599,
+      "change_pct": 12.8,
+      "n_after": 24,
+      "n_before": 166,
+      "n_with_capture": 0
+     },
+     "a2": {
+      "after": 204632,
+      "before": 187797,
+      "change_pct": 9.0,
+      "n_after": 14,
+      "n_before": 40,
+      "n_with_capture": 55
+     },
+     "a3": {
+      "after": 158809,
+      "before": null,
+      "change_pct": null,
+      "n_after": 14,
+      "n_before": 0,
+      "n_with_capture": 14
+     }
+    },
+    "resolved": false,
+    "spread_after_pct": 46.8,
+    "unit": "credits per 1% of the five-hour meter",
+    "unresolved": "the accounts differ from each other by 46.8% after the change, more than the largest per-account move across it (12.8%), so the five-hour and weekly meters cannot be separated from these stretches"
+   },
    "kind": "change",
-   "label": "Observed windows per week fell about 24% around 2026-09-11 to 2026-09-14",
+   "label": "Observed windows per week fell about 23% around 2026-09-11 to 2026-09-15",
    "legacy_uncertain": false,
    "meter_attribution": "unresolved",
    "metric": "weekly_to_five_hour_ratio",
@@ -252,13 +1164,13 @@
      "earliest": "2026-09-14",
      "latest": "2026-09-14"
     },
-    "latest": "2026-09-14"
+    "latest": "2026-09-15"
    },
-   "percent": 24,
+   "percent": 23,
    "provisional": false,
    "rounding_interval_after": [
-    4.6349,
-    5.2802
+    4.6572,
+    5.3048
    ],
    "rounding_interval_before": [
     6.2214,
@@ -267,7 +1179,7 @@
    "scope": "weekly"
   }
  ],
- "generated_at": "2026-09-20T02:30:27.684340+00:00",
+ "generated_at": "2026-09-20T03:30:25.867142+00:00",
  "history": {
   "claude-fable-5-1": [
    {
@@ -1631,15 +2543,63 @@
  },
  "instrument": "passive",
  "last_change": {
+  "announced": {
+   "also_quoted": "Starting September 14, we're permanently raising standard weekly limits in Claude Code by 25% for Pro, Max, Team, and seat-based Enterprise plans",
+   "announced_change_pct": -17,
+   "date": "2026-09-14",
+   "quote": "Compared to today, this works out to a 17% reduction in weekly limits on Claude Code",
+   "scope": "weekly",
+   "source": "Anthropic on X, quoted by BleepingComputer; recorded in docs/findings-2026-09-20-reconciliation.md"
+  },
   "attribution": "observed_account_metric_change_dated_from_per_account_onsets",
   "confirmation": {
    "at": "2026-09-16",
-   "evidence_points": 200,
-   "seven_day_pct": 217.0
+   "evidence_points": 201,
+   "seven_day_pct": 219.0
   },
   "date": "2026-09-11",
   "direction": "decreased",
   "evidence_quality": "certified",
+  "five_hour_window_credits": {
+   "cut_at": "2026-09-14T12:00:00+00:00",
+   "fable_rate_held": {
+    "input": 1.667,
+    "output": 5.0,
+    "why": "tools/reconcile_window.py section 3 holds this one rate on both sides of 2026-09-14 so the before and after medians can be compared with each other. It is not a claim about Fable's rate -- that is the interval above -- and it sits below the interval's low end; what makes the comparison work is that the same rate is in both medians."
+   },
+   "largest_move_pct": 12.8,
+   "method": "median credits per 1% over every clean stretch of the account, split on the announced change; one Fable rate held constant on both sides so the two medians are comparable to each other. An account whose n_with_capture is 0 has no usable capture column, so its meter movement includes work this host never saw and its level reads low; the comparison of its own two sides is still its own.",
+   "per_account": {
+    "a1": {
+     "after": 139377,
+     "before": 123599,
+     "change_pct": 12.8,
+     "n_after": 24,
+     "n_before": 166,
+     "n_with_capture": 0
+    },
+    "a2": {
+     "after": 204632,
+     "before": 187797,
+     "change_pct": 9.0,
+     "n_after": 14,
+     "n_before": 40,
+     "n_with_capture": 55
+    },
+    "a3": {
+     "after": 158809,
+     "before": null,
+     "change_pct": null,
+     "n_after": 14,
+     "n_before": 0,
+     "n_with_capture": 14
+    }
+   },
+   "resolved": false,
+   "spread_after_pct": 46.8,
+   "unit": "credits per 1% of the five-hour meter",
+   "unresolved": "the accounts differ from each other by 46.8% after the change, more than the largest per-account move across it (12.8%), so the five-hour and weekly meters cannot be separated from these stretches"
+  },
   "legacy_uncertain": false,
   "meter_attribution": "unresolved",
   "metric": "weekly_to_five_hour_ratio",
@@ -1651,13 +2611,13 @@
     "earliest": "2026-09-14",
     "latest": "2026-09-14"
    },
-   "latest": "2026-09-14"
+   "latest": "2026-09-15"
   },
-  "percent": 24,
+  "percent": 23,
   "provisional": false,
   "rounding_interval_after": [
-   4.6349,
-   5.2802
+   4.6572,
+   5.3048
   ],
   "rounding_interval_before": [
    6.2214,
@@ -1665,8 +2625,8 @@
   ],
   "scope": "weekly"
  },
- "last_sample_at": "2026-09-20T01:09:39+00:00",
- "meter_read_at": "2026-09-20T02:25:39+00:00",
+ "last_sample_at": "2026-09-20T02:58:39+00:00",
+ "meter_read_at": "2026-09-20T03:26:09+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -1768,25 +2728,27 @@
     "meter_weight": 1.0,
     "model_conversion": "meter budget converted on the reference mix with this model's price-table weights"
    },
+   "credits_family": "fable",
+   "derivation": "list-price dollars, legacy",
    "evidence": {
     "account_count": 2,
-    "capture_diagnosed": 10,
-    "meter_movement_pct": 364.0,
+    "capture_diagnosed": 12,
+    "meter_movement_pct": 384.0,
     "observed_from": "2026-09-17T23:32:08+00:00",
-    "observed_to": "2026-09-20T01:09:39+00:00",
+    "observed_to": "2026-09-20T02:58:39+00:00",
     "readings": 6,
     "reset_verified": true,
-    "rounding_relative": 0.1126,
+    "rounding_relative": 0.112,
     "source": "passive",
-    "stretches": 35,
-    "window_pieces": 41
+    "stretches": 37,
+    "window_pieces": 43
    },
    "freshness": {
-    "as_of": "2026-09-20T01:09:39+00:00",
+    "as_of": "2026-09-20T02:58:39+00:00",
     "stale": false,
-    "stale_after": "2026-09-30T01:09:39+00:00"
+    "stale_after": "2026-09-30T02:58:39+00:00"
    },
-   "measured_at": "2026-09-20T01:09:39+00:00",
+   "measured_at": "2026-09-20T02:58:39+00:00",
    "meter_budget_per_window": 144.05,
    "probe_effort": "low",
    "probed_at": "2026-09-09T00:14:11.932199+00:00",
@@ -1831,25 +2793,27 @@
     "meter_weight": 1.0,
     "model_conversion": "meter budget converted on the reference mix with this model's price-table weights"
    },
+   "credits_family": "opus",
+   "derivation": "list-price dollars, legacy",
    "evidence": {
     "account_count": 2,
-    "capture_diagnosed": 10,
-    "meter_movement_pct": 364.0,
+    "capture_diagnosed": 12,
+    "meter_movement_pct": 384.0,
     "observed_from": "2026-09-17T23:32:08+00:00",
-    "observed_to": "2026-09-20T01:09:39+00:00",
+    "observed_to": "2026-09-20T02:58:39+00:00",
     "readings": 6,
     "reset_verified": true,
-    "rounding_relative": 0.1126,
+    "rounding_relative": 0.112,
     "source": "passive",
-    "stretches": 35,
-    "window_pieces": 41
+    "stretches": 37,
+    "window_pieces": 43
    },
    "freshness": {
-    "as_of": "2026-09-20T01:09:39+00:00",
+    "as_of": "2026-09-20T02:58:39+00:00",
     "stale": false,
-    "stale_after": "2026-09-30T01:09:39+00:00"
+    "stale_after": "2026-09-30T02:58:39+00:00"
    },
-   "measured_at": "2026-09-20T01:09:39+00:00",
+   "measured_at": "2026-09-20T02:58:39+00:00",
    "meter_budget_per_window": 144.05,
    "probe_effort": "low",
    "probed_at": "2026-09-08T12:32:29.571179+00:00",
@@ -1894,25 +2858,27 @@
     "meter_weight": 1.0,
     "model_conversion": "meter budget converted on the reference mix with this model's price-table weights"
    },
+   "credits_family": "sonnet",
+   "derivation": "list-price dollars, legacy",
    "evidence": {
     "account_count": 2,
-    "capture_diagnosed": 10,
-    "meter_movement_pct": 364.0,
+    "capture_diagnosed": 12,
+    "meter_movement_pct": 384.0,
     "observed_from": "2026-09-17T23:32:08+00:00",
-    "observed_to": "2026-09-20T01:09:39+00:00",
+    "observed_to": "2026-09-20T02:58:39+00:00",
     "readings": 6,
     "reset_verified": true,
-    "rounding_relative": 0.1126,
+    "rounding_relative": 0.112,
     "source": "passive",
-    "stretches": 35,
-    "window_pieces": 41
+    "stretches": 37,
+    "window_pieces": 43
    },
    "freshness": {
-    "as_of": "2026-09-20T01:09:39+00:00",
+    "as_of": "2026-09-20T02:58:39+00:00",
     "stale": false,
-    "stale_after": "2026-09-30T01:09:39+00:00"
+    "stale_after": "2026-09-30T02:58:39+00:00"
    },
-   "measured_at": "2026-09-20T01:09:39+00:00",
+   "measured_at": "2026-09-20T02:58:39+00:00",
    "meter_budget_per_window": 144.05,
    "probe_effort": "low",
    "probed_at": "2026-09-14T13:16:57.472646+00:00",
@@ -1939,6 +2905,61 @@
     "output": 0.003485
    },
    "tokens_per_window": 1472136742
+  }
+ },
+ "reference": {
+  "as_of": "2026-01-25",
+  "changes_since": [
+   {
+    "date": "2026-05-06",
+    "date_known": true,
+    "multiplier": 2.0,
+    "quote": "On May 6, 2026, Anthropic announced it had permanently doubled Claude Code's 5-hour rate limits",
+    "scope": "five_hour_window",
+    "source": "explainx.ai timeline",
+    "summary": "Claude Code five-hour limits permanently doubled for Pro, Max, Team and seat-based Enterprise"
+   },
+   {
+    "date": null,
+    "date_known": false,
+    "from": "2026-05",
+    "multiplier": 1.5,
+    "quote": "the fourth deadline Anthropic has set for this promotion since introducing it in May",
+    "scope": "weekly",
+    "source": "devops.com",
+    "summary": "a temporary +50% on Claude Code weekly limits, extended four times",
+    "until": "2026-09-13"
+   },
+   {
+    "date": "2026-09-14",
+    "date_known": true,
+    "multiplier": 1.25,
+    "quote": "Starting September 14, we're permanently raising standard weekly limits in Claude Code by 25% for Pro, Max, Team, and seat-based Enterprise plans",
+    "scope": "weekly",
+    "source": "Anthropic on X, quoted by BleepingComputer; recorded in docs/findings-2026-09-20-reconciliation.md",
+    "summary": "weekly limits set to a permanent +25% over the January baseline"
+   }
+  ],
+  "credits_per_week": {
+   "max20": 83333300,
+   "max5": 41666700,
+   "pro": 5000000
+  },
+  "credits_per_window": {
+   "max20": 11000000,
+   "max5": 3300000,
+   "pro": 550000
+  },
+  "crosspost": "braddelong.substack.com, \"CROSSPOST: SHELLAC\", dated January 25, 2026",
+  "dated": true,
+  "describes": "the plans as they were in January 2026",
+  "name": "Shellac credits table",
+  "note": "a reference to compare a measurement against, never an input to one",
+  "url": "https://she-llac.com/claude-limits",
+  "windows_per_week": {
+   "max20": 7.58,
+   "max5": 12.63,
+   "pro": 9.09
   }
  },
  "schema_version": 2,
@@ -2023,65 +3044,65 @@
      }
     },
     "a2": {
-     "current": 4.53,
-     "n": 63,
+     "current": 4.44,
+     "n": 64,
      "regimes": [
       {
        "assumed": false,
-       "end": "2026-09-14T03:45:24+00:00",
-       "pieces": 35,
-       "points": 35,
+       "end": "2026-09-15T13:16:09+00:00",
+       "pieces": 42,
+       "points": 42,
        "quality": "bounded",
        "rounding_interval": [
-        5.9998,
-        6.8686
+        6.0162,
+        6.9695
        ],
-       "seven_day_pct": 159.0,
+       "seven_day_pct": 160.0,
        "source": "passive_paired_deltas",
        "start": "2026-09-05T10:57:35+00:00",
-       "windows": 6.41
+       "windows": 6.46
       },
       {
        "assumed": false,
-       "end": "2026-09-20T02:29:59.869039+00:00",
-       "pieces": 28,
-       "points": 28,
+       "end": "2026-09-20T07:30:00.883214+00:00",
+       "pieces": 22,
+       "points": 22,
        "quality": "bounded",
        "rounding_interval": [
-        4.056,
-        5.0975
+        4.0227,
+        4.9405
        ],
-       "seven_day_pct": 89.0,
+       "seven_day_pct": 88.0,
        "source": "passive_paired_deltas",
-       "start": "2026-09-14T13:05:31+00:00",
-       "windows": 4.53
+       "start": "2026-09-15T14:38:08+00:00",
+       "windows": 4.44
       }
      ],
      "step": {
-      "after": 4.53,
-      "before": 6.41,
-      "onset": "2026-09-14",
-      "percent": -29
+      "after": 4.44,
+      "before": 6.46,
+      "onset": "2026-09-15",
+      "percent": -31
      }
     },
     "a3": {
-     "current": 5.48,
+     "current": 5.5,
      "n": 9,
      "regimes": [
       {
        "assumed": false,
-       "end": "2026-09-20T02:25:39+00:00",
+       "end": "2026-09-20T03:26:09+00:00",
        "pieces": 9,
        "points": 9,
        "quality": "bounded",
        "rounding_interval": [
-        4.922,
-        6.1542
+        4.96,
+        6.1476
        ],
-       "seven_day_pct": 50.0,
+       "seven_day_pct": 52.0,
        "source": "passive_paired_deltas",
        "start": "2026-09-18T04:06:38+00:00",
-       "windows": 5.48
+       "windows": 5.5
       }
      ],
      "step": null
@@ -4663,19 +5684,6 @@
      "windows": 4.67
     },
     {
-     "account": "a3",
-     "five_hour_pct": 43.0,
-     "pieces": 1,
-     "reset_verified": false,
-     "rounding_interval": [
-      3.9193,
-      5.9992
-     ],
-     "seven_day_pct": 9.0,
-     "window_ending": "2026-09-20T02:25:39+00:00",
-     "windows": 4.78
-    },
-    {
      "account": "a2",
      "five_hour_pct": 9.0,
      "pieces": 1,
@@ -4687,26 +5695,52 @@
      "seven_day_pct": 2.0,
      "window_ending": "2026-09-20T02:29:59.869039+00:00",
      "windows": 4.5
+    },
+    {
+     "account": "a3",
+     "five_hour_pct": 55.0,
+     "pieces": 1,
+     "reset_verified": false,
+     "rounding_interval": [
+      4.2504,
+      5.9994
+     ],
+     "seven_day_pct": 11.0,
+     "window_ending": "2026-09-20T03:26:09+00:00",
+     "windows": 5.0
+    },
+    {
+     "account": "a2",
+     "five_hour_pct": 3.0,
+     "pieces": 1,
+     "reset_verified": true,
+     "rounding_interval": [
+      0.9101,
+      null
+     ],
+     "seven_day_pct": 0.0,
+     "window_ending": "2026-09-20T07:30:00.883214+00:00",
+     "windows": null
     }
    ],
-   "current": 4.94,
+   "current": 4.96,
    "current_estimate": {
-    "as_of": "2026-09-20T02:29:59.869039+00:00",
+    "as_of": "2026-09-20T07:30:00.883214+00:00",
     "assumed": false,
-    "five_hour_pct": 1072.0,
+    "five_hour_pct": 1087.0,
     "from": "2026-09-14T11:30:00.088328+00:00",
-    "pieces": 56,
-    "points": 56,
+    "pieces": 57,
+    "points": 57,
     "quality": "measured",
     "reasons": [],
     "rounding_interval": [
-     4.6349,
-     5.2802
+     4.6572,
+     5.3048
     ],
-    "seven_day_pct": 217.0,
+    "seven_day_pct": 219.0,
     "source": "passive_paired_deltas",
     "stale": false,
-    "value": 4.94
+    "value": 4.96
    },
    "history": [
     {
@@ -4830,18 +5864,18 @@
     },
     {
      "assumed": false,
-     "end": "2026-09-20T02:29:59.869039+00:00",
-     "pieces": 56,
-     "points": 56,
+     "end": "2026-09-20T07:30:00.883214+00:00",
+     "pieces": 57,
+     "points": 57,
      "quality": "bounded",
      "rounding_interval": [
-      4.6349,
-      5.2802
+      4.6572,
+      5.3048
      ],
-     "seven_day_pct": 217.0,
+     "seven_day_pct": 219.0,
      "source": "passive_paired_deltas",
      "start": "2026-09-14T11:30:00.088328+00:00",
-     "windows": 4.94
+     "windows": 4.96
     }
    ],
    "weekly": [
@@ -4917,17 +5951,17 @@
     },
     {
      "assumed": false,
-     "five_hour_pct": 1119.0,
-     "n": 57,
+     "five_hour_pct": 1134.0,
+     "n": 58,
      "partial": true,
      "rounding_interval": [
-      4.6941,
-      5.3307
+      4.7152,
+      5.354
      ],
-     "seven_day_pct": 224.0,
+     "seven_day_pct": 226.0,
      "source": "passive_paired_deltas",
      "week_ending": "2026-09-20",
-     "windows": 5.0
+     "windows": 5.02
     }
    ]
   },
@@ -4937,7 +5971,7 @@
     "reason": "scaled_from_max20_by_weekly_window_ratio",
     "status": "inferred"
    },
-   "current": 8.23,
+   "current": 8.27,
    "current_estimate": null,
    "history": [
     {
@@ -9339,7 +10373,7 @@
     "reason": "scaled_from_max20_by_weekly_window_ratio",
     "status": "inferred"
    },
-   "current": 5.93,
+   "current": 5.95,
    "current_estimate": null,
    "history": [],
    "inferred_from": "max20",
