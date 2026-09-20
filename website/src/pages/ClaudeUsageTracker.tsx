@@ -1201,6 +1201,11 @@ export default function ClaudeUsageTracker({
                         </div>
                       )}
                       {cr.splitSource && <div className="quiet">Split: {cr.splitSource}.</div>}
+                      {cr.cacheNormalised && cr.medianSessionTokens !== null && (
+                        <div className="quiet">
+                          Cache-normalised at that split, over a median session of {fmtTokens(cr.medianSessionTokens)} tokens.
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
@@ -1590,6 +1595,7 @@ export default function ClaudeUsageTracker({
                               <em>
                                 {typeof cell.cache_read_share === "number" ? `${fmtShare(cell.cache_read_share)} cache read` : "no cache share"}
                                 {typeof cell.runs === "number" ? ` · ${cell.runs} runs` : ""}
+                                {typeof cell.cold_cache_runs === "number" ? ` · ${cell.cold_cache_runs} cold` : ""}
                               </em>
                             </div>
                           )}
@@ -1644,7 +1650,15 @@ export default function ClaudeUsageTracker({
                 {emptyCapture.join(", ")}: {captureNote}.
               </div>
             )}
-            {acrossCut.unresolved && <div className="quiet">Unresolved: {acrossCut.unresolved}.</div>}
+            {typeof acrossCut.spread_after_pct === "number" && typeof acrossCut.largest_move_pct === "number" && (
+              <div className="quiet">
+                Spread between the accounts after the change: {acrossCut.spread_after_pct}%. Largest move one account made
+                across it: {acrossCut.largest_move_pct}%.
+              </div>
+            )}
+            {(acrossCut.unresolved || acrossCut.resolved === false) && (
+              <div className="quiet">{acrossCut.unresolved ? `Unresolved: ${acrossCut.unresolved}.` : "Unresolved."}</div>
+            )}
           </section>
         )}
 
@@ -1675,7 +1689,8 @@ export default function ClaudeUsageTracker({
                       <td>{label}</td>
                       <td>
                         {fmtCredits(fromWeekly.weekly_cap_baseline_credits)} × {side.weekly_cap_multiplier} ={" "}
-                        {fmtCredits(side.announced_weekly_cap_credits)} ÷ {side.windows_per_week_measured.toFixed(2)} windows
+                        {fmtCredits(side.announced_weekly_cap_credits)} ÷ {side.windows_per_week_measured.toFixed(2)}
+                        {fmtInterval(side.windows_per_week_rounding_interval) ? ` (${fmtInterval(side.windows_per_week_rounding_interval)})` : ""} windows
                       </td>
                       <td>{typeof side.value === "number" ? fmtCredits(side.value) : "—"}</td>
                     </tr>
@@ -1844,6 +1859,10 @@ export default function ClaudeUsageTracker({
                   ? `${MODEL_LABELS["claude-fable-5-1"] ?? "Fable"}'s credit rate: ${fableInterval.status}${
                       typeof fableInterval.input_low === "number" && typeof fableInterval.input_high === "number"
                         ? `, ${fableInterval.input_low} to ${fableInterval.input_high} credits per input token`
+                        : ""
+                    }${
+                      typeof fableInterval.window_credits_per_pct === "number"
+                        ? `, solved against a window of ${fmtCredits(fableInterval.window_credits_per_pct)} credits per 1% of the meter`
                         : ""
                     }.`
                   : ""}

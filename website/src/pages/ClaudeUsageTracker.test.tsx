@@ -368,6 +368,7 @@ describe("the credits block on the page", () => {
     // The sessions figures are cache-normalised, so the split they assume is beside them.
     expect(text).toContain("0.01% input · 0.4% output · 97.0% cache read · 2.5% cache write");
     expect(text).toContain("Split: history/passive.json `split`, the watched accounts' own token-class shares.");
+    expect(text).toContain("Cache-normalised at that split, over a median session of 1.8M tokens.");
   });
 
   it("prints a status sentence in the figure's place, and never a null", () => {
@@ -403,9 +404,11 @@ describe("the credits block on the page", () => {
     const mix = CREDITS.credits!.effort_cache_mix!["claude-sonnet-5"]!;
     // The Sonnet row inverts -- low reads dearer than medium -- and the share is what explains it.
     expect(mix.low!.cache_read_share!).toBeGreaterThan(mix.medium!.cache_read_share!);
-    expect(text).toContain("$0.02 91.5% cache read · 7 runs");
-    expect(text).toContain("$0.03 80.4% cache read · 7 runs");
-    expect(text).toContain("$0.22 61.0% cache read · 7 runs");
+    // Four of the seven low runs ran cold, which is the whole reason the cell reads dearer.
+    expect(text).toContain("$0.02 91.5% cache read · 7 runs · 4 cold");
+    expect(text).toContain("$0.03 80.4% cache read · 7 runs · 3 cold");
+    // Another model's row, so the matrix is not one row wide.
+    expect(text).toContain("$0.22 61.0% cache read · 7 runs · 6 cold");
   });
 
   it("states what the plan ratios rest on, and that the source is undated", () => {
@@ -427,6 +430,9 @@ describe("the credits block on the page", () => {
     expect(text).toContain("a3 — 158,809 — 0 14 14");
     expect(text).toContain("a1: An account whose n_with_capture is 0 has no usable capture column");
     expect(text).toContain(
+      "Spread between the accounts after the change: 46.8%. Largest move one account made across it: 12.8%.",
+    );
+    expect(text).toContain(
       "Unresolved: the accounts differ from each other by 46.8% after the change, more than the largest per-account move across it (12.8%), so the five-hour and weekly meters cannot be separated from these stretches.",
     );
   });
@@ -434,8 +440,8 @@ describe("the credits block on the page", () => {
   it("shows the announced-cap cross-check beside the measured window, with the reference dated", () => {
     const text = render(CREDITS, "max20", "claude-opus-5");
     expect(text).toContain("Cross-check against the announced caps");
-    expect(text).toContain("Before the change 83,333,300 × 1.5 = 124,999,950 ÷ 6.48 windows 19,290,116");
-    expect(text).toContain("After the change 83,333,300 × 1.25 = 104,166,625 ÷ 4.96 windows 21,001,336");
+    expect(text).toContain("Before the change 83,333,300 × 1.5 = 124,999,950 ÷ 6.48 (6.2 to 6.8) windows 19,290,116");
+    expect(text).toContain("After the change 83,333,300 × 1.25 = 104,166,625 ÷ 4.96 (4.6 to 5.3) windows 21,001,336");
     expect(text).toContain("Measured pure-opus stretches, n=11 19,543,887");
     expect(text).toContain("Baseline 83,333,300 credits per week, as of 25 Jan 2026: she-llac.com/claude-limits");
     expect(text).toContain("A reference, shown beside the measurement and never an input to it.");
@@ -450,7 +456,9 @@ describe("the credits block on the page", () => {
     const text = render(CREDITS, "max20", "claude-opus-5");
     expect(CREDITS.credits!.harness_runs_excluded).toHaveLength(16);
     expect(text).toContain("16 harness runs are excluded from the stretches behind these figures.");
-    expect(text).toContain("Fable 5.1's credit rate: interval, not yet separable, 1.1935 to 2.3631 credits per input token.");
+    expect(text).toContain(
+      "Fable 5.1's credit rate: interval, not yet separable, 1.1935 to 2.3631 credits per input token, solved against a window of 195,439 credits per 1% of the meter.",
+    );
   });
 
   it("renders a file with no credits block exactly as it does today", () => {
