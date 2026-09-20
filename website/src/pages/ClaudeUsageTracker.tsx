@@ -8,6 +8,7 @@ import {
   EFFORTS,
   MODEL_LABELS,
   accountWindowsPerWeek,
+  basisDate,
   cacheReadShareFor,
   captureEmptyNote,
   changeLines,
@@ -36,7 +37,7 @@ import {
   documentedSource,
   documentedWindowsPerWeek,
   effortRunCounts,
-  referenceDateFor,
+  shortfallRows,
   windowCreditAccountsWithoutStretch,
   weeklyRegimeLevelsFor,
   weeklySeriesFor,
@@ -907,7 +908,7 @@ export default function ClaudeUsageTracker({
       // The basis blocks say the table is undated; the reference block dates the same URL. The
       // date is the fact, so it wins wherever the two disagree (finding 4).
       undated: pb?.dated === false || wb?.dated === false,
-      asOf: data ? referenceDateFor(data, url) : null,
+      asOf: data ? basisDate(data, pb) ?? basisDate(data, wb) : null,
       url,
       urlText: url ? url.replace(/^https?:\/\//, "") : null,
     };
@@ -1026,7 +1027,7 @@ export default function ClaudeUsageTracker({
   const runCounts = effortRunCounts(effortMix);
   const documentedUrlText =
     data?.weekly_window_ratios_basis?.source_url?.replace(/^https?:\/\//, "") ?? "she-llac.com/claude-limits";
-  const documentedAsOf = data ? referenceDateFor(data, data.weekly_window_ratios_basis?.source_url) : null;
+  const documentedAsOf = data ? basisDate(data, data.weekly_window_ratios_basis) : null;
   // The input and output API-value lines are the same window priced at each class's own rate, and
   // on every file so far they come to the same figure. Two identical lines read as two findings.
   const usdOneLine = !!(
@@ -1109,11 +1110,12 @@ export default function ClaudeUsageTracker({
     if (!cr || cr.modelStatus || typeof cr.creditsPerTokenIn !== "number") return null;
     const rate = (n: number) => n.toFixed(3);
     const family = cr.family ? cr.family.charAt(0).toUpperCase() + cr.family.slice(1) : MODEL_LABELS[model] ?? model;
+    const at = cr.familyAsOf ? `, as of ${fmtDate(cr.familyAsOf)}` : "";
     const lead =
       cr.rateSource === "measured"
-        ? `Priced at the meter's measured ${family} rate`
+        ? `Priced at the meter's measured ${family} rate${at}`
         : cr.rateSource === "reference"
-          ? `Priced at the reference ${family} rate`
+          ? `Priced at the reference ${family} rate${at}`
           : null;
     if (lead === null) return null;
     const iv = cr.creditsPerTokenInInterval;
@@ -1138,6 +1140,11 @@ export default function ClaudeUsageTracker({
     .map(([label]) => label);
   const captureNote = captureEmptyNote(acrossCut?.method);
   const fromWeekly = credits?.window_credits_from_weekly ?? null;
+  // Goal 7: the measured windows per week against the reference table's own, per plan, with the
+  // announced changes since that table applied. A comparison, never an input to a figure here.
+  const shortfall = data?.reference?.shortfall ?? null;
+  const shortfallPlans = data ? shortfallRows(data) : [];
+  const perWeekFmt = (v: number | null | undefined) => (typeof v === "number" ? v.toFixed(2) : "\u2014");
   // A stretch that overlaps one of the tracker's own runs is dropped, so the figures describe
   // ordinary working days and not the tracker measuring itself. The count says how many.
   const harnessExcluded = credits?.harness_runs_excluded?.length ?? null;
@@ -1367,11 +1374,16 @@ export default function ClaudeUsageTracker({
                       {/* What the credits block says about its own figures: how the window was
                           measured, and what this family's row was priced at. Not another block's
                           date (finding 5). */}
-                      {cr.windowCreditsMethod && <div className="quiet">Method: {cr.windowCreditsMethod}</div>}
+                      {cr.windowCreditsMethod && (
+                        <div className="quiet">
+                          Method: {cr.windowCreditsMethod}
+                          {cr.creditsAsOf ? ` Measured to ${fmtDate(cr.creditsAsOf)}.` : ""}
+                        </div>
+                      )}
                       {cr.modelStatus ? (
                         <div className="quiet">
-                          {cr.family ? `${cr.family.charAt(0).toUpperCase()}${cr.family.slice(1)}` : MODEL_LABELS[model] ?? model} rate:{" "}
-                          {cr.modelStatus}.
+                          {cr.family ? `${cr.family.charAt(0).toUpperCase()}${cr.family.slice(1)}` : MODEL_LABELS[model] ?? model} rate
+                          {cr.familyAsOf ? `, as of ${fmtDate(cr.familyAsOf)}` : ""}: {cr.modelStatus}.
                         </div>
                       ) : (
                         creditRateLine && <div className="quiet">{creditRateLine}</div>
@@ -1872,9 +1884,11 @@ export default function ClaudeUsageTracker({
             cluster, which is the only reason it is worth putting beside it. Every number in the
             arithmetic below is published: the page states the composition, it does not compute
             the result, and the undated baseline is never an input to a figure of our own. */}
-        {!unavailable && fromWeekly && (
+        {!unavailable && (fromWeekly || shortfall) && (
           <section>
             <h2>Cross-check against the announced caps</h2>
+            {fromWeekly && (
+              <>
             <p className="sub">
               {fromWeekly.kind === "cross_check"
                 ? "A cross-check, not a second measurement: the announced weekly cap over this tracker's own measured windows per week."
@@ -1943,6 +1957,79 @@ export default function ClaudeUsageTracker({
                     {c.source ? ` (${c.source})` : ""}
                   </div>
                 ))}
+              </>
+            )}
+              </>
+            )}
+            {/* Goal 7. The measured levels against the reference table's own, per plan. The table
+                predates three announced changes, so what it predicts today is its own figure with
+                those multipliers applied, and the publisher says whether that closes the gap. */}
+            {shortfall && shortfallPlans.length > 0 && (
+              <>
+                <p className="sub">
+                  Measured against the reference table{shortfall.what ? `: ${shortfall.what}` : ""}.
+                  {shortfall.cut_at ? ` Cut at ${fmtDate(shortfall.cut_at.slice(0, 10))}.` : ""}
+                </p>
+                <table>
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Measured</th>
+                      <th>Documented</th>
+                      <th>Measured ÷ documented</th>
+                      <th>Expected</th>
+                      <th>Measured ÷ expected</th>
+                      <th>Regime</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shortfallPlans.map(({ plan: p, row }) => (
+                      <tr key={p}>
+                        <td className={p === plan ? "hl" : ""}>{PLAN_LABELS[p]}</td>
+                        {row.status ? (
+                          <td colSpan={6}>{row.status}</td>
+                        ) : (
+                          <>
+                            <td className={p === plan ? "hl" : ""}>{perWeekFmt(row.measured_windows_per_week)}</td>
+                            <td>{perWeekFmt(row.documented_windows_per_week)}</td>
+                            <td>{perWeekFmt(row.ratio)}</td>
+                            <td>{perWeekFmt(row.expected_windows_per_week)}</td>
+                            <td>{perWeekFmt(row.ratio_to_expected)}</td>
+                            <td>
+                              {row.from && row.to
+                                ? `${fmtDate(row.from.slice(0, 10))} to ${fmtDate(row.to.slice(0, 10))}`
+                                : "\u2014"}
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(typeof shortfall.multipliers_applied?.five_hour_window === "number" ||
+                  typeof shortfall.multipliers_applied?.weekly === "number") && (
+                  <div className="quiet">
+                    Multipliers applied to the table's figures:{" "}
+                    {[
+                      typeof shortfall.multipliers_applied?.five_hour_window === "number"
+                        ? `five-hour window ×${shortfall.multipliers_applied.five_hour_window}`
+                        : null,
+                      typeof shortfall.multipliers_applied?.weekly === "number"
+                        ? `weekly ×${shortfall.multipliers_applied.weekly}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                    .
+                  </div>
+                )}
+                {shortfall.explanation && <div className="quiet">{shortfall.explanation}</div>}
+                {shortfall.status && (
+                  <div className="quiet">
+                    Status: {shortfall.status}
+                    {shortfall.source ? ` (${shortfall.source})` : ""}.
+                  </div>
+                )}
               </>
             )}
           </section>

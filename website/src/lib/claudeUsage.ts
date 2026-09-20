@@ -330,14 +330,17 @@ export interface UsageJson {
     scope?: string;
     source_url?: string;
     credits_per_window?: Partial<Record<Plan, number>>;
-    // False on the credits table: the source carries no date, so the page says so beside it.
+    // False before tracker PR #68, which dates both basis blocks from the same table the
+    // `reference` block dates. The page reads the block's own date where it has one.
     dated?: boolean;
+    as_of?: string | null;
   };
   weekly_window_ratios_basis?: {
     kind?: string;
     source_url?: string;
     scope?: string;
     dated?: boolean;
+    as_of?: string | null;
     credits_per_week?: Partial<Record<Plan, number>>;
     documented_windows_per_week?: Partial<Record<Plan, number>>;
     // The one ratio this tracker has measured for itself, and the spans it was measured over.
@@ -554,6 +557,17 @@ export function referenceDateFor(j: UsageJson, url: string | null | undefined): 
   return sameSourceUrl(j.reference?.url, url) ? as_of : null;
 }
 
+// The date a basis block's source carries: the block's own `as_of` (tracker PR #68), else the
+// reference block's date for the same URL. Both say the same day about the same table; a file
+// published before #68 has only the second, and reads the same.
+export function basisDate(
+  j: UsageJson,
+  basis: { as_of?: string | null; source_url?: string } | null | undefined,
+): string | null {
+  if (basis?.as_of) return basis.as_of;
+  return referenceDateFor(j, basis?.source_url);
+}
+
 // One plan's documented windows per week, as the weekly basis block publishes it.
 export function documentedWindowsPerWeek(j: UsageJson, plan: Plan): number | null {
   const published = j.weekly_window_ratios_basis?.documented_windows_per_week?.[plan];
@@ -567,7 +581,7 @@ export function documentedSource(j: UsageJson): string {
   const url = j.weekly_window_ratios_basis?.source_url;
   if (!url) return DOCUMENTED_FALLBACK_SOURCE;
   const host = url.replace(/^https?:\/\//, "").split("/")[0];
-  const at = referenceDateFor(j, url);
+  const at = basisDate(j, j.weekly_window_ratios_basis);
   return at ? `${host}, ${fmtDate(at)}` : host;
 }
 
@@ -1156,6 +1170,10 @@ export interface PerModelCredits {
   rate_source?: string | null;
   reference_rate?: { input: number | null; output: number | null } | null;
   reference_rate_note?: string | null;
+  // The newest stretch this row's own figures rest on. Null where the row has no stretch to
+  // date at all, in which case the page shows no date rather than the file's.
+  as_of?: string | null;
+  as_of_source?: string | null;
 }
 
 // One effort cell priced in credits (tracker PR #67): the median of the cell's own runs, and that
@@ -1259,6 +1277,10 @@ export interface HarnessRunExcluded {
 }
 
 export interface CreditsBlock {
+  // Tracker PR #68: the newest stretch every figure in the block rests on. The block's figures
+  // are measured, so they carry their own date rather than the file's build time.
+  as_of?: string | null;
+  as_of_source?: Record<string, string | null>;
   window_credits: WindowCredits;
   window_credits_from_weekly?: WindowCreditsFromWeekly;
   per_model?: Record<string, PerModelCredits>;
@@ -1285,6 +1307,36 @@ export interface ReferenceChange {
   source?: string;
 }
 
+// One plan's row of the shortfall table: what this tracker measured, what the reference table
+// lists, and what that table predicts once the announced changes since it are applied. A plan the
+// tracker has never measured publishes a `status` sentence and nulls, and the page prints the
+// sentence in place of the row's numbers.
+export interface ShortfallPlan {
+  measured_windows_per_week: number | null;
+  documented_windows_per_week: number | null;
+  ratio: number | null;
+  expected_windows_per_week: number | null;
+  ratio_to_expected: number | null;
+  from: string | null;
+  to: string | null;
+  status?: string | null;
+}
+
+// Why the measured windows per week sit below the reference table's, published as a comparison
+// with its own status: "explained" once the announced changes account for the gap, "open" while
+// they do not. Never an input to a figure on this page.
+export interface ReferenceShortfall {
+  per_plan?: Partial<Record<Plan, ShortfallPlan>>;
+  multipliers_applied?: { five_hour_window?: number | null; weekly?: number | null };
+  explanation?: string;
+  status?: string;
+  cut_at?: string;
+  what?: string;
+  source?: string;
+  plans_measured?: Plan[];
+  ratio_range?: (number | null)[];
+}
+
 export interface ReferenceBlock {
   as_of?: string;
   url?: string;
@@ -1293,10 +1345,19 @@ export interface ReferenceBlock {
   describes?: string;
   note?: string;
   changes_since?: ReferenceChange[];
+  shortfall?: ReferenceShortfall;
 }
 
 export function creditsOf(j: UsageJson): CreditsBlock | null {
   return j.credits ?? null;
+}
+
+// The reference table's own comparison against the measured levels, in plan order. Empty for a
+// file published before the block existed, so the section it draws simply does not appear.
+export function shortfallRows(j: UsageJson): { plan: Plan; row: ShortfallPlan }[] {
+  const per = j.reference?.shortfall?.per_plan;
+  if (!per) return [];
+  return (["pro", "max5", "max20"] as Plan[]).flatMap((plan) => (per[plan] ? [{ plan, row: per[plan]! }] : []));
 }
 
 // `per_model` is keyed by family, not by model id: the meter's rates are per family and "Opus of
@@ -1455,6 +1516,8 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
     // date (finding 5): how the window was measured, and what this family's row was priced at.
     windowCreditsMethod: wc?.method ?? null,
     rateSource: per?.rate_source ?? null,
+    creditsAsOf: credits.as_of ?? null,
+    familyAsOf: per?.as_of ?? null,
     creditsPerTokenIn: per?.credits_per_token?.input ?? null,
     creditsPerTokenInInterval: per?.credits_per_token_interval?.input ?? null,
     referenceRateIn: per?.reference_rate?.input ?? null,
