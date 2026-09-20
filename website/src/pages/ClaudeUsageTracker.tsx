@@ -7,6 +7,12 @@ import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
   EFFORTS,
   MODEL_LABELS,
+  captureEmptyNote,
+  changeLines,
+  computeCredits,
+  creditsOf,
+  fmtCredits,
+  fmtShare,
   PLAN_LABELS,
   RANGE_DAYS,
   compute,
@@ -32,6 +38,7 @@ import {
   weeklyTokenRegimeLevelsFor,
   weeklyTokenSeriesFor,
   type ContribPoint,
+  type CreditFigureText,
   type Effort,
   type Plan,
   type RangeDays,
@@ -291,6 +298,18 @@ export interface LevelOverlay extends ReturnType<typeof weeklyReadingsFor> {
 // A seven-day movement under this many percent gives a ratio that whole-percent rounding alone
 // swings between 3 and 11, so those readings are drawn hollow and fainter.
 const COARSE_SEVEN_DAY_PCT = 5;
+
+// Pro, Max 5x, Max 20x: the order the credits table lists its plans in, and the order every
+// ratio on this page is read in.
+const PLAN_ORDER: Plan[] = ["pro", "max5", "max20"];
+const PLAN_ORDER_LABEL = PLAN_ORDER.map((p) => PLAN_LABELS[p]).join(" : ");
+
+// "550,000 : 3,300,000 : 11,000,000", or null unless every plan in the order has a figure: a
+// partial ratio is not a ratio.
+function perPlanText(m: Partial<Record<Plan, number>> | undefined): string | null {
+  if (!m || !PLAN_ORDER.every((p) => typeof m[p] === "number")) return null;
+  return PLAN_ORDER.map((p) => m[p]!.toLocaleString("en-US")).join(" : ");
+}
 
 const fmtInterval = (iv: (number | null)[] | null | undefined): string | null =>
   iv && typeof iv[0] === "number" && typeof iv[1] === "number" ? `${iv[0].toFixed(1)} to ${iv[1].toFixed(1)}` : null;
@@ -609,6 +628,63 @@ function LegendMark({ kind }: { kind: "reading" | "weekly" | "documented" }) {
 }
 
 // A documented level is quoted as its source gives it, to two places.
+// A published credits figure in the hero's own type.
+//
+// A figure the tracker can bound but not identify publishes a sentence in place of its value, so
+// the sentence takes the number's place rather than a dash, a zero or a silently-dropped line.
+// The interval is shown beneath either way, as the range the readings spanned.
+function Fig({ fig, unit, statusUnit, lead }: { fig: CreditFigureText; unit: string; statusUnit?: string; lead?: string }) {
+  // Number first where there is a number, unit first where what was published is a sentence:
+  // "about 354 sessions per window", but "sessions per window: rate not yet identified".
+  return fig.kind === "value" ? (
+    <>
+      {lead ? `${lead} ` : ""}
+      <b>{fig.text}</b> {unit}
+    </>
+  ) : (
+    <>
+      {statusUnit ?? unit}: <b>{fig.text}</b>
+    </>
+  );
+}
+
+// The same figure on one line, for the one that sits beside the hero figure rather than under it.
+function FigureLine({ fig, unit, statusUnit }: { fig: CreditFigureText; unit: string; statusUnit?: string }) {
+  return (
+    <div className="rate">
+      <span>
+        <Fig fig={fig} unit={unit} statusUnit={statusUnit} />
+        {fig.range ? ` (${fig.range})` : ""}
+      </span>
+    </div>
+  );
+}
+
+function HeroFigure({
+  fig,
+  unit,
+  statusUnit,
+  usd,
+}: {
+  fig: CreditFigureText;
+  unit: string;
+  statusUnit?: string;
+  usd?: boolean;
+}) {
+  // A figure with no value never takes the 72px slot: there is no number to put in it, and a
+  // sentence set at that size is not the page's look. It drops to the line beside it instead.
+  if (fig.kind !== "value") return <FigureLine fig={fig} unit={unit} statusUnit={statusUnit} />;
+  return (
+    <>
+      <div className={usd ? "big usd" : "big"}>
+        {fig.text}
+        <span>{unit}</span>
+      </div>
+      {fig.range && <div className="quiet">Range {fig.range}.</div>}
+    </>
+  );
+}
+
 const fmtValue2 = (v: number) => v.toFixed(2);
 
 // What each tab of the contributors section plots. Every one is read off the same
@@ -808,6 +884,29 @@ export default function ClaudeUsageTracker({
         : null,
     [data, plan],
   );
+  // 5. What the plan table's ratios rest on, in the basis blocks' own figures.
+  const ratioBasis = useMemo(() => {
+    const pb = data?.plan_ratios_basis;
+    const wb = data?.weekly_window_ratios_basis;
+    if (!pb && !wb) return null;
+    const mc = wb?.measured_confirmation;
+    const url = pb?.source_url ?? wb?.source_url ?? null;
+    return {
+      kind: pb?.kind ?? wb?.kind ?? null,
+      perWindow: perPlanText(pb?.credits_per_window),
+      perWeek: perPlanText(wb?.credits_per_week),
+      confirmation:
+        mc && typeof mc.max5_over_max20 === "number"
+          ? `Max 5x over Max 20x ${mc.max5_over_max20}${mc.spans ? `, ${mc.spans}` : ""}`
+          : null,
+      // The credits table carries no date. An undated reference reads as a figure for now, and
+      // the gap between it and a measurement reads as an unexplained factor, so the page says it.
+      undated: pb?.dated === false || wb?.dated === false,
+      url,
+      urlText: url ? url.replace(/^https?:\/\//, "") : null,
+    };
+  }, [data]);
+  const referenceChanges = data?.reference?.changes_since ?? [];
   const chartPoints = useMemo(() => (data ? seriesFor(data, plan, model, range) : []), [data, plan, model, range]);
   const weeklySeries = useMemo(() => (data ? weeklySeriesFor(data) : []), [data]);
   const weeklyEvents = useMemo(() => (data ? weeklyEventsFor(data) : []), [data]);
@@ -868,6 +967,34 @@ export default function ClaudeUsageTracker({
     [data, plan],
   );
   const scaling = useMemo(() => (data ? planScaling(data) : null), [data]);
+  // The credits block, and the hero's figures read off it on the selected plan's scale. Both are
+  // null for a file published before the block existed, and every sentence below falls back to
+  // the wording that file has always rendered.
+  const credits = useMemo(() => (data ? creditsOf(data) : null), [data]);
+  const cr = useMemo(() => (data ? computeCredits(data, plan, model) : null), [data, plan, model]);
+  const changeSentences = useMemo(() => (data ? changeLines(data) : []), [data]);
+  // How many accounts the passive readings rest on, in words. Null without the credits block, in
+  // which case the page keeps saying "a real account" as it does today.
+  const accountsWord =
+    credits && typeof data?.passive_account_count === "number"
+      ? data.passive_account_count === 1
+        ? "one account"
+        : `${data.passive_account_count} accounts`
+      : null;
+  const effortMix = credits?.effort_cache_mix ?? null;
+  const acrossCut = credits?.five_hour_window_across_cut ?? null;
+  // The accounts whose capture column is empty, and the publisher's own sentence for what that
+  // means. Paraphrasing a measurement caveat is how it gets weaker, so the sentence is lifted
+  // out of the block's `method` rather than rewritten here.
+  const emptyCapture = Object.entries(acrossCut?.per_account ?? {})
+    .filter(([, a]) => a.n_with_capture === 0)
+    .map(([label]) => label);
+  const captureNote = captureEmptyNote(acrossCut?.method);
+  const fromWeekly = credits?.window_credits_from_weekly ?? null;
+  // A stretch that overlaps one of the tracker's own runs is dropped, so the figures describe
+  // ordinary working days and not the tracker measuring itself. The count says how many.
+  const harnessExcluded = credits?.harness_runs_excluded?.length ?? null;
+  const fableInterval = credits?.fable_interval ?? null;
   // Which plans' current weekly figure is inferred from another plan, and the cut it dates from.
   const inferredPlans = data
     ? (Object.keys(PLAN_LABELS) as Plan[]).filter((p) => compute(data, p, model, effort)?.weeklyInferred)
@@ -949,6 +1076,16 @@ export default function ClaudeUsageTracker({
               }}
             />
           )}
+          {/* What the headline figure was measured either side of, Anthropic's own figure for
+              the same change, and -- where the stretches cannot separate the two meters -- that
+              they cannot. Empty without the credits block. */}
+          {!unavailable && changeSentences.length > 0 && (
+            <div className="quiet">
+              {changeSentences.map((line) => (
+                <span key={line}>{line} </span>
+              ))}
+            </div>
+          )}
           {!unavailable && data && (
             <div className="pillrow">
               {localTime && (
@@ -993,43 +1130,119 @@ export default function ClaudeUsageTracker({
               {!r.included && <div className="quiet">{notIncluded}</div>}
               {r.included && r.tokensPerWindow !== null && r.split !== null && (
                 <>
-                  <div className="big">
-                    {fmtTokens(r.tokensPerWindow)}
-                    <span>tokens per 5-hour window</span>
-                  </div>
-                  <div className="big usd">
-                    {fmtUsd(r.apiValueUsd)}
-                    <span>of API value per 5-hour window</span>
-                  </div>
-                  {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
-                    <div className="rate">
-                      {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
-                        <>
+                  {/* Two routes to the same window are published. The credits route is the
+                      measurement: every token priced at the rate the meter charges, no fitted
+                      parameter in it. The dollar route below is what the page showed before the
+                      block existed, and it is what a file without the block still renders. */}
+                  {cr && cr.tokensIn ? (
+                    <>
+                      <HeroFigure fig={cr.tokensIn} unit="input tokens per 5-hour window" />
+                      {cr.tokensOut && <FigureLine fig={cr.tokensOut} unit="output tokens per 5-hour window" />}
+                      {cr.usdIn && (
+                        <HeroFigure
+                          fig={cr.usdIn}
+                          unit="of API value per window in input tokens"
+                          statusUnit="API value per window in input tokens"
+                          usd
+                        />
+                      )}
+                      {cr.usdOut && (
+                        <FigureLine
+                          fig={cr.usdOut}
+                          unit="of API value per window in output tokens"
+                          statusUnit="API value per window in output tokens"
+                        />
+                      )}
+                      {cr.windowCredits && (
+                        <div className="rate">
                           <span>
-                            about <b>{Math.round(r.sessionsPerWindow)}</b> sessions<em>·</em>
-                            <b>{Math.round(r.sessionsPerWeek)}</b> per week
+                            <Fig fig={cr.windowCredits} unit="credits per 5-hour window" />
+                            {cr.windowCredits.range ? ` (${cr.windowCredits.range})` : ""}
+                            {cr.windowCreditsN !== null ? `, n=${cr.windowCreditsN}` : ""}
+                            {cr.pureFamily ? `, pure-${cr.pureFamily} stretches` : ""}
+                            {cr.accountCount !== null
+                              ? `, on ${cr.accountCount === 1 ? "one account" : `${cr.accountCount} accounts`}`
+                              : ""}
+                            .
                           </span>
-                          {r.apiValueUsdPerWeek !== null && <em className="brk">·</em>}
-                        </>
+                        </div>
                       )}
-                      {r.apiValueUsdPerWeek !== null && (
+                      {(cr.sessionsPerWindow || cr.sessionsPerWeek) && (
+                        <div className="rate">
+                          {cr.sessionsPerWindow && (
+                            <span>
+                              <Fig fig={cr.sessionsPerWindow} unit="sessions per window" lead="about" />
+                              {cr.sessionsPerWindow.range ? ` (${cr.sessionsPerWindow.range})` : ""}
+                            </span>
+                          )}
+                          {cr.sessionsPerWindow && cr.sessionsPerWeek && <em className="brk">·</em>}
+                          {cr.sessionsPerWeek && (
+                            <span>
+                              <Fig fig={cr.sessionsPerWeek} unit="per week" />
+                              {cr.sessionsPerWeek.range ? ` (${cr.sessionsPerWeek.range})` : ""}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {/* The sessions figures are cache-normalised: cache reads cost nothing
+                          against the meter, so the same window bought cold is worth far fewer
+                          tokens. The split they assume belongs beside them, not behind them. */}
+                      {cr.split && (
+                        <div className="split">
+                          <span>
+                            <b>{fmtShare(cr.split.input ?? 0)}</b> input<em>·</em>
+                            <b>{fmtShare(cr.split.output ?? 0)}</b> output
+                          </span>
+                          <em className="brk">·</em>
+                          <span>
+                            <b>{fmtShare(cr.split.cache_read ?? 0)}</b> cache read<em>·</em>
+                            <b>{fmtShare(cr.split.cache_write ?? 0)}</b> cache write
+                          </span>
+                        </div>
+                      )}
+                      {cr.splitSource && <div className="quiet">Split: {cr.splitSource}.</div>}
+                    </>
+                  ) : (
+                    <>
+                      <div className="big">
+                        {fmtTokens(r.tokensPerWindow)}
+                        <span>tokens per 5-hour window</span>
+                      </div>
+                      <div className="big usd">
+                        {fmtUsd(r.apiValueUsd)}
+                        <span>of API value per 5-hour window</span>
+                      </div>
+                      {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
+                        <div className="rate">
+                          {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
+                            <>
+                              <span>
+                                about <b>{Math.round(r.sessionsPerWindow)}</b> sessions<em>·</em>
+                                <b>{Math.round(r.sessionsPerWeek)}</b> per week
+                              </span>
+                              {r.apiValueUsdPerWeek !== null && <em className="brk">·</em>}
+                            </>
+                          )}
+                          {r.apiValueUsdPerWeek !== null && (
+                            <span>
+                              <b>{fmtUsd(r.apiValueUsdPerWeek)}</b> of API value per week
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <div className="split">
                         <span>
-                          <b>{fmtUsd(r.apiValueUsdPerWeek)}</b> of API value per week
+                          <b>{fmtTokens(r.split.input)}</b> input<em>·</em>
+                          <b>{fmtTokens(r.split.output)}</b> output
                         </span>
-                      )}
-                    </div>
+                        <em className="brk">·</em>
+                        <span>
+                          <b>{fmtTokens(r.split.cache_read)}</b> cache read<em>·</em>
+                          <b>{fmtTokens(r.split.cache_write)}</b> cache write
+                        </span>
+                      </div>
+                    </>
                   )}
-                  <div className="split">
-                    <span>
-                      <b>{fmtTokens(r.split.input)}</b> input<em>·</em>
-                      <b>{fmtTokens(r.split.output)}</b> output
-                    </span>
-                    <em className="brk">·</em>
-                    <span>
-                      <b>{fmtTokens(r.split.cache_read)}</b> cache read<em>·</em>
-                      <b>{fmtTokens(r.split.cache_write)}</b> cache write
-                    </span>
-                  </div>
                   {fmtSource(data.rates[model]) && (
                     <div className="quiet">Source: {fmtSource(data.rates[model])}</div>
                   )}
@@ -1038,7 +1251,9 @@ export default function ClaudeUsageTracker({
                       A week currently holds about {r.planWindowsPerWeek.toFixed(1)} five-hour windows,{" "}
                       {r.weeklyInferred
                         ? `inferred from ${PLAN_LABELS[weeklyCurrentFor(data, plan)?.inferredFrom ?? data.plan_measured]}`
-                        : "measured from a real account"}
+                        : accountsWord
+                          ? `measured from ${accountsWord}`
+                          : "measured from a real account"}
                       {data.last_change?.scope === "weekly" ? ` since the change on ${fmtDate(data.last_change.date)}` : ""}.
                       {/* Fable's half-week cap on Max (audit finding 2, kept). */}
                       {r.weeklyFraction < 1 && (
@@ -1318,9 +1533,196 @@ export default function ClaudeUsageTracker({
             {data.weekly_windows && (
               <div className="quiet">
                 {inferredPlans.includes("max5")
-                  ? `Max 20x weekly figures are measured from real accounts. ${inferredNote}`
-                  : "Max 20x and Max 5x weekly figures are measured from real accounts. Pro assumes the Max 5x ratio until it is measured."}
+                  ? `Max 20x weekly figures are measured from ${accountsWord ?? "real accounts"}. ${inferredNote}`
+                  : `Max 20x and Max 5x weekly figures are measured from ${accountsWord ?? "real accounts"}. Pro assumes the Max 5x ratio until it is measured.`}
               </div>
+            )}
+            {/* What the ratios above rest on, in the basis blocks' own figures. The table they
+                come from carries no date, so the footnote says so rather than letting an undated
+                reference read as a figure for now. */}
+            {credits && ratioBasis && (
+              <div className="quiet">
+                Basis: {ratioBasis.kind}.
+                {ratioBasis.perWindow ? ` Credits per five-hour window, ${PLAN_ORDER_LABEL}: ${ratioBasis.perWindow}.` : ""}
+                {ratioBasis.perWeek ? ` Credits per week: ${ratioBasis.perWeek}.` : ""}
+                {ratioBasis.confirmation ? ` Measured confirmation: ${ratioBasis.confirmation}.` : ""}
+                {ratioBasis.undated ? " The source is undated:" : " Source:"}{" "}
+                <a href={ratioBasis.url}>{ratioBasis.urlText}</a>.
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* 4. The effort matrix. Each cell is what one calibration task costs at that effort, and
+            beside it the cache state of the runs it was measured over: a cold run writes cache
+            where a warm one reads it, and the meter charges nothing for a cache read, which is
+            why a model's low cell can read dearer than its medium one. */}
+        {!unavailable && data && effortMix && (
+          <section>
+            <h2>Effort</h2>
+            <p className="sub">
+              One calibration task at each effort level, with the cache-read share and the run count of the
+              cell it was measured over.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  {EFFORTS.map((e) => (
+                    <th key={e} className={e === effort ? "hl" : ""}>{e}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Object.keys(effortMix).map((m) => (
+                  <tr key={m}>
+                    <td className={m === model ? "hl" : ""}>{MODEL_LABELS[m] ?? m}</td>
+                    {EFFORTS.map((e) => {
+                      const usd = data.effort_usd?.[m]?.[e];
+                      const tokens = data.effort[m]?.[e];
+                      const cell = effortMix[m]?.[e];
+                      const hl = m === model && e === effort ? "hl" : "";
+                      return (
+                        <td key={e} className={hl}>
+                          {typeof usd === "number" ? fmtUsd2(usd) : typeof tokens === "number" ? fmtTokens(tokens) : "—"}
+                          {cell && (
+                            <div>
+                              <em>
+                                {typeof cell.cache_read_share === "number" ? `${fmtShare(cell.cache_read_share)} cache read` : "no cache share"}
+                                {typeof cell.runs === "number" ? ` · ${cell.runs} runs` : ""}
+                              </em>
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {/* 6. Each watched account's own meter either side of the announced change. The rows are
+            here to be read against each other: the spread between accounts is larger than the
+            move any one of them made, which is why the block resolves nothing. */}
+        {!unavailable && acrossCut && (
+          <section>
+            <h2>The five-hour window across the change</h2>
+            <p className="sub">
+              Each account's own meter{acrossCut.cut_at ? ` either side of ${fmtDate(acrossCut.cut_at.slice(0, 10))}` : ""}
+              {acrossCut.unit ? `, in ${acrossCut.unit}` : ""}.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Before</th>
+                  <th>After</th>
+                  <th>Change</th>
+                  <th>Stretches before</th>
+                  <th>Stretches after</th>
+                  <th>With capture</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(acrossCut.per_account).map(([label, a]) => (
+                  <tr key={label}>
+                    <td>{label}</td>
+                    <td>{typeof a.before === "number" ? fmtCredits(a.before) : "—"}</td>
+                    <td>{typeof a.after === "number" ? fmtCredits(a.after) : "—"}</td>
+                    <td>{typeof a.change_pct === "number" ? `${a.change_pct}%` : "—"}</td>
+                    <td>{a.n_before}</td>
+                    <td>{a.n_after}</td>
+                    <td>{a.n_with_capture}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {emptyCapture.length > 0 && captureNote && (
+              <div className="quiet">
+                {emptyCapture.join(", ")}: {captureNote}.
+              </div>
+            )}
+            {acrossCut.unresolved && <div className="quiet">Unresolved: {acrossCut.unresolved}.</div>}
+          </section>
+        )}
+
+        {/* 7. The same window anchored the other way. It shares no input with the measured
+            cluster, which is the only reason it is worth putting beside it. Every number in the
+            arithmetic below is published: the page states the composition, it does not compute
+            the result, and the undated baseline is never an input to a figure of our own. */}
+        {!unavailable && fromWeekly && (
+          <section>
+            <h2>Cross-check against the announced caps</h2>
+            <p className="sub">
+              {fromWeekly.kind === "cross_check"
+                ? "A cross-check, not a second measurement: the announced weekly cap over this tracker's own measured windows per week."
+                : "The announced weekly cap over this tracker's own measured windows per week."}
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Announced cap ÷ windows per week</th>
+                  <th>Credits per 5-hour window</th>
+                </tr>
+              </thead>
+              <tbody>
+                {([["Before the change", fromWeekly.before], ["After the change", fromWeekly.after]] as const).map(
+                  ([label, side]) => (
+                    <tr key={label}>
+                      <td>{label}</td>
+                      <td>
+                        {fmtCredits(fromWeekly.weekly_cap_baseline_credits)} × {side.weekly_cap_multiplier} ={" "}
+                        {fmtCredits(side.announced_weekly_cap_credits)} ÷ {side.windows_per_week_measured.toFixed(2)} windows
+                      </td>
+                      <td>{typeof side.value === "number" ? fmtCredits(side.value) : "—"}</td>
+                    </tr>
+                  ),
+                )}
+                {credits && (
+                  <tr>
+                    <td className="hl">Measured</td>
+                    <td>
+                      pure-{credits.window_credits.pure_family} stretches, n={credits.window_credits.n}
+                    </td>
+                    <td className="hl">
+                      {typeof credits.window_credits.value === "number"
+                        ? fmtCredits(credits.window_credits.value)
+                        : credits.window_credits.status ?? "—"}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            <div className="quiet">
+              Baseline {fmtCredits(fromWeekly.weekly_cap_baseline_credits)} credits per week, as of{" "}
+              {fmtDate(fromWeekly.weekly_cap_baseline_source.as_of)}:{" "}
+              <a href={fromWeekly.weekly_cap_baseline_source.url}>
+                {fromWeekly.weekly_cap_baseline_source.url.replace(/^https?:\/\//, "")}
+              </a>
+              . A reference, shown beside the measurement and never an input to it.
+            </div>
+            {referenceChanges.length > 0 && (
+              <>
+                <div className="quiet">
+                  {data?.reference?.name ?? "Reference table"}
+                  {data?.reference?.as_of ? `, as of ${fmtDate(data.reference.as_of)}` : ""}. Announced changes since:
+                </div>
+                {referenceChanges.map((c, i) => (
+                  <div className="quiet" key={`${c.date ?? c.from ?? i}-${c.scope ?? ""}`}>
+                    {c.date_known && c.date
+                      ? fmtDate(c.date)
+                      : [c.from, c.until].filter(Boolean).join(" to ") || "date not given"}
+                    {typeof c.multiplier === "number" ? ` · ×${c.multiplier}` : ""}
+                    {c.scope ? ` · ${c.scope.replace(/_/g, " ")}` : ""}
+                    {c.summary ? ` — ${c.summary}` : ""}
+                    {c.quote ? ` \u201c${c.quote}\u201d` : ""}
+                    {c.source ? ` (${c.source})` : ""}
+                  </div>
+                ))}
+              </>
             )}
           </section>
         )}
@@ -1426,13 +1828,27 @@ export default function ClaudeUsageTracker({
                 : "scaled from Max 20x by Anthropic's published plan ratios."}{" "}
               {inferredPlans.includes("max5")
                 ? `The weekly window counts are measured on Max 20x. ${inferredNote}`
-                : "The weekly window counts are not: Max 20x and Max 5x are both measured from real accounts, Max 5x from the period one of them spent on that plan, and only Pro is assumed, from Max 5x."}
+                : `The weekly window counts are not: Max 20x and Max 5x are both measured from ${accountsWord ?? "real accounts"}, Max 5x from the period one of them spent on that plan, and only Pro is assumed, from Max 5x.`}
             </p>
             <p>
               The effort figures describe one task shape, run seven times at each effort level on each model. On Sonnet
               the spread between runs is wider than the gap between low, medium and high, so read those three rows as
               roughly equal rather than in order.
             </p>
+            {credits && (
+              <p>
+                {harnessExcluded !== null
+                  ? `${harnessExcluded} harness ${harnessExcluded === 1 ? "run is" : "runs are"} excluded from the stretches behind these figures. `
+                  : ""}
+                {fableInterval?.status
+                  ? `${MODEL_LABELS["claude-fable-5-1"] ?? "Fable"}'s credit rate: ${fableInterval.status}${
+                      typeof fableInterval.input_low === "number" && typeof fableInterval.input_high === "number"
+                        ? `, ${fableInterval.input_low} to ${fableInterval.input_high} credits per input token`
+                        : ""
+                    }.`
+                  : ""}
+              </p>
+            )}
             <p>
               This method is only as good as what it can see. Work done away from the machine being read moves the meter
               with no transcript to match it. Where that is obvious, because the meter moved with no transcripts at all,

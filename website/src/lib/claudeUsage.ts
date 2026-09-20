@@ -1230,9 +1230,12 @@ export function fmtCredits(n: number): string {
   return Math.round(n).toLocaleString("en-US");
 }
 
-// A share published as a fraction, shown as a percentage to one place: 0.9702 -> "97.0%".
+// A share published as a fraction, shown as a percentage: 0.9702 -> "97.0%". A share small
+// enough to round to nothing at one place gets a second, so a class the meter does charge for
+// never prints as 0.0%.
 export function fmtShare(v: number): string {
-  return `${(v * 100).toFixed(1)}%`;
+  const pct = v * 100;
+  return `${pct.toFixed(pct !== 0 && Math.abs(pct) < 0.1 ? 2 : 1)}%`;
 }
 
 function rangeText(iv: (number | null)[] | null | undefined, fmt: (n: number) => string, scale: number): string | null {
