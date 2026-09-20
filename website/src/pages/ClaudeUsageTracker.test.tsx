@@ -724,6 +724,18 @@ describe("the page states one figure per quantity", () => {
     expect(text).not.toContain("Plotted: tokens at the account's own mix");
   });
 
+  it("moves the Effort section below Contribute your own meter (2026-09-20)", () => {
+    const text = render(MEASURED, "max20", "claude-opus-5");
+    const contribute = text.indexOf("Contribute your own meter");
+    const effort = text.indexOf("Effort low medium high xhigh max");
+    const measure = text.indexOf("How we measure this");
+    expect(contribute).toBeGreaterThan(-1);
+    expect(effort).toBeGreaterThan(-1);
+    expect(measure).toBeGreaterThan(-1);
+    expect(contribute).toBeLessThan(effort);
+    expect(effort).toBeLessThan(measure);
+  });
+
   it("stops claiming the hero moves with effort, and puts the effort figures where it does", () => {
     const text = render(MEASURED, "max20", "claude-opus-5");
     expect(text).toContain(", running Fable 5.1 Opus 5 Sonnet 5 , you get");

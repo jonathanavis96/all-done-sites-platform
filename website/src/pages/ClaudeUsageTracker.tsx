@@ -1567,76 +1567,6 @@ export default function ClaudeUsageTracker({
           </section>
         )}
 
-        {/* 4. The effort matrix. Each cell is what one calibration task costs at that effort, and
-            beside it the cache state of the runs it was measured over: a cold run writes cache
-            where a warm one reads it, and the meter charges nothing for a cache read, which is
-            why a model's low cell can read dearer than its medium one. */}
-        {!unavailable && data && effortMix && (
-          <section>
-            <div className="h2row">
-              <h2>Effort</h2>
-              {/* The figures here are the only ones on the page that move with effort, so the
-                  picker sits with them rather than over the hero's window (finding 2). */}
-              {!effortInHero && <div className="section-sel">{effortSelect}</div>}
-            </div>
-            <p className="sub">
-              One calibration task at each effort level, with the cache-read share and the run count of the
-              cell it was measured over{effortCredits ? `, and what the cell's own runs cost against a ${PLAN_LABELS[plan]} window` : ""}.
-            </p>
-            <table>
-              <thead>
-                <tr>
-                  <th></th>
-                  {EFFORTS.map((e) => (
-                    <th key={e} className={e === effort ? "hl" : ""}>{e}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {Object.keys(effortMix).map((m) => (
-                  <tr key={m}>
-                    <td className={m === model ? "hl" : ""}>{MODEL_LABELS[m] ?? m}</td>
-                    {EFFORTS.map((e) => {
-                      const usd = data.effort_usd?.[m]?.[e];
-                      const tokens = data.effort[m]?.[e];
-                      const cell = effortMix[m]?.[e];
-                      const ec = effortCredits ? computeCredits(data, plan, m, e)?.effortCredits ?? null : null;
-                      const hl = m === model && e === effort ? "hl" : "";
-                      return (
-                        <td key={e} className={hl}>
-                          {typeof usd === "number" ? fmtUsd2(usd) : typeof tokens === "number" ? fmtTokens(tokens) : "—"}
-                          {ec?.credits && (
-                            <div>
-                              <em>
-                                <Fig fig={ec.credits} unit="credits" />
-                                {ec.credits.kind === "value" && ec.percentOfWindow && (
-                                  <>
-                                    {" · "}
-                                    <Fig fig={ec.percentOfWindow} unit="of the window" />
-                                  </>
-                                )}
-                              </em>
-                            </div>
-                          )}
-                          {cell && (
-                            <div>
-                              <em>
-                                {typeof cell.cache_read_share === "number" ? `${fmtShare(cell.cache_read_share)} cache read` : "no cache share"}
-                                {typeof cell.runs === "number" ? ` · ${cell.runs} runs` : ""}
-                                {typeof cell.cold_cache_runs === "number" ? ` · ${cell.cold_cache_runs} cold` : ""}
-                              </em>
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        )}
-
         {!unavailable && data && contributed && (
           <section id="contributors">
             {/* The same pickers as the hero, so a reader comparing their own plan does not have
@@ -1699,6 +1629,82 @@ export default function ClaudeUsageTracker({
           <h2>Contribute your own meter</h2>
           <ContributeMeter />
         </section>
+
+        {/* 4. The effort matrix. Each cell is what one calibration task costs at that effort, and
+            beside it the cache state of the runs it was measured over: a cold run writes cache
+            where a warm one reads it, and the meter charges nothing for a cache read, which is
+            why a model's low cell can read dearer than its medium one. */}
+        {!unavailable && data && effortMix && (
+          <section>
+            <div className="h2row">
+              <h2>Effort</h2>
+              {/* The figures here are the only ones on the page that move with effort, so the
+                  picker sits with them rather than over the hero's window (finding 2). */}
+              {!effortInHero && <div className="section-sel">{effortSelect}</div>}
+            </div>
+            <p className="sub">
+              One calibration task at each effort level, with the cache-read share and the run count of the
+              cell it was measured over{effortCredits ? `, and what the cell's own runs cost against a ${PLAN_LABELS[plan]} window` : ""}.
+            </p>
+            <table className="effort">
+              <thead>
+                <tr>
+                  <th></th>
+                  {EFFORTS.map((e) => (
+                    <th key={e} className={e === effort ? "hl" : ""}>{e}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Object.keys(effortMix).map((m) => (
+                  <tr key={m}>
+                    <td data-model="" className={m === model ? "hl" : ""}>{MODEL_LABELS[m] ?? m}</td>
+                    {EFFORTS.map((e) => {
+                      const usd = data.effort_usd?.[m]?.[e];
+                      const tokens = data.effort[m]?.[e];
+                      const cell = effortMix[m]?.[e];
+                      const ec = effortCredits ? computeCredits(data, plan, m, e)?.effortCredits ?? null : null;
+                      const hl = m === model && e === effort ? "hl" : "";
+                      return (
+                        <td key={e} data-effort={e} className={hl}>
+                          <b className="fig">
+                            {typeof usd === "number" ? fmtUsd2(usd) : typeof tokens === "number" ? fmtTokens(tokens) : "—"}
+                          </b>
+                          {ec?.credits && (
+                            <div>
+                              <em>
+                                <Fig fig={ec.credits} unit="credits" />
+                                {ec.credits.kind === "value" && ec.percentOfWindow && (
+                                  <span className="nowrap">
+                                    {" · "}
+                                    <Fig fig={ec.percentOfWindow} unit="of the window" />
+                                  </span>
+                                )}
+                              </em>
+                            </div>
+                          )}
+                          {cell && (
+                            <div>
+                              <em>
+                                {typeof cell.cache_read_share === "number" ? `${fmtShare(cell.cache_read_share)} cache read` : "no cache share"}
+                                {typeof cell.runs === "number" && (
+                                  <span className="nowrap">{` · ${cell.runs} runs`}</span>
+                                )}
+                                {typeof cell.cold_cache_runs === "number" && (
+                                  <span className="nowrap">{` · ${cell.cold_cache_runs} cold`}</span>
+                                )}
+                              </em>
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
 
         <section>
           <details>
