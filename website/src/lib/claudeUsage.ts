@@ -120,6 +120,20 @@ export interface ChangeRecord {
   evidence_quality?: string;
   provisional?: boolean;
   legacy_uncertain?: boolean;
+  // Which of the two meters moved. "unresolved" is published wherever the stretches cannot
+  // separate a smaller weekly cap from a bigger five-hour window; the page says so rather than
+  // picking one.
+  meter_attribution?: string;
+  // Anthropic's own figure for the change, quoted. A published claim shown beside the
+  // measurement, never mixed into it.
+  announced?: {
+    date?: string;
+    announced_change_pct?: number;
+    quote?: string;
+    also_quoted?: string;
+    scope?: string;
+    source?: string;
+  };
 }
 export interface UsageEvent extends Partial<Omit<ChangeRecord, "date" | "scope">> {
   date: string;
@@ -311,8 +325,25 @@ export interface UsageJson {
   plan_ratios: Record<Plan, number>;
   // What plan_ratios rests on. "credits_table" since tracker wf-50 (she-llac.com/claude-limits);
   // "published_plan_scaling" (Anthropic's 1:5:20) before it.
-  plan_ratios_basis?: { kind?: string; scope?: string; source_url?: string; credits_per_window?: Partial<Record<Plan, number>> };
-  weekly_window_ratios_basis?: { kind?: string; source_url?: string; [k: string]: unknown };
+  plan_ratios_basis?: {
+    kind?: string;
+    scope?: string;
+    source_url?: string;
+    credits_per_window?: Partial<Record<Plan, number>>;
+    // False on the credits table: the source carries no date, so the page says so beside it.
+    dated?: boolean;
+  };
+  weekly_window_ratios_basis?: {
+    kind?: string;
+    source_url?: string;
+    scope?: string;
+    dated?: boolean;
+    credits_per_week?: Partial<Record<Plan, number>>;
+    documented_windows_per_week?: Partial<Record<Plan, number>>;
+    // The one ratio this tracker has measured for itself, and the spans it was measured over.
+    measured_confirmation?: { max5_over_max20?: number; spans?: string };
+    [k: string]: unknown;
+  };
   // How many five-hour windows a week's cap holds, per plan, relative to max20: a quotient of
   // two plans' weekly levels, used to draw one plan's weekly line from another's. Schema 2
   // publishes it empty, so the page derives it from the regimes; see weeklyWindowRatio.
@@ -344,6 +375,13 @@ export interface UsageJson {
   weekly_windows?: Partial<Record<Plan, WeeklyPlan | null>>;
   // Schema 2: which plans include each model, and what share of the weekly limit it may use.
   model_plan_limits?: Record<string, Partial<Record<Plan, PlanLimit>>>;
+  // The meter priced in its own unit, published by the tracker from 2026-09-20. Optional: the
+  // live file carries it from its next refresh, and every older file has none of it, in which
+  // case the page renders exactly as it did before.
+  credits?: CreditsBlock;
+  // The published reference table the measurements are shown beside, with its own date and the
+  // announced changes since. Never an input to a figure on this page.
+  reference?: ReferenceBlock;
 }
 
 export function isSchema2(j: UsageJson): boolean {
@@ -727,6 +765,19 @@ export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "f
     return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
   }
   const tone = c.direction === "increased" ? "up" : "down";
+  // What the tracker measures is a ratio: how many five-hour windows a week's cap holds. Once the
+  // credits block is published the headline says exactly that, bounded by the onset dates it was
+  // dated between, instead of naming a limit these stretches cannot single out. Without the block
+  // the wording is unchanged, so a file published before it renders the page as it rendered then.
+  const onsetFrom = c.onset?.earliest;
+  const onsetTo = c.onset?.latest;
+  if (j.credits && c.metric === "weekly_to_five_hour_ratio" && onsetFrom && onsetTo) {
+    const verb = c.direction === "increased" ? "rose" : "fell";
+    return {
+      text: `The number of five-hour windows in a week ${verb} by ${c.percent}% between ${fmtDate(onsetFrom)} and ${fmtDate(onsetTo)}.`,
+      tone,
+    };
+  }
   if (c.scope === "weekly") {
     return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
   }
@@ -989,4 +1040,307 @@ export function latestWeeklyChange(events: UsageEvent[]): UsageEvent | null {
     (a, b) => (b.kind === "change" && (a === null || b.date > a.date) ? b : a),
     null,
   );
+}
+
+// ---------------------------------------------------------------------------
+// The credits block
+// ---------------------------------------------------------------------------
+//
+// The five-hour meter does not charge dollars. It charges an internal unit -- a credit -- at a
+// small rational rate per token per model, and from 2026-09-20 the tracker publishes the whole
+// measurement in that unit under `credits`. Everything here is optional: a file without the block
+// renders the page exactly as it rendered before it existed.
+//
+// Every figure in the block is published the same way: a value, the spread of the readings behind
+// it, and a status sentence saying why there is no value. A null value beside a status is not a
+// missing figure -- it is one the tracker can bound but not identify -- so the page prints the
+// sentence where the number would go and the interval as the range, never a dash and never a zero.
+
+export interface CreditsFigure {
+  value: number | null;
+  // The cluster's own min to max: the spread of readings of the same quantity, not a confidence
+  // interval. The publisher's own words; no error model is implied and none is drawn.
+  interval?: (number | null)[] | null;
+  status?: string | null;
+}
+
+// One watched account's own reading of the window. `n` is how many stretches survived the gate,
+// and an account that contributed none still appears with n: 0 so its absence is visible.
+export interface WindowCreditsAccount extends CreditsFigure {
+  n: number;
+}
+
+export interface WindowCredits extends CreditsFigure {
+  n?: number;
+  // The model family every token in the cluster was priced at, so the figure carries no fitted
+  // rate: "opus" today.
+  pure_family?: string;
+  credits_per_pct?: number;
+  cache_read_weight?: number;
+  accounts?: Record<string, WindowCreditsAccount>;
+  method?: string;
+}
+
+export interface PerModelCredits {
+  tokens_per_window: { input: CreditsFigure; output: CreditsFigure };
+  api_value_per_window_usd: { input: CreditsFigure; output: CreditsFigure };
+  credits_per_token: { input: number | null; output: number | null } | null;
+  credits_per_token_interval?: { input?: (number | null)[] | null; output?: (number | null)[] | null } | null;
+  status?: string | null;
+  list_price_model?: string | null;
+  interval_rule?: string | null;
+  interval_source?: string | null;
+}
+
+// Sessions per window and per week, each publishing the cache mix it assumes: cache reads are
+// free against the meter, so the same budget bought cold is worth far fewer tokens, and the
+// figure means nothing without the split beside it.
+export interface SessionCredits {
+  per_window: CreditsFigure;
+  per_week: CreditsFigure;
+  cache_normalised?: boolean;
+  split?: Partial<Record<TokenClass, number>>;
+  split_source?: string;
+  median_session_tokens?: number;
+  windows_per_week?: number;
+  status?: string | null;
+}
+
+// One effort cell's cache state: the share of its own run tokens that were cache reads, and how
+// many of its runs ran cold. A cold run writes cache where a warm one reads it, which is why a
+// model's low cell can read dearer than its medium one.
+export interface EffortCacheCell {
+  cache_read_share: number | null;
+  runs: number;
+  cold_cache_runs?: number;
+  note?: string;
+}
+
+export interface AcrossCutAccount {
+  before: number | null;
+  after: number | null;
+  change_pct: number | null;
+  n_before: number;
+  n_after: number;
+  // 0 where the account has no usable capture column, so the meter movement includes work this
+  // host never saw. The comparison of that account's own two sides is still its own.
+  n_with_capture: number;
+}
+
+export interface AcrossCut {
+  per_account: Record<string, AcrossCutAccount>;
+  resolved: boolean;
+  unresolved: string | null;
+  spread_after_pct?: number | null;
+  largest_move_pct?: number | null;
+  cut_at?: string;
+  unit?: string;
+  method?: string;
+  fable_rate_held?: { input?: number; output?: number; why?: string };
+}
+
+export interface WeeklyCrossSide {
+  value: number | null;
+  weekly_cap_multiplier: number;
+  windows_per_week_measured: number;
+  windows_per_week_rounding_interval?: (number | null)[] | null;
+  announced_weekly_cap_credits: number;
+  from?: string;
+  to?: string;
+}
+
+// The same window anchored the other way: the announced weekly cap over this tracker's own
+// measured windows per week. It shares no input with the pure-family cluster, which is the only
+// reason it is worth publishing beside it -- hence `kind: "cross_check"`.
+export interface WindowCreditsFromWeekly {
+  before: WeeklyCrossSide;
+  after: WeeklyCrossSide;
+  weekly_cap_baseline_credits: number;
+  weekly_cap_baseline_source: { as_of: string; url: string };
+  kind?: string;
+  method?: string;
+  status?: string | null;
+}
+
+export interface FableInterval {
+  input_low: number | null;
+  input_high: number | null;
+  status: string | null;
+  window_credits_per_pct?: number;
+  times_opus?: (number | null)[];
+  output_ratio?: number[];
+  unresolved?: string | null;
+}
+
+export interface HarnessRunExcluded {
+  account_label: string;
+  start: string;
+  end: string;
+  reason: string;
+}
+
+export interface CreditsBlock {
+  window_credits: WindowCredits;
+  window_credits_from_weekly?: WindowCreditsFromWeekly;
+  per_model?: Record<string, PerModelCredits>;
+  sessions?: Record<string, SessionCredits>;
+  effort_cache_mix?: Record<string, Partial<Record<Effort, EffortCacheCell>>>;
+  five_hour_window_across_cut?: AcrossCut;
+  fable_interval?: FableInterval;
+  harness_runs_excluded?: HarnessRunExcluded[];
+  derivation?: string;
+}
+
+// One announced change since the reference table was written, each with the sentence it was read
+// from. `date_known` false means the announcement carried no date, only a span.
+export interface ReferenceChange {
+  date: string | null;
+  date_known?: boolean;
+  from?: string;
+  until?: string;
+  multiplier?: number;
+  scope?: string;
+  summary?: string;
+  quote?: string;
+  source?: string;
+}
+
+export interface ReferenceBlock {
+  as_of?: string;
+  url?: string;
+  name?: string;
+  dated?: boolean;
+  describes?: string;
+  note?: string;
+  changes_since?: ReferenceChange[];
+}
+
+export function creditsOf(j: UsageJson): CreditsBlock | null {
+  return j.credits ?? null;
+}
+
+// `per_model` is keyed by family, not by model id: the meter's rates are per family and "Opus of
+// any version" is one rate. Null for a model id no family can be read from, which is how a model
+// the block does not price is skipped rather than mispriced.
+export function modelFamily(model: string): string | null {
+  return /^claude-(opus|sonnet|haiku|fable)\b/.exec(model)?.[1] ?? null;
+}
+
+export function fmtCredits(n: number): string {
+  return Math.round(n).toLocaleString("en-US");
+}
+
+// A share published as a fraction, shown as a percentage to one place: 0.9702 -> "97.0%".
+export function fmtShare(v: number): string {
+  return `${(v * 100).toFixed(1)}%`;
+}
+
+function rangeText(iv: (number | null)[] | null | undefined, fmt: (n: number) => string, scale: number): string | null {
+  if (!iv || typeof iv[0] !== "number" || typeof iv[1] !== "number") return null;
+  return `${fmt(iv[0] * scale)} to ${fmt(iv[1] * scale)}`;
+}
+
+export interface CreditFigureText {
+  // "status" means the tracker published a sentence instead of a value. The caller prints the
+  // sentence where the number would go; it must never print the value slot as a number.
+  kind: "value" | "status";
+  text: string;
+  range: string | null;
+}
+
+// One published figure turned into the text the page shows. `scale` is the plan ratio the rest of
+// the page already applies to a five-hour window, so a figure measured on Max 20x is never shown
+// unchanged under another plan's heading.
+export function creditFigure(
+  f: CreditsFigure | null | undefined,
+  fmt: (n: number) => string,
+  scale = 1,
+): CreditFigureText | null {
+  if (!f) return null;
+  const range = rangeText(f.interval, fmt, scale);
+  if (typeof f.value === "number" && Number.isFinite(f.value)) return { kind: "value", text: fmt(f.value * scale), range };
+  if (typeof f.status === "string" && f.status) return { kind: "status", text: f.status, range };
+  return null;
+}
+
+// How many watched accounts the window figure rests on: the ones that contributed a reading.
+export function windowCreditAccounts(wc: WindowCredits | null | undefined): number | null {
+  const accounts = wc?.accounts;
+  if (!accounts) return null;
+  return Object.values(accounts).filter((a) => (a?.n ?? 0) > 0).length;
+}
+
+// The sentence in a block's `method` that describes an empty capture column, so the page says it
+// in the publisher's words rather than paraphrasing a measurement caveat into something weaker.
+export function captureEmptyNote(method: string | null | undefined): string | null {
+  if (!method) return null;
+  const sentence = method.split(". ").find((s) => s.includes("n_with_capture"));
+  return sentence ? sentence.replace(/[.;]\s*$/, "") : null;
+}
+
+// Everything the hero shows once the credits block is published, on the selected plan's scale and
+// for the selected model. Mirrors compute(): a model the plan does not include has no capacity to
+// scale, and a per-week figure carries the model's share of the week on top of the plan ratio.
+export function computeCredits(j: UsageJson, plan: Plan, model: string) {
+  const credits = creditsOf(j);
+  if (!credits) return null;
+  const limit = modelPlanLimit(j, model, plan);
+  const ratio = j.plan_ratios[plan];
+  const scale = limit.included ? ratio : 0;
+  const family = modelFamily(model);
+  const per = family ? credits.per_model?.[family] ?? null : null;
+  const session = credits.sessions?.[model] ?? null;
+  const wc = credits.window_credits;
+  const fig = (f: CreditsFigure | undefined, fmt: (n: number) => string, s = scale) =>
+    limit.included ? creditFigure(f, fmt, s) : null;
+  return {
+    included: limit.included,
+    family,
+    tokensIn: fig(per?.tokens_per_window?.input, fmtTokens),
+    tokensOut: fig(per?.tokens_per_window?.output, fmtTokens),
+    usdIn: fig(per?.api_value_per_window_usd?.input, fmtUsd2),
+    usdOut: fig(per?.api_value_per_window_usd?.output, fmtUsd2),
+    windowCredits: fig(wc, fmtCredits),
+    windowCreditsN: typeof wc?.n === "number" ? wc.n : null,
+    pureFamily: wc?.pure_family ?? null,
+    accountCount: windowCreditAccounts(wc),
+    sessionsPerWindow: fig(session?.per_window, (n) => Math.round(n).toLocaleString("en-US")),
+    // The published per-week figure already carries the measured windows per week; the model's
+    // own share of that week (Fable's half on Max) is the page's rule and applies on top.
+    sessionsPerWeek: fig(
+      session?.per_week,
+      (n) => Math.round(n).toLocaleString("en-US"),
+      scale * limit.weekly_fraction,
+    ),
+    split: session?.split ?? null,
+    splitSource: session?.split_source ?? null,
+    medianSessionTokens: session?.median_session_tokens ?? null,
+    cacheNormalised: session?.cache_normalised === true,
+    modelStatus: per?.status ?? null,
+  };
+}
+
+// The lines under the headline once the change is published as a ratio: what the ratio was either
+// side with the rounding interval each side was measured to, Anthropic's own figure for the same
+// change, and -- when the tracker cannot say which meter moved -- that it cannot.
+export function changeLines(j: UsageJson): string[] {
+  const c = j.last_change;
+  const credits = creditsOf(j);
+  if (!c || !credits) return [];
+  const out: string[] = [];
+  const cross = credits.window_credits_from_weekly;
+  const side = (s: WeeklyCrossSide | undefined, iv: (number | null)[] | null | undefined, when: string) => {
+    if (!s || typeof s.windows_per_week_measured !== "number") return null;
+    const range = rangeText(iv, (n) => n.toFixed(1), 1);
+    return `${s.windows_per_week_measured.toFixed(1)}${range ? ` (${range})` : ""} ${when}`;
+  };
+  const before = side(cross?.before, c.rounding_interval_before, "before");
+  const after = side(cross?.after, c.rounding_interval_after, "after");
+  if (before && after) out.push(`Five-hour windows per week: ${before}, ${after}.`);
+  const a = c.announced;
+  if (a && typeof a.announced_change_pct === "number" && a.date) {
+    out.push(`Anthropic announced ${a.announced_change_pct}% on ${fmtDate(a.date)}${a.quote ? `: “${a.quote}”` : ""}.`);
+  }
+  if (c.meter_attribution === "unresolved") out.push("Which meter moved is unresolved.");
+  return out;
 }
