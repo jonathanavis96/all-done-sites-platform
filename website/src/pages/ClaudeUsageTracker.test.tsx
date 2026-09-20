@@ -173,8 +173,13 @@ describe("the tracker page renders both schemas", () => {
   it("gives Fable on Max the plan's weekly figure, qualified by the published 50% cap (finding 2, kept)", () => {
     const text = render(MEASURED, "max20", "claude-fable-5-1");
     const r = compute(MEASURED, "max20", "claude-fable-5-1", "high")!;
+    // The caveat stays in the hero; the "a week holds about N windows" sentence moved to the
+    // "How many windows fit in a week" details block (Jonathan's decision, 2026-09-20).
+    const hero = text.slice(0, text.indexOf(" Effective window size "));
+    expect(hero).toContain("Fable 5.1 may use 50% of the weekly limit.");
+    expect(hero).not.toContain("A week currently holds about");
     expect(text).toContain(
-      `A week currently holds about ${r.planWindowsPerWeek!.toFixed(1)} five-hour windows, measured from a real account. Fable 5.1 may use 50% of the weekly limit.`,
+      `A week currently holds about ${r.planWindowsPerWeek!.toFixed(1)} five-hour windows, measured from a real account.`,
     );
   });
 
@@ -330,6 +335,27 @@ describe("the weekly chart and plan table with tracker wf-50's fields", () => {
     }
   });
 
+  // PUBLISHED is not synthetic: it is the collector's own regime shape (schema2-published.json),
+  // and its two Max 20x regimes are 2026-08-19..2026-09-13T21:30 and 2026-09-14T11:30..09-16 --
+  // a genuine ~14-hour gap the passive sampler leaves between two clean stretches. An exact
+  // `cur.start === prev.end` string match (the check before this fix) always fails on real data
+  // shaped like this, which silently dropped the marker on live production data even though the
+  // fixture-driven CHANGE tests above (with regimes touching to the microsecond) passed.
+  it("draws the step and the marker on Max 20x's own live-shaped regime gap (live data, not a fixture)", () => {
+    const chart = weeklyChart(renderHtml(PUBLISHED, "max20"));
+    const markerLine = chart.match(/<line x1="([\d.]+)"[^>]*stroke="#B42318"[^>]*>/);
+    expect(markerLine).not.toBeNull();
+    const redPath = chart.match(/<path d="M ([\d.]+),[\d.]+ L ([\d.]+),[\d.]+ L \2,[\d.]+[^"]*"[^>]*stroke="#B42318"/);
+    expect(redPath).not.toBeNull();
+    expect(Number(redPath![2])).toBeCloseTo(Number(markerLine![1]), 5);
+    // The step lands on Max 20x's real regime boundary (14 Sep 2026, 11:30), not the announced
+    // event's own date (11 Sep): the two can disagree, and the level source wins.
+    expect(chart).toMatch(/14 Sep 2026: -28% on 14 Sep/);
+    // No per-account onset ticks (removed 2026-09-20): the short stray red tick reviewers saw
+    // near the plot's top right does not reappear.
+    expect(chart).not.toContain("Onset across");
+  });
+
   it("draws every reading as a dot, hollow under 5% of seven-day movement, with its hover text", () => {
     const chart = weeklyChart(renderHtml(WF50));
     const readings = WF50.weekly_windows!.max20!.by_window!.filter((r) => typeof r.windows === "number");
@@ -356,13 +382,11 @@ describe("the weekly chart and plan table with tracker wf-50's fields", () => {
     expect(chart).not.toMatch(/<text[^>]*fill:\s*#0EA5E9/i);
   });
 
-  it("ticks each account's onset when the accounts disagree, and says the range", () => {
+  it("draws no per-account onset ticks -- the change marker alone carries the step (removed 2026-09-20)", () => {
     const chart = weeklyChart(renderHtml(WF50));
-    expect(chart).toContain("Account a1: step on 13 Sep 2026, 6.5 to 4.7 (-28%). Onset across 2 accounts: 13 Sep 2026 to 14 Sep 2026.");
-    expect(chart).toContain("Account a2: step on 14 Sep 2026");
-    const agreed = structuredClone(WF50);
-    agreed.weekly_windows!.max20!.by_account!.a2!.step!.onset = "2026-09-13";
-    expect(weeklyChart(renderHtml(agreed))).not.toContain("Onset across");
+    expect(chart).not.toContain("Onset across");
+    expect(chart).not.toContain("Account a1: step on");
+    expect(chart).not.toContain("Account a2: step on");
   });
 
   it("adds reading and weekly to the legend and keeps what was there, with no documented entry", () => {
@@ -448,6 +472,46 @@ describe("the credits block on the page", () => {
     expect(text).toContain("Cache-normalised at that split, over a median session of 1.8M tokens.");
   });
 
+  it("moves the credits-per-window figure, the split, the split source, the cache-normalised note and the weekly sentence out of the hero (Jonathan's decision, 2026-09-20)", () => {
+    const text = render(CREDITS, "max20", "claude-opus-5");
+    const hero = text.slice(0, text.indexOf(" Effective window size "));
+    const moved = [
+      "19,543,887 credits per 5-hour window",
+      "0.01% input · 0.4% output · 97.0% cache read · 2.5% cache write",
+      "Split: history/passive.json `split`",
+      "Cache-normalised at that split",
+      "A week currently holds about",
+    ];
+    for (const line of moved) {
+      expect(hero, line).not.toContain(line);
+      expect(text, line).toContain(line);
+    }
+    // Every moved line still renders inside a details element -- collapsed content stays in the
+    // DOM, which is what the publish check relies on. Raw HTML splits an interpolated value from
+    // its surrounding text (a comment, or a wrapping <b>), so each check below uses a fragment
+    // that JSX cannot split: a whole number, or text with no expression inside it.
+    const html = renderHtml(CREDITS, "max20", "claude-opus-5");
+    const detailsBlocks = html.split("<details>").slice(1);
+    const rawFragments = [
+      "19,543,887", // the credits-per-window figure
+      "97.0", // the cache-read share in the split
+      "history/passive.json", // the split source
+      "1.8M", // the cache-normalised note's median session size
+      "measured from 3 accounts", // the weekly sentence's account count
+    ];
+    for (const fragment of rawFragments) {
+      expect(detailsBlocks.some((d) => d.includes(fragment)), fragment).toBe(true);
+    }
+    // Kept in the hero: the headline, pill row, plan/model sentence, the two hero tiles with
+    // their ranges, the one-line class breakdown and the sessions line.
+    expect(hero).toContain("On Pro Max 5x Max 20x");
+    expect(hero).toContain("tokens per 5-hour window: window tokens not yet published");
+    expect(hero).toContain("$146.58 of API value per window, the same window priced at each class's own rate");
+    expect(hero).toContain("Range $129.38 to $156.15");
+    expect(hero).toContain("about 354 sessions per window (312 to 377)");
+    expect(hero).toContain("1,755 per week (1,549 to 1,870)");
+  });
+
   it("prints a status sentence in the figure's place, and never a null", () => {
     const text = render(CREDITS, "max20", "claude-fable-5-1");
     expect(text).toContain("API value per window in input tokens: rate not yet identified ($73.00 to $174.44)");
@@ -467,14 +531,14 @@ describe("the credits block on the page", () => {
     expect(render(CREDITS, "max5", "claude-opus-5")).toContain("$43.97 of API value per window");
   });
 
-  it("keeps the hero's plain wording and counts the accounts in the bottom detail", () => {
-    // The hero states the #78 sentence plainly, with no account count (Jonathan's decision,
-    // 2026-09-20): the count moved to "How many windows fit in a week" at the bottom, where it
-    // still renders in full.
+  it("moves the #78 weekly sentence and account count to the bottom detail, out of the hero", () => {
+    // The hero used to state the #78 sentence plainly; now it moved to "How many windows fit in
+    // a week" at the bottom entirely, with no account count and no sentence left in the hero
+    // (Jonathan's decision, 2026-09-20).
     expect(CREDITS.passive_account_count).toBe(3);
     const text = render(CREDITS, "max20", "claude-opus-5");
     const hero = text.slice(0, text.indexOf(" Effective window size "));
-    expect(hero).toContain("five-hour windows, measured from a real account since the change");
+    expect(hero).not.toContain("five-hour windows, measured from a real account since the change");
     expect(hero).not.toContain("3 accounts");
     expect(text).toContain("How many windows fit in a week");
     expect(text).toContain("five-hour windows, measured from 3 accounts since the change");
@@ -501,6 +565,19 @@ describe("the credits block on the page", () => {
     // The same URL was dated in two sections and called undated in three. It carries one date.
     expect(text).toContain("Source, as of 25 Jan 2026: she-llac.com/claude-limits");
     expect(text).not.toContain("undated");
+  });
+
+  it("moves the weekly-measurement note and the ratio-table basis footnote out of the Plan comparison section, into the cross-check details (Jonathan's decision, 2026-09-20)", () => {
+    const text = render(CREDITS, "max20", "claude-opus-5");
+    const comparisonSection = text.slice(text.indexOf(" Plan comparison "), text.indexOf(" Contribute your own meter "));
+    expect(comparisonSection).not.toContain("Basis: credits_table.");
+    expect(comparisonSection).not.toContain("weekly figures are measured from");
+    // The one-line subtitle stays.
+    expect(comparisonSection).toContain("Max 20x is measured; Pro and Max 5x are scaled from it by");
+    // Both moved paragraphs still render, inside "Cross-check against the announced caps".
+    const crossCheck = text.slice(text.indexOf("Cross-check against the announced caps"));
+    expect(crossCheck).toContain("Basis: credits_table.");
+    expect(crossCheck).toContain("Credits per five-hour window, Pro : Max 5x : Max 20x: 550,000 : 3,300,000 : 11,000,000.");
   });
 
   it("gives each account its own row across the change, and resolves nothing", () => {
@@ -590,9 +667,12 @@ describe("the credits block on the page", () => {
     for (const gone of [
       "credits per 5-hour window",
       "The five-hour window across the change",
-      "Cross-check against the announced caps",
-      "cache read · 7 runs",
+      // The details block itself now renders for this fixture (it also carries the weekly-
+      // measurement note moved out of the plan comparison section), but the cross-check table
+      // and the ratio-table basis footnote -- both of which need a credits block -- do not.
+      "Announced cap ÷ windows per week",
       "Basis: credits_table.",
+      "cache read · 7 runs",
       "harness runs are excluded",
       "Five-hour windows per week: 6.5",
     ]) {
