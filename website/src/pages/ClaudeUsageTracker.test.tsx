@@ -57,6 +57,12 @@ function render(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", n
     .replace(/\s+/g, " ");
 }
 
+// The windows-per-week chart alone: its own svg, up to the next section.
+function weeklyChart(html: string): string {
+  const at = html.indexOf('aria-label="Five-hour windows per week over time');
+  return html.slice(html.lastIndexOf("<svg", at), html.indexOf("</svg>", at));
+}
+
 // The cells of one plan-comparison row, in Pro, Max 5x, Max 20x order. A cell whose figure is
 // inferred reads "<figure> inferred".
 function row(text: string, label: string): string[] {
@@ -260,28 +266,23 @@ describe("plan comparison and contributor tabs respect not-included and inferred
 // copy follow the credits-table ratios and the inferred marks.
 describe("the weekly chart and plan table with tracker wf-50's fields", () => {
   const WF50 = withWf50(PUBLISHED);
-  // The windows-per-week chart alone: its own svg, up to the next section.
-  const weeklyChart = (html: string) => {
-    const at = html.indexOf('aria-label="Five-hour windows per week over time');
-    return html.slice(html.lastIndexOf("<svg", at), html.indexOf("</svg>", at));
-  };
 
-  it("draws only the documented reference beside the levels before the fields exist", () => {
+  it("draws no documented reference beside the levels, before the fields exist or after", () => {
+    // The windows-per-week chart drops the documented overlay entirely (Jonathan's decision,
+    // 2026-09-20): reference only ever mattered for the cross-check table at the bottom, which
+    // reads its own figures off `shortfallRows`, not this chart's overlay.
     const chart = weeklyChart(renderHtml(PUBLISHED));
-    expect(chart).toContain("documented 7.58 (she-llac, undated)");
+    expect(chart).not.toContain("documented");
     expect(chart).not.toContain("<title>");
     expect(chart).not.toContain("min-width");
     const text = render(PUBLISHED);
-    expect(text).toContain("Documented: the level she-llac.com/claude-limits lists");
     expect(text).not.toContain("Reading: one five-hour window");
     expect(text).toContain("by Anthropic's published 1:5:20 ratios");
     expect(text).toContain("Pro assumes the Max 5x ratio until it is measured.");
     expect(text).toContain("scaled from Max 20x by Anthropic's published plan ratios.");
-  });
-
-  it("names the selected plan's documented level", () => {
-    expect(weeklyChart(renderHtml(PUBLISHED, "max5"))).toContain("documented 12.63 (she-llac, undated)");
-    expect(weeklyChart(renderHtml(PUBLISHED, "pro"))).toContain("documented 9.09 (she-llac, undated)");
+    for (const plan of ["max5", "pro"] as Plan[]) {
+      expect(weeklyChart(renderHtml(PUBLISHED, plan))).not.toContain("documented");
+    }
   });
 
   it("draws every reading as a dot, hollow under 5% of seven-day movement, with its hover text", () => {
@@ -319,12 +320,12 @@ describe("the weekly chart and plan table with tracker wf-50's fields", () => {
     expect(weeklyChart(renderHtml(agreed))).not.toContain("Onset across");
   });
 
-  it("adds reading and weekly to the legend and keeps what was there", () => {
+  it("adds reading and weekly to the legend and keeps what was there, with no documented entry", () => {
     const text = render(WF50);
     expect(text).toContain("Each line is the limit itself, held flat between changes");
     expect(text).toContain("Reading: one five-hour window on one account");
     expect(text).toContain("Weekly: a calendar week of readings pooled");
-    expect(text).toContain("Documented: the level she-llac.com/claude-limits lists");
+    expect(text).not.toContain("Documented: the level");
   });
 
   it("scales the table by the credits table and marks the inferred weekly cells", () => {
@@ -421,12 +422,17 @@ describe("the credits block on the page", () => {
     expect(render(CREDITS, "max5", "claude-opus-5")).toContain("$43.97 of API value per window");
   });
 
-  it("counts the accounts instead of saying a real account", () => {
+  it("keeps the hero's plain wording and counts the accounts in the bottom detail", () => {
+    // The hero states the #78 sentence plainly, with no account count (Jonathan's decision,
+    // 2026-09-20): the count moved to "How many windows fit in a week" at the bottom, where it
+    // still renders in full.
     expect(CREDITS.passive_account_count).toBe(3);
     const text = render(CREDITS, "max20", "claude-opus-5");
+    const hero = text.slice(0, text.indexOf(" Effective window size "));
+    expect(hero).toContain("five-hour windows, measured from a real account since the change");
+    expect(hero).not.toContain("3 accounts");
+    expect(text).toContain("How many windows fit in a week");
     expect(text).toContain("five-hour windows, measured from 3 accounts since the change");
-    expect(text).not.toContain("measured from a real account");
-    expect(text).not.toContain("measured from real accounts");
   });
 
   it("puts each effort cell's cache state beside it", () => {
@@ -618,18 +624,60 @@ describe("the page states one figure per quantity", () => {
     expect(render(CREDITS, "max20", "claude-sonnet-5")).not.toContain("Priced at");
   });
 
+  it("renders a number with its interval once Fable's rate is a value rather than a status (wf-89)", () => {
+    // The tracker is about to publish Fable's row with `credits_per_token.input` a number and
+    // `status: null` instead of the "rate not yet identified" sentence it publishes today. Both
+    // the rate line and the per-window figures must prefer that number over the old sentence.
+    const withFableRate = structuredClone(MEASURED) as UsageJson;
+    const fable = (withFableRate.credits as unknown as { per_model: Record<string, Record<string, unknown>> })
+      .per_model.fable;
+    fable.status = null;
+    fable.credits_per_token = { input: 2.0, output: 6.0 };
+    const text = render(withFableRate, "max20", "claude-fable-5-1");
+    expect(text).toContain("Priced at the meter's measured Fable rate, 2.000 credits per input token");
+    expect(text).toContain("interval 1.179 to 3.036");
+    // The rate line itself no longer falls back to the family-rate status sentence (the other
+    // per-window figures, api value and tokens, are untouched by this fixture and keep theirs).
+    expect(text).not.toContain("Fable rate, as of");
+    expect(text).not.toContain("Fable rate: rate not yet identified");
+  });
+
+  it("keeps the method sentences inside a details element, out of the hero (page back to #78, wf-89)", () => {
+    // The hero check is on raw HTML (an absence there is real regardless of comment splitting);
+    // the "still renders somewhere" check is on the cleaned text `render` produces, since JSX
+    // splits an expression from its neighbouring literal with an HTML comment that would break a
+    // raw-HTML substring match.
+    // From <main>, not from the document head: the meta description legitimately names the
+    // account count (its own test covers that), this test is only about the visible page.
+    const html = renderHtml(MEASURED, "max20", "claude-sonnet-5");
+    expect(html).toContain("<details>");
+    const hero = html.slice(html.indexOf("<main>"), html.indexOf("<details>"));
+    const text = render(MEASURED, "max20", "claude-sonnet-5");
+    for (const needle of ["Priced at the meter's measured Sonnet rate", "Method: median credits per 1%"]) {
+      expect(hero).not.toContain(needle);
+      expect(text).toContain(needle);
+    }
+    // The per-account count for the weekly-window figure: also out of the hero.
+    expect(CREDITS.passive_account_count).toBe(3);
+    const withAccountsHtml = renderHtml(CREDITS, "max20", "claude-opus-5");
+    const heroAccounts = withAccountsHtml.slice(withAccountsHtml.indexOf("<main>"), withAccountsHtml.indexOf("<details>"));
+    // Not the specific sentence the dispatch names ("A week currently holds ... measured from 3
+    // accounts ..."); the Plan comparison table's own caveat about the same count is a different,
+    // still-in-scope line and stays.
+    expect(heroAccounts).not.toContain("five-hour windows, measured from 3 accounts");
+    expect(render(CREDITS, "max20", "claude-opus-5")).toContain("measured from 3 accounts");
+  });
+
   it("dates the reference wherever it names it, and stops calling it undated", () => {
     const text = render(MEASURED, "max20", "claude-opus-5");
     expect(text).not.toContain("undated");
     expect(text).toContain("Source, as of 25 Jan 2026: she-llac.com/claude-limits");
     expect(text).toContain("she-llac.com/claude-limits, as of 25 Jan 2026");
-    expect(text).toContain("Documented: the level she-llac.com/claude-limits lists for the selected plan, as of 25 Jan 2026");
     expect(text).toContain("Baseline 83,333,300 credits per week, as of 25 Jan 2026");
     expect(text).toContain("Shellac credits table, as of 25 Jan 2026. Announced changes since:");
-    const chart = renderHtml(MEASURED).match(/documented [^(]*\(([^)]*)\)/)?.[1];
-    expect(chart).toBe("she-llac.com, 25 Jan 2026");
-    // A file published before the reference block keeps what it renders today.
-    expect(render(PUBLISHED)).toContain("(she-llac, undated)");
+    // The windows-per-week chart carries no documented reference any more; the same date reaches
+    // the reader through the caveat that scales Pro and Max 5x from the credits table.
+    expect(text).toContain("she-llac.com/claude-limits, as of 25 Jan 2026)");
   });
 
   it("reads the figures the page used to carry as constants off the JSON", () => {
@@ -707,16 +755,15 @@ describe("the dated blocks and the shortfall table on the page", () => {
     const text = render(SHORTFALL, "max20", "claude-sonnet-5");
     expect(SHORTFALL.plan_ratios_basis!.as_of).toBe("2026-01-25");
     expect(text).toContain("Source, as of 25 Jan 2026: she-llac.com/claude-limits");
-    expect(text).toContain("Documented: the level she-llac.com/claude-limits lists for the selected plan, as of 25 Jan 2026");
     expect(text).toContain("she-llac.com/claude-limits, as of 25 Jan 2026");
     expect(text).not.toContain("undated");
-    expect(renderHtml(SHORTFALL).match(/documented [^(]*\(([^)]*)\)/)?.[1]).toBe("she-llac.com, 25 Jan 2026");
-    // The block's date is what is printed, not the reference block's, so moving one moves it.
+    // The windows-per-week chart carries no documented overlay any more; the caveat that scales
+    // Pro and Max 5x from the credits table is where the reference date still reaches the page.
+    expect(weeklyChart(renderHtml(SHORTFALL))).not.toContain("documented");
+    // The caveat's date is what is printed, not the reference block's, so moving one moves it.
     const moved = structuredClone(SHORTFALL);
     moved.weekly_window_ratios_basis!.as_of = "2026-02-02";
-    expect(render(moved, "max20", "claude-sonnet-5")).toContain(
-      "Documented: the level she-llac.com/claude-limits lists for the selected plan, as of 2 Feb 2026",
-    );
+    expect(render(moved, "max20", "claude-sonnet-5")).toContain("she-llac.com/claude-limits, as of 2 Feb 2026");
   });
 
   it("dates the credits block and each family's rate", () => {
