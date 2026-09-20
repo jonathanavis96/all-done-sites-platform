@@ -50,6 +50,7 @@
 /* An inferred figure's mark: muted, like the grey of an inferred level on the weekly charts. */
 .cut td em { font-style: normal; font-weight: 400; color: var(--ads-mut); }
 .cut td .nowrap { white-space: nowrap; }
+.cut td .fig { font-weight: inherit; }
 .cut details { border-top: 1px solid var(--ads-line); }
 .cut summary { padding: 18px 0; font-weight: 500; font-size: 15px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; }
 .cut summary::after { content: "expand ⌄"; color: var(--ads-mut); font-weight: 400; font-size: 13px; }
