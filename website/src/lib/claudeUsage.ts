@@ -1664,13 +1664,27 @@ export function computeWindowTokens(j: UsageJson, plan: Plan, model: string): Wi
   const weekScale = week.value === null ? null : scale * limit.weekly_fraction * weekRatio;
   const perWeekFigure = family ? wt.per_week?.per_family?.[family]?.all : undefined;
   const measuredFamily = credits?.window_credits?.pure_family ?? null;
+  // The family's own conversion ratio: what its published window (`fam.all.value`) is over the
+  // measured family's raw window (`wt.all.value`). The class breakdown is only ever measured on
+  // that one family (`wt.per_class`), so a converted family's split is that same breakdown scaled
+  // by this ratio -- the conversion text already says the class mix is assumed unchanged.
+  const familyRatio =
+    fam && typeof fam.all?.value === "number" && Number.isFinite(fam.all.value) &&
+    typeof wt.all?.value === "number" && Number.isFinite(wt.all.value) && wt.all.value !== 0
+      ? fam.all.value / wt.all.value
+      : null;
   const perClass =
     family !== null && family === measuredFamily
       ? WINDOW_TOKEN_CLASSES.flatMap((cls) => {
           const text = fig(wt.per_class?.[cls]);
           return text ? [{ cls, fig: text }] : [];
         })
-      : [];
+      : family !== null && familyRatio !== null
+        ? WINDOW_TOKEN_CLASSES.flatMap((cls) => {
+            const text = fig(wt.per_class?.[cls], scale * familyRatio);
+            return text ? [{ cls, fig: text }] : [];
+          })
+        : [];
   return {
     included: limit.included,
     family,
