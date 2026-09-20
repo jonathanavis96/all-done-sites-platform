@@ -113,7 +113,16 @@ export interface ChangeRecord {
   metric?: string;
   observation_scope?: string;
   attribution?: string;
-  onset?: { earliest: string | null; latest: string };
+  onset?: {
+    earliest: string | null;
+    latest: string;
+    // The pooled Max 20x regime step -- the date the windows-per-week chart itself steps on and
+    // marks. `earliest`/`latest` above bound the per-account onsets instead, which can (and here
+    // do) start days before the pooled regime the chart draws catches up: headline() prefers this
+    // one so the sentence and the chart's own change marker never name two different days for the
+    // same event.
+    from_windows?: { earliest: string | null; latest: string };
+  };
   confirmation?: { at: string | null; evidence_points?: number; seven_day_pct?: number | null };
   rounding_interval_before?: (number | null)[] | null;
   rounding_interval_after?: (number | null)[] | null;
@@ -839,23 +848,22 @@ export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "f
     return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
   }
   const tone = c.direction === "increased" ? "up" : "down";
-  // What the tracker measures is a ratio: how many five-hour windows a week's cap holds. Once the
-  // credits block is published the headline says exactly that, bounded by the onset dates it was
-  // dated between, instead of naming a limit these stretches cannot single out. Without the block
-  // the wording is unchanged, so a file published before it renders the page as it rendered then.
-  const onsetFrom = c.onset?.earliest;
-  const onsetTo = c.onset?.latest;
-  if (j.credits && c.metric === "weekly_to_five_hour_ratio" && onsetFrom && onsetTo) {
-    const verb = c.direction === "increased" ? "rose" : "fell";
-    return {
-      text: `The number of five-hour windows in a week ${verb} by ${c.percent}% between ${fmtDate(onsetFrom)} and ${fmtDate(onsetTo)}.`,
-      tone,
-    };
-  }
+  // The #78 headline, restored (Jonathan's decision, 2026-09-20): "Anthropic last <direction>
+  // Claude's <weekly> limit by N% on <date>", the same sentence regardless of whether the
+  // credits block is published. The onset-bounded "fell by ... between ..." wording this
+  // replaced moved into "The five-hour window across the change" at the bottom, where the
+  // onset range and the unresolved-attribution caveat still render in full.
+  //
+  // The date: `c.date` is the earliest PER-ACCOUNT onset (one account can move days before the
+  // rest), but the windows-per-week chart steps -- and marks its change marker -- on the pooled
+  // Max 20x regime boundary, which can land later. Prefer the pooled step (`onset.from_windows`)
+  // when it is published, so the headline and the chart's own marker never disagree; fall back to
+  // `c.date` for older JSON that does not carry it.
+  const date = c.onset?.from_windows?.earliest ?? c.date;
   if (c.scope === "weekly") {
-    return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
+    return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% on ${fmtDate(date)}.`, tone };
   }
-  return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
+  return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(date)}.`, tone };
 }
 
 export function fmtTokens(n: number): string {
@@ -1053,6 +1061,27 @@ export function weeklyTokenRegimeLevelsFor(
   if (perWindow === null) return [];
   const scale = j.plan_ratios[plan] * limit.weekly_fraction;
   return weeklyRegimeLevelsFor(j, plan).map((r) => ({ ...r, tokens: r.windows * perWindow * scale }));
+}
+
+// The window itself, held flat at the measured `credits.window_tokens` figure across the same
+// regime dates the windows-per-week chart uses. There is no reading series for this figure --
+// the block publishes one number, not a history -- so this is a flat line, not a stepped one:
+// every level carries the same `tokens` value, on the plan's own ratio (the same scale
+// `computeWindowTokens` gives `perWindow`, with no weekly-fraction split -- that split is a
+// weekly-total concept, not a per-window one). A family the block has no value for, or a plan
+// the model is not included on, drops the levels rather than falling back to a rate or a
+// history row (wf-60).
+export function windowTokenRegimeLevelsFor(
+  j: UsageJson,
+  plan: Plan,
+  model: string,
+): (RegimeLevel & { tokens: number })[] {
+  const limit = modelPlanLimit(j, model, plan);
+  if (!limit.included) return [];
+  const perWindow = windowTokensValueFor(j, model);
+  if (perWindow === null) return [];
+  const scale = j.plan_ratios[plan];
+  return weeklyRegimeLevelsFor(j, plan).map((r) => ({ ...r, tokens: perWindow * scale }));
 }
 
 export interface AccountOnset {

@@ -13,6 +13,7 @@ import {
   weeklyTokenSeriesFor,
   weeklyRegimeLevelsFor,
   weeklyTokenRegimeLevelsFor,
+  windowTokenRegimeLevelsFor,
   weeklyWindowRatio,
   modelPlanLimit,
   rateStaleAfter,
@@ -590,6 +591,36 @@ describe("headline", () => {
     const text = headline(certified).text;
     expect(text).toBe("Anthropic last decreased Claude's weekly limit by 31% on 14 Sep 2026.");
   });
+  it("prefers the pooled regime step over the per-account onset date, so the headline matches the chart's own marker", () => {
+    // `date` is the earliest PER-ACCOUNT onset (2026-09-11); the pooled Max 20x regime the
+    // windows-per-week chart steps on, and marks, lands three days later.
+    const j: UsageJson = {
+      ...V2,
+      last_change: {
+        date: "2026-09-11", direction: "decreased", percent: 24, model: "all", scope: "weekly",
+        metric: "weekly_to_five_hour_ratio", observation_scope: "account",
+        attribution: "observed_account_metric_change_dated_from_per_account_onsets",
+        onset: {
+          earliest: "2026-09-11", latest: "2026-09-15",
+          from_windows: { earliest: "2026-09-14", latest: "2026-09-14" },
+        },
+        evidence_quality: "certified", provisional: false, legacy_uncertain: false,
+      },
+    };
+    expect(headline(j).text).toBe("Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.");
+  });
+  it("falls back to the per-account onset date when the pooled step is not published", () => {
+    const j: UsageJson = {
+      ...V2,
+      last_change: {
+        date: "2026-09-11", direction: "decreased", percent: 24, model: "all", scope: "weekly",
+        metric: "weekly_to_five_hour_ratio", observation_scope: "account",
+        onset: { earliest: "2026-09-11", latest: "2026-09-15" },
+        evidence_quality: "certified", provisional: false, legacy_uncertain: false,
+      },
+    };
+    expect(headline(j).text).toBe("Anthropic last decreased Claude's weekly limit by 24% on 11 Sep 2026.");
+  });
   it("states no change when none", () => {
     const h = headline({ ...J, last_change: null });
     expect(h.tone).toBe("flat");
@@ -884,6 +915,31 @@ describe("weeklyTokenRegimeLevelsFor", () => {
     const fableLevels = weeklyTokenRegimeLevelsFor(j, "max20", FABLE);
     expect(fableLevels.map((l) => l.inferred)).toEqual([true, true, false]);
     expect(fableLevels.at(-1)!.tokens).toBeCloseTo(6.34 * WINDOW * 0.5, 0);
+  });
+});
+
+describe("windowTokenRegimeLevelsFor", () => {
+  const WINDOW = 400_000_000;
+  it("holds one flat value across every regime, borrowed or not: the block publishes one number, not a series", () => {
+    const j = withWindowTokens(V2, { sonnet: { value: WINDOW } });
+    const levels = windowTokenRegimeLevelsFor(j, "max20", SONNET);
+    expect(levels.length).toBeGreaterThan(1);
+    // Every level -- inferred or the plan's own -- carries the same value: the window figure
+    // does not vary by regime, only the windows-per-week figure does.
+    expect(new Set(levels.map((l) => l.tokens)).size).toBe(1);
+    expect(levels[0].tokens).toBeCloseTo(WINDOW, 0);
+  });
+  it("scales by the plan's credit ratio, with no weekly-fraction split: that split is a weekly-total concept", () => {
+    // Fable's 50% weekly cap must not halve the per-window figure the way it halves the
+    // per-week one (weeklyTokenRegimeLevelsFor's own test, above).
+    const j = withWindowTokens(V2, { sonnet: { value: WINDOW }, fable: { value: WINDOW } });
+    const fableLevels = windowTokenRegimeLevelsFor(j, "max20", FABLE);
+    expect(fableLevels.at(-1)!.tokens).toBeCloseTo(WINDOW, 0);
+  });
+  it("draws no level where the window is not published for the family, and never falls back", () => {
+    expect(windowTokenRegimeLevelsFor(RJ, "max20", SONNET)).toEqual([]);
+    const unidentified = withWindowTokens(RJ, { sonnet: { value: null, status: "rate not yet identified" } });
+    expect(windowTokenRegimeLevelsFor(unidentified, "max20", SONNET)).toEqual([]);
   });
 });
 
@@ -1364,8 +1420,14 @@ describe("the credits block", () => {
   });
 
   it("says what the change was measured on, and says what it does not resolve", () => {
+    // The #78 headline, restored (Jonathan's decision, 2026-09-20): the plain "Anthropic last
+    // decreased ... on <date>" sentence, not the onset-bounded ratio wording. `changeLines` still
+    // carries the onset-bounded figures, moved to a details block rather than deleted.
+    // The fixture's per-account onset (`date`) is 11 Sep; the pooled Max 20x regime step it
+    // publishes under `onset.from_windows` -- the date the windows-per-week chart itself steps
+    // on and marks -- is 14 Sep. The headline uses the pooled date so the two never disagree.
     expect(headline(CREDITS)).toEqual({
-      text: "The number of five-hour windows in a week fell by 24% between 11 Sep 2026 and 14 Sep 2026.",
+      text: "Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.",
       tone: "down",
     });
     expect(changeLines(CREDITS)).toEqual([
@@ -1379,8 +1441,9 @@ describe("the credits block", () => {
     // The metric is already published on the live file; the wording must not swap until the
     // figures the new line needs are published with it.
     expect(WITHOUT.last_change!.metric).toBe("weekly_to_five_hour_ratio");
+    // Same pooled-step date as CREDITS above: WITHOUT is a clone with only the credits block removed.
     expect(headline(WITHOUT)).toEqual({
-      text: "Anthropic last decreased Claude's weekly limit by 24% on 11 Sep 2026.",
+      text: "Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.",
       tone: "down",
     });
     expect(changeLines(WITHOUT)).toEqual([]);

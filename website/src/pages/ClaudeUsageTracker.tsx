@@ -37,6 +37,7 @@ import {
   weeklyRegimeLevelsFor,
   weeklySeriesFor,
   weeklyTokenRegimeLevelsFor,
+  windowTokenRegimeLevelsFor,
   type ContribPoint,
   type CreditFigureText,
   type Effort,
@@ -874,6 +875,23 @@ export default function ClaudeUsageTracker({
         : [],
     [data, model],
   );
+  // The window itself, held flat across the same regime dates: `credits.window_tokens` is one
+  // published number, not a history, so every level in a plan's own series carries the same
+  // value. Drawn with the tokens-per-week chart's own component so the two agree on how a flat
+  // figure is drawn.
+  const windowTokenLevels = useMemo(
+    () =>
+      data
+        ? (Object.keys(PLAN_LABELS) as Plan[])
+            .map((pl) => ({
+              plan: pl,
+              label: PLAN_LABELS[pl],
+              levels: windowTokenRegimeLevelsFor(data, pl, model).map((l) => ({ ...l, value: l.tokens })),
+            }))
+            .filter((p) => p.levels.length > 0)
+        : [],
+    [data, model],
+  );
   // The readings behind the selected plan's levels, and the documented level beside them. Only a
   // plan's own readings: today that is Max 20x, so Pro and Max 5x get the reference alone.
   const weeklyOverlay = useMemo(() => (data ? weeklyReadingsFor(data, plan) : undefined), [data, plan]);
@@ -1165,16 +1183,11 @@ export default function ClaudeUsageTracker({
               }}
             />
           )}
-          {/* What the headline figure was measured either side of, Anthropic's own figure for
-              the same change, and -- where the stretches cannot separate the two meters -- that
-              they cannot. Empty without the credits block. */}
-          {!unavailable && changeSentences.length > 0 && (
-            <div className="quiet">
-              {changeSentences.map((line) => (
-                <span key={line}>{line} </span>
-              ))}
-            </div>
-          )}
+          {/* The #78 hero has nothing between the h1 and the pill row (Jonathan's decision,
+              2026-09-20). What the headline figure was measured either side of, Anthropic's own
+              figure for the same change, and -- where the stretches cannot separate the two
+              meters -- that they cannot: moved into "The five-hour window across the change" at
+              the bottom, where it still renders in full. */}
           {!unavailable && data && (
             <div className="pillrow">
               {localTime && (
@@ -1370,35 +1383,56 @@ export default function ClaudeUsageTracker({
           <section>
             <h2>Effective window size</h2>
             <div className="sub">
-              {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window
+              {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window. Full history.
             </div>
             {/* The same measured window the hero states, from the same published figure, so this
-                section and the hero cannot disagree. There is no series beneath it: the window is
-                measured on the stretches the block names, not read off a daily list-price
-                history, and that history is not a second answer to this question (wf-60). */}
+                section and the hero cannot disagree. There is no reading series beneath it: the
+                window is measured on the stretches the block names, not read off a daily list-price
+                history, and that history is not a second answer to this question (wf-60). The chart
+                below is a flat line for the same reason: `credits.window_tokens` publishes one
+                number, not a series, so it is held at that one value across the regime dates the
+                windows-per-week chart uses (there is no per-day range to toggle any more; a range
+                toggle here would slice a line that never changes). */}
             {r && !r.included ? (
               <p className="sub">{notIncluded}</p>
             ) : (
-              <div className="rate">
-                <span>
-                  {wt?.perWindow ? (
+              <>
+                <div className="rate">
+                  <span>
+                    {wt?.perWindow ? (
+                      <>
+                        <Fig fig={wt.perWindow} unit="tokens per 5-hour window" />
+                        {wt.perWindow.range ? ` (${wt.perWindow.range})` : ""}
+                      </>
+                    ) : (
+                      <>tokens per 5-hour window: <b>window tokens not yet published</b></>
+                    )}
+                  </span>
+                  {cr?.sessionsPerWindow && (
                     <>
-                      <Fig fig={wt.perWindow} unit="tokens per 5-hour window" />
-                      {wt.perWindow.range ? ` (${wt.perWindow.range})` : ""}
+                      <em className="brk">·</em>
+                      <span>
+                        <Fig fig={cr.sessionsPerWindow} unit="sessions" />
+                      </span>
                     </>
-                  ) : (
-                    <>tokens per 5-hour window: <b>window tokens not yet published</b></>
                   )}
-                </span>
-                {cr?.sessionsPerWindow && (
-                  <>
-                    <em className="brk">·</em>
-                    <span>
-                      <Fig fig={cr.sessionsPerWindow} unit="sessions" />
-                    </span>
-                  </>
+                </div>
+                {windowTokenLevels.some((p) => p.levels.length > 0) && (
+                  <LevelChart
+                    levelsByPlan={windowTokenLevels}
+                    // No change marker on this chart: the five-hour window itself has no
+                    // published step -- which meter moved is unresolved -- so the announced
+                    // event's marker would sit on a flat line that never actually stepped.
+                    // Passing no events draws none, rather than a red segment/marker that
+                    // implies a measured change this figure does not carry.
+                    events={[]}
+                    selectedPlan={plan}
+                    fmtValue={fmtTokens}
+                    plotRight={732}
+                    title="Effective window size over time"
+                  />
                 )}
-              </div>
+              </>
             )}
             <p className="stats-cta-row mob">
               <a className="stats-cta" href="#contribute">See your own stats &darr;</a>
@@ -1879,58 +1913,74 @@ export default function ClaudeUsageTracker({
             cross-account spread proves nothing about which meter moved): the windows-per-week
             ratio's own change, and the account-to-account gap, with no cause attached to
             either. */}
-        {!unavailable && acrossCut && (
+        {!unavailable && (acrossCut || changeSentences.length > 0) && (
           <details>
             <summary>The five-hour window across the change</summary>
-            <p className="sub">
-              Each account's own meter{acrossCut.cut_at ? ` either side of ${fmtDate(acrossCut.cut_at.slice(0, 10))}` : ""}
-              {acrossCut.unit ? `, in ${acrossCut.unit}` : ""}.
-            </p>
-            <table>
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Before</th>
-                  <th>After</th>
-                  <th>Change</th>
-                  <th>Stretches before</th>
-                  <th>Stretches after</th>
-                  <th>With capture</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(acrossCut.per_account).map(([label, a]) => (
-                  <tr key={label}>
-                    <td>{label}</td>
-                    <td>{typeof a.before === "number" ? fmtCredits(a.before) : "—"}</td>
-                    <td>{typeof a.after === "number" ? fmtCredits(a.after) : "—"}</td>
-                    <td>{typeof a.change_pct === "number" ? `${a.change_pct}%` : "—"}</td>
-                    <td>{a.n_before}</td>
-                    <td>{a.n_after}</td>
-                    <td>{a.n_with_capture}</td>
-                  </tr>
+            {/* What the headline figure was measured either side of, Anthropic's own figure for
+                the same change, and -- where the stretches cannot separate the two meters --
+                that they cannot: moved out of the hero (Jonathan's decision, 2026-09-20). */}
+            {changeSentences.length > 0 && (
+              <p className="sub">
+                {changeSentences.map((line) => (
+                  <span key={line}>{line} </span>
                 ))}
-              </tbody>
-            </table>
-            {emptyCapture.length > 0 && captureNote && (
-              <div className="quiet">
-                {emptyCapture.join(", ")}: {captureNote}.
-              </div>
+              </p>
             )}
-            {typeof weeklyRatioFellPct === "number" && Math.round(weeklyRatioFellPct) >= 1 && (
-              <div className="quiet">
-                The windows-per-week ratio fell about {Math.round(weeklyRatioFellPct)}%. That is consistent with a smaller
-                weekly cap, a larger five-hour window, or both; which meter moved is unresolved.
-              </div>
+            {acrossCut && (
+              <p className="sub">
+                Each account's own meter{acrossCut.cut_at ? ` either side of ${fmtDate(acrossCut.cut_at.slice(0, 10))}` : ""}
+                {acrossCut.unit ? `, in ${acrossCut.unit}` : ""}.
+              </p>
             )}
-            {typeof acrossAccountGapPct === "number" && (
-              <div className="quiet">
-                Two accounts read {Math.round(acrossAccountGapPct)}% apart in credits per 1% of the meter; the cause is
-                not identified.
-              </div>
-            )}
-            {(acrossCut.unresolved || acrossCut.resolved === false) && (
-              <div className="quiet">{acrossCut.unresolved ? `Unresolved: ${acrossCut.unresolved}.` : "Unresolved."}</div>
+            {acrossCut && (
+              <>
+                <table>
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Before</th>
+                      <th>After</th>
+                      <th>Change</th>
+                      <th>Stretches before</th>
+                      <th>Stretches after</th>
+                      <th>With capture</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(acrossCut.per_account).map(([label, a]) => (
+                      <tr key={label}>
+                        <td>{label}</td>
+                        <td>{typeof a.before === "number" ? fmtCredits(a.before) : "—"}</td>
+                        <td>{typeof a.after === "number" ? fmtCredits(a.after) : "—"}</td>
+                        <td>{typeof a.change_pct === "number" ? `${a.change_pct}%` : "—"}</td>
+                        <td>{a.n_before}</td>
+                        <td>{a.n_after}</td>
+                        <td>{a.n_with_capture}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {emptyCapture.length > 0 && captureNote && (
+                  <div className="quiet">
+                    {emptyCapture.join(", ")}: {captureNote}.
+                  </div>
+                )}
+                {typeof weeklyRatioFellPct === "number" && Math.round(weeklyRatioFellPct) >= 1 && (
+                  <div className="quiet">
+                    The windows-per-week ratio fell about {Math.round(weeklyRatioFellPct)}%. That is consistent with a
+                    smaller weekly cap, a larger five-hour window, or both; which meter moved is unresolved.
+                  </div>
+                )}
+                {typeof acrossAccountGapPct === "number" && (
+                  <div className="quiet">
+                    Two accounts read {Math.round(acrossAccountGapPct)}% apart in credits per 1% of the meter; the
+                    cause is not identified.
+                  </div>
+                )}
+                {(acrossCut.unresolved || acrossCut.resolved === false) && (
+                  <div className="quiet">{acrossCut.unresolved ? `Unresolved: ${acrossCut.unresolved}.` : "Unresolved."}</div>
+                )}
+              </>
             )}
           </details>
         )}
