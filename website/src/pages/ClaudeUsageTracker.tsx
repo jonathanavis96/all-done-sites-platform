@@ -1717,7 +1717,7 @@ export default function ClaudeUsageTracker({
                 {emptyCapture.join(", ")}: {captureNote}.
               </div>
             )}
-            {typeof weeklyRatioFellPct === "number" && (
+            {typeof weeklyRatioFellPct === "number" && Math.round(weeklyRatioFellPct) >= 1 && (
               <div className="quiet">
                 The windows-per-week ratio fell about {Math.round(weeklyRatioFellPct)}%. That is consistent with a smaller
                 weekly cap, a larger five-hour window, or both; which meter moved is unresolved.
@@ -1725,8 +1725,8 @@ export default function ClaudeUsageTracker({
             )}
             {typeof acrossAccountGapPct === "number" && (
               <div className="quiet">
-                Two accounts on the same plan read {Math.round(acrossAccountGapPct)}% apart in credits per 1% of the
-                meter; the cause is not identified.
+                Two accounts read {Math.round(acrossAccountGapPct)}% apart in credits per 1% of the meter; the cause is
+                not identified.
               </div>
             )}
             {(acrossCut.unresolved || acrossCut.resolved === false) && (
