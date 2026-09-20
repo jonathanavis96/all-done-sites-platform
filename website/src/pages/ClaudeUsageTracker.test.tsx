@@ -285,6 +285,51 @@ describe("the weekly chart and plan table with tracker wf-50's fields", () => {
     }
   });
 
+  // Mission Control review on PR #90: with PUBLISHED's own regime timestamps (not exactly
+  // contiguous to the microsecond) `lastRealStep` finds no step on any plan, so this fixture
+  // pins Max 20x to two contiguous regimes with a real change, and empties Pro's and Max 5x's own
+  // regimes so every one of their recent levels is inferred from Max 20x -- the exact shape that
+  // made the marker vanish for those two plans before the fix.
+  const CHANGE = (() => {
+    const j: UsageJson = structuredClone(PUBLISHED);
+    j.weekly_windows!.pro = { ...j.weekly_windows!.pro!, regimes: [] };
+    j.weekly_windows!.max5 = { ...j.weekly_windows!.max5!, regimes: [] };
+    j.weekly_windows!.max20 = {
+      ...j.weekly_windows!.max20!,
+      regimes: [
+        { start: "2026-08-01T00:00:00+00:00", end: "2026-09-11T00:00:00+00:00", windows: 6.5, seven_day_pct: 200, points: 50, source: "passive_paired_deltas", assumed: false },
+        { start: "2026-09-11T00:00:00+00:00", end: "2026-09-16T00:00:00+00:00", windows: 4.68, seven_day_pct: 30, points: 10, source: "passive_paired_deltas", assumed: false },
+      ],
+    };
+    return j;
+  })();
+
+  it("draws the change marker and the red step on Max 20x's own real step", () => {
+    const chart = weeklyChart(renderHtml(CHANGE, "max20"));
+    // The label carries the date and the rounded percent, not the generic announced-event text.
+    expect(chart).toMatch(/11 Sep 2026: -28% on 11 Sep/);
+    const markerLine = chart.match(/<line x1="([\d.]+)"[^>]*stroke="#B42318"[^>]*>/);
+    expect(markerLine).not.toBeNull();
+    const redPath = chart.match(/<path d="M ([\d.]+),[\d.]+ L ([\d.]+),[\d.]+ L \2,[\d.]+[^"]*"[^>]*stroke="#B42318"/);
+    expect(redPath).not.toBeNull();
+    // The dashed marker sits at the same x the red step's vertical jump sits at.
+    expect(Number(redPath![2])).toBeCloseTo(Number(markerLine![1]), 5);
+  });
+
+  it("falls back to Max 20x's step for Pro and Max 5x, whose own recent levels are all inferred", () => {
+    for (const plan of ["pro", "max5"] as Plan[]) {
+      const chart = weeklyChart(renderHtml(CHANGE, plan));
+      expect(chart).toMatch(/11 Sep 2026: -28% on 11 Sep/);
+      expect(chart).toMatch(/<line[^>]*stroke="#B42318"/);
+      // Reviewer finding 1 (PR #90): before the fix, Pro and Max 5x drew no marker at all because
+      // every one of their recent levels is inferred from Max 20x and `lastRealStep` skipped them.
+      const markerLine = chart.match(/<line x1="([\d.]+)"[^>]*stroke="#B42318"[^>]*>/)!;
+      const max20Chart = weeklyChart(renderHtml(CHANGE, "max20"));
+      const max20Line = max20Chart.match(/<line x1="([\d.]+)"[^>]*stroke="#B42318"[^>]*>/)!;
+      expect(Number(markerLine[1])).toBeCloseTo(Number(max20Line[1]), 5);
+    }
+  });
+
   it("draws every reading as a dot, hollow under 5% of seven-day movement, with its hover text", () => {
     const chart = weeklyChart(renderHtml(WF50));
     const readings = WF50.weekly_windows!.max20!.by_window!.filter((r) => typeof r.windows === "number");

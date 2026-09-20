@@ -63,6 +63,12 @@ const initialData = initialJson as unknown as UsageJson;
 
 const SITE = "https://alldonesites.com";
 
+// `fmtDate` renders "11 Sep 2026"; chart labels want the day and month only. A single-digit day
+// ("9 Sep 2026") is one character shorter than a two-digit one, so slicing a fixed prefix left a
+// trailing space on those dates. Stripping the year (and any space before it) is exact regardless
+// of digit count.
+const fmtDateShort = (iso: string) => fmtDate(iso).replace(/\s\d{4}$/, "");
+
 /**
  * Vertical positions for the right-margin plan labels. Each label wants to sit at its own
  * line's last value; where two would collide they are pushed apart by `gap` and the whole set
@@ -134,6 +140,27 @@ function lastRealStep(
   return null;
 }
 
+// The change marker for one plan, falling back across plans when the selected plan has no real
+// step of its own. Pro and Max 5x currently carry no measured regime at all near the change --
+// every recent level on both is inferred (scaled) from Max 20x -- so `lastRealStep` on their own
+// levels always returns null and the marker used to vanish for those two plans. The fallback
+// walks to the plan the SELECTED plan's own most recent level was inferred from (carried on each
+// level as `plan`, the source of that row) and draws the marker where that plan's own step
+// really is, so all three plans mark the same date. If no source plan is found this way, the
+// tokens-per-week chart's own announced-event marker is used instead, rather than showing none.
+function levelStepFor(
+  plotted: { plan: Plan; levels: { start: string; end: string; value: number; inferred: boolean; plan: Plan }[] }[],
+  selected: { levels: { start: string; end: string; value: number; inferred: boolean; plan: Plan }[] } | undefined,
+): { date: string; pct: number } | null {
+  if (!selected) return null;
+  const own = lastRealStep(selected.levels);
+  if (own) return own;
+  const last = selected.levels[selected.levels.length - 1];
+  if (!last || !last.inferred) return null;
+  const source = plotted.find((p) => p.plan === last.plan);
+  return source ? lastRealStep(source.levels) : null;
+}
+
 function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: number, gap = 16): Map<Plan, number> {
   const sorted = [...items].sort((a, b) => a.y - b.y);
   let prev = -Infinity;
@@ -157,7 +184,11 @@ interface PlanTableRow {
 export interface PlanLevels {
   plan: Plan;
   label: string;
-  levels: { start: string; end: string; value: number; inferred: boolean }[];
+  // `plan` on a level is the plan its regime was actually measured on: itself when `inferred`
+  // is false, the source it was scaled from when true. That is how the change marker's
+  // cross-plan fallback (`levelStepFor`) finds the plan to draw the marker from when the
+  // selected plan's own recent levels are all borrowed.
+  levels: { start: string; end: string; value: number; inferred: boolean; plan: Plan }[];
 }
 
 // What the windows-per-week chart draws beneath the selected plan's levels: the measurements the
@@ -268,16 +299,20 @@ function LevelChart({
   // levels, the two contiguous, non-inferred levels the step actually lands between. The two can
   // name different days; the level source is where the drawn step really is.
   const eventChange = latestWeeklyChange(events);
-  const levelStep = changeFromLevels ? lastRealStep(plotted.find(isSelectedPlan)?.levels ?? []) : null;
+  const levelStep = changeFromLevels ? levelStepFor(plotted, plotted.find(isSelectedPlan)) : null;
   const changedLevelStart = levelStep?.date ?? null;
   const changeMarker: { x: (() => number | null); date: string; text: string } | null = changeFromLevels
     ? levelStep
       ? {
           x: () => xAt(levelStep.date),
           date: levelStep.date,
-          text: `${levelStep.pct > 0 ? "+" : ""}${Math.round(levelStep.pct)}% on ${fmtDate(levelStep.date.slice(0, 10)).slice(0, 6)}`,
+          text: `${levelStep.pct > 0 ? "+" : ""}${Math.round(levelStep.pct)}% on ${fmtDateShort(levelStep.date.slice(0, 10))}`,
         }
-      : null
+      : // No real step anywhere in the fallback chain (should not happen while Max 20x has its
+        // own measured regimes) -- fall back to the announced event rather than show nothing.
+        eventChange
+        ? { x: () => xDay(eventChange.date), date: eventChange.date, text: shortChangeLabel(eventChange) }
+        : null
     : eventChange
       ? { x: () => xDay(eventChange.date), date: eventChange.date, text: shortChangeLabel(eventChange) }
       : null;
@@ -1828,6 +1863,14 @@ export default function ClaudeUsageTracker({
                   : "measured from a real account"}
               {data.last_change?.scope === "weekly" ? ` since the change on ${fmtDate(data.last_change.date)}` : ""}.
             </p>
+            {weeklyTokenLevels.some((p) => p.levels.length > 0) && (
+              <p>
+                Tokens per week chart: each line is the limit itself, held flat between changes -- a step means a
+                measured change, and nothing else on the chart moves. Solid and shaded: selected plan. Grey: the
+                others. Dashed: inferred from another plan by the measured plan ratio, not measured on this one.
+                Red: a measured change.
+              </p>
+            )}
             {accountWeekly.length > 0 && (
               <p>
                 Each watched account's own figure:{" "}
