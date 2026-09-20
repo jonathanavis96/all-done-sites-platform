@@ -21,6 +21,12 @@ import {
   weeklyReadingsFor,
   weeklyCurrentFor,
   planScaling,
+  type Plan,
+  planWindowsPerWeek,
+  accountWindowsPerWeek,
+  documentedSource,
+  documentedWindowsPerWeek,
+  referenceDateFor,
   type UsageJson,
 } from "./claudeUsage";
 import {
@@ -33,6 +39,9 @@ import {
   fmtCredits,
   modelFamily,
   windowCreditAccounts,
+  windowCreditAccountsWithoutStretch,
+  cacheReadShareFor,
+  effortRunCounts,
   type CreditsFigure,
 } from "./claudeUsage";
 import { withWf50 } from "./__fixtures__/wf50";
@@ -42,6 +51,10 @@ import schema2Published from "./__fixtures__/claude-usage-schema2-published.json
 // The credits block, as the tracker publishes it from its current main. The live file carries
 // the same block from its next hourly refresh.
 import schema3Credits from "./__fixtures__/claude-usage-schema3-credits.json";
+// The same block once tracker PR #67 lands: every per_model row says whether its rate was measured
+// or taken from the reference table, the families with no measurable rate publish a sentence
+// instead of a number, and the effort cells carry credits of their own.
+import schema3Measured from "./__fixtures__/claude-usage-schema3-measured-rates.json";
 
 const J: UsageJson = {
   generated_at: "2026-09-05T20:15:00+00:00",
@@ -1279,13 +1292,16 @@ describe("the credits block", () => {
       }
       for (const [k, v] of Object.entries(o)) walk(v, `${path}.${k}`);
     };
-    walk(creditsOf(CREDITS), "credits");
-    expect(statuses.length).toBeGreaterThan(0);
-    for (const { path, status } of statuses) {
-      const at = path.split(".").slice(1).reduce<unknown>((acc, k) => (acc as Record<string, unknown>)?.[k], creditsOf(CREDITS));
-      const fig = creditFigure(at as CreditsFigure, fmtCredits)!;
-      expect(fig, path).toMatchObject({ kind: "status", text: status });
-      expect(fig.text, path).not.toMatch(/null|NaN/);
+    for (const file of [CREDITS, schema3Measured as unknown as UsageJson]) {
+      statuses.length = 0;
+      walk(creditsOf(file), "credits");
+      expect(statuses.length).toBeGreaterThan(0);
+      for (const { path, status } of statuses) {
+        const at = path.split(".").slice(1).reduce<unknown>((acc, k) => (acc as Record<string, unknown>)?.[k], creditsOf(file));
+        const fig = creditFigure(at as CreditsFigure, fmtCredits)!;
+        expect(fig, path).toMatchObject({ kind: "status", text: status });
+        expect(fig.text, path).not.toMatch(/null|NaN/);
+      }
     }
   });
 
@@ -1382,5 +1398,169 @@ describe("the credits block", () => {
     // 0.01% of the window is real input; printing it as 0.0% would read as none at all.
     expect(fmtShare(0.0001)).toBe("0.01%");
     expect(fmtShare(0)).toBe("0.0%");
+  });
+});
+
+// wf-57. Two things the page said twice, and several it said from a constant.
+describe("one quantity, one figure", () => {
+  const CREDITS = schema3Credits as unknown as UsageJson;
+  const MEASURED = schema3Measured as unknown as UsageJson;
+  const PUBLISHED = schema2Published as unknown as UsageJson;
+  const PLANS: Plan[] = ["pro", "max5", "max20"];
+  const num = (text: string) => Number(text.replace(/,/g, ""));
+
+  it("puts sessions per window, sessions per week and the plan's windows per week on one arithmetic", () => {
+    // The defect: the hero read sessions off `credits` and the table off session_tokens x
+    // effort_usd, 30x apart. Both now come from the block, and dividing one by the other gives
+    // back the windows-per-week figure the page states in words a line below them.
+    for (const plan of PLANS) {
+      const c = computeCredits(MEASURED, plan, "claude-sonnet-5")!;
+      expect(num(c.sessionsPerWeek!.text) / num(c.sessionsPerWindow!.text), plan).toBeCloseTo(c.planWindowsPerWeek!, 1);
+    }
+  });
+
+  it("scales every per-window figure by the plan ratio and every per-week figure by the plan's own week", () => {
+    const max20 = computeCredits(MEASURED, "max20", "claude-sonnet-5")!;
+    const pro = computeCredits(MEASURED, "pro", "claude-sonnet-5")!;
+    expect(max20.tokensIn).toEqual({ kind: "value", text: "38M", range: "21M to 64M" });
+    expect(pro.tokensIn!.text).toBe("1.9M");
+    expect(max20.usdIn!.text).toBe("$75.49");
+    expect(pro.usdIn!.text).toBe("$3.77");
+    // A week holds 5.93 Pro windows against 4.94 Max 20x ones, so a per-week figure carries more
+    // than the per-window ratio: 1 : 8.33 : 16.67 per week against 1 : 6 : 20 per window.
+    expect(planScaling(MEASURED)).toEqual({ credits: true, perWindow: "1 : 6 : 20", perWeek: "1 : 8.33 : 16.67" });
+    expect(num(pro.sessionsPerWeek!.text) / num(max20.sessionsPerWeek!.text)).toBeCloseTo(1 / 16.67, 3);
+    expect(num(pro.sessionsPerWindow!.text) / num(max20.sessionsPerWindow!.text)).toBeCloseTo(0.05, 3);
+  });
+
+  it("gives Fable half the week on Max and nothing at all on Pro", () => {
+    const week = creditsOf(MEASURED)!.sessions!["claude-fable-5-1"].per_week.interval!;
+    const ratio = 5.93 / 4.94; // Pro's windows per week over the measured plan's
+    const max20 = computeCredits(MEASURED, "max20", "claude-fable-5-1")!;
+    expect(max20.sessionsPerWeek!.range).toBe(
+      `${Math.round((week[0] as number) * 0.5).toLocaleString("en-US")} to ${Math.round((week[1] as number) * 0.5).toLocaleString("en-US")}`,
+    );
+    expect(ratio).toBeGreaterThan(1);
+    const pro = computeCredits(MEASURED, "pro", "claude-fable-5-1")!;
+    expect(pro.included).toBe(false);
+    expect(pro.tokensInPerWeek).toBeNull();
+  });
+
+  it("moves only the effort cells with the effort argument", () => {
+    const high = computeCredits(MEASURED, "max20", "claude-opus-5", "high")!;
+    const low = computeCredits(MEASURED, "max20", "claude-opus-5", "low")!;
+    // Nothing the hero shows moves with effort, which is why the hero stopped saying it does.
+    expect(high.tokensIn).toEqual(low.tokensIn);
+    expect(high.usdIn).toEqual(low.usdIn);
+    expect(high.sessionsPerWindow).toEqual(low.sessionsPerWindow);
+    expect(high.sessionsPerWeek).toEqual(low.sessionsPerWeek);
+    // The effort cells do.
+    expect(computeCredits(MEASURED, "max20", "claude-opus-5")!.effortCredits).toBeNull();
+    expect(high.effortCredits!.credits).toEqual({ kind: "value", text: "28,547", range: "28,547 to 28,547" });
+    expect(low.effortCredits!.credits!.text).toBe("10,228");
+    expect(high.effortCredits!.runs).toBe(7);
+    expect(high.effortCredits!.percentOfWindow!.text).toBe("0.15%");
+    // A task costs the same credits on any plan; a Pro window is a twentieth of the size, so the
+    // share it takes runs the other way from every other figure here.
+    expect(computeCredits(MEASURED, "pro", "claude-opus-5", "high")!.effortCredits!.percentOfWindow!.text).toBe("3.00%");
+    // A family with no identified rate publishes the sentence in the cell, not a number.
+    expect(computeCredits(MEASURED, "max20", "claude-fable-5-1", "high")!.effortCredits!.credits).toMatchObject({
+      kind: "status",
+      text: "rate not yet identified",
+    });
+    // The file published before PR #67 carries no effort credits, and none are invented for it.
+    expect(computeCredits(CREDITS, "max20", "claude-opus-5", "high")!.effortCredits).toBeNull();
+  });
+
+  it("says what each family's row was priced at, and publishes a sentence where nothing could be", () => {
+    const sonnet = computeCredits(MEASURED, "max20", "claude-sonnet-5")!;
+    expect(sonnet.rateSource).toBe("measured");
+    expect(sonnet.creditsPerTokenIn).toBeCloseTo(0.5177756137802535, 12);
+    expect(sonnet.creditsPerTokenInInterval).toEqual([0.32664999436277214, 0.8316472975985488]);
+    expect(sonnet.referenceRateIn).toBe(0.4);
+    expect(sonnet.modelStatus).toBeNull();
+    // Opus is the unit anchor: its rate IS the reference table's figure, and the row says so.
+    expect(computeCredits(MEASURED, "max20", "claude-opus-5")!.rateSource).toBe("reference");
+    // Haiku has no Haiku-heavy stretch to fit, so every figure on the row is a sentence.
+    const haiku = creditsOf(MEASURED)!.per_model!.haiku;
+    expect(haiku.status).toBe("not measurable, no clean stretch is Haiku-heavy");
+    expect(creditFigure(haiku.tokens_per_window.input, fmtTokens)).toEqual({
+      kind: "status",
+      text: "not measurable, no clean stretch is Haiku-heavy",
+      range: null,
+    });
+    expect(creditsOf(MEASURED)!.per_model!.fable.status).toBe("rate not yet identified");
+    // The file the page renders today publishes neither field, and nothing stands in for them.
+    expect(computeCredits(CREDITS, "max20", "claude-sonnet-5")!.rateSource).toBeNull();
+    expect(computeCredits(CREDITS, "max20", "claude-sonnet-5")!.referenceRateIn).toBeNull();
+  });
+
+  it("names the accounts the window figure rests on, and the one it does not", () => {
+    const wc = creditsOf(MEASURED)!.window_credits;
+    expect(windowCreditAccounts(wc)).toBe(2);
+    expect(windowCreditAccountsWithoutStretch(wc)).toEqual(["a1"]);
+    expect(computeCredits(MEASURED, "max20", "claude-opus-5")!.windowCreditsMethod).toContain("pure-opus stretches");
+    expect(windowCreditAccountsWithoutStretch(undefined)).toEqual([]);
+  });
+
+  it("reads the documented level, its source and its date off the JSON", () => {
+    expect(documentedWindowsPerWeek(MEASURED, "max20")).toBe(7.58);
+    expect(documentedWindowsPerWeek(MEASURED, "max5")).toBe(12.63);
+    expect(documentedWindowsPerWeek(MEASURED, "pro")).toBe(9.09);
+    // Read, not typed: a different published figure gives a different level.
+    const moved = structuredClone(MEASURED);
+    moved.weekly_window_ratios_basis!.documented_windows_per_week!.max20 = 9.99;
+    expect(documentedWindowsPerWeek(moved, "max20")).toBe(9.99);
+    // The same table is undated in the basis block and dated in the reference block. The date is
+    // the fact, so it is what the page says beside the URL.
+    expect(MEASURED.weekly_window_ratios_basis!.dated).toBe(false);
+    expect(referenceDateFor(MEASURED, MEASURED.weekly_window_ratios_basis!.source_url)).toBe("2026-01-25");
+    expect(referenceDateFor(MEASURED, "https://support.claude.com/en/articles/11049741-what-is-the-max-plan")).toBeNull();
+    expect(documentedSource(MEASURED)).toBe("she-llac.com, 25 Jan 2026");
+    // A file published before either block keeps the wording it has always rendered.
+    expect(documentedSource(PUBLISHED)).toBe("she-llac, undated");
+    expect(documentedWindowsPerWeek(PUBLISHED, "max20")).toBe(7.58);
+    expect(referenceDateFor(PUBLISHED, "https://she-llac.com/claude-limits")).toBeNull();
+  });
+
+  it("computes the per-week ratio from the basis block rather than quoting it", () => {
+    const without = structuredClone(MEASURED);
+    delete without.weekly_window_ratios_basis!.credits_per_week;
+    expect(planScaling(without).perWeek).toBeNull();
+    const partial = structuredClone(MEASURED);
+    delete partial.weekly_window_ratios_basis!.credits_per_week!.max5;
+    expect(planScaling(partial).perWeek).toBeNull();
+    expect(planScaling(PUBLISHED)).toEqual({ credits: false, perWindow: "1 : 5 : 20", perWeek: null });
+  });
+
+  it("reads the run counts and the plotted mix off the JSON", () => {
+    expect(effortRunCounts(creditsOf(MEASURED)!.effort_cache_mix)).toEqual([6, 7]);
+    expect(effortRunCounts(undefined)).toEqual([]);
+    // The charts plot raw tokens at the account's own mix, a different quantity from the priced
+    // figure above them, so the page states the share they carry.
+    expect(cacheReadShareFor(MEASURED, "claude-sonnet-5")).toBe(0.9702);
+    expect(cacheReadShareFor(PUBLISHED, "claude-sonnet-5")).toBe(0.971307);
+    expect(fmtShare(cacheReadShareFor(MEASURED, "claude-sonnet-5")!)).toBe("97.0%");
+  });
+
+  it("gives each watched account's own windows per week, where the JSON carries them", () => {
+    expect(accountWindowsPerWeek(MEASURED, "max20")).toEqual([
+      { account: "a1", value: 5.15, n: 128 },
+      { account: "a2", value: 4.53, n: 63 },
+      { account: "a3", value: 5.48, n: 9 },
+    ]);
+    // Only Max 20x publishes per-account figures; another plan's are never scaled across.
+    expect(accountWindowsPerWeek(MEASURED, "max5")).toEqual([]);
+    expect(accountWindowsPerWeek(PUBLISHED, "max20")).toEqual([]);
+  });
+
+  it("has one windows-per-week helper behind both routes", () => {
+    expect(planWindowsPerWeek(MEASURED, "max20")).toEqual({ value: 4.94, inferred: false });
+    expect(planWindowsPerWeek(MEASURED, "pro")).toEqual({ value: 5.93, inferred: true });
+    for (const plan of PLANS) {
+      expect(computeCredits(MEASURED, plan, "claude-sonnet-5")!.planWindowsPerWeek, plan).toBe(
+        compute(MEASURED, plan, "claude-sonnet-5", "high")!.planWindowsPerWeek,
+      );
+    }
   });
 });
