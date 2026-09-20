@@ -24,9 +24,11 @@ import {
   type Plan,
   planWindowsPerWeek,
   accountWindowsPerWeek,
+  basisDate,
   documentedSource,
   documentedWindowsPerWeek,
   referenceDateFor,
+  shortfallRows,
   type UsageJson,
 } from "./claudeUsage";
 import {
@@ -55,6 +57,10 @@ import schema3Credits from "./__fixtures__/claude-usage-schema3-credits.json";
 // or taken from the reference table, the families with no measurable rate publish a sentence
 // instead of a number, and the effort cells carry credits of their own.
 import schema3Measured from "./__fixtures__/claude-usage-schema3-measured-rates.json";
+// Tracker PR #68: both basis blocks dated from the same table the reference block dates, the
+// credits block and every per_model row dated by the newest stretch behind them, and
+// reference.shortfall -- the measured windows per week against the table's own, per plan.
+import schema3Shortfall from "./__fixtures__/claude-usage-schema3-shortfall.json";
 
 const J: UsageJson = {
   generated_at: "2026-09-05T20:15:00+00:00",
@@ -1562,5 +1568,84 @@ describe("one quantity, one figure", () => {
         compute(MEASURED, plan, "claude-sonnet-5", "high")!.planWindowsPerWeek,
       );
     }
+  });
+});
+
+// wf-57 follow-up. Tracker PR #68 dates the two basis blocks and the credits block itself, and
+// publishes the comparison the page had no field for.
+describe("the dated blocks and the shortfall (tracker PR #68)", () => {
+  const SHORTFALL = schema3Shortfall as unknown as UsageJson;
+  const MEASURED = schema3Measured as unknown as UsageJson;
+  const PUBLISHED = schema2Published as unknown as UsageJson;
+
+  it("takes each basis block's date from the block, and falls back to the reference for a file without one", () => {
+    expect(SHORTFALL.plan_ratios_basis!.dated).toBe(true);
+    expect(basisDate(SHORTFALL, SHORTFALL.plan_ratios_basis)).toBe("2026-01-25");
+    expect(basisDate(SHORTFALL, SHORTFALL.weekly_window_ratios_basis)).toBe("2026-01-25");
+    // A block's own date wins, so a publisher that moves one moves what the page prints.
+    const moved = structuredClone(SHORTFALL);
+    moved.weekly_window_ratios_basis!.as_of = "2026-02-02";
+    expect(basisDate(moved, moved.weekly_window_ratios_basis)).toBe("2026-02-02");
+    expect(documentedSource(moved)).toBe("she-llac.com, 2 Feb 2026");
+    // The older file dates neither block, and the reference block answers for the same URL.
+    expect(MEASURED.weekly_window_ratios_basis!.dated).toBe(false);
+    expect(MEASURED.weekly_window_ratios_basis!.as_of).toBeUndefined();
+    expect(basisDate(MEASURED, MEASURED.weekly_window_ratios_basis)).toBe("2026-01-25");
+    expect(referenceDateFor(MEASURED, MEASURED.weekly_window_ratios_basis!.source_url)).toBe("2026-01-25");
+    // And a file with neither has no date to print.
+    expect(basisDate(PUBLISHED, PUBLISHED.plan_ratios_basis)).toBeNull();
+    expect(documentedSource(PUBLISHED)).toBe("she-llac, undated");
+    expect(basisDate(PUBLISHED, undefined)).toBeNull();
+  });
+
+  it("dates the credits block and each family's row by the stretches behind them", () => {
+    const c = computeCredits(SHORTFALL, "max20", "claude-sonnet-5")!;
+    expect(c.creditsAsOf).toBe("2026-09-20T00:21:09+00:00");
+    expect(c.familyAsOf).toBe("2026-09-20T00:21:09+00:00");
+    // Opus's own stretches end two days earlier, and the row says so rather than the block's date.
+    expect(computeCredits(SHORTFALL, "max20", "claude-opus-5")!.familyAsOf).toBe("2026-09-18T22:14:09+00:00");
+    // Haiku has no stretch to date at all, so it has no date and none is borrowed for it.
+    expect(creditsOf(SHORTFALL)!.per_model!.haiku.as_of).toBeNull();
+    // The older files publish neither date, and nothing stands in.
+    expect(computeCredits(MEASURED, "max20", "claude-sonnet-5")!.creditsAsOf).toBeNull();
+    expect(computeCredits(MEASURED, "max20", "claude-sonnet-5")!.familyAsOf).toBeNull();
+  });
+
+  it("reads the shortfall rows in plan order, with a sentence where a plan was never measured", () => {
+    const rows = shortfallRows(SHORTFALL);
+    expect(rows.map((r) => r.plan)).toEqual(["pro", "max5", "max20"]);
+    expect(rows[2].row).toMatchObject({
+      measured_windows_per_week: 6.48,
+      documented_windows_per_week: 7.58,
+      ratio: 0.8549,
+      expected_windows_per_week: 5.6818,
+      ratio_to_expected: 1.1405,
+      status: null,
+    });
+    // Pro's weekly figure is inferred from Max 20x, never measured, so the row is a sentence and
+    // every figure on it is null rather than a number the tracker cannot stand behind.
+    expect(rows[0].row.status).toBe(
+      "no measured weekly-window regime for pro ending before the cut; its published windows per week are inferred from max20, never measured",
+    );
+    for (const v of [rows[0].row.measured_windows_per_week, rows[0].row.ratio, rows[0].row.ratio_to_expected]) {
+      expect(v).toBeNull();
+    }
+    expect(SHORTFALL.reference!.shortfall!.status).toBe("explained");
+    expect(SHORTFALL.reference!.shortfall!.multipliers_applied).toEqual({ five_hour_window: 2.0, weekly: 1.5 });
+    // Nothing to draw on a file published before the block.
+    expect(shortfallRows(MEASURED)).toEqual([]);
+    expect(shortfallRows(PUBLISHED)).toEqual([]);
+  });
+
+  it("keeps the three credits files on one arithmetic", () => {
+    // The same checks the first pass locked, on the third file: the published per-week figure
+    // divided by the per-window one gives back the plan's own windows per week.
+    for (const plan of ["pro", "max5", "max20"] as Plan[]) {
+      const c = computeCredits(SHORTFALL, plan, "claude-sonnet-5")!;
+      const num = (t: string) => Number(t.replace(/,/g, ""));
+      expect(num(c.sessionsPerWeek!.text) / num(c.sessionsPerWindow!.text), plan).toBeCloseTo(c.planWindowsPerWeek!, 1);
+    }
+    expect(planScaling(SHORTFALL)).toEqual({ credits: true, perWindow: "1 : 6 : 20", perWeek: "1 : 8.33 : 16.67" });
+    expect(documentedWindowsPerWeek(SHORTFALL, "max20")).toBe(7.58);
   });
 });

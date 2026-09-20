@@ -25,6 +25,8 @@ import schema2Published from "@/lib/__fixtures__/claude-usage-schema2-published.
 import schema3Credits from "@/lib/__fixtures__/claude-usage-schema3-credits.json";
 // The same block once tracker PR #67 lands: measured rates, rate sources and per-effort credits.
 import schema3Measured from "@/lib/__fixtures__/claude-usage-schema3-measured-rates.json";
+// Tracker PR #68: dated basis blocks, a dated credits block, and reference.shortfall.
+import schema3Shortfall from "@/lib/__fixtures__/claude-usage-schema3-shortfall.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
@@ -645,5 +647,87 @@ describe("the page states one figure per quantity", () => {
     expect(text).toContain("Tokens per 5-hour window");
     expect(text).not.toContain("Input tokens per 5-hour window");
     expect(text).not.toContain("Plotted: tokens at the account's own mix");
+  });
+});
+
+// wf-57 follow-up. Tracker PR #68 reconciles the dates and publishes goal 7.
+describe("the dated blocks and the shortfall table on the page", () => {
+  const SHORTFALL = schema3Shortfall as unknown as UsageJson;
+  const MEASURED = schema3Measured as unknown as UsageJson;
+  const WITHOUT: UsageJson = (() => {
+    const j = structuredClone(SHORTFALL);
+    delete j.credits;
+    return j;
+  })();
+
+  it("dates each named source from its own basis block", () => {
+    const text = render(SHORTFALL, "max20", "claude-sonnet-5");
+    expect(SHORTFALL.plan_ratios_basis!.as_of).toBe("2026-01-25");
+    expect(text).toContain("Source, as of 25 Jan 2026: she-llac.com/claude-limits");
+    expect(text).toContain("Documented: the level she-llac.com/claude-limits lists for the selected plan, as of 25 Jan 2026");
+    expect(text).toContain("she-llac.com/claude-limits, as of 25 Jan 2026");
+    expect(text).not.toContain("undated");
+    expect(renderHtml(SHORTFALL).match(/documented [^(]*\(([^)]*)\)/)?.[1]).toBe("she-llac.com, 25 Jan 2026");
+    // The block's date is what is printed, not the reference block's, so moving one moves it.
+    const moved = structuredClone(SHORTFALL);
+    moved.weekly_window_ratios_basis!.as_of = "2026-02-02";
+    expect(render(moved, "max20", "claude-sonnet-5")).toContain(
+      "Documented: the level she-llac.com/claude-limits lists for the selected plan, as of 2 Feb 2026",
+    );
+  });
+
+  it("dates the credits block and each family's rate", () => {
+    const text = render(SHORTFALL, "max20", "claude-sonnet-5");
+    expect(text).toContain("Cache writes at the input rate, cache reads at 0 of it. Measured to 20 Sep 2026.");
+    expect(text).toContain("Priced at the meter's measured Sonnet rate, as of 20 Sep 2026, 0.518 credits per input token");
+    // Opus's own stretches end earlier, and its line says its own date.
+    expect(render(SHORTFALL, "max20", "claude-opus-5")).toContain(
+      "Priced at the reference Opus rate, as of 18 Sep 2026, 0.667 credits per input token.",
+    );
+    // A family with no rate carries its date beside the sentence that stands in for the number.
+    expect(render(SHORTFALL, "max20", "claude-fable-5-1")).toContain("Fable rate, as of 20 Sep 2026: rate not yet identified.");
+    // The file published before PR #68 dates neither, and none is invented for it.
+    const older = render(MEASURED, "max20", "claude-sonnet-5");
+    expect(older).not.toContain("Measured to ");
+    expect(older).toContain("Priced at the meter's measured Sonnet rate, 0.518 credits per input token");
+  });
+
+  it("draws the shortfall as one row per plan, with a sentence where a plan was never measured", () => {
+    const text = render(SHORTFALL, "max20", "claude-sonnet-5");
+    expect(text).toContain(
+      "Measured against the reference table: this tracker's measured five-hour windows per week against the reference table's, per plan, for the last regime that ended before the 14 September weekly change. Cut at 14 Sep 2026.",
+    );
+    expect(text).toContain("Measured Documented Measured ÷ documented Expected Measured ÷ expected Regime");
+    expect(text).toContain("Max 20x 6.48 7.58 0.85 5.68 1.14 15 Aug 2026 to 14 Sep 2026");
+    expect(text).toContain("Max 5x 10.86 12.63 0.86 9.47 1.15 13 Jun 2026 to 14 Aug 2026");
+    // Pro has no measured regime, so the row is the publisher's sentence and carries no figure.
+    expect(text).toContain(
+      "Pro no measured weekly-window regime for pro ending before the cut; its published windows per week are inferred from max20, never measured",
+    );
+    expect(text).toContain("Multipliers applied to the table's figures: five-hour window ×2, weekly ×1.5.");
+    expect(text).toContain("the reference table predates the 6 May five-hour doubling");
+    expect(text).toContain("Status: explained (docs/findings-2026-09-20-reconciliation.md).");
+    // A file published before the block draws no such table.
+    expect(render(MEASURED, "max20", "claude-sonnet-5")).not.toContain("Measured against the reference table");
+  });
+
+  it("keeps the shortfall when the credits block is gone, and the rest of the page as it renders today", () => {
+    const text = render(WITHOUT, "max20", "claude-sonnet-5");
+    // reference.shortfall is not part of the credits block, so it survives its absence.
+    expect(text).toContain("Measured against the reference table");
+    expect(text).toContain("Max 20x 6.48 7.58 0.85 5.68 1.14");
+    // Everything the credits block carried is gone with it.
+    expect(text).not.toContain("credits per 5-hour window");
+    expect(text).not.toContain("Cross-check against the announced caps A cross-check");
+    expect(text).toMatch(/at low medium high xhigh max effort, you get/);
+    expect(text).toContain("the output rate fitted from 60 measured stretches of real work");
+  });
+
+  it("renders no null, NaN or undefined on the third file either", () => {
+    for (const model of Object.keys(SHORTFALL.rates)) {
+      for (const plan of ["pro", "max5", "max20"] as Plan[]) {
+        expect(render(SHORTFALL, plan, model), `${model} ${plan}`).not.toMatch(/\bnull\b|\bNaN\b|\bundefined\b/);
+      }
+    }
   });
 });
