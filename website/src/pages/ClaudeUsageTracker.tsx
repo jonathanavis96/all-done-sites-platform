@@ -1,5 +1,5 @@
 // website/src/pages/ClaudeUsageTracker.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ContributeMeter from "@/components/ContributeMeter";
 import NotifyForm from "@/components/NotifyForm";
 import Seo from "@/components/Seo";
@@ -22,6 +22,11 @@ import {
   seriesFor,
   weeklyEventsFor,
   latestWeeklyChange,
+  planScaling,
+  weeklyCurrentFor,
+  weeklyReadingsFor,
+  DOCUMENTED_SOURCE,
+  DOCUMENTED_WINDOWS_PER_WEEK,
   weeklyRegimeLevelsFor,
   weeklySeriesFor,
   weeklyTokenRegimeLevelsFor,
@@ -277,7 +282,20 @@ export interface PlanLevels {
   levels: { start: string; end: string; value: number; inferred: boolean }[];
 }
 
-// The weekly charts draw levels, not weekly points.
+// What the windows-per-week chart draws beneath the selected plan's levels: the measurements the
+// levels were detected from, and the documented level as a reference beside them.
+export interface LevelOverlay extends ReturnType<typeof weeklyReadingsFor> {
+  documented: { value: number; source: string } | null;
+}
+
+// A seven-day movement under this many percent gives a ratio that whole-percent rounding alone
+// swings between 3 and 11, so those readings are drawn hollow and fainter.
+const COARSE_SEVEN_DAY_PCT = 5;
+
+const fmtInterval = (iv: (number | null)[] | null | undefined): string | null =>
+  iv && typeof iv[0] === "number" && typeof iv[1] === "number" ? `${iv[0].toFixed(1)} to ${iv[1].toFixed(1)}` : null;
+
+// The weekly charts draw levels first, and the readings only beneath them.
 //
 // Windows per week is a plan constant: it moves when the limit moves and not otherwise. A
 // weekly ratio is an ESTIMATE of that constant and carries several percent of assembly error
@@ -293,6 +311,7 @@ function LevelChart({
   fmtValue,
   plotRight,
   title,
+  overlay,
 }: {
   levelsByPlan: PlanLevels[];
   events: UsageEvent[];
@@ -300,14 +319,43 @@ function LevelChart({
   fmtValue: (v: number) => string;
   plotRight: number;
   title: string;
+  overlay?: LevelOverlay;
 }) {
+  // With readings to show, the plot keeps a legible width and scrolls inside its own container on
+  // a phone, rather than shrinking a hundred dots into a smear. It opens on the newest readings,
+  // which sit at the right-hand end.
+  const dense = (overlay?.readings.length ?? 0) > 0 || (overlay?.weekly.length ?? 0) > 0;
+  const scroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [dense]);
   const plotted = levelsByPlan.filter((p) => p.levels.length > 0);
   if (plotted.length === 0) return <p className="sub">Not enough history yet.</p>;
   const W = 840, H = 260, L = 44, R = plotRight, T = 20, B = 200;
-  const vals = plotted.flatMap((p) => p.levels.map((l) => l.value));
+  const readings = overlay?.readings ?? [];
+  const pooled = overlay?.weekly ?? [];
+  const onsets = overlay?.onsets ?? [];
+  const documented = overlay?.documented ?? null;
+  // A whisker end the collector could not bound (null) is not drawn, so it sets no range either.
+  const whisker = (iv: (number | null)[] | null | undefined): [number, number] | null =>
+    iv && typeof iv[0] === "number" && typeof iv[1] === "number" ? [iv[0], iv[1]] : null;
+  // One y-axis for everything drawn: the levels, every reading, every whisker and the reference.
+  const vals = [
+    ...plotted.flatMap((p) => p.levels.map((l) => l.value)),
+    ...readings.map((r) => r.windows),
+    ...pooled.flatMap((p) => [p.windows, ...(whisker(p.rounding_interval) ?? [])]),
+    ...(documented ? [documented.value] : []),
+  ];
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
-  const stamps = plotted.flatMap((p) => p.levels.flatMap((l) => [Date.parse(l.start), Date.parse(l.end)]));
   const day = (d: string) => Date.parse(d + "T00:00:00Z");
+  // A date-only stamp is midnight UTC; a full timestamp is itself.
+  const stamp = (s: string) => (s.length === 10 ? day(s) : Date.parse(s));
+  const stamps = [
+    ...plotted.flatMap((p) => p.levels.flatMap((l) => [Date.parse(l.start), Date.parse(l.end)])),
+    ...readings.map((r) => stamp(r.window_ending)),
+    ...pooled.map((p) => stamp(p.week_ending)),
+  ].filter(Number.isFinite);
   const markerDays = events.map((ev) => day(ev.date));
   const d0 = Math.min(...stamps, ...markerDays);
   const d1 = Math.max(...stamps, ...markerDays);
@@ -317,9 +365,18 @@ function LevelChart({
     return L + ((t - d0) / span) * (R - L);
   };
   const xDay = (d: string) => xAt(`${d}T00:00:00Z`);
+  const xStamp = (s: string) => (s.length === 10 ? xDay(s) : xAt(s));
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
   const change = latestWeeklyChange(events);
+  const isSelectedPlan = (p: PlanLevels) =>
+    p.plan === selectedPlan || (selectedPlan === "pro" && p.plan === "max5" && !levelsByPlan.some((o) => o.plan === "pro"));
+  // Per-account onsets are worth drawing only when the accounts disagree about the day.
+  const onsetDays = Array.from(new Set(onsets.map((o) => o.onset.slice(0, 10)))).sort();
+  const onsetRange =
+    onsetDays.length > 1
+      ? `Onset across ${onsets.length} accounts: ${fmtDate(onsetDays[0])} to ${fmtDate(onsetDays[onsetDays.length - 1])}`
+      : null;
   // Two lines per plan on the right edge — name above, current value below — so the
   // gap has to clear both, not one.
   const labelY = stackLabels(
@@ -342,9 +399,26 @@ function LevelChart({
           .join(", ")}`,
     ),
     ...(change ? [`${fmtDate(change.date)}: ${shortChangeLabel(change)}`] : []),
+    ...(onsetRange ? [onsetRange] : []),
+    ...(readings.length > 0
+      ? [
+          `${readings.length} five-hour window readings, ${fmtValue(Math.min(...readings.map((r) => r.windows)))} to ${fmtValue(Math.max(...readings.map((r) => r.windows)))}`,
+        ]
+      : []),
+    ...(pooled.length > 0
+      ? [`Weekly pooled: ${pooled.map((p) => `${fmtDate(p.week_ending.slice(0, 10))} ${fmtValue(p.windows)}${p.partial ? " (week in progress)" : ""}`).join(", ")}`]
+      : []),
+    ...(documented ? [`Documented level ${fmtValue2(documented.value)} per ${documented.source.replace(", ", " (")})`] : []),
   ].join(". ");
-  return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
+  const svg = (
+    <svg
+      className="chart"
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      style={dense ? { minWidth: 640, display: "block" } : undefined}
+      role="img"
+      aria-label={ariaLabel}
+    >
       <defs>
         <linearGradient id={`lvlfill-${plotRight}`} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0" stopColor="#0EA5E9" stopOpacity=".22" />
@@ -372,26 +446,98 @@ function LevelChart({
           </text>
         </g>
       )}
+      {/* Shade under the selected plan's own steps, so the eye lands on the plan in view. Drawn
+          first: a fill above the readings would tint them and take their hover. */}
+      {plotted.filter(isSelectedPlan).map((p) => (
+        <polygon
+          key={p.plan}
+          fill={`url(#lvlfill-${plotRight})`}
+          points={`${xAt(p.levels[0].start)},${B} ${p.levels
+            .map((l) => `${xAt(l.start)},${y(l.value)} ${xAt(l.end)},${y(l.value)}`)
+            .join(" ")} ${xAt(p.levels[p.levels.length - 1].end)},${B}`}
+        />
+      ))}
+      {documented && (
+        <g>
+          <line x1={L} x2={R} y1={y(documented.value)} y2={y(documented.value)} stroke="var(--ads-mut)" strokeWidth="1" strokeDasharray="2 4" />
+          {/* A halo in the page colour, so the label reads where it crosses another plan's line. */}
+          <text x={L + 4} y={y(documented.value) - 5} style={{ paintOrder: "stroke", stroke: "var(--ads-bg)", strokeWidth: 4, strokeLinejoin: "round" }}>
+            {`documented ${fmtValue2(documented.value)} (${documented.source})`}
+          </text>
+        </g>
+      )}
+      {/* Beneath the levels: what they were detected from. One hue, the selected plan's, kept low
+          so the step line stays the figure and these stay the evidence. */}
+      <g>
+        {readings.map((r) => {
+          const coarse = r.seven_day_pct < COARSE_SEVEN_DAY_PCT;
+          return (
+            <circle
+              key={`${r.window_ending}-${r.account ?? ""}`}
+              cx={xStamp(r.window_ending)}
+              cy={y(r.windows)}
+              r="2.5"
+              fill={coarse ? "none" : "var(--ads-ac)"}
+              stroke="var(--ads-ac)"
+              strokeWidth={coarse ? 1 : 0}
+              opacity={coarse ? 0.3 : 0.45}
+            >
+              <title>
+                {`${fmtDate(r.window_ending.slice(0, 10))}: ${fmtValue(r.windows)} windows per week. Five-hour meter moved ${r.five_hour_pct}%, seven-day meter ${r.seven_day_pct}%${coarse ? " (under 5%, so rounding dominates)" : ""}.${r.account ? ` Account ${r.account}.` : ""}`}
+              </title>
+            </circle>
+          );
+        })}
+      </g>
+      <g>
+        {pooled.map((p) => {
+          const xx = xStamp(p.week_ending);
+          const iv = whisker(p.rounding_interval);
+          return (
+            <g key={p.week_ending}>
+              {iv && (
+                <path
+                  d={`M ${xx},${y(iv[0])} L ${xx},${y(iv[1])} M ${xx - 3},${y(iv[0])} L ${xx + 3},${y(iv[0])} M ${xx - 3},${y(iv[1])} L ${xx + 3},${y(iv[1])}`}
+                  fill="none"
+                  stroke="var(--ads-ac)"
+                  strokeWidth="1.25"
+                  opacity=".7"
+                />
+              )}
+              <circle
+                cx={xx}
+                cy={y(p.windows)}
+                r="4.5"
+                fill={p.partial ? "var(--ads-bg)" : "var(--ads-ac)"}
+                stroke="var(--ads-ac)"
+                strokeWidth={p.partial ? 1.75 : 0}
+                opacity=".8"
+              >
+                <title>
+                  {`Week ending ${fmtDate(p.week_ending.slice(0, 10))}${p.partial ? " (in progress)" : ""}: ${fmtValue(p.windows)} windows per week${fmtInterval(p.rounding_interval) ? `, rounding ${fmtInterval(p.rounding_interval)}` : ""}${typeof p.n === "number" ? `, ${p.n} readings pooled` : ""}.`}
+                </title>
+              </circle>
+            </g>
+          );
+        })}
+      </g>
+      {onsetRange !== null &&
+        onsets.map((o) => (
+          <line key={o.account} x1={xStamp(o.onset)} x2={xStamp(o.onset)} y1={T} y2={T + 12} stroke="#B42318" strokeWidth="1">
+            <title>
+              {`Account ${o.account}: step on ${fmtDate(o.onset.slice(0, 10))}, ${fmtValue(o.before)} to ${fmtValue(o.after)} (${o.percent > 0 ? "+" : ""}${o.percent}%). ${onsetRange}.`}
+            </title>
+          </line>
+        ))}
       {plotted.map((p) => {
-        const isSelected =
-          p.plan === selectedPlan || (selectedPlan === "pro" && p.plan === "max5" && !levelsByPlan.some((o) => o.plan === "pro"));
+        const isSelected = isSelectedPlan(p);
         const color = isSelected ? "#0EA5E9" : "#94A3B8";
+        // Labels take ink from the theme, never from the series: the line carries the colour.
+        const ink = isSelected ? "var(--ads-tx)" : "var(--ads-mut)";
         const runs = stepRuns(p.levels, xAt, (l) => y(l.value));
-        // Shade under the selected plan's own steps, so the eye lands on the plan in view.
-        const area = isSelected
-          ? p.levels
-              .map((l) => `${xAt(l.start)},${y(l.value)} ${xAt(l.end)},${y(l.value)}`)
-              .join(" ")
-          : "";
         const last = p.levels[p.levels.length - 1];
         return (
           <g key={p.plan}>
-            {isSelected && p.levels.length > 0 && (
-              <polygon
-                fill={`url(#lvlfill-${plotRight})`}
-                points={`${xAt(p.levels[0].start)},${B} ${area} ${xAt(last.end)},${B}`}
-              />
-            )}
             {runs.map((run, i) => (
               <path
                 key={i}
@@ -417,10 +563,10 @@ function LevelChart({
                 strokeDasharray="2 3"
                 opacity=".6"
               />
-              <text x={R + 10} y={(labelY.get(p.plan) ?? y(last.value)) - 8} style={{ fill: color, fontWeight: 500 }}>
+              <text x={R + 10} y={(labelY.get(p.plan) ?? y(last.value)) - 8} style={{ fill: ink, fontWeight: 500 }}>
                 {p.label}
               </text>
-              <text x={R + 10} y={(labelY.get(p.plan) ?? y(last.value)) + 8} style={{ fill: color, fontWeight: 700 }}>
+              <text x={R + 10} y={(labelY.get(p.plan) ?? y(last.value)) + 8} style={{ fill: ink, fontWeight: 700 }}>
                 {fmtValue(last.value)}
               </text>
             </g>
@@ -438,7 +584,32 @@ function LevelChart({
       </g>
     </svg>
   );
+  return dense ? <div ref={scroller} style={{ overflowX: "auto", maxWidth: "100%" }}>{svg}</div> : svg;
 }
+
+// The legend's key for one of the marks beneath the levels, drawn as the chart draws it.
+function LegendMark({ kind }: { kind: "reading" | "weekly" | "documented" }) {
+  return (
+    <svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true" style={{ display: "inline-block", verticalAlign: "-1px" }}>
+      {kind === "reading" && (
+        <>
+          <circle cx="5" cy="6" r="2.5" fill="var(--ads-ac)" opacity=".45" />
+          <circle cx="13" cy="6" r="2.5" fill="none" stroke="var(--ads-ac)" opacity=".3" />
+        </>
+      )}
+      {kind === "weekly" && (
+        <>
+          <path d="M 9,0.5 L 9,11.5 M 6,0.5 L 12,0.5 M 6,11.5 L 12,11.5" stroke="var(--ads-ac)" strokeWidth="1.25" opacity=".7" fill="none" />
+          <circle cx="9" cy="6" r="3.5" fill="var(--ads-ac)" opacity=".8" />
+        </>
+      )}
+      {kind === "documented" && <line x1="0" x2="18" y1="6" y2="6" stroke="var(--ads-mut)" strokeWidth="1" strokeDasharray="2 4" />}
+    </svg>
+  );
+}
+
+// A documented level is quoted as its source gives it, to two places.
+const fmtValue2 = (v: number) => v.toFixed(2);
 
 // What each tab of the contributors section plots. Every one is read off the same
 // contributed samples: the dollar and window figures divide by the five-hour percent, the
@@ -687,6 +858,28 @@ export default function ClaudeUsageTracker({
         : [],
     [data, model],
   );
+  // The readings behind the selected plan's levels, and the documented level beside them. Only a
+  // plan's own readings: today that is Max 20x, so Pro and Max 5x get the reference alone.
+  const weeklyOverlay = useMemo(
+    () =>
+      data
+        ? { ...weeklyReadingsFor(data, plan), documented: { value: DOCUMENTED_WINDOWS_PER_WEEK[plan], source: DOCUMENTED_SOURCE } }
+        : undefined,
+    [data, plan],
+  );
+  const scaling = useMemo(() => (data ? planScaling(data) : null), [data]);
+  // Which plans' current weekly figure is inferred from another plan, and the cut it dates from.
+  const inferredPlans = data
+    ? (Object.keys(PLAN_LABELS) as Plan[]).filter((p) => compute(data, p, model, effort)?.weeklyInferred)
+    : [];
+  const weeklyCut = latestWeeklyChange(weeklyEvents);
+  const max5History = data?.weekly_windows?.max5?.regimes ?? [];
+  const monthOf = (iso: string) => fmtDate(iso.slice(0, 10)).split(" ")[1];
+  const max5Span =
+    max5History.length > 0 ? ` (${monthOf(max5History[0].start)}\u2013${monthOf(max5History[max5History.length - 1].end)})` : "";
+  const inferredNote = `The Max 5x history${max5Span} is measured; its current figure is inferred from Max 20x${
+    weeklyCut ? ` since the ${fmtDate(weeklyCut.date).slice(0, -5)} cut` : ""
+  }, and Pro is inferred the same way.`;
   const h = data ? headline(data) : null;
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
@@ -842,8 +1035,10 @@ export default function ClaudeUsageTracker({
                   )}
                   {r.planWindowsPerWeek !== null && (
                     <div className="quiet">
-                      A week currently holds about {r.planWindowsPerWeek.toFixed(1)} five-hour windows, measured
-                      from a real account
+                      A week currently holds about {r.planWindowsPerWeek.toFixed(1)} five-hour windows,{" "}
+                      {r.weeklyInferred
+                        ? `inferred from ${PLAN_LABELS[weeklyCurrentFor(data, plan)?.inferredFrom ?? data.plan_measured]}`
+                        : "measured from a real account"}
                       {data.last_change?.scope === "weekly" ? ` since the change on ${fmtDate(data.last_change.date)}` : ""}.
                       {/* Fable's half-week cap on Max (audit finding 2, kept). */}
                       {r.weeklyFraction < 1 && (
@@ -998,12 +1193,32 @@ export default function ClaudeUsageTracker({
                   fmtValue={(v) => v.toFixed(1)}
                   plotRight={732}
                   title="Five-hour windows per week over time"
+                  overlay={weeklyOverlay}
                 />
                 {weeklySeries.some((s) => s.points.length >= 2) && (
                   <p className="sub chart-legend">
                     Each line is the limit itself, held flat between changes: a step means a measured change. Solid:
                     selected plan. Grey: the others. Dashed: inferred from another plan by the measured plan ratio,
-                    not measured on this one. Pro is assumed from Max 5x.
+                    not measured on this one.{" "}
+                    {inferredPlans.includes("pro") && inferredPlans.includes("max5")
+                      ? "Pro and Max 5x are currently inferred from Max 20x."
+                      : "Pro is assumed from Max 5x."}
+                    {weeklyOverlay && weeklyOverlay.readings.length > 0 && (
+                      <>
+                        {" "}
+                        <LegendMark kind="reading" /> Reading: one five-hour window on one account, hollow where the
+                        seven-day meter moved under 5% and rounding alone swings the ratio between 3 and 11.
+                      </>
+                    )}
+                    {weeklyOverlay && weeklyOverlay.weekly.length > 0 && (
+                      <>
+                        {" "}
+                        <LegendMark kind="weekly" /> Weekly: a calendar week of readings pooled, the whisker its
+                        rounding interval, hollow while the week is in progress.
+                      </>
+                    )}{" "}
+                    <LegendMark kind="documented" /> Documented: the level she-llac.com/claude-limits lists for the
+                    selected plan (undated), for reference only.
                   </p>
                 )}
               </>
@@ -1016,7 +1231,7 @@ export default function ClaudeUsageTracker({
             <h2>Plan comparison</h2>
             <div className="sub">
               {MODEL_LABELS[model] ?? model} at {effort} effort. Max 20x is measured; Pro and Max 5x are scaled from
-              it by Anthropic's published 1:5:20 ratios.
+              it by {scaling?.credits ? `the credits table, ${scaling.perWindow} per five-hour window` : `Anthropic's published ${planScaling(data, ":").perWindow} ratios`}.
             </div>
             <table>
               <thead>
@@ -1080,17 +1295,31 @@ export default function ClaudeUsageTracker({
                 ).map(([label, f]) => (
                   <tr key={label}>
                     <td>{label}</td>
-                    {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => (
-                      <td key={p} className={p === plan ? "hl" : ""}>{f(compute(data, p, model, effort))}</td>
-                    ))}
+                    {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => {
+                      const c = compute(data, p, model, effort);
+                      const text = f(c);
+                      return (
+                        <td key={p} className={p === plan ? "hl" : ""}>
+                          {text}
+                          {/* The table's form of the dashed line the weekly charts draw for an inferred level. */}
+                          {label.endsWith("per week") && text !== "—" && c?.weeklyInferred && (
+                            <>
+                              {" "}
+                              <em>inferred</em>
+                            </>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
             </table>
             {data.weekly_windows && (
               <div className="quiet">
-                Max 20x and Max 5x weekly figures are measured from real accounts. Pro assumes the Max 5x ratio until
-                it is measured.
+                {inferredPlans.includes("max5")
+                  ? `Max 20x weekly figures are measured from real accounts. ${inferredNote}`
+                  : "Max 20x and Max 5x weekly figures are measured from real accounts. Pro assumes the Max 5x ratio until it is measured."}
               </div>
             )}
           </section>
@@ -1191,9 +1420,13 @@ export default function ClaudeUsageTracker({
               reports whole percent, so each reading carries up to a percent's worth of rounding.
             </p>
             <p>
-              The tokens and dollars per window for Pro and Max 5x are scaled from Max 20x by Anthropic's published plan
-              ratios. The weekly window counts are not: Max 20x and Max 5x are both measured from real accounts, Max 5x
-              from the period one of them spent on that plan, and only Pro is assumed, from Max 5x.
+              The tokens and dollars per window for Pro and Max 5x are{" "}
+              {scaling?.credits
+                ? `scaled from Max 20x by the credits table: ${scaling.perWindow} per five-hour window and ${scaling.perWeek} per week (she-llac.com/claude-limits, undated).`
+                : "scaled from Max 20x by Anthropic's published plan ratios."}{" "}
+              {inferredPlans.includes("max5")
+                ? `The weekly window counts are measured on Max 20x. ${inferredNote}`
+                : "The weekly window counts are not: Max 20x and Max 5x are both measured from real accounts, Max 5x from the period one of them spent on that plan, and only Pro is assumed, from Max 5x."}
             </p>
             <p>
               The effort figures describe one task shape, run seven times at each effort level on each model. On Sonnet

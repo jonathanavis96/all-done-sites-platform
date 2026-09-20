@@ -12,6 +12,7 @@ import type { ContribMetric } from "@/lib/contrib";
 import schema1 from "@/lib/__fixtures__/claude-usage-schema1.json";
 import schema2 from "@/lib/__fixtures__/claude-usage-schema2.json";
 import schema2Published from "@/lib/__fixtures__/claude-usage-schema2-published.json";
+import { withWf50 } from "@/lib/__fixtures__/wf50";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
   return renderToString(
@@ -231,5 +232,104 @@ describe("plan comparison and contributor tabs respect not-included and inferred
     expect(weeklyTab).not.toMatch(/tracker [^ ]+ inferred/);
     expect(weeklyTab).toContain("Two contributor IDs on Max 20x have shared meter readings.");
     expect(weeklyTab).not.toContain("9.4");
+  });
+});
+
+// Tracker wf-50: the weekly chart shows the readings behind its levels, and the plan table and
+// copy follow the credits-table ratios and the inferred marks.
+describe("the weekly chart and plan table with tracker wf-50's fields", () => {
+  const WF50 = withWf50(PUBLISHED);
+  // The windows-per-week chart alone: its own svg, up to the next section.
+  const weeklyChart = (html: string) => {
+    const at = html.indexOf('aria-label="Five-hour windows per week over time');
+    return html.slice(html.lastIndexOf("<svg", at), html.indexOf("</svg>", at));
+  };
+
+  it("draws only the documented reference beside the levels before the fields exist", () => {
+    const chart = weeklyChart(renderHtml(PUBLISHED));
+    expect(chart).toContain("documented 7.58 (she-llac, undated)");
+    expect(chart).not.toContain("<title>");
+    expect(chart).not.toContain("min-width");
+    const text = render(PUBLISHED);
+    expect(text).toContain("Documented: the level she-llac.com/claude-limits lists");
+    expect(text).not.toContain("Reading: one five-hour window");
+    expect(text).toContain("by Anthropic's published 1:5:20 ratios");
+    expect(text).toContain("Pro assumes the Max 5x ratio until it is measured.");
+    expect(text).toContain("scaled from Max 20x by Anthropic's published plan ratios.");
+  });
+
+  it("names the selected plan's documented level", () => {
+    expect(weeklyChart(renderHtml(PUBLISHED, "max5"))).toContain("documented 12.63 (she-llac, undated)");
+    expect(weeklyChart(renderHtml(PUBLISHED, "pro"))).toContain("documented 9.09 (she-llac, undated)");
+  });
+
+  it("draws every reading as a dot, hollow under 5% of seven-day movement, with its hover text", () => {
+    const chart = weeklyChart(renderHtml(WF50));
+    const readings = WF50.weekly_windows!.max20!.by_window!.filter((r) => typeof r.windows === "number");
+    const dots: string[] = chart.match(/<circle[^>]*r="2\.5"[^>]*>/g) ?? [];
+    expect(dots).toHaveLength(readings.length);
+    expect(dots.filter((d) => d.includes('fill="none"'))).toHaveLength(readings.filter((r) => r.seven_day_pct < 5).length);
+    const one = readings.find((r) => r.seven_day_pct >= 5)!;
+    expect(chart).toContain(
+      `${one.windows!.toFixed(1)} windows per week. Five-hour meter moved ${one.five_hour_pct}%, seven-day meter ${one.seven_day_pct}%. Account ${one.account}.`,
+    );
+  });
+
+  it("draws the weekly pooled points with whiskers, the partial week hollow, beneath the step line", () => {
+    const chart = weeklyChart(renderHtml(WF50));
+    const weekly = WF50.weekly_windows!.max20!.weekly!;
+    const markers: string[] = chart.match(/<circle[^>]*r="4\.5"[^>]*>/g) ?? [];
+    expect(markers).toHaveLength(weekly.length);
+    expect(markers.filter((m) => m.includes('fill="var(--ads-bg)"'))).toHaveLength(weekly.filter((w) => w.partial).length);
+    expect(weekly.some((w) => w.partial)).toBe(true);
+    expect(chart).toContain("readings pooled");
+    // The regime step line stays the top layer: every reading and marker comes before it.
+    expect(chart.lastIndexOf("<circle")).toBeLessThan(chart.indexOf('stroke-width="3"'));
+    // Chart text takes its ink from the theme, never the series colour.
+    expect(chart).not.toMatch(/<text[^>]*fill:\s*#0EA5E9/i);
+  });
+
+  it("ticks each account's onset when the accounts disagree, and says the range", () => {
+    const chart = weeklyChart(renderHtml(WF50));
+    expect(chart).toContain("Account a1: step on 13 Sep 2026, 6.5 to 4.7 (-28%). Onset across 2 accounts: 13 Sep 2026 to 14 Sep 2026.");
+    expect(chart).toContain("Account a2: step on 14 Sep 2026");
+    const agreed = structuredClone(WF50);
+    agreed.weekly_windows!.max20!.by_account!.a2!.step!.onset = "2026-09-13";
+    expect(weeklyChart(renderHtml(agreed))).not.toContain("Onset across");
+  });
+
+  it("adds reading and weekly to the legend and keeps what was there", () => {
+    const text = render(WF50);
+    expect(text).toContain("Each line is the limit itself, held flat between changes");
+    expect(text).toContain("Reading: one five-hour window on one account");
+    expect(text).toContain("Weekly: a calendar week of readings pooled");
+    expect(text).toContain("Documented: the level she-llac.com/claude-limits lists");
+  });
+
+  it("scales the table by the credits table and marks the inferred weekly cells", () => {
+    const text = render(WF50);
+    const max20 = compute(WF50, "max20", "claude-sonnet-5", "high")!;
+    expect(row(text, "Tokens per 5-hour window")).toEqual([
+      fmtTokens(max20.tokensPerWindow! * 0.05),
+      fmtTokens(max20.tokensPerWindow! * 0.3),
+      fmtTokens(max20.tokensPerWindow!),
+    ]);
+    const weekly = row(text, "Tokens per week");
+    expect(weekly[0]).toMatch(/ inferred$/);
+    expect(weekly[1]).toMatch(/ inferred$/);
+    expect(weekly[2]).not.toContain("inferred");
+    expect(row(text, "Tokens per 5-hour window").join(" ")).not.toContain("inferred");
+    expect(text).toContain("scaled from it by the credits table, 1 : 6 : 20 per five-hour window.");
+    expect(text).toContain(
+      "scaled from Max 20x by the credits table: 1 : 6 : 20 per five-hour window and 1 : 8.33 : 16.67 per week (she-llac.com/claude-limits, undated).",
+    );
+    expect(text).toContain(
+      "The Max 5x history (Jun–Aug) is measured; its current figure is inferred from Max 20x since the 14 Sep cut, and Pro is inferred the same way.",
+    );
+    expect(text).not.toContain("Max 20x and Max 5x are both measured from real accounts");
+    expect(text).not.toContain("Pro assumes the Max 5x ratio");
+    // The hero says where an inferred figure came from instead of calling it measured.
+    expect(render(WF50, "max5")).toContain("five-hour windows, inferred from Max 20x since the change on 14 Sep 2026.");
+    expect(render(WF50, "max20")).toContain("five-hour windows, measured from a real account since the change");
   });
 });
