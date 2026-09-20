@@ -13,6 +13,7 @@ import {
   weeklyTokenSeriesFor,
   weeklyRegimeLevelsFor,
   weeklyTokenRegimeLevelsFor,
+  windowTokenRegimeLevelsFor,
   weeklyWindowRatio,
   modelPlanLimit,
   rateStaleAfter,
@@ -887,6 +888,31 @@ describe("weeklyTokenRegimeLevelsFor", () => {
   });
 });
 
+describe("windowTokenRegimeLevelsFor", () => {
+  const WINDOW = 400_000_000;
+  it("holds one flat value across every regime, borrowed or not: the block publishes one number, not a series", () => {
+    const j = withWindowTokens(V2, { sonnet: { value: WINDOW } });
+    const levels = windowTokenRegimeLevelsFor(j, "max20", SONNET);
+    expect(levels.length).toBeGreaterThan(1);
+    // Every level -- inferred or the plan's own -- carries the same value: the window figure
+    // does not vary by regime, only the windows-per-week figure does.
+    expect(new Set(levels.map((l) => l.tokens)).size).toBe(1);
+    expect(levels[0].tokens).toBeCloseTo(WINDOW, 0);
+  });
+  it("scales by the plan's credit ratio, with no weekly-fraction split: that split is a weekly-total concept", () => {
+    // Fable's 50% weekly cap must not halve the per-window figure the way it halves the
+    // per-week one (weeklyTokenRegimeLevelsFor's own test, above).
+    const j = withWindowTokens(V2, { sonnet: { value: WINDOW }, fable: { value: WINDOW } });
+    const fableLevels = windowTokenRegimeLevelsFor(j, "max20", FABLE);
+    expect(fableLevels.at(-1)!.tokens).toBeCloseTo(WINDOW, 0);
+  });
+  it("draws no level where the window is not published for the family, and never falls back", () => {
+    expect(windowTokenRegimeLevelsFor(RJ, "max20", SONNET)).toEqual([]);
+    const unidentified = withWindowTokens(RJ, { sonnet: { value: null, status: "rate not yet identified" } });
+    expect(windowTokenRegimeLevelsFor(unidentified, "max20", SONNET)).toEqual([]);
+  });
+});
+
 describe("weeklySeriesFor", () => {
   it("is not scoped by any range: returns the plan's full weekly history", () => {
     // Unlike seriesFor/eventsFor, the weekly chart never hides months of history behind the
@@ -1364,8 +1390,11 @@ describe("the credits block", () => {
   });
 
   it("says what the change was measured on, and says what it does not resolve", () => {
+    // The #78 headline, restored (Jonathan's decision, 2026-09-20): the plain "Anthropic last
+    // decreased ... on <date>" sentence, not the onset-bounded ratio wording. `changeLines` still
+    // carries the onset-bounded figures, moved to a details block rather than deleted.
     expect(headline(CREDITS)).toEqual({
-      text: "The number of five-hour windows in a week fell by 24% between 11 Sep 2026 and 14 Sep 2026.",
+      text: "Anthropic last decreased Claude's weekly limit by 24% on 11 Sep 2026.",
       tone: "down",
     });
     expect(changeLines(CREDITS)).toEqual([

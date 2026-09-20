@@ -436,14 +436,20 @@ describe("the credits block on the page", () => {
     return j;
   })();
 
-  it("says what the change was measured on, and what it leaves unresolved", () => {
+  it("restores the #78 headline, and moves the onset-bounded wording into the details block", () => {
     const text = render(CREDITS, "max20", "claude-opus-5");
-    expect(text).toContain("The number of five-hour windows in a week fell by 24% between 11 Sep 2026 and 14 Sep 2026.");
+    const hero = text.slice(0, text.indexOf(" Effective window size "));
+    // The #78 headline (Jonathan's decision, 2026-09-20), not the "fell by ... between" wording.
+    expect(hero).toContain("Anthropic last decreased Claude's weekly limit by 24% on 11 Sep 2026.");
+    expect(hero).not.toContain("The number of five-hour windows in a week fell by");
+    // Nothing sits between the h1 and the pill row (matches #78's hero exactly).
+    expect(hero).not.toContain("Five-hour windows per week: 6.5");
+    expect(hero).not.toContain("Which meter moved is unresolved.");
+    // The onset-bounded figures still render in full, inside "The five-hour window across the
+    // change" -- moved, not deleted.
     expect(text).toContain("Five-hour windows per week: 6.5 (6.2 to 6.8) before, 5.0 (4.6 to 5.3) after.");
     expect(text).toContain("Anthropic announced -17% on 14 Sep 2026: “Compared to today, this works out to a 17% reduction in weekly limits on Claude Code”.");
     expect(text).toContain("Which meter moved is unresolved.");
-    // Nothing anywhere says the five-hour window did not move.
-    expect(text).not.toContain("Anthropic last decreased Claude's weekly limit");
   });
 
   it("leads on the window in credits, and says the tokens are not published yet", () => {
@@ -1005,6 +1011,19 @@ describe("the measured window in tokens", () => {
     }
     // The plan ratios the rest of the page applies to a five-hour window, 1 : 6 : 20.
     expect(row(render(WT, "max20", "claude-opus-5"), "Tokens per 5-hour window")).toEqual(["24M", "142M", "474M"]);
+  });
+
+  it("draws the effective-window-size chart, held flat at the measured level, with no range toggle", () => {
+    const html = renderHtml(WT, "max20", "claude-opus-5");
+    const at = html.indexOf('aria-label="Effective window size over time');
+    expect(at).toBeGreaterThan(-1);
+    const chart = html.slice(html.lastIndexOf("<svg", at), html.indexOf("</svg>", at));
+    // The chart's own aria description names the flat value at every regime the windows-per-week
+    // chart itself draws, not a daily series -- and the right-edge label repeats it again.
+    expect(chart).toContain("474M");
+    const text = render(WT, "max20", "claude-opus-5");
+    expect(text).not.toContain("Effective window size, last");
+    expect(html).not.toContain('aria-label="Chart range"');
   });
 
   it("converts the window for Sonnet, and says what the conversion rests on", () => {
