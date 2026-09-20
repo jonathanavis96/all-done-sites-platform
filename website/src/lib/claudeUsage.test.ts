@@ -29,6 +29,8 @@ import {
   documentedWindowsPerWeek,
   referenceDateFor,
   shortfallRows,
+  computeWindowTokens,
+  windowTokensValueFor,
   type UsageJson,
 } from "./claudeUsage";
 import {
@@ -61,6 +63,8 @@ import schema3Measured from "./__fixtures__/claude-usage-schema3-measured-rates.
 // credits block and every per_model row dated by the newest stretch behind them, and
 // reference.shortfall -- the measured windows per week against the table's own, per plan.
 import schema3Shortfall from "./__fixtures__/claude-usage-schema3-shortfall.json";
+// Tracker wf-59: the window measured in tokens, per class and per family.
+import schema3WindowTokens from "./__fixtures__/claude-usage-schema3-window-tokens.json";
 
 const J: UsageJson = {
   generated_at: "2026-09-05T20:15:00+00:00",
@@ -806,19 +810,42 @@ describe("weeklyRegimeLevelsFor", () => {
   });
 });
 
+// The measured window in tokens, as tracker wf-59 publishes it: one figure per family, measured
+// on the clean pure-Opus stretches, with no rate and no daily history behind it. Every token
+// series here reads this figure and nothing else (wf-60).
+function withWindowTokens(
+  j: UsageJson,
+  perFamily: Record<string, { value: number | null; status?: string }>,
+): UsageJson {
+  const out: UsageJson = structuredClone(j);
+  out.credits = {
+    ...(out.credits ?? { window_credits: { value: null, interval: null, status: null } }),
+    window_tokens: {
+      all: { value: 473_774_890, interval: [398_250_355, 542_413_890], status: null },
+      per_family: Object.fromEntries(
+        Object.entries(perFamily).map(([family, f]) => [
+          family,
+          { all: { value: f.value, interval: null, status: f.status ?? null } },
+        ]),
+      ),
+    },
+  };
+  return out;
+}
+
 describe("weeklyTokenRegimeLevelsFor", () => {
-  it("prices each level by what one window bought during it, including a level borrowed from another plan", () => {
-    const levels = weeklyTokenRegimeLevelsFor(RJ, "max20", "claude-sonnet-5");
-    // January predates the first history row, so it takes that row's figure; August has its own.
+  const WINDOW = 400_000_000;
+  it("prices every level by the measured window, including a level borrowed from another plan", () => {
+    const levels = weeklyTokenRegimeLevelsFor(withWindowTokens(RJ, { sonnet: { value: WINDOW } }), "max20", SONNET);
+    // One measured window, so both spans are priced at it: the level itself is what moves.
     expect(levels.map((l) => [l.start, Math.round(l.tokens), l.inferred])).toEqual([
-      ["2026-01-01", Math.round(6 * 38_000_000), true],
-      ["2026-08-01", 6 * 40_000_000, false],
+      ["2026-01-01", 6 * WINDOW, true],
+      ["2026-08-01", 6 * WINDOW, false],
     ]);
   });
-  it("holds one flat level for the whole weekly regime, priced at the regime's start (reverses audit finding 12, Jonathan's decision)", () => {
-    // #74's behaviour: one weekly level of 6 windows, 1-20 September, prices the whole span at
-    // the window figure current when the regime started (100 tokens), not a cut at every later
-    // daily reading (200 tokens from 10 September).
+  it("holds one flat level for the whole weekly regime, whatever the daily history says", () => {
+    // #74's behaviour, kept: one weekly level of 6 windows, 1-20 September, is one flat level.
+    // The daily rows below are the list-price route and no longer reach any figure on the page.
     const fake: UsageJson = structuredClone(J);
     fake.weekly_windows = {
       max20: { current: 6, history: [], regimes: [{ start: "2026-09-01T00:00:00Z", end: "2026-09-20T00:00:00Z", windows: 6, seven_day_pct: 100, points: 10 }] },
@@ -829,39 +856,34 @@ describe("weeklyTokenRegimeLevelsFor", () => {
       { date: "2026-09-01", tokens_per_window: 100, source: "passive", interpolated: false },
       { date: "2026-09-10", tokens_per_window: 200, source: "passive", interpolated: false },
     ];
-    expect(weeklyTokenRegimeLevelsFor(fake, "max20", SONNET).map((l) => [l.start, l.end, l.tokens])).toEqual([
-      ["2026-09-01T00:00:00Z", "2026-09-20T00:00:00Z", 600],
-    ]);
+    expect(
+      weeklyTokenRegimeLevelsFor(withWindowTokens(fake, { sonnet: { value: 100 } }), "max20", SONNET).map((l) => [
+        l.start,
+        l.end,
+        l.tokens,
+      ]),
+    ).toEqual([["2026-09-01T00:00:00Z", "2026-09-20T00:00:00Z", 600]]);
   });
-  it("prices a level starting before any dated window figure from the earliest available row (#74 behaviour)", () => {
-    const fake: UsageJson = structuredClone(J);
-    fake.weekly_windows = {
-      max20: { current: 6, history: [], regimes: [{ start: "2026-06-01T00:00:00Z", end: "2026-09-20T00:00:00Z", windows: 6, seven_day_pct: 100, points: 10 }] },
-    };
-    fake.history[SONNET] = [
-      { date: "2026-08-11", tokens_per_window: 999, source: "held", interpolated: false },
-      { date: "2026-09-05", tokens_per_window: 100, source: "passive", interpolated: false },
-    ];
-    expect(weeklyTokenRegimeLevelsFor(fake, "max20", SONNET).map((l) => [l.start, l.end, l.tokens, l.inferred])).toEqual([
-      ["2026-06-01T00:00:00Z", "2026-09-20T00:00:00Z", 5994, false],
-    ]);
+  it("draws no level where the window is not published for the family, and never falls back", () => {
+    // No block at all: the rate and the history rows are both present and neither is used.
+    expect(weeklyTokenRegimeLevelsFor(RJ, "max20", SONNET)).toEqual([]);
+    // A family the block bounds but cannot identify publishes a status and no value.
+    const unidentified = withWindowTokens(RJ, { sonnet: { value: null, status: "rate not yet identified" } });
+    expect(weeklyTokenRegimeLevelsFor(unidentified, "max20", SONNET)).toEqual([]);
   });
-  it("marks a span inferred when its window figure is not marked measured, and applies the model's weekly share", () => {
-    const levels = weeklyTokenRegimeLevelsFor(V2, "max20", SONNET);
+  it("marks a span inferred when it is borrowed from another plan, and applies the model's weekly share", () => {
+    const j = withWindowTokens(V2, { sonnet: { value: WINDOW }, fable: { value: WINDOW } });
+    const levels = weeklyTokenRegimeLevelsFor(j, "max20", SONNET);
     expect(levels.map((l) => [l.start, l.end, l.inferred])).toEqual([
       ["2026-06-13T01:30:00+00:00", "2026-08-14T19:19:00+00:00", true],
       ["2026-08-14T19:19:00+00:00", "2026-08-18T20:00:00+00:00", true],
       ["2026-08-19T17:00:00+00:00", "2026-09-16T02:30:00+00:00", false],
     ]);
-    // Level 3 is max20's own regime (not inferred), priced at 6.34 windows x the newest history
-    // entry, since it starts before that entry's date and falls back to the earliest row.
-    expect(levels[2].tokens).toBeCloseTo(6.34 * 1_400_384_480, 0);
-    const fable: UsageJson = { ...V2, history: { ...V2.history, [FABLE]: [{ ...V2.history[SONNET][0], tokens_per_window: 280_076_896, quality: "measured" }] } };
-    const fableLevels = weeklyTokenRegimeLevelsFor(fable, "max20", FABLE);
-    // Borrowed spans are inferred; the measured figure on max20's own level is not (finding 2's
-    // 50% Fable cap applies to every level, borrowed or not).
+    expect(levels[2].tokens).toBeCloseTo(6.34 * WINDOW, 0);
+    // Finding 2's 50% Fable cap applies to every level, borrowed or not.
+    const fableLevels = weeklyTokenRegimeLevelsFor(j, "max20", FABLE);
     expect(fableLevels.map((l) => l.inferred)).toEqual([true, true, false]);
-    expect(fableLevels.at(-1)!.tokens).toBeCloseTo(6.34 * 280_076_896 * 0.5, 0);
+    expect(fableLevels.at(-1)!.tokens).toBeCloseTo(6.34 * WINDOW * 0.5, 0);
   });
 });
 
@@ -1046,7 +1068,11 @@ describe("weeklySeriesFor", () => {
     const s = weeklySeriesFor(V2);
     expect(s.some((x) => x.plan === "pro")).toBe(false);
     expect(s.find((x) => x.plan === "max5")!.label).toBe("Max 5x and Pro");
-    expect(weeklyTokenSeriesFor(V2, SONNET).map((x) => x.label)).toEqual(["Max 5x", "Pro", "Max 20x"]);
+    expect(weeklyTokenSeriesFor(withWindowTokens(V2, { sonnet: { value: 400_000_000 } }), SONNET).map((x) => x.label)).toEqual([
+      "Max 5x",
+      "Pro",
+      "Max 20x",
+    ]);
   });
   it("does not infer when either side's current is zero", () => {
     const zeroCurrent: UsageJson = {
@@ -1086,46 +1112,20 @@ describe("weeklySeriesFor", () => {
 });
 
 describe("weeklyTokenSeriesFor", () => {
-  it("scales windows by the history value at or before the week ending, times the plan ratio", () => {
-    // WJ's history for claude-sonnet-5: 2026-05-01 38M, 2026-08-01 40M, 2026-09-05 42M.
-    const s = weeklyTokenSeriesFor(WJ, "claude-sonnet-5");
+  const WINDOW = 400_000_000;
+  it("prices every week by the measured window, times the plan ratio", () => {
+    const s = weeklyTokenSeriesFor(withWindowTokens(WJ, { sonnet: { value: WINDOW } }), SONNET);
     const max5 = s.find((x) => x.plan === "max5")!; // ratio 0.25
-    const aug1 = max5.points.find((p) => p.date === "2026-08-01")!;
-    expect(aug1.tokens).toBeCloseTo(9 * 40_000_000 * 0.25, 5);
-    const sep5 = max5.points.find((p) => p.date === "2026-09-05")!;
-    expect(sep5.tokens).toBeCloseTo(9.4 * 42_000_000 * 0.25, 5);
-  });
-  it("uses the earliest history entry when it is the only one at or before the week ending", () => {
-    const s = weeklyTokenSeriesFor(WJ, "claude-sonnet-5");
+    expect(max5.points.find((p) => p.date === "2026-08-01")!.tokens).toBeCloseTo(9 * WINDOW * 0.25, 5);
+    expect(max5.points.find((p) => p.date === "2026-09-05")!.tokens).toBeCloseTo(9.4 * WINDOW * 0.25, 5);
     const max20 = s.find((x) => x.plan === "max20")!; // ratio 1
-    // 2026-07-04 predates the earliest history entry (2026-05-01), which is itself <=
-    // 2026-07-04, so that entry (38M) is used either way.
-    const jul4 = max20.points.find((p) => p.date === "2026-07-04")!;
-    expect(jul4.tokens).toBeCloseTo(10 * 38_000_000, 5);
+    expect(max20.points.find((p) => p.date === "2026-07-04")!.tokens).toBeCloseTo(10 * WINDOW, 5);
   });
-  it("falls back to the model's current rate when there is no dated window figure at all (#74 behaviour, finding 12 reversed)", () => {
-    const noHistory: UsageJson = { ...WJ, history: {} };
-    const s = weeklyTokenSeriesFor(noHistory, "claude-sonnet-5");
-    const max20 = s.find((x) => x.plan === "max20")!;
-    const rate = noHistory.rates["claude-sonnet-5"]!.tokens_per_window!;
-    expect(max20.points.every((p) => p.tokens === max20.points[0].windows * rate || typeof p.tokens === "number")).toBe(true);
-    expect(max20.points.every((p) => p.tokens !== undefined)).toBe(true);
-    // A week before the first dated row takes that row's own figure (the earliest entry), never
-    // undefined and never the current rate once any history exists.
-    const late: UsageJson = { ...WJ, history: { "claude-sonnet-5": [{ date: "2026-08-15", tokens_per_window: 40_000_000, source: "passive", interpolated: false }] } };
-    const lateMax20 = weeklyTokenSeriesFor(late, "claude-sonnet-5").find((x) => x.plan === "max20")!;
-    expect(lateMax20.points.slice(0, 3).map((p) => p.tokens)).toEqual([
-      lateMax20.points[0].windows * 40_000_000 * 1,
-      lateMax20.points[1].windows * 40_000_000 * 1,
-      11.2 * 40_000_000,
-    ]);
-    // Max 5x's 2026-09-12 week inferred onto max20, priced by the same dated figure.
-    expect(lateMax20.points[3].tokens).toBeCloseTo(9.6 * (11.2 / 9.6) * 40_000_000, 0);
-  });
-  it("leaves tokens undefined when neither history nor a rate exists for the model", () => {
-    const s = weeklyTokenSeriesFor(WJ, "claude-nonexistent");
-    const max20 = s.find((x) => x.plan === "max20")!;
-    expect(max20.points.every((p) => p.tokens === undefined)).toBe(true);
+  it("drops the series where the window is not published for the family, and never falls back", () => {
+    // WJ carries both legacy fields: a rate of 42M and three history rows. Neither is used.
+    expect(weeklyTokenSeriesFor(WJ, SONNET)).toEqual([]);
+    expect(weeklyTokenSeriesFor(withWindowTokens(WJ, { sonnet: { value: null, status: "rate not yet identified" } }), SONNET)).toEqual([]);
+    expect(weeklyTokenSeriesFor(withWindowTokens(WJ, { sonnet: { value: WINDOW } }), "claude-nonexistent")).toEqual([]);
   });
   it("splits a shared Max 5x and Pro line into two, each priced by its own plan ratio", () => {
     // The windows chart collapses the two because they hold the same windows per week. A
@@ -1137,7 +1137,7 @@ describe("weeklyTokenSeriesFor", () => {
         pro: { ...WJ.weekly_windows!.max5!, assumed: true },
       },
     };
-    const s = weeklyTokenSeriesFor(shared, "claude-sonnet-5");
+    const s = weeklyTokenSeriesFor(withWindowTokens(shared, { sonnet: { value: WINDOW } }), SONNET);
     const max5 = s.find((x) => x.plan === "max5")!;
     const pro = s.find((x) => x.plan === "pro")!;
     expect(max5.label).toBe("Max 5x");
@@ -1314,8 +1314,8 @@ describe("the credits block", () => {
   it("reads the hero's figures on the selected plan's scale", () => {
     const max20 = computeCredits(CREDITS, "max20", "claude-opus-5")!;
     expect(max20.family).toBe("opus");
-    expect(max20.tokensIn).toEqual({ kind: "value", text: "29M", range: "26M to 31M" });
-    expect(max20.tokensOut).toEqual({ kind: "value", text: "5.9M", range: "5.2M to 6.2M" });
+    // No token figure: the window's credits over a family's credits per token is not a figure
+    // this page states any more (wf-60). The measured window is computeWindowTokens's.
     expect(max20.usdIn).toEqual({ kind: "value", text: "$146.58", range: "$129.38 to $156.15" });
     expect(max20.windowCredits).toEqual({
       kind: "value",
@@ -1330,25 +1330,24 @@ describe("the credits block", () => {
     // A window is worth a twentieth as much on Pro, and the figure says so rather than repeating
     // the Max 20x measurement under another plan's heading.
     const pro = computeCredits(CREDITS, "pro", "claude-opus-5")!;
-    expect(pro.tokensIn).toEqual({ kind: "value", text: "1.5M", range: "1.3M to 1.6M" });
-    expect(pro.usdIn!.text).toBe("$7.33");
+    expect(pro.usdIn).toEqual({ kind: "value", text: "$7.33", range: "$6.47 to $7.81" });
   });
 
   it("carries a model's status sentence through every hero figure", () => {
     const fable = computeCredits(CREDITS, "max20", "claude-fable-5-1")!;
     expect(fable.modelStatus).toBe("rate not yet identified");
-    for (const fig of [fable.tokensIn, fable.tokensOut, fable.usdIn, fable.usdOut, fable.sessionsPerWindow, fable.sessionsPerWeek]) {
+    for (const fig of [fable.usdIn, fable.usdOut, fable.sessionsPerWindow, fable.sessionsPerWeek]) {
       expect(fig).toMatchObject({ kind: "status", text: "rate not yet identified" });
       expect(fig!.range).not.toBeNull();
     }
-    expect(fable.tokensIn!.range).toBe("7.3M to 17M");
+    expect(fable.usdIn!.range).toBe("$73.00 to $174.44");
     // The window itself is measured on pure-Opus stretches, so it has a value whatever model is
     // selected: Fable's missing rate is not in it.
     expect(fable.windowCredits!.kind).toBe("value");
     // Fable is not on Pro at all, so there is no capacity to scale and no figure to show.
     const pro = computeCredits(CREDITS, "pro", "claude-fable-5-1")!;
     expect(pro.included).toBe(false);
-    expect(pro.tokensIn).toBeNull();
+    expect(pro.usdIn).toBeNull();
     expect(pro.windowCredits).toBeNull();
     expect(computeCredits(WITHOUT, "max20", "claude-opus-5")).toBeNull();
   });
@@ -1428,8 +1427,6 @@ describe("one quantity, one figure", () => {
   it("scales every per-window figure by the plan ratio and every per-week figure by the plan's own week", () => {
     const max20 = computeCredits(MEASURED, "max20", "claude-sonnet-5")!;
     const pro = computeCredits(MEASURED, "pro", "claude-sonnet-5")!;
-    expect(max20.tokensIn).toEqual({ kind: "value", text: "38M", range: "21M to 64M" });
-    expect(pro.tokensIn!.text).toBe("1.9M");
     expect(max20.usdIn!.text).toBe("$75.49");
     expect(pro.usdIn!.text).toBe("$3.77");
     // A week holds 5.93 Pro windows against 4.94 Max 20x ones, so a per-week figure carries more
@@ -1449,14 +1446,13 @@ describe("one quantity, one figure", () => {
     expect(ratio).toBeGreaterThan(1);
     const pro = computeCredits(MEASURED, "pro", "claude-fable-5-1")!;
     expect(pro.included).toBe(false);
-    expect(pro.tokensInPerWeek).toBeNull();
+    expect(pro.usdInPerWeek).toBeNull();
   });
 
   it("moves only the effort cells with the effort argument", () => {
     const high = computeCredits(MEASURED, "max20", "claude-opus-5", "high")!;
     const low = computeCredits(MEASURED, "max20", "claude-opus-5", "low")!;
     // Nothing the hero shows moves with effort, which is why the hero stopped saying it does.
-    expect(high.tokensIn).toEqual(low.tokensIn);
     expect(high.usdIn).toEqual(low.usdIn);
     expect(high.sessionsPerWindow).toEqual(low.sessionsPerWindow);
     expect(high.sessionsPerWeek).toEqual(low.sessionsPerWeek);
@@ -1647,5 +1643,79 @@ describe("the dated blocks and the shortfall (tracker PR #68)", () => {
     }
     expect(planScaling(SHORTFALL)).toEqual({ credits: true, perWindow: "1 : 6 : 20", perWeek: "1 : 8.33 : 16.67" });
     expect(documentedWindowsPerWeek(SHORTFALL, "max20")).toBe(7.58);
+  });
+});
+
+// wf-60: `credits.window_tokens`, the measured window read for one plan and model.
+describe("computeWindowTokens", () => {
+  const WT = schema3WindowTokens as unknown as UsageJson;
+  const OPUS = "claude-opus-5";
+  const block = WT.credits!.window_tokens!;
+
+  it("gives the measured family its own figure, its interval and its classes", () => {
+    const w = computeWindowTokens(WT, "max20", OPUS)!;
+    expect(w.perWindow).toEqual({ kind: "value", text: "474M", range: "398M to 542M" });
+    expect(w.perWindowValue).toBe(block.per_family!.opus.all.value);
+    expect(w.perClass.map((c) => [c.cls, c.fig.text])).toEqual([
+      ["cache_read", "444M"],
+      ["cache_write", "15M"],
+      ["output", "2.8M"],
+      ["input", "6k"],
+    ]);
+    expect(w.cacheReadShare).toBe(0.961);
+    expect(w.measuredFamily).toBe("opus");
+    // The measured family's figure is the measurement, so there is no conversion beside it.
+    expect(w.conversion).toBeNull();
+    expect(w.rateSource).toBe("anchor");
+  });
+
+  it("scales the window by the plan ratio, and the week by the plan's own windows per week", () => {
+    const value = block.per_family!.opus.all.value!;
+    for (const [plan, ratio] of [["pro", 0.05], ["max5", 0.3], ["max20", 1]] as const) {
+      const w = computeWindowTokens(WT, plan, OPUS)!;
+      expect(w.perWindowValue, plan).toBeCloseTo(value * ratio, 5);
+      // The published per-week figure rests on 5.0 windows; each plan gets its own count.
+      expect(w.perWeekValue!, plan).toBeCloseTo(value * ratio * planWindowsPerWeek(WT, plan).value!, 0);
+    }
+    expect(block.per_week!.windows_per_week!.value).toBe(5);
+  });
+
+  it("converts another family at its own rate, and says what the conversion rests on", () => {
+    const w = computeWindowTokens(WT, "max20", SONNET)!;
+    expect(w.perWindowValue).toBeCloseTo(473_774_890 * (0.6666666666666666 / 0.5177756137802535), 0);
+    expect(w.rateSource).toBe("measured");
+    expect(w.conversion).toContain("converted at the meter's measured Sonnet rate");
+    // The classes were measured on Opus and are not restated at another family's rate.
+    expect(w.perClass).toEqual([]);
+  });
+
+  it("prints a family's status where it has no value, with no interval beside it", () => {
+    const fable = computeWindowTokens(WT, "max20", FABLE)!;
+    expect(fable.perWindow).toEqual({ kind: "status", text: "rate not yet identified", range: null });
+    expect(fable.perWeek).toEqual({ kind: "status", text: "rate not yet identified", range: null });
+    expect(fable.perWindowValue).toBeNull();
+    expect(fable.conversion).toBeNull();
+    expect(windowTokensValueFor(WT, FABLE)).toBeNull();
+    // Haiku publishes a status and no interval at all; it reads the same way.
+    expect(block.per_family!.haiku.all.value).toBeNull();
+    expect(block.per_family!.haiku.all.interval).toBeNull();
+  });
+
+  it("gives a model the plan does not include no figure at all", () => {
+    const w = computeWindowTokens(WT, "pro", FABLE)!;
+    expect(w.included).toBe(false);
+    expect(w.perWindow).toBeNull();
+    expect(w.perWeek).toBeNull();
+    expect(w.perClass).toEqual([]);
+  });
+
+  it("is null for a file that does not publish the block", () => {
+    const without: UsageJson = structuredClone(WT);
+    delete without.credits!.window_tokens;
+    expect(computeWindowTokens(without, "max20", OPUS)).toBeNull();
+    expect(windowTokensValueFor(without, OPUS)).toBeNull();
+    const noCredits: UsageJson = structuredClone(WT);
+    delete noCredits.credits;
+    expect(computeWindowTokens(noCredits, "max20", OPUS)).toBeNull();
   });
 });

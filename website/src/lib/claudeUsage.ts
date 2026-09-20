@@ -1000,24 +1000,17 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
 }
 
 // Same series as weeklySeriesFor, with each point's tokens-per-week added: windows times the
-// tokens a single window bought at that week_ending, scaled by the plan's ratio and the model's
-// share of the week (audit finding 2, kept). The per-window figure comes from the LAST history
-// entry at or before week_ending (the earliest entry when week_ending predates all of them),
-// falling back to the model's current rate when there is no history at all, and leaving tokens
-// undefined when neither exists.
+// measured window in tokens for this model's family, scaled by the plan's ratio and the model's
+// share of the week (audit finding 2, kept).
+//
+// The per-window figure is the one the page's hero states, `credits.window_tokens`, and there is
+// no second route behind it: a family the block has no value for drops its series rather than
+// falling back to `rates[model].tokens_per_window` or a `history` row, which price the window at
+// API list price and come to 52 times this figure on Sonnet (wf-60).
 export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[] {
+  const perWindow = windowTokensValueFor(j, model);
+  if (perWindow === null) return [];
   const base = weeklySeriesFor(j);
-  const hist = j.history[model] ?? [];
-  const sorted = [...hist].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  const rate = j.rates[model];
-  const tokensPerWindowAt = (weekEnding: string): number | undefined => {
-    if (sorted.length > 0) {
-      const atOrBefore = sorted.filter((h) => h.date <= weekEnding);
-      const entry = atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1] : sorted[0];
-      return typeof entry.tokens_per_window === "number" ? entry.tokens_per_window : undefined;
-    }
-    return typeof rate?.tokens_per_window === "number" ? rate.tokens_per_window : undefined;
-  };
   const withTokens = (s: WeeklySeries, plan: Plan, label: string): WeeklySeries[] => {
     const limit = modelPlanLimit(j, model, plan);
     if (!limit.included) return [];
@@ -1028,10 +1021,7 @@ export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[
         plan,
         label,
         sharedWithPro: false,
-        points: s.points.map((p) => {
-          const perWindow = tokensPerWindowAt(p.date);
-          return { ...p, tokens: typeof perWindow === "number" ? p.windows * perWindow * scale : undefined };
-        }),
+        points: s.points.map((p) => ({ ...p, tokens: p.windows * perWindow * scale })),
       },
     ];
   };
@@ -1046,11 +1036,12 @@ export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[
   );
 }
 
-// The same levels priced in tokens: each regime's windows times what one window bought at the
-// time, on the plan's own token ratio and the model's share of the week (audit finding 2, kept).
-// Undefined per-window figures drop the level rather than guessing, the same contract
-// weeklyTokenSeriesFor keeps. Jonathan reversed audit finding 12 on 2026-09-16: one flat level
-// per weekly regime, not a level cut at every daily window reading.
+// The same levels priced in tokens: each regime's windows times the measured window in tokens,
+// on the plan's own token ratio and the model's share of the week (audit finding 2, kept). A
+// family the block has no value for drops its levels rather than guessing, the same contract
+// weeklyTokenSeriesFor keeps, and neither falls back to a rate or a history row (wf-60). Jonathan
+// reversed audit finding 12 on 2026-09-16: one flat level per weekly regime, not a level cut at
+// every daily window reading.
 export function weeklyTokenRegimeLevelsFor(
   j: UsageJson,
   plan: Plan,
@@ -1058,25 +1049,10 @@ export function weeklyTokenRegimeLevelsFor(
 ): (RegimeLevel & { tokens: number })[] {
   const limit = modelPlanLimit(j, model, plan);
   if (!limit.included) return [];
+  const perWindow = windowTokensValueFor(j, model);
+  if (perWindow === null) return [];
   const scale = j.plan_ratios[plan] * limit.weekly_fraction;
-  const hist = [...(j.history[model] ?? [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  const rate = j.rates[model];
-  const perWindowAt = (iso: string): number | undefined => {
-    const d = iso.slice(0, 10);
-    if (hist.length > 0) {
-      const atOrBefore = hist.filter((h) => h.date <= d);
-      const entry = atOrBefore.length > 0 ? atOrBefore[atOrBefore.length - 1] : hist[0];
-      return typeof entry.tokens_per_window === "number" ? entry.tokens_per_window : undefined;
-    }
-    return typeof rate?.tokens_per_window === "number" ? rate.tokens_per_window : undefined;
-  };
-  const out: (RegimeLevel & { tokens: number })[] = [];
-  for (const r of weeklyRegimeLevelsFor(j, plan)) {
-    const perWindow = perWindowAt(r.start);
-    if (typeof perWindow !== "number") continue;
-    out.push({ ...r, tokens: r.windows * perWindow * scale });
-  }
-  return out;
+  return weeklyRegimeLevelsFor(j, plan).map((r) => ({ ...r, tokens: r.windows * perWindow * scale }));
 }
 
 export interface AccountOnset {
@@ -1276,12 +1252,54 @@ export interface HarnessRunExcluded {
   reason: string;
 }
 
+// The window measured in tokens, published under `credits.window_tokens` from 2026-09-20
+// (tracker wf-59): tokens per 1% of the five-hour meter over the clean pure-Opus stretches, times
+// 100, per token class. No rate and no class weight enters it, which is what separates it from a
+// token figure derived by dividing the window's credits by a family's credits per token.
+export interface WindowTokensAccount {
+  n: number;
+  all: CreditsFigure | null;
+  per_class?: Partial<Record<TokenClass, CreditsFigure>> | null;
+}
+
+// One family's window. The family the stretches were pure in carries the measurement itself;
+// every other family is that same window converted at its own rate, and publishes the conversion
+// it rests on. A family whose rate is not identified publishes a status and no value.
+export interface WindowTokensFamily {
+  all: CreditsFigure;
+  rate_source?: string | null;
+  conversion?: string | null;
+}
+
+export interface WindowTokensPerWeek {
+  // The windows per week the per-week figures below were multiplied by, published with them so a
+  // plan whose own count differs is scaled rather than shown another plan's week.
+  windows_per_week?: CreditsFigure & { source?: string | null };
+  all?: CreditsFigure;
+  per_family?: Record<string, { all: CreditsFigure }>;
+}
+
+export interface WindowTokens {
+  derivation?: string;
+  as_of?: string | null;
+  method?: string;
+  selection?: string;
+  n?: number;
+  accounts?: Record<string, WindowTokensAccount>;
+  per_class?: Partial<Record<TokenClass, CreditsFigure>> | null;
+  all: CreditsFigure;
+  cache_read_share?: CreditsFigure;
+  per_family?: Record<string, WindowTokensFamily>;
+  per_week?: WindowTokensPerWeek;
+}
+
 export interface CreditsBlock {
   // Tracker PR #68: the newest stretch every figure in the block rests on. The block's figures
   // are measured, so they carry their own date rather than the file's build time.
   as_of?: string | null;
   as_of_source?: Record<string, string | null>;
   window_credits: WindowCredits;
+  window_tokens?: WindowTokens;
   window_credits_from_weekly?: WindowCreditsFromWeekly;
   per_model?: Record<string, PerModelCredits>;
   sessions?: Record<string, SessionCredits>;
@@ -1497,10 +1515,10 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
   return {
     included: limit.included,
     family,
-    tokensIn: fig(per?.tokens_per_window?.input, fmtTokens),
-    tokensOut: fig(per?.tokens_per_window?.output, fmtTokens),
-    tokensInPerWeek: perWeek(per?.tokens_per_window?.input, fmtTokens),
-    tokensOutPerWeek: perWeek(per?.tokens_per_window?.output, fmtTokens),
+    // No token figure here. `per_model[family].tokens_per_window` is the window's credits over
+    // that family's credits per token -- the whole window spent on nothing but fresh input, or
+    // nothing but output, and on Sonnet it carries the fitted rate's 0.33-to-0.83 interval with
+    // it. The page states the measured window instead; see computeWindowTokens (wf-60).
     usdIn: fig(per?.api_value_per_window_usd?.input, fmtUsd2),
     usdOut: fig(per?.api_value_per_window_usd?.output, fmtUsd2),
     // The same window's API value a week of windows holds. The dollar route publishes its own
@@ -1544,6 +1562,106 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
           }
         : null,
     modelStatus: per?.status ?? null,
+  };
+}
+
+// The measured window in tokens for one model, on the measured plan's own scale: the family's
+// own published figure and nothing else. Null where the block is absent, where the model belongs
+// to no family the block prices, or where that family's value is a status rather than a number --
+// in which case the caller drops the series rather than falling back to a rate or a history row.
+export function windowTokensValueFor(j: UsageJson, model: string): number | null {
+  const family = modelFamily(model);
+  const value = family ? creditsOf(j)?.window_tokens?.per_family?.[family]?.all?.value : null;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+// The breakdown's own order: what the meter mostly sees first, the tokens it charges most for
+// last. The share beside cache reads is published, so the line never divides one figure by another.
+const WINDOW_TOKEN_CLASSES: TokenClass[] = ["cache_read", "cache_write", "output", "input"];
+
+export interface WindowTokensView {
+  included: boolean;
+  family: string | null;
+  // The family the classes were measured on, as the block itself names it. The breakdown is shown
+  // for that family alone: converted at another family's rate it would state a measurement the
+  // stretches do not carry.
+  measuredFamily: string | null;
+  perWindow: CreditFigureText | null;
+  perWindowValue: number | null;
+  perWeek: CreditFigureText | null;
+  perWeekValue: number | null;
+  perClass: { cls: TokenClass; fig: CreditFigureText }[];
+  cacheReadShare: number | null;
+  conversion: string | null;
+  rateSource: string | null;
+  method: string | null;
+  asOf: string | null;
+  windowsPerWeek: number | null;
+  // True when the plan's own windows per week is inferred from another plan, so the per-week
+  // figure above rests on that plan's measurement. The table marks those cells, as it does the
+  // credits route's.
+  weeklyInferred: boolean;
+  n: number | null;
+}
+
+// Every figure the page reads off `credits.window_tokens`, on the selected plan's scale and for
+// the selected model. Null for a file that does not publish the block, which is the one case the
+// page states in words: there is no second route to fall back to, by design.
+export function computeWindowTokens(j: UsageJson, plan: Plan, model: string): WindowTokensView | null {
+  const credits = creditsOf(j);
+  const wt = credits?.window_tokens;
+  if (!wt) return null;
+  const limit = modelPlanLimit(j, model, plan);
+  const ratio = j.plan_ratios[plan];
+  const scale = limit.included ? ratio : 0;
+  const family = modelFamily(model);
+  const fam = family ? wt.per_family?.[family] ?? null : null;
+  // A published sentence stands in the number's place and is the whole figure: no interval is
+  // drawn beside it, so an unmeasured family is never quoted as a range the page did not measure.
+  const fig = (f: CreditsFigure | undefined | null, s = scale): CreditFigureText | null => {
+    if (!limit.included) return null;
+    const text = creditFigure(f, fmtTokens, s);
+    return text && text.kind === "status" ? { ...text, range: null } : text;
+  };
+  const value = (f: CreditsFigure | undefined | null, s = scale): number | null =>
+    limit.included && typeof f?.value === "number" && Number.isFinite(f.value) ? f.value * s : null;
+  // A week of windows on the selected plan. The block publishes its per-week figures over the
+  // windows per week it names, so a plan whose own count differs is scaled to its own, the same
+  // way the sessions-per-week figure is.
+  const week = planWindowsPerWeek(j, plan);
+  const published = wt.per_week?.windows_per_week?.value;
+  const weekRatio =
+    week.value !== null && typeof published === "number" && published > 0 ? week.value / published : 1;
+  const weekScale = week.value === null ? null : scale * limit.weekly_fraction * weekRatio;
+  const perWeekFigure = family ? wt.per_week?.per_family?.[family]?.all : undefined;
+  const measuredFamily = credits?.window_credits?.pure_family ?? null;
+  const perClass =
+    family !== null && family === measuredFamily
+      ? WINDOW_TOKEN_CLASSES.flatMap((cls) => {
+          const text = fig(wt.per_class?.[cls]);
+          return text ? [{ cls, fig: text }] : [];
+        })
+      : [];
+  return {
+    included: limit.included,
+    family,
+    measuredFamily,
+    perWindow: fig(fam?.all),
+    perWindowValue: value(fam?.all),
+    perWeek: weekScale === null ? null : fig(perWeekFigure, weekScale),
+    perWeekValue: weekScale === null ? null : value(perWeekFigure, weekScale),
+    perClass,
+    cacheReadShare:
+      typeof wt.cache_read_share?.value === "number" ? wt.cache_read_share.value : null,
+    // The conversion is what the family's own figure rests on, so it is stated only where there
+    // is a figure: beside a status it would explain an unmeasured number the page does not show.
+    conversion: typeof fam?.all?.value === "number" ? fam.conversion ?? null : null,
+    rateSource: fam?.rate_source ?? null,
+    method: wt.method ?? null,
+    asOf: wt.as_of ?? null,
+    windowsPerWeek: typeof published === "number" ? published : null,
+    weeklyInferred: week.value !== null && week.inferred,
+    n: typeof wt.n === "number" ? wt.n : null,
   };
 }
 
