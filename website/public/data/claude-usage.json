@@ -53,8 +53,8 @@
   "max20": {
    "contributors": 2,
    "evidence": {
-    "as_of": "2026-09-20T12:30:12+00:00",
-    "current_since": "2026-08-21T12:30:12+00:00",
+    "as_of": "2026-09-20T13:30:12+00:00",
+    "current_since": "2026-08-21T13:30:12+00:00",
     "freshest_sample_at": "2026-09-16T00:11:31+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -118,8 +118,8 @@
   "max5": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-20T12:30:12+00:00",
-    "current_since": "2026-08-21T12:30:12+00:00",
+    "as_of": "2026-09-20T13:30:12+00:00",
+    "current_since": "2026-08-21T13:30:12+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -151,8 +151,8 @@
   "pro": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-20T12:30:12+00:00",
-    "current_since": "2026-08-21T12:30:12+00:00",
+    "as_of": "2026-09-20T13:30:12+00:00",
+    "current_since": "2026-08-21T13:30:12+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -180,7 +180,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-09-20T12:30:12+00:00"
+  "updated_at": "2026-09-20T13:30:12+00:00"
  },
  "credits": {
   "as_of": "2026-09-20T00:21:09+00:00",
@@ -1766,8 +1766,8 @@
     "weekly_cap_multiplier": 1.25,
     "windows_per_week_measured": 4.94,
     "windows_per_week_rounding_interval": [
-     4.6413,
-     5.2776
+     4.6443,
+     5.275
     ]
    },
    "before": {
@@ -1985,8 +1985,8 @@
    "per_week": {
     "all": {
      "interval": [
-      1848399373,
-      2862643546
+      1849594124,
+      2861233270
      ],
      "status": null,
      "value": 2340447957
@@ -1995,8 +1995,8 @@
      "fable": {
       "all": {
        "interval": [
-        405938392,
-        2003421498
+        406200779,
+        2002434516
        ],
        "status": "rate not yet identified",
        "value": null
@@ -2012,8 +2012,8 @@
      "opus": {
       "all": {
        "interval": [
-        1848399373,
-        2862643546
+        1849594124,
+        2861233270
        ],
        "status": null,
        "value": 2340447957
@@ -2022,8 +2022,8 @@
      "sonnet": {
       "all": {
        "interval": [
-        1481717374,
-        5842427867
+        1482675113,
+        5839549606
        ],
        "status": null,
        "value": 3013464897
@@ -2033,8 +2033,8 @@
     "status": null,
     "windows_per_week": {
      "interval": [
-      4.6413,
-      5.2776
+      4.6443,
+      5.275
      ],
      "source": "weekly_windows current, max20, newest regime",
      "value": 4.94
@@ -2103,7 +2103,7 @@
    "confirmation": {
     "at": "2026-09-16",
     "evidence_points": 203,
-    "seven_day_pct": 226.0
+    "seven_day_pct": 228.0
    },
    "date": "2026-09-11",
    "direction": "decreased",
@@ -2164,8 +2164,8 @@
    "percent": 24,
    "provisional": false,
    "rounding_interval_after": [
-    4.6413,
-    5.2776
+    4.6443,
+    5.275
    ],
    "rounding_interval_before": [
     6.2214,
@@ -2176,10 +2176,10 @@
     "after": {
      "end": "2026-09-20T14:39:59.863254+00:00",
      "n_windows": 59,
-     "ratio": 4.9425,
+     "ratio": 4.943,
      "start": "2026-09-14T11:30:00.088328+00:00",
-     "sum_five_hour_pct": 1117.0,
-     "sum_seven_day_pct": 226.0
+     "sum_five_hour_pct": 1127.0,
+     "sum_seven_day_pct": 228.0
     },
     "before": {
      "end": "2026-09-14T03:45:24+00:00",
@@ -2193,26 +2193,26 @@
      {
       "description": "the weekly cap falls by the whole measured amount, the five-hour window unchanged",
       "five_hour_window_change_pct": 0.0,
-      "weekly_cap_change_pct": -23.77
+      "weekly_cap_change_pct": -23.76
      },
      {
       "description": "the five-hour window rises, the weekly cap unchanged",
-      "five_hour_window_change_pct": 31.18,
+      "five_hour_window_change_pct": 31.17,
       "weekly_cap_change_pct": 0.0
      },
      {
       "description": "the announced 17% weekly cut, with the rest of the measured fall an implied five-hour rise",
-      "five_hour_window_change_pct": 8.88,
+      "five_hour_window_change_pct": 8.87,
       "weekly_cap_change_pct": -17.0
      }
     ],
     "method": "the pooled ratio of five-hour to seven-day meter movement over every window in each of the last two certified regimes (tracker/detect.py weighted_regimes), before divided by after. The fall is one equation in the ratio of the two meters' own budget changes; `consistent_with` lists example splits that reproduce it exactly, not measurements of which one moved.",
-    "ratio_fell_pct": 23.77,
+    "ratio_fell_pct": 23.76,
     "unit": "percent"
    }
   }
  ],
- "generated_at": "2026-09-20T12:30:28.834885+00:00",
+ "generated_at": "2026-09-20T13:30:28.585638+00:00",
  "history": {
   "claude-fable-5-1": [
    {
@@ -3588,7 +3588,7 @@
   "confirmation": {
    "at": "2026-09-16",
    "evidence_points": 203,
-   "seven_day_pct": 226.0
+   "seven_day_pct": 228.0
   },
   "date": "2026-09-11",
   "direction": "decreased",
@@ -3647,8 +3647,8 @@
   "percent": 24,
   "provisional": false,
   "rounding_interval_after": [
-   4.6413,
-   5.2776
+   4.6443,
+   5.275
   ],
   "rounding_interval_before": [
    6.2214,
@@ -3659,10 +3659,10 @@
    "after": {
     "end": "2026-09-20T14:39:59.863254+00:00",
     "n_windows": 59,
-    "ratio": 4.9425,
+    "ratio": 4.943,
     "start": "2026-09-14T11:30:00.088328+00:00",
-    "sum_five_hour_pct": 1117.0,
-    "sum_seven_day_pct": 226.0
+    "sum_five_hour_pct": 1127.0,
+    "sum_seven_day_pct": 228.0
    },
    "before": {
     "end": "2026-09-14T03:45:24+00:00",
@@ -3676,26 +3676,26 @@
     {
      "description": "the weekly cap falls by the whole measured amount, the five-hour window unchanged",
      "five_hour_window_change_pct": 0.0,
-     "weekly_cap_change_pct": -23.77
+     "weekly_cap_change_pct": -23.76
     },
     {
      "description": "the five-hour window rises, the weekly cap unchanged",
-     "five_hour_window_change_pct": 31.18,
+     "five_hour_window_change_pct": 31.17,
      "weekly_cap_change_pct": 0.0
     },
     {
      "description": "the announced 17% weekly cut, with the rest of the measured fall an implied five-hour rise",
-     "five_hour_window_change_pct": 8.88,
+     "five_hour_window_change_pct": 8.87,
      "weekly_cap_change_pct": -17.0
     }
    ],
    "method": "the pooled ratio of five-hour to seven-day meter movement over every window in each of the last two certified regimes (tracker/detect.py weighted_regimes), before divided by after. The fall is one equation in the ratio of the two meters' own budget changes; `consistent_with` lists example splits that reproduce it exactly, not measurements of which one moved.",
-   "ratio_fell_pct": 23.77,
+   "ratio_fell_pct": 23.76,
    "unit": "percent"
   }
  },
  "last_sample_at": "2026-09-20T03:59:08+00:00",
- "meter_read_at": "2026-09-20T12:28:09+00:00",
+ "meter_read_at": "2026-09-20T13:28:39+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -4211,7 +4211,7 @@
      }
     },
     "a3": {
-     "current": 5.45,
+     "current": 5.43,
      "n": 10,
      "regimes": [
       {
@@ -4221,13 +4221,13 @@
        "points": 10,
        "quality": "bounded",
        "rounding_interval": [
-        4.9213,
-        6.0738
+        4.9238,
+        6.0333
        ],
-       "seven_day_pct": 56.0,
+       "seven_day_pct": 58.0,
        "source": "passive_paired_deltas",
        "start": "2026-09-18T04:06:38+00:00",
-       "windows": 5.45
+       "windows": 5.43
       }
      ],
      "step": null
@@ -6862,33 +6862,33 @@
     },
     {
      "account": "a3",
-     "five_hour_pct": 18.0,
+     "five_hour_pct": 28.0,
      "pieces": 1,
      "reset_verified": true,
      "rounding_interval": [
-      2.9493,
-      8.0556
+      3.4911,
+      6.6759
      ],
-     "seven_day_pct": 4.0,
+     "seven_day_pct": 6.0,
      "window_ending": "2026-09-20T14:39:59.863254+00:00",
-     "windows": 4.5
+     "windows": 4.67
     }
    ],
    "current": 4.94,
    "current_estimate": {
     "as_of": "2026-09-20T14:39:59.863254+00:00",
     "assumed": false,
-    "five_hour_pct": 1117.0,
+    "five_hour_pct": 1127.0,
     "from": "2026-09-14T11:30:00.088328+00:00",
     "pieces": 59,
     "points": 59,
     "quality": "measured",
     "reasons": [],
     "rounding_interval": [
-     4.6413,
-     5.2776
+     4.6443,
+     5.275
     ],
-    "seven_day_pct": 226.0,
+    "seven_day_pct": 228.0,
     "source": "passive_paired_deltas",
     "stale": false,
     "value": 4.94
@@ -7020,10 +7020,10 @@
      "points": 59,
      "quality": "bounded",
      "rounding_interval": [
-      4.6413,
-      5.2776
+      4.6443,
+      5.275
      ],
-     "seven_day_pct": 226.0,
+     "seven_day_pct": 228.0,
      "source": "passive_paired_deltas",
      "start": "2026-09-14T11:30:00.088328+00:00",
      "windows": 4.94
@@ -7102,14 +7102,14 @@
     },
     {
      "assumed": false,
-     "five_hour_pct": 1164.0,
+     "five_hour_pct": 1174.0,
      "n": 60,
      "partial": true,
      "rounding_interval": [
-      4.6982,
-      5.326
+      4.7006,
+      5.3231
      ],
-     "seven_day_pct": 233.0,
+     "seven_day_pct": 235.0,
      "source": "passive_paired_deltas",
      "week_ending": "2026-09-20",
      "windows": 5.0
