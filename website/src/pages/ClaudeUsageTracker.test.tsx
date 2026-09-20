@@ -12,6 +12,8 @@ import type { ContribMetric } from "@/lib/contrib";
 import schema1 from "@/lib/__fixtures__/claude-usage-schema1.json";
 import schema2 from "@/lib/__fixtures__/claude-usage-schema2.json";
 import schema2Published from "@/lib/__fixtures__/claude-usage-schema2-published.json";
+// The credits block, as the tracker publishes it from its current main.
+import schema3Credits from "@/lib/__fixtures__/claude-usage-schema3-credits.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
@@ -331,5 +333,151 @@ describe("the weekly chart and plan table with tracker wf-50's fields", () => {
     // The hero says where an inferred figure came from instead of calling it measured.
     expect(render(WF50, "max5")).toContain("five-hour windows, inferred from Max 20x since the change on 14 Sep 2026.");
     expect(render(WF50, "max20")).toContain("five-hour windows, measured from a real account since the change");
+  });
+});
+
+describe("the credits block on the page", () => {
+  const CREDITS = schema3Credits as unknown as UsageJson;
+  // The same file with the block taken back out: the live file until its next refresh, and every
+  // file published before the tracker change.
+  const WITHOUT: UsageJson = (() => {
+    const j = structuredClone(CREDITS);
+    delete j.credits;
+    return j;
+  })();
+
+  it("says what the change was measured on, and what it leaves unresolved", () => {
+    const text = render(CREDITS, "max20", "claude-opus-5");
+    expect(text).toContain("The number of five-hour windows in a week fell by 24% between 11 Sep 2026 and 14 Sep 2026.");
+    expect(text).toContain("Five-hour windows per week: 6.5 (6.2 to 6.8) before, 5.0 (4.6 to 5.3) after.");
+    expect(text).toContain("Anthropic announced -17% on 14 Sep 2026: “Compared to today, this works out to a 17% reduction in weekly limits on Claude Code”.");
+    expect(text).toContain("Which meter moved is unresolved.");
+    // Nothing anywhere says the five-hour window did not move.
+    expect(text).not.toContain("Anthropic last decreased Claude's weekly limit");
+  });
+
+  it("leads on the window in credits and the tokens that window holds", () => {
+    const text = render(CREDITS, "max20", "claude-opus-5");
+    expect(text).toContain("29M input tokens per 5-hour window");
+    expect(text).toContain("Range 26M to 31M.");
+    expect(text).toContain("5.9M output tokens per 5-hour window (5.2M to 6.2M)");
+    expect(text).toContain("$146.58 of API value per window in input tokens");
+    expect(text).toContain("19,543,887 credits per 5-hour window (17,250,018 to 20,819,693), n=11, pure-opus stretches, on 2 accounts.");
+    expect(text).toContain("about 354 sessions per window (312 to 377)");
+    expect(text).toContain("1,755 per week (1,549 to 1,870)");
+    // The sessions figures are cache-normalised, so the split they assume is beside them.
+    expect(text).toContain("0.01% input · 0.4% output · 97.0% cache read · 2.5% cache write");
+    expect(text).toContain("Split: history/passive.json `split`, the watched accounts' own token-class shares.");
+    expect(text).toContain("Cache-normalised at that split, over a median session of 1.8M tokens.");
+  });
+
+  it("prints a status sentence in the figure's place, and never a null", () => {
+    const text = render(CREDITS, "max20", "claude-fable-5-1");
+    expect(text).toContain("input tokens per 5-hour window: rate not yet identified (7.3M to 17M)");
+    expect(text).toContain("output tokens per 5-hour window: rate not yet identified (1.5M to 5.8M)");
+    expect(text).toContain("API value per window in input tokens: rate not yet identified ($73.00 to $174.44)");
+    expect(text).toContain("sessions per window: rate not yet identified (23 to 67)");
+    // The window itself is measured on pure-Opus stretches, so it reads the same whatever model
+    // is selected: Fable's unidentified rate is not in it.
+    expect(text).toContain("19,543,887 credits per 5-hour window");
+    for (const model of Object.keys(CREDITS.rates)) {
+      const t = render(CREDITS, "max20", model);
+      expect(t, model).not.toMatch(/\bnull\b|\bNaN\b|\bundefined\b/);
+    }
+  });
+
+  it("scales the hero to the selected plan rather than repeating the Max 20x figure", () => {
+    expect(render(CREDITS, "pro", "claude-opus-5")).toContain("1.5M input tokens per 5-hour window");
+    expect(render(CREDITS, "max5", "claude-opus-5")).toContain("8.8M input tokens per 5-hour window");
+  });
+
+  it("counts the accounts instead of saying a real account", () => {
+    expect(CREDITS.passive_account_count).toBe(3);
+    const text = render(CREDITS, "max20", "claude-opus-5");
+    expect(text).toContain("five-hour windows, measured from 3 accounts since the change");
+    expect(text).not.toContain("measured from a real account");
+    expect(text).not.toContain("measured from real accounts");
+  });
+
+  it("puts each effort cell's cache state beside it", () => {
+    const text = render(CREDITS, "max20", "claude-sonnet-5");
+    const mix = CREDITS.credits!.effort_cache_mix!["claude-sonnet-5"]!;
+    // The Sonnet row inverts -- low reads dearer than medium -- and the share is what explains it.
+    expect(mix.low!.cache_read_share!).toBeGreaterThan(mix.medium!.cache_read_share!);
+    // Four of the seven low runs ran cold, which is the whole reason the cell reads dearer.
+    expect(text).toContain("$0.02 91.5% cache read · 7 runs · 4 cold");
+    expect(text).toContain("$0.03 80.4% cache read · 7 runs · 3 cold");
+    // Another model's row, so the matrix is not one row wide.
+    expect(text).toContain("$0.22 61.0% cache read · 7 runs · 6 cold");
+  });
+
+  it("states what the plan ratios rest on, and that the source is undated", () => {
+    const text = render(CREDITS, "max20", "claude-opus-5");
+    expect(text).toContain("Basis: credits_table.");
+    expect(text).toContain("Credits per five-hour window, Pro : Max 5x : Max 20x: 550,000 : 3,300,000 : 11,000,000.");
+    expect(text).toContain("Credits per week: 5,000,000 : 41,666,700 : 83,333,300.");
+    expect(text).toContain("Measured confirmation: Max 5x over Max 20x 1.66, Max 5x Jun-Aug over Max 20x 19 Aug-11 Sep.");
+    expect(text).toContain("The source is undated: she-llac.com/claude-limits");
+  });
+
+  it("gives each account its own row across the change, and resolves nothing", () => {
+    const text = render(CREDITS, "max20", "claude-opus-5");
+    expect(text).toContain("The five-hour window across the change");
+    expect(text).toContain("Each account's own meter either side of 14 Sep 2026, in credits per 1% of the five-hour meter.");
+    expect(text).toContain("a1 123,599 139,377 12.8% 166 24 0");
+    expect(text).toContain("a2 187,168 204,632 9.3% 41 14 56");
+    // a3 has no before, so the cells that would carry one are empty rather than zero.
+    expect(text).toContain("a3 — 158,809 — 0 14 14");
+    expect(text).toContain("a1: An account whose n_with_capture is 0 has no usable capture column");
+    expect(text).toContain(
+      "Spread between the accounts after the change: 46.8%. Largest move one account made across it: 12.8%.",
+    );
+    expect(text).toContain(
+      "Unresolved: the accounts differ from each other by 46.8% after the change, more than the largest per-account move across it (12.8%), so the five-hour and weekly meters cannot be separated from these stretches.",
+    );
+  });
+
+  it("shows the announced-cap cross-check beside the measured window, with the reference dated", () => {
+    const text = render(CREDITS, "max20", "claude-opus-5");
+    expect(text).toContain("Cross-check against the announced caps");
+    expect(text).toContain("Before the change 83,333,300 × 1.5 = 124,999,950 ÷ 6.48 (6.2 to 6.8) windows 19,290,116");
+    expect(text).toContain("After the change 83,333,300 × 1.25 = 104,166,625 ÷ 4.96 (4.6 to 5.3) windows 21,001,336");
+    expect(text).toContain("Measured pure-opus stretches, n=11 19,543,887");
+    expect(text).toContain("Baseline 83,333,300 credits per week, as of 25 Jan 2026: she-llac.com/claude-limits");
+    expect(text).toContain("A reference, shown beside the measurement and never an input to it.");
+    expect(text).toContain("Shellac credits table, as of 25 Jan 2026. Announced changes since:");
+    expect(text).toContain("6 May 2026 · ×2 · five hour window — Claude Code five-hour limits permanently doubled");
+    // The +50% promotion carried a span rather than a date, and is dated as the JSON dates it.
+    expect(text).toContain("2026-05 to 2026-09-13 · ×1.5 · weekly");
+    expect(text).toContain("14 Sep 2026 · ×1.25 · weekly");
+  });
+
+  it("counts the excluded harness runs and carries Fable's status into the caveats", () => {
+    const text = render(CREDITS, "max20", "claude-opus-5");
+    expect(CREDITS.credits!.harness_runs_excluded).toHaveLength(16);
+    expect(text).toContain("16 harness runs are excluded from the stretches behind these figures.");
+    expect(text).toContain(
+      "Fable 5.1's credit rate: interval, not yet separable, 1.1935 to 2.3631 credits per input token, solved against a window of 195,439 credits per 1% of the meter.",
+    );
+  });
+
+  it("renders a file with no credits block exactly as it does today", () => {
+    const text = render(WITHOUT, "max20", "claude-opus-5");
+    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 24% on 11 Sep 2026.");
+    expect(text).toContain("589M tokens per 5-hour window");
+    expect(text).toContain("five-hour windows, measured from a real account since the change");
+    for (const gone of [
+      "credits per 5-hour window",
+      "The five-hour window across the change",
+      "Cross-check against the announced caps",
+      "cache read · 7 runs",
+      "Basis: credits_table.",
+      "harness runs are excluded",
+      "Five-hour windows per week: 6.5",
+    ]) {
+      expect(text, gone).not.toContain(gone);
+    }
+    // Every other published file keeps its own wording too.
+    expect(render(PUBLISHED)).toContain("measured from a real account");
   });
 });

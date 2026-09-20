@@ -23,10 +23,25 @@ import {
   planScaling,
   type UsageJson,
 } from "./claudeUsage";
+import {
+  captureEmptyNote,
+  changeLines,
+  computeCredits,
+  creditFigure,
+  creditsOf,
+  fmtShare,
+  fmtCredits,
+  modelFamily,
+  windowCreditAccounts,
+  type CreditsFigure,
+} from "./claudeUsage";
 import { withWf50 } from "./__fixtures__/wf50";
 import schema1 from "./__fixtures__/claude-usage-schema1.json";
 import schema2 from "./__fixtures__/claude-usage-schema2.json";
 import schema2Published from "./__fixtures__/claude-usage-schema2-published.json";
+// The credits block, as the tracker publishes it from its current main. The live file carries
+// the same block from its next hourly refresh.
+import schema3Credits from "./__fixtures__/claude-usage-schema3-credits.json";
 
 const J: UsageJson = {
   generated_at: "2026-09-05T20:15:00+00:00",
@@ -1200,5 +1215,172 @@ describe("tracker wf-50 fields", () => {
     expect(compute(WF50, "max5", "claude-sonnet-5", "high")!.tokensPerWindow).toBeCloseTo(max20.tokensPerWindow! * 0.3, 6);
     expect(compute(WF50, "pro", "claude-sonnet-5", "high")!.tokensPerWindow).toBeCloseTo(max20.tokensPerWindow! * 0.05, 6);
     expect(planScaling(WF50)).toEqual({ credits: true, perWindow: "1 : 6 : 20", perWeek: "1 : 8.33 : 16.67" });
+  });
+});
+
+describe("the credits block", () => {
+  const CREDITS = schema3Credits as unknown as UsageJson;
+  const PUBLISHED = schema2Published as unknown as UsageJson;
+  // The same file with the block taken back out: what every file published before the tracker
+  // change looks like, and what the live file looks like until its next refresh.
+  const WITHOUT: UsageJson = (() => {
+    const j = structuredClone(CREDITS);
+    delete j.credits;
+    return j;
+  })();
+
+  it("parses the published block", () => {
+    const c = creditsOf(CREDITS)!;
+    expect(c).not.toBeNull();
+    expect(c.window_credits).toMatchObject({ value: 19_543_887, n: 11, pure_family: "opus", status: null });
+    expect(c.window_credits.interval).toEqual([17_250_018, 20_819_693]);
+    // The account with no usable capture column is still published, with n: 0, so its absence
+    // from the cluster is visible rather than silent.
+    expect(Object.keys(c.window_credits.accounts!).sort()).toEqual(["a1", "a2", "a3"]);
+    expect(c.window_credits.accounts!.a1.n).toBe(0);
+    expect(windowCreditAccounts(c.window_credits)).toBe(2);
+    expect(Object.keys(c.per_model!).sort()).toEqual(["fable", "haiku", "opus", "sonnet"]);
+    expect(c.harness_runs_excluded).toHaveLength(16);
+    expect(c.window_credits_from_weekly!.kind).toBe("cross_check");
+    expect(c.five_hour_window_across_cut!.resolved).toBe(false);
+    expect(creditsOf(WITHOUT)).toBeNull();
+    expect(creditsOf(PUBLISHED)).toBeNull();
+  });
+
+  it("keys per_model by family, not by model id", () => {
+    expect(modelFamily("claude-opus-5")).toBe("opus");
+    expect(modelFamily("claude-opus-4-7")).toBe("opus");
+    expect(modelFamily("claude-fable-5-1")).toBe("fable");
+    expect(modelFamily("claude-haiku-4-5-20251001")).toBe("haiku");
+    expect(modelFamily("gpt-4")).toBeNull();
+  });
+
+  it("renders a figure's own value, and the interval beside it", () => {
+    const f: CreditsFigure = { value: 100, interval: [90, 110], status: null };
+    const two = (n: number) => n.toFixed(2);
+    expect(creditFigure(f, fmtCredits)).toEqual({ kind: "value", text: "100", range: "90 to 110" });
+    // The plan scale the rest of the page applies reaches the interval too, never the value alone.
+    expect(creditFigure(f, two, 0.05)).toEqual({ kind: "value", text: "5.00", range: "4.50 to 5.50" });
+    expect(creditFigure({ value: null, interval: null, status: null }, fmtCredits)).toBeNull();
+    expect(creditFigure(undefined, fmtCredits)).toBeNull();
+  });
+
+  it("puts a status sentence where the number would go, and never a null", () => {
+    // Every figure in the block that publishes no value publishes a sentence saying why. Walk
+    // the whole block rather than naming the ones that do it today: a new one must not slip
+    // through as a dash, a zero or a dropped line.
+    const statuses: { path: string; status: string }[] = [];
+    const walk = (node: unknown, path: string) => {
+      if (Array.isArray(node)) return;
+      if (!node || typeof node !== "object") return;
+      const o = node as Record<string, unknown>;
+      if ("value" in o && o.value === null && typeof o.status === "string" && o.status) {
+        statuses.push({ path, status: o.status });
+      }
+      for (const [k, v] of Object.entries(o)) walk(v, `${path}.${k}`);
+    };
+    walk(creditsOf(CREDITS), "credits");
+    expect(statuses.length).toBeGreaterThan(0);
+    for (const { path, status } of statuses) {
+      const at = path.split(".").slice(1).reduce<unknown>((acc, k) => (acc as Record<string, unknown>)?.[k], creditsOf(CREDITS));
+      const fig = creditFigure(at as CreditsFigure, fmtCredits)!;
+      expect(fig, path).toMatchObject({ kind: "status", text: status });
+      expect(fig.text, path).not.toMatch(/null|NaN/);
+    }
+  });
+
+  it("reads the hero's figures on the selected plan's scale", () => {
+    const max20 = computeCredits(CREDITS, "max20", "claude-opus-5")!;
+    expect(max20.family).toBe("opus");
+    expect(max20.tokensIn).toEqual({ kind: "value", text: "29M", range: "26M to 31M" });
+    expect(max20.tokensOut).toEqual({ kind: "value", text: "5.9M", range: "5.2M to 6.2M" });
+    expect(max20.usdIn).toEqual({ kind: "value", text: "$146.58", range: "$129.38 to $156.15" });
+    expect(max20.windowCredits).toEqual({
+      kind: "value",
+      text: "19,543,887",
+      range: "17,250,018 to 20,819,693",
+    });
+    expect(max20).toMatchObject({ windowCreditsN: 11, pureFamily: "opus", accountCount: 2, cacheNormalised: true });
+    expect(max20.sessionsPerWindow).toEqual({ kind: "value", text: "354", range: "312 to 377" });
+    expect(max20.sessionsPerWeek).toEqual({ kind: "value", text: "1,755", range: "1,549 to 1,870" });
+    expect(max20.split).toMatchObject({ cache_read: 0.9702, cache_write: 0.0254, input: 0.0001, output: 0.0042 });
+    expect(max20.splitSource).toContain("history/passive.json");
+    // A window is worth a twentieth as much on Pro, and the figure says so rather than repeating
+    // the Max 20x measurement under another plan's heading.
+    const pro = computeCredits(CREDITS, "pro", "claude-opus-5")!;
+    expect(pro.tokensIn).toEqual({ kind: "value", text: "1.5M", range: "1.3M to 1.6M" });
+    expect(pro.usdIn!.text).toBe("$7.33");
+  });
+
+  it("carries a model's status sentence through every hero figure", () => {
+    const fable = computeCredits(CREDITS, "max20", "claude-fable-5-1")!;
+    expect(fable.modelStatus).toBe("rate not yet identified");
+    for (const fig of [fable.tokensIn, fable.tokensOut, fable.usdIn, fable.usdOut, fable.sessionsPerWindow, fable.sessionsPerWeek]) {
+      expect(fig).toMatchObject({ kind: "status", text: "rate not yet identified" });
+      expect(fig!.range).not.toBeNull();
+    }
+    expect(fable.tokensIn!.range).toBe("7.3M to 17M");
+    // The window itself is measured on pure-Opus stretches, so it has a value whatever model is
+    // selected: Fable's missing rate is not in it.
+    expect(fable.windowCredits!.kind).toBe("value");
+    // Fable is not on Pro at all, so there is no capacity to scale and no figure to show.
+    const pro = computeCredits(CREDITS, "pro", "claude-fable-5-1")!;
+    expect(pro.included).toBe(false);
+    expect(pro.tokensIn).toBeNull();
+    expect(pro.windowCredits).toBeNull();
+    expect(computeCredits(WITHOUT, "max20", "claude-opus-5")).toBeNull();
+  });
+
+  it("halves Fable's per-week figure on Max and leaves its per-window figure alone", () => {
+    const sessions = creditsOf(CREDITS)!.sessions!["claude-opus-5"];
+    const max20 = computeCredits(CREDITS, "max20", "claude-opus-5")!;
+    expect(max20.sessionsPerWeek!.text).toBe(Math.round(sessions.per_week.value!).toLocaleString("en-US"));
+    const fableWeek = creditsOf(CREDITS)!.sessions!["claude-fable-5-1"].per_week.interval!;
+    // Fable may use half the week on Max, the rule the rest of the page already applies.
+    expect(computeCredits(CREDITS, "max20", "claude-fable-5-1")!.sessionsPerWeek!.range).toBe(
+      `${Math.round((fableWeek[0] as number) * 0.5).toLocaleString("en-US")} to ${Math.round((fableWeek[1] as number) * 0.5).toLocaleString("en-US")}`,
+    );
+  });
+
+  it("says what the change was measured on, and says what it does not resolve", () => {
+    expect(headline(CREDITS)).toEqual({
+      text: "The number of five-hour windows in a week fell by 24% between 11 Sep 2026 and 14 Sep 2026.",
+      tone: "down",
+    });
+    expect(changeLines(CREDITS)).toEqual([
+      "Five-hour windows per week: 6.5 (6.2 to 6.8) before, 5.0 (4.6 to 5.3) after.",
+      "Anthropic announced -17% on 14 Sep 2026: “Compared to today, this works out to a 17% reduction in weekly limits on Claude Code”.",
+      "Which meter moved is unresolved.",
+    ]);
+  });
+
+  it("keeps today's wording for a file with no credits block", () => {
+    // The metric is already published on the live file; the wording must not swap until the
+    // figures the new line needs are published with it.
+    expect(WITHOUT.last_change!.metric).toBe("weekly_to_five_hour_ratio");
+    expect(headline(WITHOUT)).toEqual({
+      text: "Anthropic last decreased Claude's weekly limit by 24% on 11 Sep 2026.",
+      tone: "down",
+    });
+    expect(changeLines(WITHOUT)).toEqual([]);
+    expect(headline(PUBLISHED).text).toBe(headline(structuredClone(PUBLISHED)).text);
+  });
+
+  it("lifts the empty-capture sentence out of the block's own method", () => {
+    const cut = creditsOf(CREDITS)!.five_hour_window_across_cut!;
+    expect(cut.per_account.a1.n_with_capture).toBe(0);
+    expect(captureEmptyNote(cut.method)).toBe(
+      "An account whose n_with_capture is 0 has no usable capture column, so its meter movement includes work this host never saw and its level reads low; the comparison of its own two sides is still its own",
+    );
+    expect(captureEmptyNote("no such sentence here")).toBeNull();
+    expect(captureEmptyNote(undefined)).toBeNull();
+  });
+
+  it("shows a share small enough to round away at a second place", () => {
+    expect(fmtShare(0.9702)).toBe("97.0%");
+    expect(fmtShare(0.0254)).toBe("2.5%");
+    // 0.01% of the window is real input; printing it as 0.0% would read as none at all.
+    expect(fmtShare(0.0001)).toBe("0.01%");
+    expect(fmtShare(0)).toBe("0.0%");
   });
 });
