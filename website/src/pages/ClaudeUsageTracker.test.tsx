@@ -440,7 +440,9 @@ describe("the credits block on the page", () => {
     const text = render(CREDITS, "max20", "claude-opus-5");
     const hero = text.slice(0, text.indexOf(" Effective window size "));
     // The #78 headline (Jonathan's decision, 2026-09-20), not the "fell by ... between" wording.
-    expect(hero).toContain("Anthropic last decreased Claude's weekly limit by 24% on 11 Sep 2026.");
+    // Dated to the pooled regime step (14 Sep), not the earliest per-account onset (11 Sep): that
+    // is the date the windows-per-week chart itself steps on and marks.
+    expect(hero).toContain("Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.");
     expect(hero).not.toContain("The number of five-hour windows in a week fell by");
     // Nothing sits between the h1 and the pill row (matches #78's hero exactly).
     expect(hero).not.toContain("Five-hour windows per week: 6.5");
@@ -664,7 +666,8 @@ describe("the credits block on the page", () => {
 
   it("renders a file with no credits block as it does today, bar the window it cannot state", () => {
     const text = render(WITHOUT, "max20", "claude-opus-5");
-    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 24% on 11 Sep 2026.");
+    // Pooled regime step (14 Sep), not the earliest per-account onset (11 Sep).
+    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.");
     // The 589M the dollar route used to lead on is the list-price window, and no figure on this
     // page comes from it any more (wf-60).
     expect(text).toContain("tokens per 5-hour window: window tokens not yet published");
@@ -1024,6 +1027,10 @@ describe("the measured window in tokens", () => {
     const text = render(WT, "max20", "claude-opus-5");
     expect(text).not.toContain("Effective window size, last");
     expect(html).not.toContain('aria-label="Chart range"');
+    // No change marker and no red step: the five-hour window has no published step of its own
+    // (which meter moved is unresolved), so the announced event's marker would sit on a flat
+    // line that never actually stepped.
+    expect(chart).not.toContain("#B42318");
   });
 
   it("converts the window for Sonnet, and says what the conversion rests on", () => {

@@ -113,7 +113,16 @@ export interface ChangeRecord {
   metric?: string;
   observation_scope?: string;
   attribution?: string;
-  onset?: { earliest: string | null; latest: string };
+  onset?: {
+    earliest: string | null;
+    latest: string;
+    // The pooled Max 20x regime step -- the date the windows-per-week chart itself steps on and
+    // marks. `earliest`/`latest` above bound the per-account onsets instead, which can (and here
+    // do) start days before the pooled regime the chart draws catches up: headline() prefers this
+    // one so the sentence and the chart's own change marker never name two different days for the
+    // same event.
+    from_windows?: { earliest: string | null; latest: string };
+  };
   confirmation?: { at: string | null; evidence_points?: number; seven_day_pct?: number | null };
   rounding_interval_before?: (number | null)[] | null;
   rounding_interval_after?: (number | null)[] | null;
@@ -844,10 +853,17 @@ export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "f
   // credits block is published. The onset-bounded "fell by ... between ..." wording this
   // replaced moved into "The five-hour window across the change" at the bottom, where the
   // onset range and the unresolved-attribution caveat still render in full.
+  //
+  // The date: `c.date` is the earliest PER-ACCOUNT onset (one account can move days before the
+  // rest), but the windows-per-week chart steps -- and marks its change marker -- on the pooled
+  // Max 20x regime boundary, which can land later. Prefer the pooled step (`onset.from_windows`)
+  // when it is published, so the headline and the chart's own marker never disagree; fall back to
+  // `c.date` for older JSON that does not carry it.
+  const date = c.onset?.from_windows?.earliest ?? c.date;
   if (c.scope === "weekly") {
-    return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
+    return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% on ${fmtDate(date)}.`, tone };
   }
-  return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(c.date)}.`, tone };
+  return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(date)}.`, tone };
 }
 
 export function fmtTokens(n: number): string {

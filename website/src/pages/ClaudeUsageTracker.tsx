@@ -1420,7 +1420,12 @@ export default function ClaudeUsageTracker({
                 {windowTokenLevels.some((p) => p.levels.length > 0) && (
                   <LevelChart
                     levelsByPlan={windowTokenLevels}
-                    events={weeklyEvents}
+                    // No change marker on this chart: the five-hour window itself has no
+                    // published step -- which meter moved is unresolved -- so the announced
+                    // event's marker would sit on a flat line that never actually stepped.
+                    // Passing no events draws none, rather than a red segment/marker that
+                    // implies a measured change this figure does not carry.
+                    events={[]}
                     selectedPlan={plan}
                     fmtValue={fmtTokens}
                     plotRight={732}
