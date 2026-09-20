@@ -123,9 +123,19 @@ function stepRuns<T extends { start: string; end: string; inferred: boolean }>(
   return runs;
 }
 
-// The most recent real step in one plan's own levels: two contiguous, non-inferred levels whose
-// value differs. This is where the drawn step actually lands, which is not always the day an
-// announced event names -- the collector's own regime detector and an announcement can disagree.
+// The most recent real step in one plan's own levels: two array-adjacent, non-inferred levels
+// whose value differs. This is where the drawn step actually lands, which is not always the day
+// an announced event names -- the collector's own regime detector and an announcement can
+// disagree.
+//
+// `weeklyRegimeLevelsFor` marks a level `inferred: false` only when it came from the plan's own
+// `regimes` array (see its docstring), so any two non-inferred entries here are necessarily two
+// consecutive entries of that same array, regardless of index position. There is no case where
+// two non-inferred entries in one plan's own level list come from different plans. An exact
+// `cur.start === prev.end` string match used to gate this, but the collector's passive sampling
+// leaves a real gap of hours between adjacent regimes (its own regime detector does not require
+// the boundary of one clean stretch to be the literal start instant of the next), so live data
+// almost always fails a millisecond-exact touch check and the step silently vanished.
 function lastRealStep(
   levels: { start: string; end: string; value: number; inferred: boolean }[],
 ): { date: string; pct: number } | null {
@@ -133,7 +143,6 @@ function lastRealStep(
     const cur = levels[i];
     const prev = levels[i - 1];
     if (cur.inferred || prev.inferred) continue;
-    if (cur.start !== prev.end) continue;
     if (!prev.value || cur.value === prev.value) continue;
     return { date: cur.start, pct: ((cur.value - prev.value) / prev.value) * 100 };
   }
@@ -261,7 +270,6 @@ function LevelChart({
   const W = 840, H = 260, L = 44, R = plotRight, T = 20, B = 200;
   const readings = overlay?.readings ?? [];
   const pooled = overlay?.weekly ?? [];
-  const onsets = overlay?.onsets ?? [];
   // A whisker end the collector could not bound (null) is not drawn, so it sets no range either.
   const whisker = (iv: (number | null)[] | null | undefined): [number, number] | null =>
     iv && typeof iv[0] === "number" && typeof iv[1] === "number" ? [iv[0], iv[1]] : null;
@@ -316,12 +324,6 @@ function LevelChart({
     : eventChange
       ? { x: () => xDay(eventChange.date), date: eventChange.date, text: shortChangeLabel(eventChange) }
       : null;
-  // Per-account onsets are worth drawing only when the accounts disagree about the day.
-  const onsetDays = Array.from(new Set(onsets.map((o) => o.onset.slice(0, 10)))).sort();
-  const onsetRange =
-    onsetDays.length > 1
-      ? `Onset across ${onsets.length} accounts: ${fmtDate(onsetDays[0])} to ${fmtDate(onsetDays[onsetDays.length - 1])}`
-      : null;
   // Two lines per plan on the right edge — name above, current value below — so the
   // gap has to clear both, not one.
   const labelY = stackLabels(
@@ -344,7 +346,6 @@ function LevelChart({
           .join(", ")}`,
     ),
     ...(changeMarker ? [`${fmtDate(changeMarker.date.slice(0, 10))}: ${changeMarker.text}`] : []),
-    ...(onsetRange ? [onsetRange] : []),
     ...(readings.length > 0
       ? [
           `${readings.length} five-hour window readings, ${fmtValue(Math.min(...readings.map((r) => r.windows)))} to ${fmtValue(Math.max(...readings.map((r) => r.windows)))}`,
@@ -458,14 +459,6 @@ function LevelChart({
           );
         })}
       </g>
-      {onsetRange !== null &&
-        onsets.map((o) => (
-          <line key={o.account} x1={xStamp(o.onset)} x2={xStamp(o.onset)} y1={T} y2={T + 12} stroke="#B42318" strokeWidth="1">
-            <title>
-              {`Account ${o.account}: step on ${fmtDate(o.onset.slice(0, 10))}, ${fmtValue(o.before)} to ${fmtValue(o.after)} (${o.percent > 0 ? "+" : ""}${o.percent}%). ${onsetRange}.`}
-            </title>
-          </line>
-        ))}
       {plotted.map((p) => {
         const isSelected = isSelectedPlan(p);
         const color = isSelected ? "#0EA5E9" : "#94A3B8";
@@ -1285,25 +1278,10 @@ export default function ClaudeUsageTracker({
                           statusUnit="API value per window in output tokens"
                         />
                       )}
-                      {cr.windowCredits && (
-                        <div className="rate">
-                          <span>
-                            <Fig fig={cr.windowCredits} unit="credits per 5-hour window" />
-                            {cr.windowCredits.range ? ` (${cr.windowCredits.range})` : ""}
-                            {cr.windowCreditsN !== null ? `, n=${cr.windowCreditsN}` : ""}
-                            {cr.pureFamily ? `, pure-${cr.pureFamily} stretches` : ""}
-                            {cr.accountCount !== null
-                              ? `, on ${cr.accountCount === 1 ? "one account" : `${cr.accountCount} accounts`}`
-                              : ""}
-                            .
-                            {cr.accountsWithoutStretch.length > 0
-                              ? ` ${cr.accountsWithoutStretch.join(", ")} contributed no clean ${
-                                  cr.pureFamily ? `pure-${cr.pureFamily} ` : ""
-                                }stretch.`
-                              : ""}
-                          </span>
-                        </div>
-                      )}
+                      {/* The credits-per-window figure (range, n, account count, per-account
+                          shortfall note) moved to "How the price and the window are measured"
+                          at the bottom -- not deleted, just not above the fold (Jonathan's
+                          decision, 2026-09-20). */}
                       {(cr.sessionsPerWindow || cr.sessionsPerWeek) && (
                         <div className="rate">
                           {cr.sessionsPerWindow && (
@@ -1323,26 +1301,10 @@ export default function ClaudeUsageTracker({
                       )}
                       {/* The sessions figures are cache-normalised: cache reads cost nothing
                           against the meter, so the same window bought cold is worth far fewer
-                          tokens. The split they assume belongs beside them, not behind them. */}
-                      {cr.split && (
-                        <div className="split">
-                          <span>
-                            <b>{fmtShare(cr.split.input ?? 0)}</b> input<em>·</em>
-                            <b>{fmtShare(cr.split.output ?? 0)}</b> output
-                          </span>
-                          <em className="brk">·</em>
-                          <span>
-                            <b>{fmtShare(cr.split.cache_read ?? 0)}</b> cache read<em>·</em>
-                            <b>{fmtShare(cr.split.cache_write ?? 0)}</b> cache write
-                          </span>
-                        </div>
-                      )}
-                      {cr.splitSource && <div className="quiet">Split: {cr.splitSource}.</div>}
-                      {cr.cacheNormalised && cr.medianSessionTokens !== null && (
-                        <div className="quiet">
-                          Cache-normalised at that split, over a median session of {fmtTokens(cr.medianSessionTokens)} tokens.
-                        </div>
-                      )}
+                          tokens. The split they assume, the split source and the cache-
+                          normalisation note moved to "How the price and the window are
+                          measured" at the bottom -- not deleted (Jonathan's decision,
+                          2026-09-20). */}
                       {/* What the credits block says about its own figures: how the window was
                           measured, and what this family's row was priced at. Not another block's
                           date (finding 5). */}
@@ -1382,28 +1344,19 @@ export default function ClaudeUsageTracker({
                   {!creditsRoute && fmtSource(data.rates[model]) && (
                     <div className="quiet">Source: {fmtSource(data.rates[model])}</div>
                   )}
-                  {r.planWindowsPerWeek !== null && (
+                  {/* The "a week holds about N windows" sentence moved to "How many windows fit
+                      in a week" at the bottom -- not deleted (Jonathan's decision, 2026-09-20).
+                      Fable's half-week cap (audit finding 2) stays in the hero: it is not one of
+                      the five moved sentences. */}
+                  {r.planWindowsPerWeek !== null && r.weeklyFraction < 1 && (
                     <div className="quiet">
-                      {/* The plain #78 sentence: the number and, where it applies, the change date
-                          and the weekly-fraction caveat. The account count and the "inferred
-                          from" detail this used to carry are in "How many windows fit in a week"
-                          at the bottom, alongside every account's own figure. */}
-                      A week currently holds about {r.planWindowsPerWeek.toFixed(1)} five-hour windows, measured from a
-                      real account
-                      {data.last_change?.scope === "weekly" ? ` since the change on ${fmtDate(data.last_change.date)}` : ""}.
-                      {/* Fable's half-week cap on Max (audit finding 2, kept). */}
-                      {r.weeklyFraction < 1 && (
-                        <>
-                          {" "}
-                          {MODEL_LABELS[model] ?? model} may use{" "}
-                          {limit?.source_url ? (
-                            <a href={limit.source_url}>{Math.round(r.weeklyFraction * 100)}% of the weekly limit</a>
-                          ) : (
-                            `${Math.round(r.weeklyFraction * 100)}% of the weekly limit`
-                          )}
-                          .
-                        </>
+                      {MODEL_LABELS[model] ?? model} may use{" "}
+                      {limit?.source_url ? (
+                        <a href={limit.source_url}>{Math.round(r.weeklyFraction * 100)}% of the weekly limit</a>
+                      ) : (
+                        `${Math.round(r.weeklyFraction * 100)}% of the weekly limit`
                       )}
+                      .
                     </div>
                   )}
                   {staleAt && <div className="stale">Last measured {fmtDate(staleAt.slice(0, 10))}.</div>}
@@ -1574,26 +1527,9 @@ export default function ClaudeUsageTracker({
                 ))}
               </tbody>
             </table>
-            {data.weekly_windows && (
-              <div className="quiet">
-                {inferredPlans.includes("max5")
-                  ? `Max 20x weekly figures are measured from ${accountsWord ?? "real accounts"}. ${inferredNote}`
-                  : `Max 20x and Max 5x weekly figures are measured from ${accountsWord ?? "real accounts"}. Pro assumes the Max 5x ratio until it is measured.`}
-              </div>
-            )}
-            {/* What the ratios above rest on, in the basis blocks' own figures. The table they
-                come from carries no date, so the footnote says so rather than letting an undated
-                reference read as a figure for now. */}
-            {credits && ratioBasis && (
-              <div className="quiet">
-                Basis: {ratioBasis.kind}.
-                {ratioBasis.perWindow ? ` Credits per five-hour window, ${PLAN_ORDER_LABEL}: ${ratioBasis.perWindow}.` : ""}
-                {ratioBasis.perWeek ? ` Credits per week: ${ratioBasis.perWeek}.` : ""}
-                {ratioBasis.confirmation ? ` Measured confirmation: ${ratioBasis.confirmation}.` : ""}
-                {ratioBasis.asOf ? ` Source, as of ${fmtDate(ratioBasis.asOf)}:` : ratioBasis.undated ? " The source is undated:" : " Source:"}{" "}
-                <a href={ratioBasis.url}>{ratioBasis.urlText}</a>.
-              </div>
-            )}
+            {/* The weekly-measurement note and the ratio-table basis footnote moved to
+                "Cross-check against the announced caps" at the bottom -- not deleted
+                (Jonathan's decision, 2026-09-20). */}
           </section>
         )}
 
@@ -1846,6 +1782,35 @@ export default function ClaudeUsageTracker({
               ) : (
                 creditRateLine && <p>{creditRateLine}</p>
               ))}
+            {cr?.windowCredits && (
+              <p>
+                <Fig fig={cr.windowCredits} unit="credits per 5-hour window" />
+                {cr.windowCredits.range ? ` (${cr.windowCredits.range})` : ""}
+                {cr.windowCreditsN !== null ? `, n=${cr.windowCreditsN}` : ""}
+                {cr.pureFamily ? `, pure-${cr.pureFamily} stretches` : ""}
+                {cr.accountCount !== null
+                  ? `, on ${cr.accountCount === 1 ? "one account" : `${cr.accountCount} accounts`}`
+                  : ""}
+                .
+                {cr.accountsWithoutStretch.length > 0
+                  ? ` ${cr.accountsWithoutStretch.join(", ")} contributed no clean ${
+                      cr.pureFamily ? `pure-${cr.pureFamily} ` : ""
+                    }stretch.`
+                  : ""}
+              </p>
+            )}
+            {cr?.split && (
+              <p>
+                <b>{fmtShare(cr.split.input ?? 0)}</b> input<em>·</em>
+                <b>{fmtShare(cr.split.output ?? 0)}</b> output<em>·</em>
+                <b>{fmtShare(cr.split.cache_read ?? 0)}</b> cache read<em>·</em>
+                <b>{fmtShare(cr.split.cache_write ?? 0)}</b> cache write
+              </p>
+            )}
+            {cr?.splitSource && <p>Split: {cr.splitSource}.</p>}
+            {cr?.cacheNormalised && cr.medianSessionTokens !== null && (
+              <p>Cache-normalised at that split, over a median session of {fmtTokens(cr.medianSessionTokens)} tokens.</p>
+            )}
           </details>
         )}
 
@@ -1974,9 +1939,26 @@ export default function ClaudeUsageTracker({
             cluster, which is the only reason it is worth putting beside it. Every number in the
             arithmetic below is published: the page states the composition, it does not compute
             the result, and the undated baseline is never an input to a figure of our own. */}
-        {!unavailable && (fromWeekly || shortfall) && (
+        {!unavailable && (fromWeekly || shortfall || data?.weekly_windows || (credits && ratioBasis)) && (
           <details>
             <summary>Cross-check against the announced caps</summary>
+            {data?.weekly_windows && (
+              <p className="quiet">
+                {inferredPlans.includes("max5")
+                  ? `Max 20x weekly figures are measured from ${accountsWord ?? "real accounts"}. ${inferredNote}`
+                  : `Max 20x and Max 5x weekly figures are measured from ${accountsWord ?? "real accounts"}. Pro assumes the Max 5x ratio until it is measured.`}
+              </p>
+            )}
+            {credits && ratioBasis && (
+              <p className="quiet">
+                Basis: {ratioBasis.kind}.
+                {ratioBasis.perWindow ? ` Credits per five-hour window, ${PLAN_ORDER_LABEL}: ${ratioBasis.perWindow}.` : ""}
+                {ratioBasis.perWeek ? ` Credits per week: ${ratioBasis.perWeek}.` : ""}
+                {ratioBasis.confirmation ? ` Measured confirmation: ${ratioBasis.confirmation}.` : ""}
+                {ratioBasis.asOf ? ` Source, as of ${fmtDate(ratioBasis.asOf)}:` : ratioBasis.undated ? " The source is undated:" : " Source:"}{" "}
+                <a href={ratioBasis.url}>{ratioBasis.urlText}</a>.
+              </p>
+            )}
             {fromWeekly && (
               <>
             <p className="sub">
