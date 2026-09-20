@@ -462,11 +462,46 @@ describe("the credits block on the page", () => {
     expect(text).toContain("a3 — 158,809 — 0 14 14");
     expect(text).toContain("a1: An account whose n_with_capture is 0 has no usable capture column");
     expect(text).toContain(
-      "Spread between the accounts after the change: 46.8%. Largest move one account made across it: 12.8%.",
+      "The windows-per-week ratio fell about 23%. That is consistent with a smaller weekly cap, a larger five-hour window, or both; which meter moved is unresolved.",
     );
+    expect(text).toContain("Two accounts read 29% apart in credits per 1% of the meter; the cause is not identified.");
     expect(text).toContain(
       "Unresolved: the accounts differ from each other by 46.8% after the change, more than the largest per-account move across it (12.8%), so the five-hour and weekly meters cannot be separated from these stretches.",
     );
+  });
+
+  it("says nothing about the windows-per-week ratio when it rose rather than fell", () => {
+    const j = structuredClone(CREDITS);
+    const cross = j.credits!.window_credits_from_weekly!;
+    cross.before.windows_per_week_measured = 4.96;
+    cross.after.windows_per_week_measured = 6.48;
+    const text = render(j, "max20", "claude-opus-5");
+    expect(text).not.toContain("windows-per-week ratio fell");
+    expect(text).not.toContain("consistent with a smaller weekly cap");
+  });
+
+  it("says nothing about the windows-per-week ratio when it did not move", () => {
+    const j = structuredClone(CREDITS);
+    const cross = j.credits!.window_credits_from_weekly!;
+    cross.before.windows_per_week_measured = 6.48;
+    cross.after.windows_per_week_measured = 6.48;
+    const text = render(j, "max20", "claude-opus-5");
+    expect(text).not.toContain("windows-per-week ratio fell");
+    expect(text).not.toContain("consistent with a smaller weekly cap");
+  });
+
+  it("says nothing about the account gap with fewer than two accounts carrying a usable capture column", () => {
+    const j = structuredClone(CREDITS);
+    j.credits!.five_hour_window_across_cut!.per_account.a2.n_with_capture = 0;
+    const text = render(j, "max20", "claude-opus-5");
+    expect(text).not.toContain("apart in credits per 1% of the meter; the cause is not identified");
+  });
+
+  it("says nothing about the account gap when the lowest reading is 0 or below", () => {
+    const j = structuredClone(CREDITS);
+    j.credits!.five_hour_window_across_cut!.per_account.a3.after = 0;
+    const text = render(j, "max20", "claude-opus-5");
+    expect(text).not.toContain("apart in credits per 1% of the meter; the cause is not identified");
   });
 
   it("shows the announced-cap cross-check beside the measured window, with the reference dated", () => {

@@ -1002,6 +1002,30 @@ export default function ClaudeUsageTracker({
     .map(([label]) => label);
   const captureNote = captureEmptyNote(acrossCut?.method);
   const fromWeekly = credits?.window_credits_from_weekly ?? null;
+  // How far the windows-per-week ratio moved across the change, from the same measured windows
+  // the cross-check table below states. A stable account-specific scale cancels in this
+  // within-account before/after ratio, which is why it is safe to publish where the raw spread
+  // between accounts is not (audit finding, 2026-09-20).
+  const weeklyRatioFellPct = (() => {
+    const before = fromWeekly?.before?.windows_per_week_measured;
+    const after = fromWeekly?.after?.windows_per_week_measured;
+    if (typeof before !== "number" || typeof after !== "number" || before <= 0) return null;
+    return ((before - after) / before) * 100;
+  })();
+  // The account-to-account gap in the same five-hour figure, from the accounts whose capture
+  // column is usable (an empty one reads low, per the note above, and would widen this beyond
+  // what the accounts themselves measured). Two accounts on the same plan reading apart is not,
+  // on its own, evidence of a pricing or allowance difference between them.
+  const acrossAccountGapPct = (() => {
+    const values = Object.values(acrossCut?.per_account ?? {})
+      .filter((a) => typeof a.after === "number" && a.n_with_capture > 0)
+      .map((a) => a.after as number);
+    if (values.length < 2) return null;
+    const lo = Math.min(...values);
+    const hi = Math.max(...values);
+    if (lo <= 0) return null;
+    return ((hi - lo) / lo) * 100;
+  })();
   // Goal 7: the measured windows per week against the reference table's own, per plan, with the
   // announced changes since that table applied. A comparison, never an input to a figure here.
   const shortfall = data?.reference?.shortfall ?? null;
@@ -1649,9 +1673,12 @@ export default function ClaudeUsageTracker({
           </section>
         )}
 
-        {/* 6. Each watched account's own meter either side of the announced change. The rows are
-            here to be read against each other: the spread between accounts is larger than the
-            move any one of them made, which is why the block resolves nothing. */}
+        {/* 6. Each watched account's own meter either side of the announced change. What the
+            block can say without reasoning from the raw spread between accounts (a stable
+            account-specific scale cancels in each account's own before/after ratio, so a
+            cross-account spread proves nothing about which meter moved): the windows-per-week
+            ratio's own change, and the account-to-account gap, with no cause attached to
+            either. */}
         {!unavailable && acrossCut && (
           <section>
             <h2>The five-hour window across the change</h2>
@@ -1690,10 +1717,16 @@ export default function ClaudeUsageTracker({
                 {emptyCapture.join(", ")}: {captureNote}.
               </div>
             )}
-            {typeof acrossCut.spread_after_pct === "number" && typeof acrossCut.largest_move_pct === "number" && (
+            {typeof weeklyRatioFellPct === "number" && Math.round(weeklyRatioFellPct) >= 1 && (
               <div className="quiet">
-                Spread between the accounts after the change: {acrossCut.spread_after_pct}%. Largest move one account made
-                across it: {acrossCut.largest_move_pct}%.
+                The windows-per-week ratio fell about {Math.round(weeklyRatioFellPct)}%. That is consistent with a smaller
+                weekly cap, a larger five-hour window, or both; which meter moved is unresolved.
+              </div>
+            )}
+            {typeof acrossAccountGapPct === "number" && (
+              <div className="quiet">
+                Two accounts read {Math.round(acrossAccountGapPct)}% apart in credits per 1% of the meter; the cause is
+                not identified.
               </div>
             )}
             {(acrossCut.unresolved || acrossCut.resolved === false) && (
