@@ -462,8 +462,9 @@ describe("the credits block on the page", () => {
     expect(text).toContain("a3 — 158,809 — 0 14 14");
     expect(text).toContain("a1: An account whose n_with_capture is 0 has no usable capture column");
     expect(text).toContain(
-      "Spread between the accounts after the change: 46.8%. Largest move one account made across it: 12.8%.",
+      "The windows-per-week ratio fell about 23%. That is consistent with a smaller weekly cap, a larger five-hour window, or both; which meter moved is unresolved.",
     );
+    expect(text).toContain("Two accounts on the same plan read 29% apart in credits per 1% of the meter; the cause is not identified.");
     expect(text).toContain(
       "Unresolved: the accounts differ from each other by 46.8% after the change, more than the largest per-account move across it (12.8%), so the five-hour and weekly meters cannot be separated from these stretches.",
     );
