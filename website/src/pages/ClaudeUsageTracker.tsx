@@ -7,6 +7,8 @@ import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
   EFFORTS,
   MODEL_LABELS,
+  accountWindowsPerWeek,
+  cacheReadShareFor,
   captureEmptyNote,
   changeLines,
   computeCredits,
@@ -31,8 +33,11 @@ import {
   planScaling,
   weeklyCurrentFor,
   weeklyReadingsFor,
-  DOCUMENTED_SOURCE,
-  DOCUMENTED_WINDOWS_PER_WEEK,
+  documentedSource,
+  documentedWindowsPerWeek,
+  effortRunCounts,
+  referenceDateFor,
+  windowCreditAccountsWithoutStretch,
   weeklyRegimeLevelsFor,
   weeklySeriesFor,
   weeklyTokenRegimeLevelsFor,
@@ -899,9 +904,10 @@ export default function ClaudeUsageTracker({
         mc && typeof mc.max5_over_max20 === "number"
           ? `Max 5x over Max 20x ${mc.max5_over_max20}${mc.spans ? `, ${mc.spans}` : ""}`
           : null,
-      // The credits table carries no date. An undated reference reads as a figure for now, and
-      // the gap between it and a measurement reads as an unexplained factor, so the page says it.
+      // The basis blocks say the table is undated; the reference block dates the same URL. The
+      // date is the fact, so it wins wherever the two disagree (finding 4).
       undated: pb?.dated === false || wb?.dated === false,
+      asOf: data ? referenceDateFor(data, url) : null,
       url,
       urlText: url ? url.replace(/^https?:\/\//, "") : null,
     };
@@ -962,7 +968,15 @@ export default function ClaudeUsageTracker({
   const weeklyOverlay = useMemo(
     () =>
       data
-        ? { ...weeklyReadingsFor(data, plan), documented: { value: DOCUMENTED_WINDOWS_PER_WEEK[plan], source: DOCUMENTED_SOURCE } }
+        ? {
+            ...weeklyReadingsFor(data, plan),
+            // The documented level and what to call it, both read off the weekly basis block and
+            // dated by the reference block, rather than typed in beside the measured levels.
+            documented: (() => {
+              const value = documentedWindowsPerWeek(data, plan);
+              return value === null ? undefined : { value, source: documentedSource(data) };
+            })(),
+          }
         : undefined,
     [data, plan],
   );
@@ -971,7 +985,7 @@ export default function ClaudeUsageTracker({
   // null for a file published before the block existed, and every sentence below falls back to
   // the wording that file has always rendered.
   const credits = useMemo(() => (data ? creditsOf(data) : null), [data]);
-  const cr = useMemo(() => (data ? computeCredits(data, plan, model) : null), [data, plan, model]);
+  const cr = useMemo(() => (data ? computeCredits(data, plan, model, effort) : null), [data, plan, model, effort]);
   const changeSentences = useMemo(() => (data ? changeLines(data) : []), [data]);
   // How many accounts the passive readings rest on, in words. Null without the credits block, in
   // which case the page keeps saying "a real account" as it does today.
@@ -982,6 +996,139 @@ export default function ClaudeUsageTracker({
         : `${data.passive_account_count} accounts`
       : null;
   const effortMix = credits?.effort_cache_mix ?? null;
+  const effortCredits = credits?.effort_credits ?? null;
+  // True once the credits block can state this model's window. Everything the page says about
+  // tokens per window, tokens per week, sessions per window and sessions per week then comes from
+  // that one block, so the hero, the chart headlines and the plan table cannot disagree.
+  const creditsRoute = !!cr && cr.tokensIn !== null;
+  // The hero's figures do not move with effort; the effort matrix's do. The picker goes where the
+  // dependence is, and stays in the hero for a file whose JSON has no effort matrix (finding 2).
+  const effortInHero = !(creditsRoute && effortMix);
+  const effortSelect = (
+    <span className="sel">
+      <select aria-label="Effort" value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
+        {EFFORTS.map((e) => (
+          <option key={e} value={e}>{e}</option>
+        ))}
+      </select>
+    </span>
+  );
+  // What the 30-day and per-week charts plot: raw tokens at the account's own mix, which is a
+  // different quantity from the priced figure above them and reads as the same one without this.
+  const chartCacheRead = data ? cacheReadShareFor(data, model) : null;
+  const chartMixNote =
+    creditsRoute && chartCacheRead !== null
+      ? `Plotted: tokens at the account's own mix, ${fmtShare(chartCacheRead)} of it cache reads, not the priced figure above.`
+      : null;
+  // Each watched account's own windows per week, as values rather than as dots alone.
+  const accountWeekly = data ? accountWindowsPerWeek(data, plan) : [];
+  // How many runs each effort cell was measured over, for the caveat that used to name a number.
+  const runCounts = effortRunCounts(effortMix);
+  const documentedUrlText =
+    data?.weekly_window_ratios_basis?.source_url?.replace(/^https?:\/\//, "") ?? "she-llac.com/claude-limits";
+  const documentedAsOf = data ? referenceDateFor(data, data.weekly_window_ratios_basis?.source_url) : null;
+  // The input and output API-value lines are the same window priced at each class's own rate, and
+  // on every file so far they come to the same figure. Two identical lines read as two findings.
+  const usdOneLine = !!(
+    cr?.usdIn &&
+    cr?.usdOut &&
+    cr.usdIn.kind === cr.usdOut.kind &&
+    cr.usdIn.text === cr.usdOut.text &&
+    cr.usdIn.range === cr.usdOut.range
+  );
+  // What this family's row was priced at, in the credits block's own fields. A family the block
+  // publishes a status for renders that sentence instead, with no number (finding 5).
+  // The plan table's rows. Every quantity the credits block publishes comes from it, on the same
+  // helper the hero uses, so a cell and the hero cannot state one quantity at two scales.
+  const planTableRows: { label: string; cell: (p: Plan) => { text: string; inferred: boolean } }[] = (() => {
+    if (!data || !r) return [];
+    const dash = (f: CreditFigureText | null | undefined) => (f ? f.text : "\u2014");
+    if (creditsRoute && cr) {
+      const pick: { label: string; of: (c: NonNullable<ReturnType<typeof computeCredits>>) => CreditFigureText | null }[] = [
+        { label: "Input tokens per 5-hour window", of: (c) => c.tokensIn },
+        { label: "Output tokens per 5-hour window", of: (c) => c.tokensOut },
+        { label: "Input tokens per week", of: (c) => c.tokensInPerWeek },
+        ...(cr.sessionsPerWindow ? [{ label: "Sessions per window", of: (c: NonNullable<ReturnType<typeof computeCredits>>) => c.sessionsPerWindow }] : []),
+        ...(cr.sessionsPerWeek ? [{ label: "Sessions per week", of: (c: NonNullable<ReturnType<typeof computeCredits>>) => c.sessionsPerWeek }] : []),
+        { label: "API value per 5-hour window", of: (c) => c.usdIn },
+        ...(cr.usdInPerWeek ? [{ label: "API value per week", of: (c: NonNullable<ReturnType<typeof computeCredits>>) => c.usdInPerWeek }] : []),
+      ];
+      return pick.map(({ label, of }) => ({
+        label,
+        cell: (p: Plan) => {
+          const c = computeCredits(data, p, model)!;
+          return { text: dash(of(c)), inferred: c.weeklyInferred };
+        },
+      }));
+    }
+    const rows: { label: string; of: (c: NonNullable<ReturnType<typeof compute>>) => string }[] = [
+      { label: "Tokens per 5-hour window", of: (c) => (c.tokensPerWindow === null ? "\u2014" : fmtTokens(c.tokensPerWindow)) },
+      {
+        label: "Tokens per week",
+        of: (c) =>
+          c.tokensPerWindow === null || c.windowsPerWeek === null ? "\u2014" : fmtTokens(c.tokensPerWindow * c.windowsPerWeek),
+      },
+      ...(r.sessionsPerWindow !== null
+        ? [
+            {
+              label: "Sessions per window",
+              of: (c: NonNullable<ReturnType<typeof compute>>) =>
+                c.sessionsPerWindow === null ? "\u2014" : c.sessionsPerWindow < 1 ? "< 1" : String(Math.round(c.sessionsPerWindow)),
+            },
+          ]
+        : []),
+      ...(r.sessionsPerWindow !== null && r.windowsPerWeek !== null
+        ? [
+            {
+              label: "Sessions per week",
+              of: (c: NonNullable<ReturnType<typeof compute>>) =>
+                c.sessionsPerWeek === null ? "\u2014" : String(Math.round(c.sessionsPerWeek)),
+            },
+          ]
+        : []),
+      { label: "API value per 5-hour window", of: (c) => (c.apiValueUsd === null ? "\u2014" : fmtUsd(c.apiValueUsd)) },
+      ...(r.windowsPerWeek !== null
+        ? [
+            {
+              label: "API value per week",
+              of: (c: NonNullable<ReturnType<typeof compute>>) =>
+                c.apiValueUsdPerWeek === null ? "\u2014" : fmtUsd(c.apiValueUsdPerWeek),
+            },
+          ]
+        : []),
+    ];
+    return rows.map(({ label, of }) => ({
+      label,
+      cell: (p: Plan) => {
+        const c = compute(data, p, model, effort)!;
+        return { text: of(c), inferred: c.weeklyInferred };
+      },
+    }));
+  })();
+  const creditRateLine = (() => {
+    if (!cr || cr.modelStatus || typeof cr.creditsPerTokenIn !== "number") return null;
+    const rate = (n: number) => n.toFixed(3);
+    const family = cr.family ? cr.family.charAt(0).toUpperCase() + cr.family.slice(1) : MODEL_LABELS[model] ?? model;
+    const lead =
+      cr.rateSource === "measured"
+        ? `Priced at the meter's measured ${family} rate`
+        : cr.rateSource === "reference"
+          ? `Priced at the reference ${family} rate`
+          : null;
+    if (lead === null) return null;
+    const iv = cr.creditsPerTokenInInterval;
+    const interval =
+      iv && typeof iv[0] === "number" && typeof iv[1] === "number" ? `, interval ${rate(iv[0])} to ${rate(iv[1])}` : "";
+    // The reference figure is drawn beside the measurement, dated, and used in no arithmetic. It
+    // is not repeated where it IS the rate, which would state the same number twice.
+    const refRate = cr.rateSource === "measured" && typeof cr.referenceRateIn === "number" ? cr.referenceRateIn : null;
+    const refName = data?.reference?.name ?? null;
+    const reference =
+      refRate === null || refName === null
+        ? ""
+        : `; ${refName}${data?.reference?.as_of ? `, as of ${fmtDate(data.reference.as_of)}` : ""}, says ${rate(refRate)}`;
+    return `${lead}, ${rate(cr.creditsPerTokenIn)} credits per input token${interval}${reference}.`;
+  })();
   const acrossCut = credits?.five_hour_window_across_cut ?? null;
   // The accounts whose capture column is empty, and the publisher's own sentence for what that
   // means. Paraphrasing a measurement caveat is how it gets weaker, so the sentence is lifted
@@ -1053,7 +1200,7 @@ export default function ClaudeUsageTracker({
     <PageShell>
       <Seo
         title="Claude Usage Tracker: what a Max plan actually buys | All Done Sites"
-        description="Measured daily from a real account: how many tokens a Claude Max 20x plan buys per 5-hour window, and when that changes."
+        description={`Measured daily from ${accountsWord ?? "a real account"}: how many tokens a Claude Max 20x plan buys per 5-hour window, and when that changes.`}
         canonical={`${SITE}/claude-usage-tracker/`}
         image={`${SITE}/og1200x630_v2.jpg`}
       />
@@ -1116,16 +1263,14 @@ export default function ClaudeUsageTracker({
                       <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
                     ))}
                   </select>
-                </span>{" "}
-                at{" "}
-                <span className="sel">
-                  <select aria-label="Effort" value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
-                    {EFFORTS.map((e) => (
-                      <option key={e} value={e}>{e}</option>
-                    ))}
-                  </select>
-                </span>{" "}
-                effort{r.included ? ", you get" : ""}
+                </span>
+                {effortInHero ? (
+                  <>
+                    {" "}
+                    at {effortSelect} effort
+                  </>
+                ) : null}
+                {r.included ? ", you get" : ""}
               </div>
               {!r.included && <div className="quiet">{notIncluded}</div>}
               {r.included && r.tokensPerWindow !== null && r.split !== null && (
@@ -1141,12 +1286,20 @@ export default function ClaudeUsageTracker({
                       {cr.usdIn && (
                         <HeroFigure
                           fig={cr.usdIn}
-                          unit="of API value per window in input tokens"
-                          statusUnit="API value per window in input tokens"
+                          unit={
+                            usdOneLine
+                              ? "of API value per window, the same window priced at each class's own rate"
+                              : "of API value per window in input tokens"
+                          }
+                          statusUnit={
+                            usdOneLine
+                              ? "API value per window, the same window priced at each class's own rate"
+                              : "API value per window in input tokens"
+                          }
                           usd
                         />
                       )}
-                      {cr.usdOut && (
+                      {cr.usdOut && !usdOneLine && (
                         <FigureLine
                           fig={cr.usdOut}
                           unit="of API value per window in output tokens"
@@ -1164,6 +1317,11 @@ export default function ClaudeUsageTracker({
                               ? `, on ${cr.accountCount === 1 ? "one account" : `${cr.accountCount} accounts`}`
                               : ""}
                             .
+                            {cr.accountsWithoutStretch.length > 0
+                              ? ` ${cr.accountsWithoutStretch.join(", ")} contributed no clean ${
+                                  cr.pureFamily ? `pure-${cr.pureFamily} ` : ""
+                                }stretch.`
+                              : ""}
                           </span>
                         </div>
                       )}
@@ -1205,6 +1363,18 @@ export default function ClaudeUsageTracker({
                         <div className="quiet">
                           Cache-normalised at that split, over a median session of {fmtTokens(cr.medianSessionTokens)} tokens.
                         </div>
+                      )}
+                      {/* What the credits block says about its own figures: how the window was
+                          measured, and what this family's row was priced at. Not another block's
+                          date (finding 5). */}
+                      {cr.windowCreditsMethod && <div className="quiet">Method: {cr.windowCreditsMethod}</div>}
+                      {cr.modelStatus ? (
+                        <div className="quiet">
+                          {cr.family ? `${cr.family.charAt(0).toUpperCase()}${cr.family.slice(1)}` : MODEL_LABELS[model] ?? model} rate:{" "}
+                          {cr.modelStatus}.
+                        </div>
+                      ) : (
+                        creditRateLine && <div className="quiet">{creditRateLine}</div>
                       )}
                     </>
                   ) : (
@@ -1248,7 +1418,7 @@ export default function ClaudeUsageTracker({
                       </div>
                     </>
                   )}
-                  {fmtSource(data.rates[model]) && (
+                  {!creditsRoute && fmtSource(data.rates[model]) && (
                     <div className="quiet">Source: {fmtSource(data.rates[model])}</div>
                   )}
                   {r.planWindowsPerWeek !== null && (
@@ -1302,19 +1472,44 @@ export default function ClaudeUsageTracker({
             <div className="sub">
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window
             </div>
-            {r && r.tokensPerWindow !== null && (
+            {creditsRoute && cr ? (
               <div className="rate">
                 <span>
-                  <b>{fmtTokens(r.tokensPerWindow)}</b> tokens
-                  {r.sessionsPerWindow !== null && (
-                    <>
-                      <em>·</em>
-                      <b>{Math.round(r.sessionsPerWindow)}</b> sessions
-                    </>
-                  )}{" "}
-                  per 5-hour window
+                  <Fig fig={cr.tokensIn!} unit="input tokens per 5-hour window" />
                 </span>
+                {cr.tokensOut && (
+                  <>
+                    <em className="brk">·</em>
+                    <span>
+                      <Fig fig={cr.tokensOut} unit="output tokens" />
+                    </span>
+                  </>
+                )}
+                {cr.sessionsPerWindow && (
+                  <>
+                    <em className="brk">·</em>
+                    <span>
+                      <Fig fig={cr.sessionsPerWindow} unit="sessions" />
+                    </span>
+                  </>
+                )}
               </div>
+            ) : (
+              r &&
+              r.tokensPerWindow !== null && (
+                <div className="rate">
+                  <span>
+                    <b>{fmtTokens(r.tokensPerWindow)}</b> tokens
+                    {r.sessionsPerWindow !== null && (
+                      <>
+                        <em>·</em>
+                        <b>{Math.round(r.sessionsPerWindow)}</b> sessions
+                      </>
+                    )}{" "}
+                    per 5-hour window
+                  </span>
+                </div>
+              )
             )}
             {r && !r.included ? (
               <p className="sub">{notIncluded}</p>
@@ -1332,6 +1527,7 @@ export default function ClaudeUsageTracker({
                 days={range}
               />
             )}
+            {chartMixNote && <p className="sub chart-legend">{chartMixNote}</p>}
             {chartPoints.some((p) => p.held) && (
               <p className="sub chart-legend">
                 Dashed: before measurement began, shown flat at the first measured value.
@@ -1356,19 +1552,47 @@ export default function ClaudeUsageTracker({
               <p className="sub">{notIncluded}</p>
             ) : (
               <>
-                {r && r.windowsPerWeek !== null && r.tokensPerWindow !== null && (
+                {creditsRoute && cr ? (
                   <div className="rate">
-                    <span>
-                      <b>{fmtTokens(r.tokensPerWindow * r.windowsPerWeek)}</b> tokens
-                      {r.sessionsPerWeek !== null && (
-                        <>
-                          <em>·</em>
-                          <b>{Math.round(r.sessionsPerWeek)}</b> sessions
-                        </>
-                      )}{" "}
-                      per week
-                    </span>
+                    {cr.tokensInPerWeek && (
+                      <span>
+                        <Fig fig={cr.tokensInPerWeek} unit="input tokens per week" />
+                      </span>
+                    )}
+                    {cr.tokensOutPerWeek && (
+                      <>
+                        <em className="brk">·</em>
+                        <span>
+                          <Fig fig={cr.tokensOutPerWeek} unit="output tokens" />
+                        </span>
+                      </>
+                    )}
+                    {cr.sessionsPerWeek && (
+                      <>
+                        <em className="brk">·</em>
+                        <span>
+                          <Fig fig={cr.sessionsPerWeek} unit="sessions" />
+                        </span>
+                      </>
+                    )}
                   </div>
+                ) : (
+                  r &&
+                  r.windowsPerWeek !== null &&
+                  r.tokensPerWindow !== null && (
+                    <div className="rate">
+                      <span>
+                        <b>{fmtTokens(r.tokensPerWindow * r.windowsPerWeek)}</b> tokens
+                        {r.sessionsPerWeek !== null && (
+                          <>
+                            <em>·</em>
+                            <b>{Math.round(r.sessionsPerWeek)}</b> sessions
+                          </>
+                        )}{" "}
+                        per week
+                      </span>
+                    </div>
+                  )
                 )}
                 <LevelChart
                   levelsByPlan={weeklyTokenLevels}
@@ -1378,6 +1602,7 @@ export default function ClaudeUsageTracker({
                   plotRight={732}
                   title="Tokens per week over time"
                 />
+                {chartMixNote && <p className="sub">{chartMixNote}</p>}
                 <p className="sub">
                   Each line is the limit itself, held flat between changes: a step means a measured change, and
                   nothing else on the chart moves. Solid and shaded: selected plan. Grey: the others. Dashed:
@@ -1391,7 +1616,7 @@ export default function ClaudeUsageTracker({
 
         {!unavailable && data && (
           <section>
-            <h2>Weekly limit, 5-hour windows per week</h2>
+            <h2>Five-hour windows per week</h2>
             <p className="sub">
               How many 5-hour windows fit in one week, read from the usage meter. Full history.
             </p>
@@ -1415,6 +1640,16 @@ export default function ClaudeUsageTracker({
                   title="Five-hour windows per week over time"
                   overlay={weeklyOverlay}
                 />
+                {/* The per-account figures the chart already ticks, printed as values. */}
+                {accountWeekly.length > 0 && (
+                  <div className="quiet">
+                    Each watched account's own figure:{" "}
+                    {accountWeekly
+                      .map((a) => `${a.account} ${a.value.toFixed(2)}${a.n !== null ? ` (${a.n} readings)` : ""}`)
+                      .join(", ")}
+                    .
+                  </div>
+                )}
                 {weeklySeries.some((s) => s.points.length >= 2) && (
                   <p className="sub chart-legend">
                     Each line is the limit itself, held flat between changes: a step means a measured change. Solid:
@@ -1427,7 +1662,8 @@ export default function ClaudeUsageTracker({
                       <>
                         {" "}
                         <LegendMark kind="reading" /> Reading: one five-hour window on one account, hollow where the
-                        seven-day meter moved under 5% and rounding alone swings the ratio between 3 and 11.
+                        seven-day meter moved under {COARSE_SEVEN_DAY_PCT}%, this chart's own threshold for drawing a
+                        reading hollow.
                       </>
                     )}
                     {weeklyOverlay && weeklyOverlay.weekly.length > 0 && (
@@ -1437,8 +1673,8 @@ export default function ClaudeUsageTracker({
                         rounding interval, hollow while the week is in progress.
                       </>
                     )}{" "}
-                    <LegendMark kind="documented" /> Documented: the level she-llac.com/claude-limits lists for the
-                    selected plan (undated), for reference only.
+                    <LegendMark kind="documented" /> Documented: the level {documentedUrlText} lists for the selected
+                    plan{documentedAsOf ? `, as of ${fmtDate(documentedAsOf)}` : ""}, for reference only.
                   </p>
                 )}
               </>
@@ -1450,8 +1686,9 @@ export default function ClaudeUsageTracker({
           <section>
             <h2>Plan comparison</h2>
             <div className="sub">
-              {MODEL_LABELS[model] ?? model} at {effort} effort. Max 20x is measured; Pro and Max 5x are scaled from
-              it by {scaling?.credits ? `the credits table, ${scaling.perWindow} per five-hour window` : `Anthropic's published ${planScaling(data, ":").perWindow} ratios`}.
+              {MODEL_LABELS[model] ?? model}
+              {creditsRoute ? "" : ` at ${effort} effort`}. Max 20x is measured; Pro and Max 5x are scaled from it by{" "}
+              {scaling?.credits ? `the credits table, ${scaling.perWindow} per five-hour window` : `Anthropic's published ${planScaling(data, ":").perWindow} ratios`}.
             </div>
             <table>
               <thead>
@@ -1463,66 +1700,16 @@ export default function ClaudeUsageTracker({
                 </tr>
               </thead>
               <tbody>
-                {(
-                  [
-                    [
-                      "Tokens per 5-hour window",
-                      (c: ReturnType<typeof compute>) => (c!.tokensPerWindow === null ? "—" : fmtTokens(c!.tokensPerWindow)),
-                    ],
-                    [
-                      "Tokens per week",
-                      (c: ReturnType<typeof compute>) =>
-                        c!.tokensPerWindow === null || c!.windowsPerWeek === null
-                          ? "—"
-                          : fmtTokens(c!.tokensPerWindow * c!.windowsPerWeek),
-                    ],
-                    ...(r.sessionsPerWindow !== null
-                      ? ([
-                          [
-                            "Sessions per window",
-                            (c: ReturnType<typeof compute>) =>
-                              c!.sessionsPerWindow === null
-                                ? "—"
-                                : c!.sessionsPerWindow < 1
-                                  ? "< 1"
-                                  : String(Math.round(c!.sessionsPerWindow)),
-                          ],
-                        ] as [string, (c: ReturnType<typeof compute>) => string][])
-                      : []),
-                    ...(r.sessionsPerWindow !== null && r.windowsPerWeek !== null
-                      ? ([
-                          [
-                            "Sessions per week",
-                            (c: ReturnType<typeof compute>) =>
-                              c!.sessionsPerWeek === null ? "—" : String(Math.round(c!.sessionsPerWeek)),
-                          ],
-                        ] as [string, (c: ReturnType<typeof compute>) => string][])
-                      : []),
-                    [
-                      "API value per 5-hour window",
-                      (c: ReturnType<typeof compute>) => (c!.apiValueUsd === null ? "—" : fmtUsd(c!.apiValueUsd)),
-                    ],
-                    ...(r.windowsPerWeek !== null
-                      ? ([
-                          [
-                            "API value per week",
-                            (c: ReturnType<typeof compute>) =>
-                              c!.apiValueUsdPerWeek === null ? "—" : fmtUsd(c!.apiValueUsdPerWeek),
-                          ],
-                        ] as [string, (c: ReturnType<typeof compute>) => string][])
-                      : []),
-                  ] as [string, (c: ReturnType<typeof compute>) => string][]
-                ).map(([label, f]) => (
-                  <tr key={label}>
-                    <td>{label}</td>
+                {planTableRows.map((rw) => (
+                  <tr key={rw.label}>
+                    <td>{rw.label}</td>
                     {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => {
-                      const c = compute(data, p, model, effort);
-                      const text = f(c);
+                      const { text, inferred } = rw.cell(p);
                       return (
                         <td key={p} className={p === plan ? "hl" : ""}>
                           {text}
                           {/* The table's form of the dashed line the weekly charts draw for an inferred level. */}
-                          {label.endsWith("per week") && text !== "—" && c?.weeklyInferred && (
+                          {rw.label.endsWith("per week") && text !== "\u2014" && inferred && (
                             <>
                               {" "}
                               <em>inferred</em>
@@ -1551,7 +1738,7 @@ export default function ClaudeUsageTracker({
                 {ratioBasis.perWindow ? ` Credits per five-hour window, ${PLAN_ORDER_LABEL}: ${ratioBasis.perWindow}.` : ""}
                 {ratioBasis.perWeek ? ` Credits per week: ${ratioBasis.perWeek}.` : ""}
                 {ratioBasis.confirmation ? ` Measured confirmation: ${ratioBasis.confirmation}.` : ""}
-                {ratioBasis.undated ? " The source is undated:" : " Source:"}{" "}
+                {ratioBasis.asOf ? ` Source, as of ${fmtDate(ratioBasis.asOf)}:` : ratioBasis.undated ? " The source is undated:" : " Source:"}{" "}
                 <a href={ratioBasis.url}>{ratioBasis.urlText}</a>.
               </div>
             )}
@@ -1564,10 +1751,15 @@ export default function ClaudeUsageTracker({
             why a model's low cell can read dearer than its medium one. */}
         {!unavailable && data && effortMix && (
           <section>
-            <h2>Effort</h2>
+            <div className="h2row">
+              <h2>Effort</h2>
+              {/* The figures here are the only ones on the page that move with effort, so the
+                  picker sits with them rather than over the hero's window (finding 2). */}
+              {!effortInHero && <div className="section-sel">{effortSelect}</div>}
+            </div>
             <p className="sub">
               One calibration task at each effort level, with the cache-read share and the run count of the
-              cell it was measured over.
+              cell it was measured over{effortCredits ? `, and what the cell's own runs cost against a ${PLAN_LABELS[plan]} window` : ""}.
             </p>
             <table>
               <thead>
@@ -1586,10 +1778,24 @@ export default function ClaudeUsageTracker({
                       const usd = data.effort_usd?.[m]?.[e];
                       const tokens = data.effort[m]?.[e];
                       const cell = effortMix[m]?.[e];
+                      const ec = effortCredits ? computeCredits(data, plan, m, e)?.effortCredits ?? null : null;
                       const hl = m === model && e === effort ? "hl" : "";
                       return (
                         <td key={e} className={hl}>
                           {typeof usd === "number" ? fmtUsd2(usd) : typeof tokens === "number" ? fmtTokens(tokens) : "—"}
+                          {ec?.credits && (
+                            <div>
+                              <em>
+                                <Fig fig={ec.credits} unit="credits" />
+                                {ec.credits.kind === "value" && ec.percentOfWindow && (
+                                  <>
+                                    {" · "}
+                                    <Fig fig={ec.percentOfWindow} unit="of the window" />
+                                  </>
+                                )}
+                              </em>
+                            </div>
+                          )}
                           {cell && (
                             <div>
                               <em>
@@ -1818,8 +2024,9 @@ export default function ClaudeUsageTracker({
             </p>
             <p>
               The meter does not treat every token the same. Cache reads cost nothing against it. Input, output and
-              cache writes are charged at Anthropic's list price, the output rate fitted from 60 measured stretches of
-              real work. So every reading here is an API-dollar value per percent of meter, and the token counts are
+              cache writes are charged at Anthropic's list price
+              {credits ? "" : ", the output rate fitted from 60 measured stretches of real work"}. So every reading here
+              is an API-dollar value per percent of meter, and the token counts are
               that value converted back through the token mix of real sessions. The effort figures come from one
               calibration task, run at each effort level on each model.
             </p>
@@ -1839,16 +2046,23 @@ export default function ClaudeUsageTracker({
             <p>
               The tokens and dollars per window for Pro and Max 5x are{" "}
               {scaling?.credits
-                ? `scaled from Max 20x by the credits table: ${scaling.perWindow} per five-hour window and ${scaling.perWeek} per week (she-llac.com/claude-limits, undated).`
+                ? `scaled from Max 20x by the credits table: ${scaling.perWindow} per five-hour window${
+                    scaling.perWeek ? ` and ${scaling.perWeek} per week` : ""
+                  } (${documentedUrlText}${documentedAsOf ? `, as of ${fmtDate(documentedAsOf)}` : ", undated"}).`
                 : "scaled from Max 20x by Anthropic's published plan ratios."}{" "}
               {inferredPlans.includes("max5")
                 ? `The weekly window counts are measured on Max 20x. ${inferredNote}`
                 : `The weekly window counts are not: Max 20x and Max 5x are both measured from ${accountsWord ?? "real accounts"}, Max 5x from the period one of them spent on that plan, and only Pro is assumed, from Max 5x.`}
             </p>
             <p>
-              The effort figures describe one task shape, run seven times at each effort level on each model. On Sonnet
-              the spread between runs is wider than the gap between low, medium and high, so read those three rows as
-              roughly equal rather than in order.
+              The effort figures describe one task shape,{" "}
+              {runCounts.length === 1
+                ? `run ${runCounts[0]} times at each effort level on each model`
+                : runCounts.length > 1
+                  ? "run the number of times each cell of the matrix above prints"
+                  : "run seven times at each effort level on each model"}
+              . On Sonnet the spread between runs is wider than the gap between low, medium and high, so read those
+              three rows as roughly equal rather than in order.
             </p>
             {credits && (
               <p>
