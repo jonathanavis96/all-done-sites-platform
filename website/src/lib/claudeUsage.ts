@@ -330,14 +330,17 @@ export interface UsageJson {
     scope?: string;
     source_url?: string;
     credits_per_window?: Partial<Record<Plan, number>>;
-    // False on the credits table: the source carries no date, so the page says so beside it.
+    // False before tracker PR #68, which dates both basis blocks from the same table the
+    // `reference` block dates. The page reads the block's own date where it has one.
     dated?: boolean;
+    as_of?: string | null;
   };
   weekly_window_ratios_basis?: {
     kind?: string;
     source_url?: string;
     scope?: string;
     dated?: boolean;
+    as_of?: string | null;
     credits_per_week?: Partial<Record<Plan, number>>;
     documented_windows_per_week?: Partial<Record<Plan, number>>;
     // The one ratio this tracker has measured for itself, and the spans it was measured over.
@@ -531,14 +534,79 @@ export function weeklyCurrentFor(
   return { value, inferred, inferredFrom };
 }
 
-// Documented reference levels, five-hour windows per week (she-llac.com/claude-limits, undated).
-// Drawn beside the measured figures, never in their place, and never used in any arithmetic.
-export const DOCUMENTED_WINDOWS_PER_WEEK: Record<Plan, number> = { pro: 9.09, max5: 12.63, max20: 7.58 };
-export const DOCUMENTED_SOURCE = "she-llac, undated";
-// The same table's credits per week, Pro : Max 5x : Max 20x, as the source gives them. Quoted, not
-// derived: plan_ratios times the published three-place weekly_window_ratios comes to 8.335 for
-// Max 5x, a rounding artefact that would print as 8.34 against the table's 8.33.
-export const CREDITS_TABLE_PER_WEEK = "1 : 8.33 : 16.67";
+// Documented reference levels, five-hour windows per week. Drawn beside the measured figures,
+// never in their place, and never used in any arithmetic. These two are the fallback for JSON
+// published before `weekly_window_ratios_basis` existed, and nothing else: a file that publishes
+// the block is read from the block, so the figures on the live page are the publisher's.
+const DOCUMENTED_FALLBACK: Record<Plan, number> = { pro: 9.09, max5: 12.63, max20: 7.58 };
+const DOCUMENTED_FALLBACK_SOURCE = "she-llac, undated";
+
+// Two URLs naming the same page, protocol and trailing slash apart.
+function sameSourceUrl(a: string | null | undefined, b: string | null | undefined): boolean {
+  const norm = (u: string) => u.replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
+  return !!a && !!b && norm(a) === norm(b);
+}
+
+// The date the published reference table carries, for a source URL the page names. The tracker
+// publishes two basis blocks that say this table is undated and one `reference` block that dates
+// it; the date is the one fact about it the page can state, so everywhere the same URL is named
+// takes the date from here rather than printing "undated" beside a dated reference.
+export function referenceDateFor(j: UsageJson, url: string | null | undefined): string | null {
+  const as_of = j.reference?.as_of;
+  if (!as_of) return null;
+  return sameSourceUrl(j.reference?.url, url) ? as_of : null;
+}
+
+// The date a basis block's source carries: the block's own `as_of` (tracker PR #68), else the
+// reference block's date for the same URL. Both say the same day about the same table; a file
+// published before #68 has only the second, and reads the same.
+export function basisDate(
+  j: UsageJson,
+  basis: { as_of?: string | null; source_url?: string } | null | undefined,
+): string | null {
+  if (basis?.as_of) return basis.as_of;
+  return referenceDateFor(j, basis?.source_url);
+}
+
+// One plan's documented windows per week, as the weekly basis block publishes it.
+export function documentedWindowsPerWeek(j: UsageJson, plan: Plan): number | null {
+  const published = j.weekly_window_ratios_basis?.documented_windows_per_week?.[plan];
+  if (typeof published === "number") return published;
+  return DOCUMENTED_FALLBACK[plan] ?? null;
+}
+
+// What to call that reference beside the level it draws: the basis block's own host, dated by the
+// reference block wherever the two name the same page.
+export function documentedSource(j: UsageJson): string {
+  const url = j.weekly_window_ratios_basis?.source_url;
+  if (!url) return DOCUMENTED_FALLBACK_SOURCE;
+  const host = url.replace(/^https?:\/\//, "").split("/")[0];
+  const at = basisDate(j, j.weekly_window_ratios_basis);
+  return at ? `${host}, ${fmtDate(at)}` : host;
+}
+
+// Each watched account's own windows per week on this plan, where the JSON carries them: the
+// figures the chart already draws as onset ticks, printed as values.
+export function accountWindowsPerWeek(j: UsageJson, plan: Plan): { account: string; value: number; n: number | null }[] {
+  return Object.entries(j.weekly_windows?.[plan]?.by_account ?? {})
+    .flatMap(([account, a]) =>
+      typeof a?.current === "number" && Number.isFinite(a.current)
+        ? [{ account, value: a.current, n: typeof a.n === "number" ? a.n : null }]
+        : [],
+    )
+    .sort((a, b) => (a.account < b.account ? -1 : a.account > b.account ? 1 : 0));
+}
+
+// A plan's five-hour windows per week and whether it is inferred from another plan: the plan's own
+// `current` where it has one, else the newest level its weekly chart ends on (kept from PR #76, so
+// a plan is never dropped outright). One function, so the credits route and the dollar route
+// cannot put a different windows-per-week behind two figures of the same quantity.
+export function planWindowsPerWeek(j: UsageJson, plan: Plan): { value: number | null; inferred: boolean } {
+  const current = weeklyCurrentFor(j, plan);
+  if (current !== null) return { value: current.value, inferred: current.inferred };
+  const level = weeklyRegimeLevelsFor(j, plan).at(-1) ?? null;
+  return { value: level?.windows ?? null, inferred: false };
+}
 
 export const RANGE_DAYS = [30, 90, 180] as const;
 export type RangeDays = (typeof RANGE_DAYS)[number];
@@ -627,15 +695,13 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
   // to the newest level its own weekly chart ends on (kept from PR #76, so the page never loses
   // a plan outright); a plan with no level at all still has no weekly figure. `planWindowsPerWeek`
   // is the plan's own figure; `windowsPerWeek` is this model's usable share of it.
-  const current = weeklyCurrentFor(j, plan);
-  const fallbackLevel = current !== null ? null : weeklyRegimeLevelsFor(j, plan).at(-1) ?? null;
-  const planWindowsPerWeek = current !== null ? current.value : (fallbackLevel?.windows ?? null);
   // True when the collector marks the current figure as inferred from another plan, so every
   // per-week figure below rests on that plan's measurement. The table marks those cells. The
   // fallback level carries no mark, as before (PR #78).
-  const weeklyInferred = current?.inferred === true;
-  const windowsPerWeek =
-    limit.included && planWindowsPerWeek !== null ? planWindowsPerWeek * limit.weekly_fraction : null;
+  const week = planWindowsPerWeek(j, plan);
+  const planWindows = week.value;
+  const weeklyInferred = week.inferred;
+  const windowsPerWeek = limit.included && planWindows !== null ? planWindows * limit.weekly_fraction : null;
   const sessionsPerWeek =
     sessionsPerWindow === null || windowsPerWeek === null ? null : sessionsPerWindow * windowsPerWeek;
   const tasksPerWeek = windowsPerWeek === null || tasksPerWindow === null ? null : tasksPerWindow * windowsPerWeek;
@@ -651,19 +717,20 @@ export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort)
     sessionsPerWeek,
     apiValueUsd,
     apiValueUsdPerWeek,
-    planWindowsPerWeek,
+    planWindowsPerWeek: planWindows,
     windowsPerWeek,
-    weeklyInferred: planWindowsPerWeek !== null && weeklyInferred,
+    weeklyInferred: planWindows !== null && weeklyInferred,
   };
 }
 
-// "1 : 6 : 20": Pro, Max 5x and Max 20x against Pro, to two places at most.
-function ratioText(values: Record<Plan, number>, sep: string): string | null {
-  const base = values.pro;
-  if (!(base > 0)) return null;
-  return (["pro", "max5", "max20"] as Plan[])
-    .map((p) => (values[p] / base).toFixed(2).replace(/\.?0+$/, ""))
-    .join(sep);
+// "1 : 6 : 20": Pro, Max 5x and Max 20x against Pro, to two places at most. Null unless every
+// plan in the order has a figure: a partial ratio is not a ratio.
+function ratioText(values: Partial<Record<Plan, number>> | undefined, sep: string): string | null {
+  const base = values?.pro;
+  if (!values || typeof base !== "number" || !(base > 0)) return null;
+  const parts = (["pro", "max5", "max20"] as Plan[]).map((p) => values[p]);
+  if (parts.some((v) => typeof v !== "number")) return null;
+  return parts.map((v) => (v! / base).toFixed(2).replace(/\.?0+$/, "")).join(sep);
 }
 
 // The plan scaling the page applies to a five-hour window, in words, read off plan_ratios so the
@@ -671,7 +738,14 @@ function ratioText(values: Record<Plan, number>, sep: string): string | null {
 // the credits table; only then does the per-week citation apply.
 export function planScaling(j: UsageJson, sep = " : "): { credits: boolean; perWindow: string | null; perWeek: string | null } {
   const credits = j.plan_ratios_basis?.kind === "credits_table";
-  return { credits, perWindow: ratioText(j.plan_ratios, sep), perWeek: credits ? CREDITS_TABLE_PER_WEEK : null };
+  return {
+    credits,
+    perWindow: ratioText(j.plan_ratios, sep),
+    // Per week is the weekly basis block's own credits, never plan_ratios times the published
+    // three-place weekly ratio: that quotient comes to 8.335 for Max 5x and would print 8.34
+    // against the table's own 8.33.
+    perWeek: credits ? ratioText(j.weekly_window_ratios_basis?.credits_per_week, sep) : null,
+  };
 }
 
 // Short label for a model's rate source: "passive, 15 Sep" dated by the passive reading
@@ -1090,6 +1164,28 @@ export interface PerModelCredits {
   list_price_model?: string | null;
   interval_rule?: string | null;
   interval_source?: string | null;
+  // Tracker PR #67: whether this family's row was priced at a rate measured on the watched
+  // accounts or at the published reference table's figure, and that table's figure beside it.
+  // The reference rate is drawn next to the measurement and is never an input to one.
+  rate_source?: string | null;
+  reference_rate?: { input: number | null; output: number | null } | null;
+  reference_rate_note?: string | null;
+  // The newest stretch this row's own figures rest on. Null where the row has no stretch to
+  // date at all, in which case the page shows no date rather than the file's.
+  as_of?: string | null;
+  as_of_source?: string | null;
+}
+
+// One effort cell priced in credits (tracker PR #67): the median of the cell's own runs, and that
+// median over the measured five-hour window. The only figures on the page that move with the
+// effort selector, which is why they belong beside it and not in the hero.
+export interface EffortCreditsCell {
+  median_credits: CreditsFigure;
+  percent_of_window: CreditsFigure;
+  runs?: number;
+  rate_source?: string | null;
+  note?: string;
+  derivation?: string;
 }
 
 // Sessions per window and per week, each publishing the cache mix it assumes: cache reads are
@@ -1104,6 +1200,7 @@ export interface SessionCredits {
   median_session_tokens?: number;
   windows_per_week?: number;
   status?: string | null;
+  rate_source?: string | null;
 }
 
 // One effort cell's cache state: the share of its own run tokens that were cache reads, and how
@@ -1180,11 +1277,16 @@ export interface HarnessRunExcluded {
 }
 
 export interface CreditsBlock {
+  // Tracker PR #68: the newest stretch every figure in the block rests on. The block's figures
+  // are measured, so they carry their own date rather than the file's build time.
+  as_of?: string | null;
+  as_of_source?: Record<string, string | null>;
   window_credits: WindowCredits;
   window_credits_from_weekly?: WindowCreditsFromWeekly;
   per_model?: Record<string, PerModelCredits>;
   sessions?: Record<string, SessionCredits>;
   effort_cache_mix?: Record<string, Partial<Record<Effort, EffortCacheCell>>>;
+  effort_credits?: Record<string, Partial<Record<Effort, EffortCreditsCell>>>;
   five_hour_window_across_cut?: AcrossCut;
   fable_interval?: FableInterval;
   harness_runs_excluded?: HarnessRunExcluded[];
@@ -1205,6 +1307,36 @@ export interface ReferenceChange {
   source?: string;
 }
 
+// One plan's row of the shortfall table: what this tracker measured, what the reference table
+// lists, and what that table predicts once the announced changes since it are applied. A plan the
+// tracker has never measured publishes a `status` sentence and nulls, and the page prints the
+// sentence in place of the row's numbers.
+export interface ShortfallPlan {
+  measured_windows_per_week: number | null;
+  documented_windows_per_week: number | null;
+  ratio: number | null;
+  expected_windows_per_week: number | null;
+  ratio_to_expected: number | null;
+  from: string | null;
+  to: string | null;
+  status?: string | null;
+}
+
+// Why the measured windows per week sit below the reference table's, published as a comparison
+// with its own status: "explained" once the announced changes account for the gap, "open" while
+// they do not. Never an input to a figure on this page.
+export interface ReferenceShortfall {
+  per_plan?: Partial<Record<Plan, ShortfallPlan>>;
+  multipliers_applied?: { five_hour_window?: number | null; weekly?: number | null };
+  explanation?: string;
+  status?: string;
+  cut_at?: string;
+  what?: string;
+  source?: string;
+  plans_measured?: Plan[];
+  ratio_range?: (number | null)[];
+}
+
 export interface ReferenceBlock {
   as_of?: string;
   url?: string;
@@ -1213,10 +1345,19 @@ export interface ReferenceBlock {
   describes?: string;
   note?: string;
   changes_since?: ReferenceChange[];
+  shortfall?: ReferenceShortfall;
 }
 
 export function creditsOf(j: UsageJson): CreditsBlock | null {
   return j.credits ?? null;
+}
+
+// The reference table's own comparison against the measured levels, in plan order. Empty for a
+// file published before the block existed, so the section it draws simply does not appear.
+export function shortfallRows(j: UsageJson): { plan: Plan; row: ShortfallPlan }[] {
+  const per = j.reference?.shortfall?.per_plan;
+  if (!per) return [];
+  return (["pro", "max5", "max20"] as Plan[]).flatMap((plan) => (per[plan] ? [{ plan, row: per[plan]! }] : []));
 }
 
 // `per_model` is keyed by family, not by model id: the meter's rates are per family and "Opus of
@@ -1273,6 +1414,38 @@ export function windowCreditAccounts(wc: WindowCredits | null | undefined): numb
   return Object.values(accounts).filter((a) => (a?.n ?? 0) > 0).length;
 }
 
+// The watched accounts that contributed nothing to the cluster, by label. The page counts the
+// accounts the figure rests on a few lines above the count of accounts the weekly figure rests
+// on; without this the two counts read as a contradiction rather than as what they are.
+export function windowCreditAccountsWithoutStretch(wc: WindowCredits | null | undefined): string[] {
+  return Object.entries(wc?.accounts ?? {})
+    .filter(([, a]) => (a?.n ?? 0) === 0)
+    .map(([label]) => label)
+    .sort();
+}
+
+// The cache-read share the account's own mix carries, for the charts that plot raw tokens at that
+// mix rather than the credits route's priced figure. The credits block's own split first, since
+// that is the split its sessions figures are normalised at.
+export function cacheReadShareFor(j: UsageJson, model: string): number | null {
+  const fromCredits = creditsOf(j)?.sessions?.[model]?.split?.cache_read;
+  if (typeof fromCredits === "number") return fromCredits;
+  const fromRate = j.rates[model]?.split?.cache_read;
+  return typeof fromRate === "number" ? fromRate : null;
+}
+
+// How many runs each effort cell was measured over, distinct and ascending, so the caveat can
+// name the run count instead of repeating a number typed into the page.
+export function effortRunCounts(mix: Record<string, Partial<Record<Effort, EffortCacheCell>>> | null | undefined): number[] {
+  const counts = new Set<number>();
+  for (const byEffort of Object.values(mix ?? {})) {
+    for (const cell of Object.values(byEffort ?? {})) {
+      if (typeof cell?.runs === "number") counts.add(cell.runs);
+    }
+  }
+  return [...counts].sort((a, b) => a - b);
+}
+
 // The sentence in a block's `method` that describes an empty capture column, so the page says it
 // in the publisher's words rather than paraphrasing a measurement caveat into something weaker.
 export function captureEmptyNote(method: string | null | undefined): string | null {
@@ -1281,10 +1454,16 @@ export function captureEmptyNote(method: string | null | undefined): string | nu
   return sentence ? sentence.replace(/[.;]\s*$/, "") : null;
 }
 
-// Everything the hero shows once the credits block is published, on the selected plan's scale and
-// for the selected model. Mirrors compute(): a model the plan does not include has no capacity to
-// scale, and a per-week figure carries the model's share of the week on top of the plan ratio.
-export function computeCredits(j: UsageJson, plan: Plan, model: string) {
+// Every figure the page reads off the credits block, on the selected plan's scale and for the
+// selected model. Mirrors compute(): a model the plan does not include has no capacity to scale,
+// and a per-week figure carries the model's share of the week on top of the plan ratio.
+//
+// One quantity, one figure. The hero, the chart headlines and the plan table all read tokens per
+// window, tokens per week, sessions per window and sessions per week from here whenever the block
+// is published, so the page cannot state the same quantity twice at two scales (wf-57 finding 1).
+// `effort` is optional and reaches only `effortCredits`: nothing else here moves with it, which
+// is the whole reason the hero no longer says "at high effort" over these figures (finding 2).
+export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?: Effort) {
   const credits = creditsOf(j);
   if (!credits) return null;
   const limit = modelPlanLimit(j, model, plan);
@@ -1296,29 +1475,74 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string) {
   const wc = credits.window_credits;
   const fig = (f: CreditsFigure | undefined, fmt: (n: number) => string, s = scale) =>
     limit.included ? creditFigure(f, fmt, s) : null;
+  // Tokens per week is the published per-window figure times the plan's own measured windows per
+  // week, the same figure the page states in words a line below it, with the model's share of the
+  // week on top. The block publishes no tokens-per-week of its own.
+  const week = planWindowsPerWeek(j, plan);
+  const weekScale = week.value === null ? null : scale * week.value * limit.weekly_fraction;
+  // plan_ratios is a ratio between two five-hour WINDOWS. A week holds a different number of
+  // windows on each plan (the credits table's own per-week ratios say so: 1 : 8.33 : 16.67, not
+  // 1 : 6 : 20), so a published per-week figure carries the measured plan's window count and
+  // needs the selected plan's in its place. On the measured plan the two are the same figure and
+  // this factor is 1, so the published number renders unchanged.
+  const publishedWindowsPerWeek = session?.windows_per_week;
+  const weekRatio =
+    week.value !== null && typeof publishedWindowsPerWeek === "number" && publishedWindowsPerWeek > 0
+      ? week.value / publishedWindowsPerWeek
+      : 1;
+  const perWeek = (f: CreditsFigure | undefined, fmt: (n: number) => string) =>
+    weekScale === null ? null : fig(f, fmt, weekScale);
+  const count = (n: number) => Math.round(n).toLocaleString("en-US");
+  const cell = effort ? credits.effort_credits?.[model]?.[effort] ?? null : null;
   return {
     included: limit.included,
     family,
     tokensIn: fig(per?.tokens_per_window?.input, fmtTokens),
     tokensOut: fig(per?.tokens_per_window?.output, fmtTokens),
+    tokensInPerWeek: perWeek(per?.tokens_per_window?.input, fmtTokens),
+    tokensOutPerWeek: perWeek(per?.tokens_per_window?.output, fmtTokens),
     usdIn: fig(per?.api_value_per_window_usd?.input, fmtUsd2),
     usdOut: fig(per?.api_value_per_window_usd?.output, fmtUsd2),
+    // The same window's API value a week of windows holds. The dollar route publishes its own
+    // per-window figure ($144.05 against the credits block's $75.49 on the same file), so the
+    // table takes this from the block too rather than putting the two side by side.
+    usdInPerWeek: perWeek(per?.api_value_per_window_usd?.input, fmtUsd),
     windowCredits: fig(wc, fmtCredits),
     windowCreditsN: typeof wc?.n === "number" ? wc.n : null,
     pureFamily: wc?.pure_family ?? null,
     accountCount: windowCreditAccounts(wc),
-    sessionsPerWindow: fig(session?.per_window, (n) => Math.round(n).toLocaleString("en-US")),
+    accountsWithoutStretch: windowCreditAccountsWithoutStretch(wc),
+    // What the credits block itself says about the figures above, rather than another block's
+    // date (finding 5): how the window was measured, and what this family's row was priced at.
+    windowCreditsMethod: wc?.method ?? null,
+    rateSource: per?.rate_source ?? null,
+    creditsAsOf: credits.as_of ?? null,
+    familyAsOf: per?.as_of ?? null,
+    creditsPerTokenIn: per?.credits_per_token?.input ?? null,
+    creditsPerTokenInInterval: per?.credits_per_token_interval?.input ?? null,
+    referenceRateIn: per?.reference_rate?.input ?? null,
+    sessionsPerWindow: fig(session?.per_window, count),
     // The published per-week figure already carries the measured windows per week; the model's
     // own share of that week (Fable's half on Max) is the page's rule and applies on top.
-    sessionsPerWeek: fig(
-      session?.per_week,
-      (n) => Math.round(n).toLocaleString("en-US"),
-      scale * limit.weekly_fraction,
-    ),
+    sessionsPerWeek: fig(session?.per_week, count, scale * limit.weekly_fraction * weekRatio),
     split: session?.split ?? null,
     splitSource: session?.split_source ?? null,
     medianSessionTokens: session?.median_session_tokens ?? null,
     cacheNormalised: session?.cache_normalised === true,
+    planWindowsPerWeek: week.value,
+    weeklyInferred: week.value !== null && week.inferred,
+    // The effort cell, on the selected plan's window: a task costs the same credits whatever the
+    // plan, but it is a twentieth of a Max 20x window and a whole Pro one, so the share scales
+    // the other way from every other figure here.
+    effortCredits:
+      cell && limit.included && ratio > 0
+        ? {
+            credits: creditFigure(cell.median_credits, fmtCredits),
+            percentOfWindow: creditFigure(cell.percent_of_window, (n) => `${n.toFixed(2)}%`, 1 / ratio),
+            runs: typeof cell.runs === "number" ? cell.runs : null,
+            rateSource: cell.rate_source ?? null,
+          }
+        : null,
     modelStatus: per?.status ?? null,
   };
 }

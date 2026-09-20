@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
-import { HelmetProvider } from "react-helmet-async";
+import { HelmetProvider, type HelmetServerState } from "react-helmet-async";
 import ClaudeUsageTracker from "./ClaudeUsageTracker";
-import { compute, fmtTokens, fmtUsd, weeklyTokenRegimeLevelsFor, weeklyRegimeLevelsFor, type Plan, type UsageJson } from "@/lib/claudeUsage";
+import {
+  compute,
+  computeCredits,
+  fmtTokens,
+  fmtUsd,
+  weeklyTokenRegimeLevelsFor,
+  weeklyRegimeLevelsFor,
+  type Plan,
+  type UsageJson,
+} from "@/lib/claudeUsage";
 import type { ContribMetric } from "@/lib/contrib";
 // Schema 1: the published file as of 4401911 (generated 2026-09-16T16:30Z), what the live page
 // renders until the collector change merges. Schema 2: tracker PR #57's offline rebuild from the
@@ -14,6 +23,10 @@ import schema2 from "@/lib/__fixtures__/claude-usage-schema2.json";
 import schema2Published from "@/lib/__fixtures__/claude-usage-schema2-published.json";
 // The credits block, as the tracker publishes it from its current main.
 import schema3Credits from "@/lib/__fixtures__/claude-usage-schema3-credits.json";
+// The same block once tracker PR #67 lands: measured rates, rate sources and per-effort credits.
+import schema3Measured from "@/lib/__fixtures__/claude-usage-schema3-measured-rates.json";
+// Tracker PR #68: dated basis blocks, a dated credits block, and reference.shortfall.
+import schema3Shortfall from "@/lib/__fixtures__/claude-usage-schema3-shortfall.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
@@ -210,7 +223,7 @@ describe("plan comparison and contributor tabs respect not-included and inferred
     const sections = (text: string) => {
       const window = text.indexOf(" Effective window size, last ");
       const tokens = text.indexOf(" Tokens per week ", window);
-      const weekly = text.indexOf(" Weekly limit, 5-hour windows per week ", tokens);
+      const weekly = text.indexOf(" Five-hour windows per week ", tokens);
       const table = text.indexOf(" Plan comparison ", weekly);
       expect([window, tokens, weekly, table].every((i) => i >= 0)).toBe(true);
       return [text.slice(window, tokens), text.slice(tokens, weekly), text.slice(weekly, table)];
@@ -361,8 +374,16 @@ describe("the credits block on the page", () => {
     expect(text).toContain("29M input tokens per 5-hour window");
     expect(text).toContain("Range 26M to 31M.");
     expect(text).toContain("5.9M output tokens per 5-hour window (5.2M to 6.2M)");
-    expect(text).toContain("$146.58 of API value per window in input tokens");
-    expect(text).toContain("19,543,887 credits per 5-hour window (17,250,018 to 20,819,693), n=11, pure-opus stretches, on 2 accounts.");
+    // One window, priced at each class's own rate, so one line rather than two identical ones.
+    expect(text).toContain("$146.58 of API value per window, the same window priced at each class's own rate");
+    expect(text).not.toContain("of API value per window in output tokens");
+    expect(text).toContain(
+      "19,543,887 credits per 5-hour window (17,250,018 to 20,819,693), n=11, pure-opus stretches, on 2 accounts. a1 contributed no clean pure-opus stretch.",
+    );
+    // The provenance under the credits figures is what the credits block says, not the date on
+    // another block's rate (finding 5).
+    expect(text).toContain("Method: median credits per 1% of the five-hour meter over the pure-opus stretches");
+    expect(text).not.toContain("Source: the account's own meter");
     expect(text).toContain("about 354 sessions per window (312 to 377)");
     expect(text).toContain("1,755 per week (1,549 to 1,870)");
     // The sessions figures are cache-normalised, so the split they assume is beside them.
@@ -411,13 +432,15 @@ describe("the credits block on the page", () => {
     expect(text).toContain("$0.22 61.0% cache read · 7 runs · 6 cold");
   });
 
-  it("states what the plan ratios rest on, and that the source is undated", () => {
+  it("states what the plan ratios rest on, and dates the table they come from", () => {
     const text = render(CREDITS, "max20", "claude-opus-5");
     expect(text).toContain("Basis: credits_table.");
     expect(text).toContain("Credits per five-hour window, Pro : Max 5x : Max 20x: 550,000 : 3,300,000 : 11,000,000.");
     expect(text).toContain("Credits per week: 5,000,000 : 41,666,700 : 83,333,300.");
     expect(text).toContain("Measured confirmation: Max 5x over Max 20x 1.66, Max 5x Jun-Aug over Max 20x 19 Aug-11 Sep.");
-    expect(text).toContain("The source is undated: she-llac.com/claude-limits");
+    // The same URL was dated in two sections and called undated in three. It carries one date.
+    expect(text).toContain("Source, as of 25 Jan 2026: she-llac.com/claude-limits");
+    expect(text).not.toContain("undated");
   });
 
   it("gives each account its own row across the change, and resolves nothing", () => {
@@ -479,5 +502,232 @@ describe("the credits block on the page", () => {
     }
     // Every other published file keeps its own wording too.
     expect(render(PUBLISHED)).toContain("measured from a real account");
+  });
+});
+
+// wf-57. The page after the second hostile review: one figure per quantity, effort where the
+// figures move with it, every number off the JSON, and the reference dated once.
+describe("the page states one figure per quantity", () => {
+  const MEASURED = schema3Measured as unknown as UsageJson;
+  const CREDITS = schema3Credits as unknown as UsageJson;
+  const WITHOUT: UsageJson = (() => {
+    const j = structuredClone(MEASURED);
+    delete j.credits;
+    return j;
+  })();
+
+  it("gives the hero, the chart headlines and the plan table the same figures", () => {
+    for (const plan of ["pro", "max5", "max20"] as Plan[]) {
+      const text = render(MEASURED, plan, "claude-sonnet-5");
+      const c = computeCredits(MEASURED, plan, "claude-sonnet-5")!;
+      const tokensIn = c.tokensIn!.text;
+      const sessions = c.sessionsPerWindow!.text;
+      expect(text, plan).toContain(`${tokensIn} input tokens per 5-hour window`);
+      // The window chart's own headline line, and the plan table's cell for the same plan.
+      expect(text.split(`${tokensIn} input tokens per 5-hour window`).length, plan).toBeGreaterThanOrEqual(3);
+      expect(text, plan).toContain(`${c.tokensInPerWeek!.text} input tokens per week`);
+      expect(row(text, "Input tokens per 5-hour window")[["pro", "max5", "max20"].indexOf(plan)], plan).toBe(tokensIn);
+      expect(text, plan).toContain(`${sessions} sessions`);
+      expect(row(text, "Sessions per window")[["pro", "max5", "max20"].indexOf(plan)], plan).toBe(sessions);
+    }
+    // The figures the two routes disagreed on: 49M against 1472M input tokens, 1,818 against 1,191
+    // sessions per window, 9,015 against 5,909 per week. Only the credits route's remain in text.
+    const text = render(MEASURED, "max20", "claude-sonnet-5");
+    const dollarRoute = compute(MEASURED, "max20", "claude-sonnet-5", "high")!;
+    expect(fmtTokens(dollarRoute.tokensPerWindow!)).toBe("1472M");
+    expect(row(text, "Input tokens per 5-hour window")[2]).not.toBe("1472M");
+    expect(text).not.toContain(`${Math.round(dollarRoute.sessionsPerWindow!)} sessions`);
+    // The chart still plots the raw-mix series, and now says which quantity that is.
+    expect(text).toContain("Plotted: tokens at the account's own mix, 97.0% of it cache reads, not the priced figure above.");
+  });
+
+  it("stops claiming the hero moves with effort, and puts the effort figures where it does", () => {
+    const text = render(MEASURED, "max20", "claude-opus-5");
+    expect(text).toContain(", running Fable 5.1 Opus 5 Sonnet 5 , you get");
+    expect(text).not.toMatch(/at low medium high xhigh max effort/);
+    expect(text).toContain("Plan comparison Opus 5.");
+    // The picker moved to the matrix, and the matrix cells carry the block's per-effort credits.
+    expect(text).toContain("Effort low medium high xhigh max One calibration task at each effort level");
+    expect(text).toContain("what the cell's own runs cost against a Max 20x window");
+    expect(text).toContain("28,547 credits · 0.15% of the window");
+    expect(text).toContain("10,228 credits · 0.05% of the window");
+    // A family with no identified rate prints the sentence once, not a number.
+    expect(text).toContain("credits: rate not yet identified");
+    // A Pro window is a twentieth of the size, so the same task takes twenty times the share.
+    expect(render(MEASURED, "pro", "claude-opus-5")).toContain("28,547 credits · 3.00% of the window");
+    // A file with no effort matrix keeps the picker in the hero.
+    expect(render(WITHOUT, "max20", "claude-opus-5")).toMatch(/at low medium high xhigh max effort/);
+  });
+
+  it("says what the credits figures were priced at, in the credits block's own fields", () => {
+    expect(render(MEASURED, "max20", "claude-sonnet-5")).toContain(
+      "Priced at the meter's measured Sonnet rate, 0.518 credits per input token, interval 0.327 to 0.832; Shellac credits table, as of 25 Jan 2026, says 0.400.",
+    );
+    // Opus is the unit anchor, so its rate is the reference figure and is not quoted twice.
+    expect(render(MEASURED, "max20", "claude-opus-5")).toContain(
+      "Priced at the reference Opus rate, 0.667 credits per input token.",
+    );
+    // A family with no rate renders its sentence, and no number.
+    const fable = render(MEASURED, "max20", "claude-fable-5-1");
+    expect(fable).toContain("Fable rate: rate not yet identified.");
+    expect(fable).not.toContain("Priced at");
+    // The file published before PR #67 carries no rate source, so the page claims none.
+    expect(render(CREDITS, "max20", "claude-sonnet-5")).not.toContain("Priced at");
+  });
+
+  it("dates the reference wherever it names it, and stops calling it undated", () => {
+    const text = render(MEASURED, "max20", "claude-opus-5");
+    expect(text).not.toContain("undated");
+    expect(text).toContain("Source, as of 25 Jan 2026: she-llac.com/claude-limits");
+    expect(text).toContain("she-llac.com/claude-limits, as of 25 Jan 2026");
+    expect(text).toContain("Documented: the level she-llac.com/claude-limits lists for the selected plan, as of 25 Jan 2026");
+    expect(text).toContain("Baseline 83,333,300 credits per week, as of 25 Jan 2026");
+    expect(text).toContain("Shellac credits table, as of 25 Jan 2026. Announced changes since:");
+    const chart = renderHtml(MEASURED).match(/documented [^(]*\(([^)]*)\)/)?.[1];
+    expect(chart).toBe("she-llac.com, 25 Jan 2026");
+    // A file published before the reference block keeps what it renders today.
+    expect(render(PUBLISHED)).toContain("(she-llac, undated)");
+  });
+
+  it("reads the figures the page used to carry as constants off the JSON", () => {
+    const text = render(MEASURED, "max20", "claude-sonnet-5");
+    // The documented level and the per-week ratio, both published.
+    expect(text).toContain("scaled from Max 20x by the credits table: 1 : 6 : 20 per five-hour window and 1 : 8.33 : 16.67 per week");
+    expect(text).toContain("Credits per week: 5,000,000 : 41,666,700 : 83,333,300.");
+    // The run counts the cells print, instead of a number in the sentence.
+    expect(text).not.toContain("run seven times at each effort level");
+    expect(text).toContain("run the number of times each cell of the matrix above prints");
+    // The credits method fits no rate, so the sentence that named one is gone.
+    expect(text).not.toContain("the output rate fitted from 60 measured stretches");
+    // The chart's hollow-dot rule is stated as the chart's own rule, with no claim beside it.
+    expect(text).toContain("hollow where the seven-day meter moved under 5%, this chart's own threshold");
+    expect(text).not.toContain("swings the ratio between 3 and 11");
+  });
+
+  it("names the quantity in the heading and prints each account's own figure", () => {
+    const text = render(MEASURED, "max20", "claude-sonnet-5");
+    expect(text).toContain("Five-hour windows per week How many 5-hour windows fit in one week");
+    expect(text).not.toContain("Weekly limit, 5-hour windows per week");
+    expect(text).toContain("Each watched account's own figure: a1 5.15 (128 readings), a2 4.53 (63 readings), a3 5.48 (9 readings).");
+  });
+
+  it("counts the accounts in the page description", () => {
+    const describedAs = (j: UsageJson): string => {
+      const context: { helmet?: HelmetServerState } = {};
+      renderToString(
+        <HelmetProvider context={context}>
+          <MemoryRouter>
+            <ClaudeUsageTracker initial={j} initialPlan="max20" initialModel="claude-sonnet-5" />
+          </MemoryRouter>
+        </HelmetProvider>,
+      );
+      return context.helmet!.meta.toString();
+    };
+    expect(describedAs(MEASURED)).toContain("Measured daily from 3 accounts");
+    // Without the block the page has no account count to read, and says what it has always said.
+    expect(describedAs(WITHOUT)).toContain("Measured daily from a real account");
+  });
+
+  it("renders no null, NaN or undefined for any model on either credits file", () => {
+    for (const file of [CREDITS, MEASURED]) {
+      for (const model of Object.keys(file.rates)) {
+        for (const plan of ["pro", "max5", "max20"] as Plan[]) {
+          expect(render(file, plan, model), `${model} ${plan}`).not.toMatch(/\bnull\b|\bNaN\b|\bundefined\b/);
+        }
+      }
+    }
+  });
+
+  it("renders a file with no credits block exactly as it does today", () => {
+    const text = render(WITHOUT, "max20", "claude-sonnet-5");
+    expect(text).toMatch(/at low medium high xhigh max effort, you get/);
+    expect(text).toContain("1472M tokens per 5-hour window");
+    expect(text).toContain("the output rate fitted from 60 measured stretches of real work");
+    expect(text).toContain("run seven times at each effort level");
+    expect(text).toContain("Tokens per 5-hour window");
+    expect(text).not.toContain("Input tokens per 5-hour window");
+    expect(text).not.toContain("Plotted: tokens at the account's own mix");
+  });
+});
+
+// wf-57 follow-up. Tracker PR #68 reconciles the dates and publishes goal 7.
+describe("the dated blocks and the shortfall table on the page", () => {
+  const SHORTFALL = schema3Shortfall as unknown as UsageJson;
+  const MEASURED = schema3Measured as unknown as UsageJson;
+  const WITHOUT: UsageJson = (() => {
+    const j = structuredClone(SHORTFALL);
+    delete j.credits;
+    return j;
+  })();
+
+  it("dates each named source from its own basis block", () => {
+    const text = render(SHORTFALL, "max20", "claude-sonnet-5");
+    expect(SHORTFALL.plan_ratios_basis!.as_of).toBe("2026-01-25");
+    expect(text).toContain("Source, as of 25 Jan 2026: she-llac.com/claude-limits");
+    expect(text).toContain("Documented: the level she-llac.com/claude-limits lists for the selected plan, as of 25 Jan 2026");
+    expect(text).toContain("she-llac.com/claude-limits, as of 25 Jan 2026");
+    expect(text).not.toContain("undated");
+    expect(renderHtml(SHORTFALL).match(/documented [^(]*\(([^)]*)\)/)?.[1]).toBe("she-llac.com, 25 Jan 2026");
+    // The block's date is what is printed, not the reference block's, so moving one moves it.
+    const moved = structuredClone(SHORTFALL);
+    moved.weekly_window_ratios_basis!.as_of = "2026-02-02";
+    expect(render(moved, "max20", "claude-sonnet-5")).toContain(
+      "Documented: the level she-llac.com/claude-limits lists for the selected plan, as of 2 Feb 2026",
+    );
+  });
+
+  it("dates the credits block and each family's rate", () => {
+    const text = render(SHORTFALL, "max20", "claude-sonnet-5");
+    expect(text).toContain("Cache writes at the input rate, cache reads at 0 of it. Measured to 20 Sep 2026.");
+    expect(text).toContain("Priced at the meter's measured Sonnet rate, as of 20 Sep 2026, 0.518 credits per input token");
+    // Opus's own stretches end earlier, and its line says its own date.
+    expect(render(SHORTFALL, "max20", "claude-opus-5")).toContain(
+      "Priced at the reference Opus rate, as of 18 Sep 2026, 0.667 credits per input token.",
+    );
+    // A family with no rate carries its date beside the sentence that stands in for the number.
+    expect(render(SHORTFALL, "max20", "claude-fable-5-1")).toContain("Fable rate, as of 20 Sep 2026: rate not yet identified.");
+    // The file published before PR #68 dates neither, and none is invented for it.
+    const older = render(MEASURED, "max20", "claude-sonnet-5");
+    expect(older).not.toContain("Measured to ");
+    expect(older).toContain("Priced at the meter's measured Sonnet rate, 0.518 credits per input token");
+  });
+
+  it("draws the shortfall as one row per plan, with a sentence where a plan was never measured", () => {
+    const text = render(SHORTFALL, "max20", "claude-sonnet-5");
+    expect(text).toContain(
+      "Measured against the reference table: this tracker's measured five-hour windows per week against the reference table's, per plan, for the last regime that ended before the 14 September weekly change. Cut at 14 Sep 2026.",
+    );
+    expect(text).toContain("Measured Documented Measured ÷ documented Expected Measured ÷ expected Regime");
+    expect(text).toContain("Max 20x 6.48 7.58 0.85 5.68 1.14 15 Aug 2026 to 14 Sep 2026");
+    expect(text).toContain("Max 5x 10.86 12.63 0.86 9.47 1.15 13 Jun 2026 to 14 Aug 2026");
+    // Pro has no measured regime, so the row is the publisher's sentence and carries no figure.
+    expect(text).toContain(
+      "Pro no measured weekly-window regime for pro ending before the cut; its published windows per week are inferred from max20, never measured",
+    );
+    expect(text).toContain("Multipliers applied to the table's figures: five-hour window ×2, weekly ×1.5.");
+    expect(text).toContain("the reference table predates the 6 May five-hour doubling");
+    expect(text).toContain("Status: explained (docs/findings-2026-09-20-reconciliation.md).");
+    // A file published before the block draws no such table.
+    expect(render(MEASURED, "max20", "claude-sonnet-5")).not.toContain("Measured against the reference table");
+  });
+
+  it("keeps the shortfall when the credits block is gone, and the rest of the page as it renders today", () => {
+    const text = render(WITHOUT, "max20", "claude-sonnet-5");
+    // reference.shortfall is not part of the credits block, so it survives its absence.
+    expect(text).toContain("Measured against the reference table");
+    expect(text).toContain("Max 20x 6.48 7.58 0.85 5.68 1.14");
+    // Everything the credits block carried is gone with it.
+    expect(text).not.toContain("credits per 5-hour window");
+    expect(text).not.toContain("Cross-check against the announced caps A cross-check");
+    expect(text).toMatch(/at low medium high xhigh max effort, you get/);
+    expect(text).toContain("the output rate fitted from 60 measured stretches of real work");
+  });
+
+  it("renders no null, NaN or undefined on the third file either", () => {
+    for (const model of Object.keys(SHORTFALL.rates)) {
+      for (const plan of ["pro", "max5", "max20"] as Plan[]) {
+        expect(render(SHORTFALL, plan, model), `${model} ${plan}`).not.toMatch(/\bnull\b|\bNaN\b|\bundefined\b/);
+      }
+    }
   });
 });

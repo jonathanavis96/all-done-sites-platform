@@ -36,7 +36,12 @@ export function withWf50(base: UsageJson, { currentAsObject = false }: { current
   j.plan_ratios = { pro: 0.05, max5: 0.3, max20: 1.0 };
   j.plan_ratios_basis = { kind: "credits_table", credits_per_window: { pro: 1, max5: 6, max20: 20 } };
   j.weekly_window_ratios = { pro: 1.2, max5: 1.667, max20: 1.0 };
-  j.weekly_window_ratios_basis = { kind: "credits_table" };
+  // The same table's credits per week: the page reads the per-week ratio off these rather than
+  // off a constant, so the fixture has to carry what the published file carries.
+  j.weekly_window_ratios_basis = {
+    kind: "credits_table",
+    credits_per_week: { pro: 5_000_000, max5: 41_666_700, max20: 83_333_300 },
+  };
   const current = typeof max20.current === "number" ? max20.current : 0;
   for (const plan of ["max5", "pro"] as const) {
     const w = ww[plan]!;
