@@ -9,17 +9,15 @@ import {
   MODEL_LABELS,
   accountWindowsPerWeek,
   basisDate,
-  cacheReadShareFor,
   captureEmptyNote,
   changeLines,
   computeCredits,
+  computeWindowTokens,
   creditsOf,
   fmtCredits,
   fmtShare,
   PLAN_LABELS,
-  RANGE_DAYS,
   compute,
-  eventsFor,
   fmtDate,
   fmtSource,
   fmtTokens,
@@ -28,7 +26,6 @@ import {
   headline,
   modelPlanLimit,
   staleEvidenceAt,
-  seriesFor,
   weeklyEventsFor,
   latestWeeklyChange,
   planScaling,
@@ -42,17 +39,13 @@ import {
   weeklyRegimeLevelsFor,
   weeklySeriesFor,
   weeklyTokenRegimeLevelsFor,
-  weeklyTokenSeriesFor,
   type ContribPoint,
   type CreditFigureText,
   type Effort,
   type Plan,
-  type RangeDays,
   type UsageEvent,
   type UsageJson,
-  type WeeklyPoint,
-  type WeeklySeries,
-  type RegimeLevel,
+  type WindowTokensView,
 } from "@/lib/claudeUsage";
 import {
   contribColor,
@@ -71,155 +64,6 @@ import initialJson from "../../public/data/claude-usage.json";
 const initialData = initialJson as unknown as UsageJson;
 
 const SITE = "https://alldonesites.com";
-
-function Chart({
-  points,
-  change,
-  events,
-  days,
-}: {
-  points: { date: string; value: number; interpolated: boolean; held: boolean }[];
-  change: { date: string; direction: string; percent: number } | null;
-  events: UsageEvent[];
-  days: number;
-}) {
-  if (points.length < 2) return <p className="sub">Not enough history yet.</p>;
-  const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
-  const vals = points.map((p) => p.value);
-  const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
-  // One date scale for samples and markers: every x is elapsed time between the first and
-  // last sample, so a sparse or irregular history never puts a marker beside the wrong point.
-  const day = (d: string) => Date.parse(d + "T00:00:00Z");
-  // The axis starts at the earlier of the first sample and the earliest marker inside the
-  // selected range, so an in-range marker before the first sample stays visible while a
-  // marker older than the range cutoff never widens the chart.
-  const d1 = day(points[points.length - 1].date);
-  const cutoff = d1 - days * 86400e3;
-  const markerDays = [...events.map((ev) => ev.date), ...(change ? [change.date] : [])]
-    .map(day)
-    .filter((t) => t >= cutoff && t <= d1);
-  const d0 = Math.min(day(points[0].date), ...markerDays);
-  const span = Math.max(1, d1 - d0);
-  const xDate = (d: string) => {
-    const t = day(d);
-    if (!(t >= d0 && t <= d1)) return null;
-    return L + ((t - d0) / span) * (R - L);
-  };
-  const x = (i: number) => xDate(points[i].date) ?? L;
-  const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - T);
-  // Held (backfilled) rows are flat-lined at the first real reading, not measured: they are
-  // drawn as a dashed grey segment with no fill, so a reader never mistakes the flat line for
-  // a proven period of no change. firstRealIdx is the earliest point that is a real reading.
-  // When no point in range is real (findIndex gives -1) the whole series is held: it is drawn
-  // dashed with no real segment and no fill, never as proven data.
-  const firstRealIdx = points.findIndex((p) => !p.held);
-  const allHeld = firstRealIdx === -1 && points.length > 0;
-  const hasHeld = allHeld || firstRealIdx > 0;
-  const heldEnd = allHeld ? points.length : firstRealIdx + 1;
-  const heldPath = hasHeld ? points.slice(0, heldEnd).map((p, i) => `${x(i)},${y(p.value)}`).join(" ") : "";
-  const realStartIdx = hasHeld ? firstRealIdx : 0;
-  const realPath = allHeld ? "" : points.slice(realStartIdx).map((p, i) => `${x(realStartIdx + i)},${y(p.value)}`).join(" ");
-  const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
-  const cx = change ? xDate(change.date) : null;
-  // The first real reading gets its own marker so a dashed-flat period never reads as proven.
-  const measureX = hasHeld && !allHeld ? xDate(points[firstRealIdx].date) : null;
-  const labelEvery = Math.max(1, Math.floor(points.length / 5));
-  // The SVG is one image to assistive technology, so its label carries the marker text too.
-  const shown = events.filter((ev) => xDate(ev.date) !== null && !(change && ev.kind === "change" && ev.date === change.date));
-  const ariaLabel = [
-    "Effective window size over time",
-    ...(allHeld ? ["Dashed throughout: shown flat at the first measured value, not measured day-by-day."] : []),
-    ...(hasHeld && !allHeld ? [`Dashed before ${fmtDate(points[firstRealIdx].date)}: shown flat at the first measured value, not measured day-by-day.`] : []),
-    ...(change && xDate(change.date) !== null
-      ? [`${fmtDate(change.date)}: window ${change.direction === "decreased" ? "down" : "up"} ${change.percent}%`]
-      : []),
-    ...shown.map((ev) => `${fmtDate(ev.date)}: ${ev.label}`),
-  ].join(". ");
-  return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
-      <defs>
-        <linearGradient id="cutfill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#0EA5E9" stopOpacity=".28" />
-          <stop offset="1" stopColor="#0EA5E9" stopOpacity=".02" />
-        </linearGradient>
-      </defs>
-      <g stroke="#E6E9EE" strokeWidth="1">
-        {ticks.map((t) => (
-          <line key={t} x1={L} x2={R} y1={y(t)} y2={y(t)} />
-        ))}
-      </g>
-      {ticks.map((t) => (
-        <text key={t} x={0} y={y(t) + 4}>{fmtTokens(t)}</text>
-      ))}
-      {!allHeld && <polygon fill="url(#cutfill)" points={`${L},${B} ${realPath} ${R},${B}`} />}
-      {hasHeld && <polyline fill="none" stroke="#94A3B8" strokeWidth="2" strokeDasharray="4 4" strokeLinejoin="round" points={heldPath} />}
-      {!allHeld && <polyline fill="none" stroke="#0EA5E9" strokeWidth="2.5" strokeLinejoin="round" points={realPath} />}
-      {points.map(
-        (p, i) =>
-          p.interpolated && <circle key={p.date} cx={x(i)} cy={y(p.value)} r="3" fill="#fff" stroke="#0EA5E9" strokeWidth="2" />
-      )}
-      {measureX !== null && (
-        <g>
-          <line x1={measureX} x2={measureX} y1={T} y2={B} stroke="#64748B" strokeWidth="1.25" strokeDasharray="2 3" />
-          <text
-            x={measureX > R - 160 ? measureX - 4 : measureX + 4}
-            y={B + 16}
-            textAnchor={measureX > R - 160 ? "end" : "start"}
-            style={{ fill: "#64748B", fontWeight: 500 }}
-          >
-            measuring since {fmtDate(points[firstRealIdx].date)}
-          </text>
-        </g>
-      )}
-      {cx !== null && (
-        <g>
-          <line x1={cx} x2={cx} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
-          <rect x={Math.min(cx + 7, R - 120)} y={T + 4} width="112" height="22" rx="6" fill="#B42318" />
-          <text x={Math.min(cx + 15, R - 112)} y={T + 19} style={{ fill: "#fff", fontWeight: 600 }}>
-            {fmtDate(change!.date).slice(0, 6)} · {change!.direction === "decreased" ? "down" : "up"} {change!.percent}%
-          </text>
-        </g>
-      )}
-      {events.map((ev) => {
-        // The last change already has its own boxed marker; do not draw it twice.
-        if (change && ev.kind === "change" && ev.date === change.date) return null;
-        const xx = xDate(ev.date);
-        if (xx === null) return null;
-        const color = ev.kind === "change" ? "#B42318" : "#8A94A6";
-        return (
-          <g key={`${ev.date}-${ev.label}`}>
-            <line x1={xx} x2={xx} y1={T} y2={B} stroke={color} strokeWidth="1.25" strokeDasharray="4 3" />
-            <text
-              x={xx > W - 130 ? xx - 6 : xx + 6}
-              y={T - 3}
-              textAnchor={xx > W - 130 ? "end" : "start"}
-              style={{ fill: color, fontWeight: 500 }}
-            >
-              {shortChangeLabel(ev)}
-            </text>
-          </g>
-        );
-      })}
-      <circle cx={R} cy={y(points[points.length - 1].value)} r="4.5" fill="#0EA5E9" stroke="#fff" strokeWidth="2" />
-      <g style={{ fill: "#0277B5", fontWeight: 500 }}>
-        {points.map((p, i) => {
-          if (i % labelEvery !== 0) return null;
-          const xx = x(i);
-          // Anchored by position, the same rule the weekly charts use: a label at the plot's
-          // right edge defaults to text-anchor start and runs past the viewBox, which cut the
-          // newest date in half. End-anchor it there, start-anchor it at the left edge, centre
-          // it everywhere between.
-          const anchor = xx < L + 20 ? "start" : xx > R - 20 ? "end" : "middle";
-          return (
-            <text key={p.date} x={xx} y={B + 36} textAnchor={anchor}>
-              {fmtDate(p.date).slice(0, 6)}
-            </text>
-          );
-        })}
-      </g>
-    </svg>
-  );
-}
 
 /**
  * Vertical positions for the right-margin plan labels. Each label wants to sit at its own
@@ -286,6 +130,12 @@ function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: nu
   if (overflow > 0) for (const it of sorted) it.y -= overflow;
   for (const it of sorted) it.y = Math.max(it.y, top);
   return new Map(sorted.map((it) => [it.plan, it.y]));
+}
+
+// One row of the plan-comparison table: its label, and the cell each plan renders.
+interface PlanTableRow {
+  label: string;
+  cell: (p: Plan) => { text: string; inferred: boolean };
 }
 
 // One plan's levels on a chart: what the limit was, held flat between changes.
@@ -703,7 +553,9 @@ interface ContribTab {
   label: string;
   value: (p: ContribPoint, model: string) => number | null;
   fmt: (v: number) => string;
-  reference: (r: ReturnType<typeof compute> | null, fleetUsd: number | null) => number | null;
+  // The tracker's own line on this chart. The token tabs take it from the measured window, the
+  // same figure the hero states, and draw none where that figure is not published.
+  reference: (wt: WindowTokensView | null, fleetUsd: number | null) => number | null;
   refLabel: (v: number, fmt: (v: number) => string) => string;
   legend: string;
 }
@@ -714,7 +566,7 @@ const CONTRIB_TABS: ContribTab[] = [
     label: "Cost per 1%",
     value: (p, model) => contribPointValue(p, "usd", model),
     fmt: fmtUsd2,
-    reference: (_r, fleetUsd) => fleetUsd,
+    reference: (_wt, fleetUsd) => fleetUsd,
     refLabel: (v, fmt) => `tracker ${fmt(v)} per 1%`,
     legend:
       "One dot per reading, joined when they come from the same contributor ID. Hollow dots: meter under 5%. Dashed line: the tracker's own figure.",
@@ -724,7 +576,7 @@ const CONTRIB_TABS: ContribTab[] = [
     label: "Effective window size",
     value: (p, model) => contribPointValue(p, "window", model),
     fmt: fmtTokens,
-    reference: (r) => r?.tokensPerWindow ?? null,
+    reference: (wt) => wt?.perWindowValue ?? null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
       "Tokens a full five-hour window buys, read off each contributor's own meter. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
@@ -734,8 +586,7 @@ const CONTRIB_TABS: ContribTab[] = [
     label: "Tokens per week",
     value: (p, model) => contribPointValue(p, "weekly", model),
     fmt: fmtTokens,
-    reference: (r) =>
-      r && r.tokensPerWindow !== null && r.windowsPerWeek !== null ? r.tokensPerWindow * r.windowsPerWeek : null,
+    reference: (wt) => wt?.perWeekValue ?? null,
     refLabel: (v, fmt) => `tracker ${fmt(v)}`,
     legend:
       "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
@@ -841,14 +692,16 @@ function ContributorsChart({
 }
 
 // `initial` is the prerendered snapshot, and the selectors start on `initialPlan` and
-// `initialModel`; tests render the page with either schema and any selection through them.
+// `initialModel`; tests render the page with either schema and any selection through them. The
+// model selector starts on Opus: every clean stretch the window was measured on is pure Opus, so
+// it is the one family whose figure is the measurement rather than a conversion of it (wf-60).
 // The contributor chart starts on `initialContribMetric`. `now` fixes the clock the stale line
 // reads. The prerender leaves it unset, so its output never depends on when it ran; a test sets it
 // to render the stale line without mounting.
 export default function ClaudeUsageTracker({
   initial = initialData,
   initialPlan = "max20",
-  initialModel = "claude-sonnet-5",
+  initialModel = "claude-opus-5",
   initialContribMetric = "usd",
   now,
 }: {
@@ -863,7 +716,6 @@ export default function ClaudeUsageTracker({
   const [plan, setPlan] = useState<Plan>(initialPlan);
   const [model, setModel] = useState(initialModel);
   const [effort, setEffort] = useState<Effort>("high");
-  const [range, setRange] = useState<RangeDays>(30);
 
   useEffect(() => {
     fetch("/data/claude-usage.json")
@@ -914,10 +766,8 @@ export default function ClaudeUsageTracker({
     };
   }, [data]);
   const referenceChanges = data?.reference?.changes_since ?? [];
-  const chartPoints = useMemo(() => (data ? seriesFor(data, plan, model, range) : []), [data, plan, model, range]);
   const weeklySeries = useMemo(() => (data ? weeklySeriesFor(data) : []), [data]);
   const weeklyEvents = useMemo(() => (data ? weeklyEventsFor(data) : []), [data]);
-  const weeklyTokenSeries = useMemo(() => (data ? weeklyTokenSeriesFor(data, model) : []), [data, model]);
   // Levels for every plan, not just the selected one: the chart draws all three, the selected
   // one solid and the others grey, each plan's own levels solid and the ones borrowed from another
   // plan dashed. A plan's windows per week is a property of the plan, so this chart does not
@@ -987,6 +837,11 @@ export default function ClaudeUsageTracker({
   // the wording that file has always rendered.
   const credits = useMemo(() => (data ? creditsOf(data) : null), [data]);
   const cr = useMemo(() => (data ? computeCredits(data, plan, model, effort) : null), [data, plan, model, effort]);
+  // The measured window in tokens: tokens per 1% of the five-hour meter over the clean pure-Opus
+  // stretches, times 100. Every token figure on this route comes from here -- the hero, the
+  // window section, the per-week card and the per-week chart -- so they cannot state one quantity
+  // at two scales. Null for a file published before the block, which the page says in words.
+  const wt = useMemo(() => (data ? computeWindowTokens(data, plan, model) : null), [data, plan, model]);
   const changeSentences = useMemo(() => (data ? changeLines(data) : []), [data]);
   // How many accounts the passive readings rest on, in words. Null without the credits block, in
   // which case the page keeps saying "a real account" as it does today.
@@ -998,10 +853,11 @@ export default function ClaudeUsageTracker({
       : null;
   const effortMix = credits?.effort_cache_mix ?? null;
   const effortCredits = credits?.effort_credits ?? null;
-  // True once the credits block can state this model's window. Everything the page says about
-  // tokens per window, tokens per week, sessions per window and sessions per week then comes from
-  // that one block, so the hero, the chart headlines and the plan table cannot disagree.
-  const creditsRoute = !!cr && cr.tokensIn !== null;
+  // True once the credits block can state this model's window in credits. Everything the page
+  // says about the meter, the API value it holds and the sessions it buys then comes from that one
+  // block, so the hero, the chart headlines and the plan table cannot disagree. The token figures
+  // come from `window_tokens` below, on their own route.
+  const creditsRoute = !!cr && cr.usdIn !== null;
   // The hero's figures do not move with effort; the effort matrix's do. The picker goes where the
   // dependence is, and stays in the hero for a file whose JSON has no effort matrix (finding 2).
   const effortInHero = !(creditsRoute && effortMix);
@@ -1014,13 +870,6 @@ export default function ClaudeUsageTracker({
       </select>
     </span>
   );
-  // What the 30-day and per-week charts plot: raw tokens at the account's own mix, which is a
-  // different quantity from the priced figure above them and reads as the same one without this.
-  const chartCacheRead = data ? cacheReadShareFor(data, model) : null;
-  const chartMixNote =
-    creditsRoute && chartCacheRead !== null
-      ? `Plotted: tokens at the account's own mix, ${fmtShare(chartCacheRead)} of it cache reads, not the priced figure above.`
-      : null;
   // Each watched account's own windows per week, as values rather than as dots alone.
   const accountWeekly = data ? accountWindowsPerWeek(data, plan) : [];
   // How many runs each effort cell was measured over, for the caveat that used to name a number.
@@ -1041,34 +890,44 @@ export default function ClaudeUsageTracker({
   // publishes a status for renders that sentence instead, with no number (finding 5).
   // The plan table's rows. Every quantity the credits block publishes comes from it, on the same
   // helper the hero uses, so a cell and the hero cannot state one quantity at two scales.
-  const planTableRows: { label: string; cell: (p: Plan) => { text: string; inferred: boolean } }[] = (() => {
+  const planTableRows: PlanTableRow[] = (() => {
     if (!data || !r) return [];
     const dash = (f: CreditFigureText | null | undefined) => (f ? f.text : "\u2014");
+    // Tokens per window and per week are the measured window, whichever route the dollar and
+    // session figures below take: one quantity, one figure, and the same one the hero states.
+    const tokenRows: PlanTableRow[] = wt
+      ? (
+          [
+            { label: "Tokens per 5-hour window", of: (w: WindowTokensView) => w.perWindow },
+            { label: "Tokens per week", of: (w: WindowTokensView) => w.perWeek },
+          ] as const
+        ).map(({ label, of }) => ({
+          label,
+          cell: (p: Plan) => {
+            const w = computeWindowTokens(data, p, model);
+            return { text: dash(w ? of(w) : null), inferred: !!w?.weeklyInferred };
+          },
+        }))
+      : [];
     if (creditsRoute && cr) {
       const pick: { label: string; of: (c: NonNullable<ReturnType<typeof computeCredits>>) => CreditFigureText | null }[] = [
-        { label: "Input tokens per 5-hour window", of: (c) => c.tokensIn },
-        { label: "Output tokens per 5-hour window", of: (c) => c.tokensOut },
-        { label: "Input tokens per week", of: (c) => c.tokensInPerWeek },
         ...(cr.sessionsPerWindow ? [{ label: "Sessions per window", of: (c: NonNullable<ReturnType<typeof computeCredits>>) => c.sessionsPerWindow }] : []),
         ...(cr.sessionsPerWeek ? [{ label: "Sessions per week", of: (c: NonNullable<ReturnType<typeof computeCredits>>) => c.sessionsPerWeek }] : []),
         { label: "API value per 5-hour window", of: (c) => c.usdIn },
         ...(cr.usdInPerWeek ? [{ label: "API value per week", of: (c: NonNullable<ReturnType<typeof computeCredits>>) => c.usdInPerWeek }] : []),
       ];
-      return pick.map(({ label, of }) => ({
-        label,
-        cell: (p: Plan) => {
-          const c = computeCredits(data, p, model)!;
-          return { text: dash(of(c)), inferred: c.weeklyInferred };
-        },
-      }));
+      return [
+        ...tokenRows,
+        ...pick.map(({ label, of }) => ({
+          label,
+          cell: (p: Plan) => {
+            const c = computeCredits(data, p, model)!;
+            return { text: dash(of(c)), inferred: c.weeklyInferred };
+          },
+        })),
+      ];
     }
     const rows: { label: string; of: (c: NonNullable<ReturnType<typeof compute>>) => string }[] = [
-      { label: "Tokens per 5-hour window", of: (c) => (c.tokensPerWindow === null ? "\u2014" : fmtTokens(c.tokensPerWindow)) },
-      {
-        label: "Tokens per week",
-        of: (c) =>
-          c.tokensPerWindow === null || c.windowsPerWeek === null ? "\u2014" : fmtTokens(c.tokensPerWindow * c.windowsPerWeek),
-      },
       ...(r.sessionsPerWindow !== null
         ? [
             {
@@ -1098,13 +957,16 @@ export default function ClaudeUsageTracker({
           ]
         : []),
     ];
-    return rows.map(({ label, of }) => ({
-      label,
-      cell: (p: Plan) => {
-        const c = compute(data, p, model, effort)!;
-        return { text: of(c), inferred: c.weeklyInferred };
-      },
-    }));
+    return [
+      ...tokenRows,
+      ...rows.map(({ label, of }) => ({
+        label,
+        cell: (p: Plan) => {
+          const c = compute(data, p, model, effort)!;
+          return { text: of(c), inferred: c.weeklyInferred };
+        },
+      })),
+    ];
   })();
   const creditRateLine = (() => {
     if (!cr || cr.modelStatus || typeof cr.creditsPerTokenIn !== "number") return null;
@@ -1190,8 +1052,11 @@ export default function ClaudeUsageTracker({
     );
   }, [data]);
   // A failed refresh is not fatal while the build-time snapshot is still usable. A schema 2 rate
-  // with no eligible measurement publishes null figures, and nothing stands in for them (finding 13).
-  const unavailable = (failed && data === null) || (data !== null && (r === null || (r.included && r.tokensPerWindow === null)));
+  // with no eligible measurement publishes null figures, and nothing stands in for them (finding
+  // 13): the page has no figure of any route left to show, so it says so.
+  const unavailable =
+    (failed && data === null) ||
+    (data !== null && (r === null || (r.included && r.apiValueUsd === null && wt === null)));
   const limit = data ? modelPlanLimit(data, model, plan) : null;
   const notIncluded = limit?.source_url ? (
     <>
@@ -1280,16 +1145,46 @@ export default function ClaudeUsageTracker({
                 {r.included ? ", you get" : ""}
               </div>
               {!r.included && <div className="quiet">{notIncluded}</div>}
-              {r.included && r.tokensPerWindow !== null && r.split !== null && (
+              {r.included && (
                 <>
-                  {/* Two routes to the same window are published. The credits route is the
-                      measurement: every token priced at the rate the meter charges, no fitted
-                      parameter in it. The dollar route below is what the page showed before the
-                      block existed, and it is what a file without the block still renders. */}
-                  {cr && cr.tokensIn ? (
+                  {/* The headline is the measured window: the tokens the five-hour meter holds,
+                      counted on the clean pure-Opus stretches. No rate and no class weight enter
+                      it, and nothing stands in for it -- a file that does not publish it says so
+                      rather than falling back to the list-price arithmetic it replaced. */}
+                  {wt?.perWindow ? (
+                    <HeroFigure fig={wt.perWindow} unit="tokens per 5-hour window" statusUnit="tokens per 5-hour window" />
+                  ) : (
+                    <div className="rate">
+                      <span>tokens per 5-hour window: <b>window tokens not yet published</b></span>
+                    </div>
+                  )}
+                  {/* What those tokens were, by class, on the family they were measured on. The
+                      cache-read share is published beside them, so the line divides nothing. */}
+                  {wt && wt.perClass.length > 0 && (
+                    <div className="split">
+                      {wt.perClass.map(({ cls, fig }, i) => (
+                        <span key={cls}>
+                          {i > 0 && <em>·</em>}
+                          <b>{fig.text}</b>{" "}
+                          {cls === "cache_read"
+                            ? `cache reads${wt.cacheReadShare !== null ? ` (${fmtShare(wt.cacheReadShare)})` : ""}`
+                            : cls === "cache_write"
+                              ? "cache writes"
+                              : cls === "output"
+                                ? "output"
+                                : "fresh input"}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {/* What the family's figure rests on where it is not the measured family's own:
+                      the conversion the block publishes, in its own words. */}
+                  {wt?.conversion && <div className="quiet">Conversion: {wt.conversion}.</div>}
+                  {/* The credits route: what the meter charges for that window, what it is worth
+                      at API list price, and the sessions it buys. The dollar route below is what
+                      the page showed before the block existed. */}
+                  {cr && cr.usdIn ? (
                     <>
-                      <HeroFigure fig={cr.tokensIn} unit="input tokens per 5-hour window" />
-                      {cr.tokensOut && <FigureLine fig={cr.tokensOut} unit="output tokens per 5-hour window" />}
                       {cr.usdIn && (
                         <HeroFigure
                           fig={cr.usdIn}
@@ -1374,7 +1269,7 @@ export default function ClaudeUsageTracker({
                       {/* What the credits block says about its own figures: how the window was
                           measured, and what this family's row was priced at. Not another block's
                           date (finding 5). */}
-                      {cr.windowCreditsMethod && (
+                      {!wt && cr.windowCreditsMethod && (
                         <div className="quiet">
                           Method: {cr.windowCreditsMethod}
                           {cr.creditsAsOf ? ` Measured to ${fmtDate(cr.creditsAsOf)}.` : ""}
@@ -1391,14 +1286,12 @@ export default function ClaudeUsageTracker({
                     </>
                   ) : (
                     <>
-                      <div className="big">
-                        {fmtTokens(r.tokensPerWindow)}
-                        <span>tokens per 5-hour window</span>
-                      </div>
-                      <div className="big usd">
-                        {fmtUsd(r.apiValueUsd)}
-                        <span>of API value per 5-hour window</span>
-                      </div>
+                      {r.apiValueUsd !== null && (
+                        <div className="big usd">
+                          {fmtUsd(r.apiValueUsd)}
+                          <span>of API value per 5-hour window</span>
+                        </div>
+                      )}
                       {(r.sessionsPerWindow !== null || r.apiValueUsdPerWeek !== null) && (
                         <div className="rate">
                           {r.sessionsPerWindow !== null && r.sessionsPerWeek !== null && (
@@ -1417,18 +1310,14 @@ export default function ClaudeUsageTracker({
                           )}
                         </div>
                       )}
-                      <div className="split">
-                        <span>
-                          <b>{fmtTokens(r.split.input)}</b> input<em>·</em>
-                          <b>{fmtTokens(r.split.output)}</b> output
-                        </span>
-                        <em className="brk">·</em>
-                        <span>
-                          <b>{fmtTokens(r.split.cache_read)}</b> cache read<em>·</em>
-                          <b>{fmtTokens(r.split.cache_write)}</b> cache write
-                        </span>
-                      </div>
                     </>
+                  )}
+                  {/* The measured window's own method, dated by the stretches behind it. */}
+                  {wt?.method && (
+                    <div className="quiet">
+                      Method: {wt.method}
+                      {wt.asOf ? ` Measured to ${fmtDate(wt.asOf)}.` : ""}
+                    </div>
                   )}
                   {!creditsRoute && fmtSource(data.rates[model]) && (
                     <div className="quiet">Source: {fmtSource(data.rates[model])}</div>
@@ -1466,38 +1355,29 @@ export default function ClaudeUsageTracker({
 
         {!unavailable && data && (
           <section>
-            <div className="h2row">
-              <h2>Effective window size, last {range} days</h2>
-              <div className="range-toggle" role="group" aria-label="Chart range">
-                {RANGE_DAYS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    aria-pressed={range === d}
-                    onClick={() => setRange(d)}
-                  >
-                    {d}d
-                  </button>
-                ))}
-              </div>
-            </div>
+            <h2>Effective window size</h2>
             <div className="sub">
               {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window
             </div>
-            {creditsRoute && cr ? (
+            {/* The same measured window the hero states, from the same published figure, so this
+                section and the hero cannot disagree. There is no series beneath it: the window is
+                measured on the stretches the block names, not read off a daily list-price
+                history, and that history is not a second answer to this question (wf-60). */}
+            {r && !r.included ? (
+              <p className="sub">{notIncluded}</p>
+            ) : (
               <div className="rate">
                 <span>
-                  <Fig fig={cr.tokensIn!} unit="input tokens per 5-hour window" />
+                  {wt?.perWindow ? (
+                    <>
+                      <Fig fig={wt.perWindow} unit="tokens per 5-hour window" />
+                      {wt.perWindow.range ? ` (${wt.perWindow.range})` : ""}
+                    </>
+                  ) : (
+                    <>tokens per 5-hour window: <b>window tokens not yet published</b></>
+                  )}
                 </span>
-                {cr.tokensOut && (
-                  <>
-                    <em className="brk">·</em>
-                    <span>
-                      <Fig fig={cr.tokensOut} unit="output tokens" />
-                    </span>
-                  </>
-                )}
-                {cr.sessionsPerWindow && (
+                {cr?.sessionsPerWindow && (
                   <>
                     <em className="brk">·</em>
                     <span>
@@ -1506,44 +1386,6 @@ export default function ClaudeUsageTracker({
                   </>
                 )}
               </div>
-            ) : (
-              r &&
-              r.tokensPerWindow !== null && (
-                <div className="rate">
-                  <span>
-                    <b>{fmtTokens(r.tokensPerWindow)}</b> tokens
-                    {r.sessionsPerWindow !== null && (
-                      <>
-                        <em>·</em>
-                        <b>{Math.round(r.sessionsPerWindow)}</b> sessions
-                      </>
-                    )}{" "}
-                    per 5-hour window
-                  </span>
-                </div>
-              )
-            )}
-            {r && !r.included ? (
-              <p className="sub">{notIncluded}</p>
-            ) : (
-              <Chart
-                points={chartPoints}
-                change={
-                  data.last_change &&
-                  (data.last_change.scope ?? "window") === "window" &&
-                  (data.last_change.model === model || data.last_change.model === "all")
-                    ? data.last_change
-                    : null
-                }
-                events={eventsFor(data, model, range)}
-                days={range}
-              />
-            )}
-            {chartMixNote && <p className="sub chart-legend">{chartMixNote}</p>}
-            {chartPoints.some((p) => p.held) && (
-              <p className="sub chart-legend">
-                Dashed: before measurement began, shown flat at the first measured value.
-              </p>
             )}
             <p className="stats-cta-row mob">
               <a className="stats-cta" href="#contribute">See your own stats &darr;</a>
@@ -1564,48 +1406,29 @@ export default function ClaudeUsageTracker({
               <p className="sub">{notIncluded}</p>
             ) : (
               <>
-                {creditsRoute && cr ? (
-                  <div className="rate">
-                    {cr.tokensInPerWeek && (
-                      <span>
-                        <Fig fig={cr.tokensInPerWeek} unit="input tokens per week" />
-                      </span>
-                    )}
-                    {cr.tokensOutPerWeek && (
+                {/* The measured window a week of windows holds: the published per-week figure,
+                    on this plan's own windows per week. The chart below draws the same figure at
+                    each regime's windows, so the card and the chart cannot disagree. */}
+                <div className="rate">
+                  <span>
+                    {wt?.perWeek ? (
                       <>
-                        <em className="brk">·</em>
-                        <span>
-                          <Fig fig={cr.tokensOutPerWeek} unit="output tokens" />
-                        </span>
+                        <Fig fig={wt.perWeek} unit="tokens per week" />
+                        {wt.perWeek.range ? ` (${wt.perWeek.range})` : ""}
                       </>
+                    ) : (
+                      <>tokens per week: <b>window tokens not yet published</b></>
                     )}
-                    {cr.sessionsPerWeek && (
-                      <>
-                        <em className="brk">·</em>
-                        <span>
-                          <Fig fig={cr.sessionsPerWeek} unit="sessions" />
-                        </span>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  r &&
-                  r.windowsPerWeek !== null &&
-                  r.tokensPerWindow !== null && (
-                    <div className="rate">
+                  </span>
+                  {cr?.sessionsPerWeek && (
+                    <>
+                      <em className="brk">·</em>
                       <span>
-                        <b>{fmtTokens(r.tokensPerWindow * r.windowsPerWeek)}</b> tokens
-                        {r.sessionsPerWeek !== null && (
-                          <>
-                            <em>·</em>
-                            <b>{Math.round(r.sessionsPerWeek)}</b> sessions
-                          </>
-                        )}{" "}
-                        per week
+                        <Fig fig={cr.sessionsPerWeek} unit="sessions" />
                       </span>
-                    </div>
-                  )
-                )}
+                    </>
+                  )}
+                </div>
                 <LevelChart
                   levelsByPlan={weeklyTokenLevels}
                   events={weeklyEvents}
@@ -1614,7 +1437,6 @@ export default function ClaudeUsageTracker({
                   plotRight={732}
                   title="Tokens per week over time"
                 />
-                {chartMixNote && <p className="sub">{chartMixNote}</p>}
                 <p className="sub">
                   Each line is the limit itself, held flat between changes: a step means a measured change, and
                   nothing else on the chart moves. Solid and shaded: selected plan. Grey: the others. Dashed:
@@ -2080,7 +1902,7 @@ export default function ClaudeUsageTracker({
                 <ContributorsChart
                   points={data.contributed[plan]!.points!}
                   tab={contribTab}
-                  reference={contribTab.reference(r, fleetUsdPerPercent(data, plan))}
+                  reference={contribTab.reference(wt, fleetUsdPerPercent(data, plan))}
                   model={model}
                 />
               </>
@@ -2113,9 +1935,11 @@ export default function ClaudeUsageTracker({
               The meter does not treat every token the same. Cache reads cost nothing against it. Input, output and
               cache writes are charged at Anthropic's list price
               {credits ? "" : ", the output rate fitted from 60 measured stretches of real work"}. So every reading here
-              is an API-dollar value per percent of meter, and the token counts are
-              that value converted back through the token mix of real sessions. The effort figures come from one
-              calibration task, run at each effort level on each model.
+              is an API-dollar value per percent of meter.{" "}
+              {credits?.window_tokens
+                ? "The token figures are not converted from it: they are the tokens those same stretches carried, counted per percent of the meter."
+                : "The token counts are that value converted back through the token mix of real sessions."}{" "}
+              The effort figures come from one calibration task, run at each effort level on each model.
             </p>
             <p>
               The weekly limit is measured the same way, per five-hour window: how far the seven-day meter moves for

@@ -6,6 +6,7 @@ import ClaudeUsageTracker from "./ClaudeUsageTracker";
 import {
   compute,
   computeCredits,
+  computeWindowTokens,
   fmtTokens,
   fmtUsd,
   weeklyTokenRegimeLevelsFor,
@@ -27,6 +28,8 @@ import schema3Credits from "@/lib/__fixtures__/claude-usage-schema3-credits.json
 import schema3Measured from "@/lib/__fixtures__/claude-usage-schema3-measured-rates.json";
 // Tracker PR #68: dated basis blocks, a dated credits block, and reference.shortfall.
 import schema3Shortfall from "@/lib/__fixtures__/claude-usage-schema3-shortfall.json";
+// Tracker wf-59: the window measured in tokens, per class and per family, under credits.window_tokens.
+import schema3WindowTokens from "@/lib/__fixtures__/claude-usage-schema3-window-tokens.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
@@ -144,7 +147,9 @@ describe("the tracker page renders both schemas", () => {
       `A week currently holds about ${r.planWindowsPerWeek!.toFixed(1)} five-hour windows, measured from a real account.`,
     );
     expect(text).toContain(`${r.planWindowsPerWeek!.toFixed(1)} five-hour windows per week`);
-    expect(row(text, "Tokens per week")[2]).not.toBe("—");
+    // No token row: this file publishes no measured window, and the list-price route that used
+    // to fill one is gone (wf-60).
+    expect(text).not.toContain("Tokens per week Pro");
     expect(row(text, "API value per week")[2]).not.toBe("—");
   });
 
@@ -155,7 +160,6 @@ describe("the tracker page renders both schemas", () => {
         "On Pro Max 5x Max 20x , running Fable 5.1 Opus 5 Sonnet 5 at low medium high xhigh max effort Fable 5.1 is not included with Pro.",
       );
       expect(text).not.toMatch(/\d+[kM] tokens per 5-hour window/);
-      expect(row(text, "Tokens per 5-hour window")[0]).toBe("—");
       expect(row(text, "API value per 5-hour window")[0]).toBe("—");
     }
   });
@@ -193,13 +197,15 @@ describe("the tracker page renders both schemas", () => {
     expect(text).not.toContain("of API value per 5-hour window");
   });
 
-  it("draws Pro and Max 5x on both weekly charts, on both schemas", () => {
+  it("draws Pro and Max 5x on the windows chart, and no tokens chart without a measured window", () => {
     for (const j of [LIVE, PUBLISHED]) {
       const html = renderHtml(j);
-      const tokens = chartLevels(html, "Tokens per week over time");
       const weekly = chartLevels(html, "Five-hour windows per week over time");
-      expect([...tokens.keys()]).toEqual(["Pro", "Max 5x", "Max 20x"]);
       expect([...weekly.keys()]).toEqual(["Max 5x and Pro", "Max 20x"]);
+      // Neither file publishes credits.window_tokens, so the tokens chart has nothing to draw
+      // and draws nothing: the list-price history is not a second answer (wf-60).
+      expect(html).not.toContain("Tokens per week over time");
+      expect(html).toContain("Not enough history yet.");
     }
   });
 
@@ -221,7 +227,7 @@ describe("the tracker page renders both schemas", () => {
 describe("plan comparison and contributor tabs respect not-included and inferred-free wording", () => {
   it("gives the tokens-per-week and weekly-limit sections the window chart's not-included notice, and no other plan's lines (finding 2, kept)", () => {
     const sections = (text: string) => {
-      const window = text.indexOf(" Effective window size, last ");
+      const window = text.indexOf(" Effective window size ");
       const tokens = text.indexOf(" Tokens per week ", window);
       const weekly = text.indexOf(" Five-hour windows per week ", tokens);
       const table = text.indexOf(" Plan comparison ", weekly);
@@ -241,12 +247,12 @@ describe("plan comparison and contributor tabs respect not-included and inferred
     const pooled: UsageJson = structuredClone(LIVE);
     pooled.contributed!.max20!.weekly_windows.measured = 9.4;
     const weeklyTab = render(pooled, "max20", "claude-sonnet-5", undefined, "weekly");
-    const r = compute(pooled, "max20", "claude-sonnet-5", "high")!;
-    const expectedTokens = fmtTokens(r.tokensPerWindow! * r.windowsPerWeek!);
-    expect(weeklyTab).toContain(`tracker ${expectedTokens}`);
     expect(weeklyTab).not.toMatch(/tracker [^ ]+ inferred/);
     expect(weeklyTab).toContain("Two contributor IDs on Max 20x have shared meter readings.");
     expect(weeklyTab).not.toContain("9.4");
+    // The tracker's own line on the token tabs is the measured window, so a file that publishes
+    // none draws no line rather than the list-price figure (wf-60).
+    expect(weeklyTab).not.toMatch(/tracker \d/);
   });
 });
 
@@ -324,16 +330,17 @@ describe("the weekly chart and plan table with tracker wf-50's fields", () => {
   it("scales the table by the credits table and marks the inferred weekly cells", () => {
     const text = render(WF50);
     const max20 = compute(WF50, "max20", "claude-sonnet-5", "high")!;
-    expect(row(text, "Tokens per 5-hour window")).toEqual([
-      fmtTokens(max20.tokensPerWindow! * 0.05),
-      fmtTokens(max20.tokensPerWindow! * 0.3),
-      fmtTokens(max20.tokensPerWindow!),
+    // This file publishes no measured window, so the table's figures are the dollar route's.
+    expect(row(text, "API value per 5-hour window")).toEqual([
+      fmtUsd(max20.apiValueUsd! * 0.05),
+      fmtUsd(max20.apiValueUsd! * 0.3),
+      fmtUsd(max20.apiValueUsd!),
     ]);
-    const weekly = row(text, "Tokens per week");
+    const weekly = row(text, "API value per week");
     expect(weekly[0]).toMatch(/ inferred$/);
     expect(weekly[1]).toMatch(/ inferred$/);
     expect(weekly[2]).not.toContain("inferred");
-    expect(row(text, "Tokens per 5-hour window").join(" ")).not.toContain("inferred");
+    expect(row(text, "API value per 5-hour window").join(" ")).not.toContain("inferred");
     expect(text).toContain("scaled from it by the credits table, 1 : 6 : 20 per five-hour window.");
     expect(text).toContain(
       "scaled from Max 20x by the credits table: 1 : 6 : 20 per five-hour window and 1 : 8.33 : 16.67 per week (she-llac.com/claude-limits, undated).",
@@ -369,11 +376,14 @@ describe("the credits block on the page", () => {
     expect(text).not.toContain("Anthropic last decreased Claude's weekly limit");
   });
 
-  it("leads on the window in credits and the tokens that window holds", () => {
+  it("leads on the window in credits, and says the tokens are not published yet", () => {
     const text = render(CREDITS, "max20", "claude-opus-5");
-    expect(text).toContain("29M input tokens per 5-hour window");
-    expect(text).toContain("Range 26M to 31M.");
-    expect(text).toContain("5.9M output tokens per 5-hour window (5.2M to 6.2M)");
+    // The token figures this file carries are the window's credits over a family's credits per
+    // token; the page states the measured window instead, and this file has none (wf-60).
+    expect(text).toContain("tokens per 5-hour window: window tokens not yet published");
+    expect(text).toContain("tokens per week: window tokens not yet published");
+    expect(text).not.toContain("29M input tokens per 5-hour window");
+    expect(text).not.toContain("5.9M output tokens per 5-hour window");
     // One window, priced at each class's own rate, so one line rather than two identical ones.
     expect(text).toContain("$146.58 of API value per window, the same window priced at each class's own rate");
     expect(text).not.toContain("of API value per window in output tokens");
@@ -394,8 +404,6 @@ describe("the credits block on the page", () => {
 
   it("prints a status sentence in the figure's place, and never a null", () => {
     const text = render(CREDITS, "max20", "claude-fable-5-1");
-    expect(text).toContain("input tokens per 5-hour window: rate not yet identified (7.3M to 17M)");
-    expect(text).toContain("output tokens per 5-hour window: rate not yet identified (1.5M to 5.8M)");
     expect(text).toContain("API value per window in input tokens: rate not yet identified ($73.00 to $174.44)");
     expect(text).toContain("sessions per window: rate not yet identified (23 to 67)");
     // The window itself is measured on pure-Opus stretches, so it reads the same whatever model
@@ -408,8 +416,9 @@ describe("the credits block on the page", () => {
   });
 
   it("scales the hero to the selected plan rather than repeating the Max 20x figure", () => {
-    expect(render(CREDITS, "pro", "claude-opus-5")).toContain("1.5M input tokens per 5-hour window");
-    expect(render(CREDITS, "max5", "claude-opus-5")).toContain("8.8M input tokens per 5-hour window");
+    expect(render(CREDITS, "max20", "claude-opus-5")).toContain("$146.58 of API value per window");
+    expect(render(CREDITS, "pro", "claude-opus-5")).toContain("$7.33 of API value per window");
+    expect(render(CREDITS, "max5", "claude-opus-5")).toContain("$43.97 of API value per window");
   });
 
   it("counts the accounts instead of saying a real account", () => {
@@ -484,10 +493,13 @@ describe("the credits block on the page", () => {
     );
   });
 
-  it("renders a file with no credits block exactly as it does today", () => {
+  it("renders a file with no credits block as it does today, bar the window it cannot state", () => {
     const text = render(WITHOUT, "max20", "claude-opus-5");
     expect(text).toContain("Anthropic last decreased Claude's weekly limit by 24% on 11 Sep 2026.");
-    expect(text).toContain("589M tokens per 5-hour window");
+    // The 589M the dollar route used to lead on is the list-price window, and no figure on this
+    // page comes from it any more (wf-60).
+    expect(text).toContain("tokens per 5-hour window: window tokens not yet published");
+    expect(text).not.toContain("589M tokens per 5-hour window");
     expect(text).toContain("five-hour windows, measured from a real account since the change");
     for (const gone of [
       "credits per 5-hour window",
@@ -520,25 +532,21 @@ describe("the page states one figure per quantity", () => {
     for (const plan of ["pro", "max5", "max20"] as Plan[]) {
       const text = render(MEASURED, plan, "claude-sonnet-5");
       const c = computeCredits(MEASURED, plan, "claude-sonnet-5")!;
-      const tokensIn = c.tokensIn!.text;
       const sessions = c.sessionsPerWindow!.text;
-      expect(text, plan).toContain(`${tokensIn} input tokens per 5-hour window`);
-      // The window chart's own headline line, and the plan table's cell for the same plan.
-      expect(text.split(`${tokensIn} input tokens per 5-hour window`).length, plan).toBeGreaterThanOrEqual(3);
-      expect(text, plan).toContain(`${c.tokensInPerWeek!.text} input tokens per week`);
-      expect(row(text, "Input tokens per 5-hour window")[["pro", "max5", "max20"].indexOf(plan)], plan).toBe(tokensIn);
       expect(text, plan).toContain(`${sessions} sessions`);
       expect(row(text, "Sessions per window")[["pro", "max5", "max20"].indexOf(plan)], plan).toBe(sessions);
     }
-    // The figures the two routes disagreed on: 49M against 1472M input tokens, 1,818 against 1,191
-    // sessions per window, 9,015 against 5,909 per week. Only the credits route's remain in text.
+    // Neither route's token figure survives: 1472M is the list-price window, and the credits
+    // block's 49M is the same window over a fitted Sonnet rate. The page states the measured
+    // window or says it has none (wf-60).
     const text = render(MEASURED, "max20", "claude-sonnet-5");
     const dollarRoute = compute(MEASURED, "max20", "claude-sonnet-5", "high")!;
     expect(fmtTokens(dollarRoute.tokensPerWindow!)).toBe("1472M");
-    expect(row(text, "Input tokens per 5-hour window")[2]).not.toBe("1472M");
+    expect(text).not.toContain("1472M");
+    expect(text).not.toContain("49M input tokens");
     expect(text).not.toContain(`${Math.round(dollarRoute.sessionsPerWindow!)} sessions`);
-    // The chart still plots the raw-mix series, and now says which quantity that is.
-    expect(text).toContain("Plotted: tokens at the account's own mix, 97.0% of it cache reads, not the priced figure above.");
+    expect(text).toContain("tokens per 5-hour window: window tokens not yet published");
+    expect(text).not.toContain("Plotted: tokens at the account's own mix");
   });
 
   it("stops claiming the hero moves with effort, and puts the effort figures where it does", () => {
@@ -638,13 +646,13 @@ describe("the page states one figure per quantity", () => {
     }
   });
 
-  it("renders a file with no credits block exactly as it does today", () => {
+  it("renders a file with no credits block as it does today, bar the window it cannot state", () => {
     const text = render(WITHOUT, "max20", "claude-sonnet-5");
     expect(text).toMatch(/at low medium high xhigh max effort, you get/);
-    expect(text).toContain("1472M tokens per 5-hour window");
+    expect(text).not.toContain("1472M tokens per 5-hour window");
+    expect(text).toContain("tokens per 5-hour window: window tokens not yet published");
     expect(text).toContain("the output rate fitted from 60 measured stretches of real work");
     expect(text).toContain("run seven times at each effort level");
-    expect(text).toContain("Tokens per 5-hour window");
     expect(text).not.toContain("Input tokens per 5-hour window");
     expect(text).not.toContain("Plotted: tokens at the account's own mix");
   });
@@ -727,6 +735,159 @@ describe("the dated blocks and the shortfall table on the page", () => {
     for (const model of Object.keys(SHORTFALL.rates)) {
       for (const plan of ["pro", "max5", "max20"] as Plan[]) {
         expect(render(SHORTFALL, plan, model), `${model} ${plan}`).not.toMatch(/\bnull\b|\bNaN\b|\bundefined\b/);
+      }
+    }
+  });
+});
+
+// wf-60. The page's token figures on one route: the measured window, published by tracker wf-59
+// under `credits.window_tokens`. Tokens per 1% of the five-hour meter over the clean pure-Opus
+// stretches, times 100 -- no rate, no class weight, and no second route behind it.
+describe("the measured window in tokens", () => {
+  const WT = schema3WindowTokens as unknown as UsageJson;
+  const WINDOW = WT.credits!.window_tokens!;
+  // The same file before tracker wf-59: every other block, and no measured window.
+  const WITHOUT: UsageJson = (() => {
+    const j = structuredClone(WT);
+    delete j.credits!.window_tokens;
+    return j;
+  })();
+  const planIndex = (plan: Plan) => ["pro", "max5", "max20"].indexOf(plan);
+
+  it("starts every picker on Opus, the family the window was measured on", () => {
+    const html = renderToString(
+      <HelmetProvider context={{}}>
+        <MemoryRouter>
+          <ClaudeUsageTracker initial={WT} />
+        </MemoryRouter>
+      </HelmetProvider>,
+    );
+    expect(html).toContain('<option value="claude-opus-5" selected="">Opus 5</option>');
+    expect(html).not.toContain('<option value="claude-sonnet-5" selected="">');
+    // Both pickers are the one selection, so the contributors chart starts on Opus too.
+    expect(html.match(/<option value="claude-opus-5" selected="">/g)).toHaveLength(2);
+  });
+
+  it("leads on the measured window, with its interval and its classes", () => {
+    const text = render(WT, "max20", "claude-opus-5");
+    expect(WINDOW.per_family!.opus.all.value).toBe(473_774_890);
+    expect(text).toContain("474M tokens per 5-hour window");
+    expect(text).toContain("Range 398M to 542M.");
+    // One line of classes, the cache-read share as the block publishes it.
+    expect(text).toContain("444M cache reads (96.1%) · 15M cache writes · 2.8M output · 6k fresh input");
+    // One method sentence, dated by the stretches behind it.
+    expect(text).toContain(
+      "Method: median tokens per 1% of the five-hour meter over the pure-opus stretches of every watched account's passive stretch file, times 100, per token class.",
+    );
+    expect(text).toContain("Measured to 20 Sep 2026.");
+    // The figures the page kept: the credits the window costs, its API value, the sessions it buys.
+    expect(text).toContain("19,543,887 credits per 5-hour window");
+    expect(text).toContain("$146.58 of API value per window");
+    expect(text).toContain("about 354 sessions per window");
+    // And the two it no longer states: the window's credits over a family's credits per token.
+    expect(text).not.toContain("input tokens per 5-hour window");
+    expect(text).not.toContain("output tokens per 5-hour window");
+  });
+
+  it("states the same window in the hero, the window section and the plan table", () => {
+    for (const plan of ["pro", "max5", "max20"] as Plan[]) {
+      const text = render(WT, plan, "claude-opus-5");
+      const w = computeWindowTokens(WT, plan, "claude-opus-5")!;
+      expect(text.split(`${w.perWindow!.text} tokens per 5-hour window`).length, plan).toBeGreaterThanOrEqual(3);
+      expect(row(text, "Tokens per 5-hour window")[planIndex(plan)], plan).toBe(w.perWindow!.text);
+    }
+    // The plan ratios the rest of the page applies to a five-hour window, 1 : 6 : 20.
+    expect(row(render(WT, "max20", "claude-opus-5"), "Tokens per 5-hour window")).toEqual(["24M", "142M", "474M"]);
+  });
+
+  it("converts the window for Sonnet, and says what the conversion rests on", () => {
+    const text = render(WT, "max20", "claude-sonnet-5");
+    expect(text).toContain("610M tokens per 5-hour window");
+    expect(text).toContain("Range 380M to 967M.");
+    expect(text).toContain(
+      "Conversion: the measured Opus window converted at the meter's measured Sonnet rate, 0.6667 credits per input token over 0.5178",
+    );
+    // The classes were measured on Opus, so they are not restated at another family's rate.
+    expect(text).not.toContain("cache reads (96.1%)");
+    // The list-price window this page used to lead on for Sonnet, and the credits route's own.
+    expect(text).not.toContain("1498M");
+    expect(text).not.toContain("38M input tokens");
+  });
+
+  it("gives Fable its published status sentence and no number", () => {
+    const text = render(WT, "max20", "claude-fable-5-1");
+    expect(WINDOW.per_family!.fable.all.value).toBeNull();
+    expect(text).toContain("tokens per 5-hour window: rate not yet identified");
+    expect(text).toContain("tokens per week: rate not yet identified");
+    // No interval, no conversion arithmetic, and no level on the chart.
+    expect(text).not.toContain("134M");
+    expect(text).not.toContain("Conversion:");
+    expect(text).toContain("Not enough history yet.");
+    // Every cell of the table's token rows carries the sentence, and none carries a number.
+    // Fable is not on Pro at all, so that cell is the dash it has always been (finding 2, kept).
+    expect(text).toContain("Tokens per 5-hour window \u2014 rate not yet identified rate not yet identified");
+    expect(text).toContain("Tokens per week \u2014 rate not yet identified inferred rate not yet identified");
+  });
+
+  it("draws the per-week card and the per-week chart from the same figure, on every plan", () => {
+    for (const plan of ["pro", "max5", "max20"] as Plan[]) {
+      const text = render(WT, plan, "claude-opus-5");
+      const w = computeWindowTokens(WT, plan, "claude-opus-5")!;
+      const levels = weeklyTokenRegimeLevelsFor(WT, plan, "claude-opus-5");
+      // The card is the published per-week figure on this plan's own windows per week; the
+      // chart's newest level is that same window at the same count. They are one figure.
+      expect(fmtTokens(levels.at(-1)!.tokens), plan).toBe(w.perWeek!.text);
+      expect(text, plan).toContain(`${w.perWeek!.text} tokens per week`);
+      expect(row(text, "Tokens per week")[planIndex(plan)], plan).toContain(w.perWeek!.text);
+      // Every level is the same measured window, so the chart moves only where the limit did.
+      const windows = weeklyRegimeLevelsFor(WT, plan).map((l) => l.windows);
+      expect(levels.map((l) => Math.round(l.tokens)), plan).toEqual(
+        windows.map((n) => Math.round(n * WINDOW.per_family!.opus.all.value! * WT.plan_ratios[plan])),
+      );
+    }
+    expect(row(render(WT, "max20", "claude-opus-5"), "Tokens per week")).toEqual([
+      "141M inferred",
+      "1173M inferred",
+      "2345M",
+    ]);
+  });
+
+  it("reads no rate and no history row: emptying both leaves every figure standing", () => {
+    // The two fields the page used to price a window with. Nothing reads them now, so a file
+    // that publishes neither renders exactly the same figures (wf-60).
+    const stripped: UsageJson = structuredClone(WT);
+    stripped.history = {};
+    for (const rate of Object.values(stripped.rates)) rate.tokens_per_window = null;
+    const text = render(stripped, "max20", "claude-opus-5");
+    expect(text).toContain("474M tokens per 5-hour window");
+    expect(text).toContain("2345M tokens per week");
+    expect(text).not.toContain("Data temporarily unavailable");
+    expect(text).toBe(render(WT, "max20", "claude-opus-5"));
+  });
+
+  it("says so when the window is not published, and falls back to nothing", () => {
+    const text = render(WITHOUT, "max20", "claude-opus-5");
+    expect(text).toContain("tokens per 5-hour window: window tokens not yet published");
+    expect(text).toContain("tokens per week: window tokens not yet published");
+    // The chart has no level to draw, and the legacy route never stands in for one.
+    expect(text).toContain("Not enough history yet.");
+    expect(text).not.toMatch(/\d+M tokens per 5-hour window/);
+    expect(text).not.toMatch(/\d+M tokens per week/);
+    expect(text).not.toContain("Tokens per 5-hour window Pro");
+    // Everything else the file publishes is unchanged, and nothing renders as a null.
+    expect(text).toContain("19,543,887 credits per 5-hour window");
+    expect(text).toContain("about 354 sessions per window");
+    for (const model of Object.keys(WITHOUT.rates)) {
+      for (const plan of ["pro", "max5", "max20"] as Plan[]) {
+        expect(render(WITHOUT, plan, model), `${model} ${plan}`).not.toMatch(/\bnull\b|\bNaN\b|\bundefined\b/);
+      }
+    }
+  });
+
+  it("renders no null, NaN or undefined for any model or plan", () => {
+    for (const model of Object.keys(WT.rates)) {
+      for (const plan of ["pro", "max5", "max20"] as Plan[]) {
+        expect(render(WT, plan, model), `${model} ${plan}`).not.toMatch(/\bnull\b|\bNaN\b|\bundefined\b/);
       }
     }
   });
