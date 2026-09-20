@@ -53,8 +53,8 @@
   "max20": {
    "contributors": 2,
    "evidence": {
-    "as_of": "2026-09-20T11:30:11+00:00",
-    "current_since": "2026-08-21T11:30:11+00:00",
+    "as_of": "2026-09-20T12:30:12+00:00",
+    "current_since": "2026-08-21T12:30:12+00:00",
     "freshest_sample_at": "2026-09-16T00:11:31+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -118,8 +118,8 @@
   "max5": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-20T11:30:11+00:00",
-    "current_since": "2026-08-21T11:30:11+00:00",
+    "as_of": "2026-09-20T12:30:12+00:00",
+    "current_since": "2026-08-21T12:30:12+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -151,8 +151,8 @@
   "pro": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-20T11:30:11+00:00",
-    "current_since": "2026-08-21T11:30:11+00:00",
+    "as_of": "2026-09-20T12:30:12+00:00",
+    "current_since": "2026-08-21T12:30:12+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -180,7 +180,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-09-20T11:30:11+00:00"
+  "updated_at": "2026-09-20T12:30:12+00:00"
  },
  "credits": {
   "as_of": "2026-09-20T00:21:09+00:00",
@@ -688,7 +688,6 @@
     "output": 5.0,
     "why": "tools/reconcile_window.py section 3 holds this one rate on both sides of 2026-09-14 so the before and after medians can be compared with each other. It is not a claim about Fable's rate -- that is the interval above -- and it sits below the interval's low end; what makes the comparison work is that the same rate is in both medians."
    },
-   "largest_move_pct": 12.8,
    "method": "median credits per 1% over every clean stretch of the account, split on the announced change; one Fable rate held constant on both sides so the two medians are comparable to each other. An account whose n_with_capture is 0 has no usable capture column, so its meter movement includes work this host never saw and its level reads low; the comparison of its own two sides is still its own.",
    "per_account": {
     "a1": {
@@ -717,9 +716,8 @@
     }
    },
    "resolved": false,
-   "spread_after_pct": 46.8,
    "unit": "credits per 1% of the five-hour meter",
-   "unresolved": "the accounts differ from each other by 46.8% after the change, more than the largest per-account move across it (12.8%), so the five-hour and weekly meters cannot be separated from these stretches"
+   "unresolved": "a stable account-specific scale cancels out of any within-account before/after ratio, so these five-hour credit readings cannot separate a change in the five-hour window from a change in the weekly cap on their own -- that needs an independent debit or allowance observation, which no committed stretch carries. See the windows-per-week ratio note on the event for what these same accounts' meters do identify."
   },
   "harness_runs_excluded": [
    {
@@ -1599,8 +1597,8 @@
     "median_session_tokens": 6852277,
     "per_week": {
      "interval": [
-      87.7,
-      332.7
+      88.1,
+      334.1
      ],
      "status": "rate not yet identified",
      "value": null
@@ -1630,7 +1628,7 @@
      "status": "rate not yet identified",
      "value": null
     },
-    "windows_per_week": 4.92
+    "windows_per_week": 4.94
    },
    "claude-opus-5": {
     "cache_normalised": true,
@@ -1640,11 +1638,11 @@
     "median_session_tokens": 1781778,
     "per_week": {
      "interval": [
-      1536.5,
-      1854.5
+      1542.8,
+      1862.0
      ],
      "status": null,
-     "value": 1740.8
+     "value": 1747.9
     },
     "per_window": {
      "interval": [
@@ -1671,7 +1669,7 @@
      "status": null,
      "value": 630447968
     },
-    "windows_per_week": 4.92
+    "windows_per_week": 4.94
    },
    "claude-sonnet-5": {
     "cache_normalised": true,
@@ -1684,11 +1682,11 @@
     "median_session_tokens": 578088,
     "per_week": {
      "interval": [
-      3796.4,
-      11665.7
+      3811.8,
+      11713.1
      ],
      "status": null,
-     "value": 6908.6
+     "value": 6936.6
     },
     "per_window": {
      "interval": [
@@ -1715,7 +1713,7 @@
      "status": null,
      "value": 811738973
     },
-    "windows_per_week": 4.92
+    "windows_per_week": 4.94
    }
   },
   "window_credits": {
@@ -1764,12 +1762,12 @@
     "announced_weekly_cap_credits": 104166625,
     "from": "2026-09-14T11:30:00.088328+00:00",
     "to": "2026-09-20T14:39:59.863254+00:00",
-    "value": 21172078,
+    "value": 21086361,
     "weekly_cap_multiplier": 1.25,
-    "windows_per_week_measured": 4.92,
+    "windows_per_week_measured": 4.94,
     "windows_per_week_rounding_interval": [
-     4.6214,
-     5.2613
+     4.6413,
+     5.2776
     ]
    },
    "before": {
@@ -1987,18 +1985,18 @@
    "per_week": {
     "all": {
      "interval": [
-      1840474191,
-      2853802199
+      1848399373,
+      2862643546
      ],
      "status": null,
-     "value": 2330972459
+     "value": 2340447957
     },
     "per_family": {
      "fable": {
       "all": {
        "interval": [
-        404197894,
-        1997233880
+        405938392,
+        2003421498
        ],
        "status": "rate not yet identified",
        "value": null
@@ -2014,32 +2012,32 @@
      "opus": {
       "all": {
        "interval": [
-        1840474191,
-        2853802199
+        1848399373,
+        2862643546
        ],
        "status": null,
-       "value": 2330972459
+       "value": 2340447957
       }
      },
      "sonnet": {
       "all": {
        "interval": [
-        1475364375,
-        5824383382
+        1481717374,
+        5842427867
        ],
        "status": null,
-       "value": 3001264634
+       "value": 3013464897
       }
      }
     },
     "status": null,
     "windows_per_week": {
      "interval": [
-      4.6214,
-      5.2613
+      4.6413,
+      5.2776
      ],
      "source": "weekly_windows current, max20, newest regime",
-     "value": 4.92
+     "value": 4.94
     }
    },
    "selection": "A stretch counts when it moved the meter at least 3%, carries tokens, does not overlap one of the tracker's own runs on its own account (a probe row or the effort-matrix run), and reads capture_status 'accepted'."
@@ -2105,7 +2103,7 @@
    "confirmation": {
     "at": "2026-09-16",
     "evidence_points": 203,
-    "seven_day_pct": 224.0
+    "seven_day_pct": 226.0
    },
    "date": "2026-09-11",
    "direction": "decreased",
@@ -2117,7 +2115,6 @@
      "output": 5.0,
      "why": "tools/reconcile_window.py section 3 holds this one rate on both sides of 2026-09-14 so the before and after medians can be compared with each other. It is not a claim about Fable's rate -- that is the interval above -- and it sits below the interval's low end; what makes the comparison work is that the same rate is in both medians."
     },
-    "largest_move_pct": 12.8,
     "method": "median credits per 1% over every clean stretch of the account, split on the announced change; one Fable rate held constant on both sides so the two medians are comparable to each other. An account whose n_with_capture is 0 has no usable capture column, so its meter movement includes work this host never saw and its level reads low; the comparison of its own two sides is still its own.",
     "per_account": {
      "a1": {
@@ -2146,9 +2143,8 @@
      }
     },
     "resolved": false,
-    "spread_after_pct": 46.8,
     "unit": "credits per 1% of the five-hour meter",
-    "unresolved": "the accounts differ from each other by 46.8% after the change, more than the largest per-account move across it (12.8%), so the five-hour and weekly meters cannot be separated from these stretches"
+    "unresolved": "a stable account-specific scale cancels out of any within-account before/after ratio, so these five-hour credit readings cannot separate a change in the five-hour window from a change in the weekly cap on their own -- that needs an independent debit or allowance observation, which no committed stretch carries. See the windows-per-week ratio note on the event for what these same accounts' meters do identify."
    },
    "kind": "change",
    "label": "Observed windows per week fell about 24% around 2026-09-11 to 2026-09-14",
@@ -2168,17 +2164,55 @@
    "percent": 24,
    "provisional": false,
    "rounding_interval_after": [
-    4.6214,
-    5.2613
+    4.6413,
+    5.2776
    ],
    "rounding_interval_before": [
     6.2214,
     6.7656
    ],
-   "scope": "weekly"
+   "scope": "weekly",
+   "windows_per_week_ratio": {
+    "after": {
+     "end": "2026-09-20T14:39:59.863254+00:00",
+     "n_windows": 59,
+     "ratio": 4.9425,
+     "start": "2026-09-14T11:30:00.088328+00:00",
+     "sum_five_hour_pct": 1117.0,
+     "sum_seven_day_pct": 226.0
+    },
+    "before": {
+     "end": "2026-09-14T03:45:24+00:00",
+     "n_windows": 144,
+     "ratio": 6.4836,
+     "start": "2026-08-15T00:20:00.078325+00:00",
+     "sum_five_hour_pct": 3365.0,
+     "sum_seven_day_pct": 519.0
+    },
+    "consistent_with": [
+     {
+      "description": "the weekly cap falls by the whole measured amount, the five-hour window unchanged",
+      "five_hour_window_change_pct": 0.0,
+      "weekly_cap_change_pct": -23.77
+     },
+     {
+      "description": "the five-hour window rises, the weekly cap unchanged",
+      "five_hour_window_change_pct": 31.18,
+      "weekly_cap_change_pct": 0.0
+     },
+     {
+      "description": "the announced 17% weekly cut, with the rest of the measured fall an implied five-hour rise",
+      "five_hour_window_change_pct": 8.88,
+      "weekly_cap_change_pct": -17.0
+     }
+    ],
+    "method": "the pooled ratio of five-hour to seven-day meter movement over every window in each of the last two certified regimes (tracker/detect.py weighted_regimes), before divided by after. The fall is one equation in the ratio of the two meters' own budget changes; `consistent_with` lists example splits that reproduce it exactly, not measurements of which one moved.",
+    "ratio_fell_pct": 23.77,
+    "unit": "percent"
+   }
   }
  ],
- "generated_at": "2026-09-20T11:30:27.776876+00:00",
+ "generated_at": "2026-09-20T12:30:28.834885+00:00",
  "history": {
   "claude-fable-5-1": [
    {
@@ -3554,7 +3588,7 @@
   "confirmation": {
    "at": "2026-09-16",
    "evidence_points": 203,
-   "seven_day_pct": 224.0
+   "seven_day_pct": 226.0
   },
   "date": "2026-09-11",
   "direction": "decreased",
@@ -3566,7 +3600,6 @@
     "output": 5.0,
     "why": "tools/reconcile_window.py section 3 holds this one rate on both sides of 2026-09-14 so the before and after medians can be compared with each other. It is not a claim about Fable's rate -- that is the interval above -- and it sits below the interval's low end; what makes the comparison work is that the same rate is in both medians."
    },
-   "largest_move_pct": 12.8,
    "method": "median credits per 1% over every clean stretch of the account, split on the announced change; one Fable rate held constant on both sides so the two medians are comparable to each other. An account whose n_with_capture is 0 has no usable capture column, so its meter movement includes work this host never saw and its level reads low; the comparison of its own two sides is still its own.",
    "per_account": {
     "a1": {
@@ -3595,9 +3628,8 @@
     }
    },
    "resolved": false,
-   "spread_after_pct": 46.8,
    "unit": "credits per 1% of the five-hour meter",
-   "unresolved": "the accounts differ from each other by 46.8% after the change, more than the largest per-account move across it (12.8%), so the five-hour and weekly meters cannot be separated from these stretches"
+   "unresolved": "a stable account-specific scale cancels out of any within-account before/after ratio, so these five-hour credit readings cannot separate a change in the five-hour window from a change in the weekly cap on their own -- that needs an independent debit or allowance observation, which no committed stretch carries. See the windows-per-week ratio note on the event for what these same accounts' meters do identify."
   },
   "legacy_uncertain": false,
   "meter_attribution": "unresolved",
@@ -3615,17 +3647,55 @@
   "percent": 24,
   "provisional": false,
   "rounding_interval_after": [
-   4.6214,
-   5.2613
+   4.6413,
+   5.2776
   ],
   "rounding_interval_before": [
    6.2214,
    6.7656
   ],
-  "scope": "weekly"
+  "scope": "weekly",
+  "windows_per_week_ratio": {
+   "after": {
+    "end": "2026-09-20T14:39:59.863254+00:00",
+    "n_windows": 59,
+    "ratio": 4.9425,
+    "start": "2026-09-14T11:30:00.088328+00:00",
+    "sum_five_hour_pct": 1117.0,
+    "sum_seven_day_pct": 226.0
+   },
+   "before": {
+    "end": "2026-09-14T03:45:24+00:00",
+    "n_windows": 144,
+    "ratio": 6.4836,
+    "start": "2026-08-15T00:20:00.078325+00:00",
+    "sum_five_hour_pct": 3365.0,
+    "sum_seven_day_pct": 519.0
+   },
+   "consistent_with": [
+    {
+     "description": "the weekly cap falls by the whole measured amount, the five-hour window unchanged",
+     "five_hour_window_change_pct": 0.0,
+     "weekly_cap_change_pct": -23.77
+    },
+    {
+     "description": "the five-hour window rises, the weekly cap unchanged",
+     "five_hour_window_change_pct": 31.18,
+     "weekly_cap_change_pct": 0.0
+    },
+    {
+     "description": "the announced 17% weekly cut, with the rest of the measured fall an implied five-hour rise",
+     "five_hour_window_change_pct": 8.88,
+     "weekly_cap_change_pct": -17.0
+    }
+   ],
+   "method": "the pooled ratio of five-hour to seven-day meter movement over every window in each of the last two certified regimes (tracker/detect.py weighted_regimes), before divided by after. The fall is one equation in the ratio of the two meters' own budget changes; `consistent_with` lists example splits that reproduce it exactly, not measurements of which one moved.",
+   "ratio_fell_pct": 23.77,
+   "unit": "percent"
+  }
  },
  "last_sample_at": "2026-09-20T03:59:08+00:00",
- "meter_read_at": "2026-09-20T11:28:09+00:00",
+ "meter_read_at": "2026-09-20T12:28:09+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -4099,7 +4169,7 @@
      }
     },
     "a2": {
-     "current": 4.52,
+     "current": 4.53,
      "n": 65,
      "regimes": [
       {
@@ -4119,29 +4189,29 @@
       },
       {
        "assumed": false,
-       "end": "2026-09-20T11:28:08+00:00",
+       "end": "2026-09-20T12:28:09+00:00",
        "pieces": 30,
        "points": 30,
        "quality": "bounded",
        "rounding_interval": [
-        4.0496,
-        5.0913
+        4.0595,
+        5.1033
        ],
        "seven_day_pct": 92.0,
        "source": "passive_paired_deltas",
        "start": "2026-09-14T13:05:31+00:00",
-       "windows": 4.52
+       "windows": 4.53
       }
      ],
      "step": {
-      "after": 4.52,
+      "after": 4.53,
       "before": 6.41,
       "onset": "2026-09-14",
       "percent": -29
      }
     },
     "a3": {
-     "current": 5.41,
+     "current": 5.45,
      "n": 10,
      "regimes": [
       {
@@ -4151,13 +4221,13 @@
        "points": 10,
        "quality": "bounded",
        "rounding_interval": [
-        4.8677,
-        6.0564
+        4.9213,
+        6.0738
        ],
-       "seven_day_pct": 54.0,
+       "seven_day_pct": 56.0,
        "source": "passive_paired_deltas",
        "start": "2026-09-18T04:06:38+00:00",
-       "windows": 5.41
+       "windows": 5.45
       }
      ],
      "step": null
@@ -6779,49 +6849,49 @@
     },
     {
      "account": "a2",
-     "five_hour_pct": 4.0,
+     "five_hour_pct": 5.0,
      "pieces": 1,
      "reset_verified": false,
      "rounding_interval": [
-      0.9451,
+      1.3341,
       null
      ],
      "seven_day_pct": 1.0,
-     "window_ending": "2026-09-20T11:28:08+00:00",
-     "windows": 4.0
+     "window_ending": "2026-09-20T12:28:09+00:00",
+     "windows": 5.0
     },
     {
      "account": "a3",
-     "five_hour_pct": 5.0,
+     "five_hour_pct": 18.0,
      "pieces": 1,
      "reset_verified": true,
      "rounding_interval": [
-      0.9605,
-      15.3004
+      2.9493,
+      8.0556
      ],
-     "seven_day_pct": 2.0,
+     "seven_day_pct": 4.0,
      "window_ending": "2026-09-20T14:39:59.863254+00:00",
-     "windows": 2.5
+     "windows": 4.5
     }
    ],
-   "current": 4.92,
+   "current": 4.94,
    "current_estimate": {
     "as_of": "2026-09-20T14:39:59.863254+00:00",
     "assumed": false,
-    "five_hour_pct": 1103.0,
+    "five_hour_pct": 1117.0,
     "from": "2026-09-14T11:30:00.088328+00:00",
     "pieces": 59,
     "points": 59,
     "quality": "measured",
     "reasons": [],
     "rounding_interval": [
-     4.6214,
-     5.2613
+     4.6413,
+     5.2776
     ],
-    "seven_day_pct": 224.0,
+    "seven_day_pct": 226.0,
     "source": "passive_paired_deltas",
     "stale": false,
-    "value": 4.92
+    "value": 4.94
    },
    "history": [
     {
@@ -6950,13 +7020,13 @@
      "points": 59,
      "quality": "bounded",
      "rounding_interval": [
-      4.6214,
-      5.2613
+      4.6413,
+      5.2776
      ],
-     "seven_day_pct": 224.0,
+     "seven_day_pct": 226.0,
      "source": "passive_paired_deltas",
      "start": "2026-09-14T11:30:00.088328+00:00",
-     "windows": 4.92
+     "windows": 4.94
     }
    ],
    "weekly": [
@@ -7032,17 +7102,17 @@
     },
     {
      "assumed": false,
-     "five_hour_pct": 1150.0,
+     "five_hour_pct": 1164.0,
      "n": 60,
      "partial": true,
      "rounding_interval": [
-      4.6793,
-      5.3107
+      4.6982,
+      5.326
      ],
-     "seven_day_pct": 231.0,
+     "seven_day_pct": 233.0,
      "source": "passive_paired_deltas",
      "week_ending": "2026-09-20",
-     "windows": 4.98
+     "windows": 5.0
     }
    ]
   },
@@ -7052,7 +7122,7 @@
     "reason": "scaled_from_max20_by_weekly_window_ratio",
     "status": "inferred"
    },
-   "current": 8.2,
+   "current": 8.23,
    "current_estimate": null,
    "history": [
     {
@@ -11454,7 +11524,7 @@
     "reason": "scaled_from_max20_by_weekly_window_ratio",
     "status": "inferred"
    },
-   "current": 5.9,
+   "current": 5.93,
    "current_estimate": null,
    "history": [],
    "inferred_from": "max20",
