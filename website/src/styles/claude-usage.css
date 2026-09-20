@@ -49,6 +49,8 @@
 .cut .hl { color: var(--ads-acd); font-weight: 600; }
 /* An inferred figure's mark: muted, like the grey of an inferred level on the weekly charts. */
 .cut td em { font-style: normal; font-weight: 400; color: var(--ads-mut); }
+.cut td .nowrap { white-space: nowrap; }
+.cut td .fig { font-weight: inherit; }
 .cut details { border-top: 1px solid var(--ads-line); }
 .cut summary { padding: 18px 0; font-weight: 500; font-size: 15px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; }
 .cut summary::after { content: "expand ⌄"; color: var(--ads-mut); font-weight: 400; font-size: 13px; }
@@ -145,3 +147,47 @@
 .cut .section-sel { display: flex; align-items: baseline; gap: 14px; font-size: 15px; margin-left: auto; }
 .cut .chart-tabs { align-items: baseline; }
 @media (max-width: 640px) { .cut .section-sel { margin-left: 0; } }
+
+/* Effort matrix: on desktop this is an ordinary table (see .cut table / th / td above);
+   on a phone the 6-column grid wraps every cell into several lines, so it becomes one
+   stacked block per model with the effort name as a left-hand label instead of a header. */
+@media (max-width: 640px) {
+  .cut table.effort thead { display: none; }
+  .cut table.effort, .cut table.effort tbody, .cut table.effort tr, .cut table.effort td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .cut table.effort th:not(:first-child), .cut table.effort td:not(:first-child) { text-align: left; }
+  .cut table.effort td[data-model] {
+    padding: 16px 0 6px;
+    font-size: 15px;
+    font-weight: 600;
+    border-bottom: none;
+  }
+  .cut table.effort td[data-model].hl { color: var(--ads-acd); }
+  .cut table.effort td[data-effort] {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    column-gap: 12px;
+    align-items: baseline;
+    padding: 8px 0;
+    text-align: left;
+    border-bottom: 1px solid var(--ads-line);
+    position: relative;
+  }
+  .cut table.effort td[data-effort]::before {
+    content: attr(data-effort);
+    color: var(--ads-mut);
+    font-size: 13px;
+    grid-row: 1 / span 3;
+  }
+  .cut table.effort td[data-effort] .fig { font-size: 15px; }
+  .cut table.effort td[data-effort] div { font-size: 12.5px; line-height: 1.5; }
+  .cut table.effort td[data-effort].hl .fig,
+  .cut table.effort td[data-effort].hl::before {
+    color: var(--ads-acd);
+  }
+  .cut table.effort tr:not(:last-child) td[data-effort]:last-child { border-bottom: none; }
+  .cut table.effort tr:last-child td[data-effort]:last-child { border-bottom: 1px solid var(--ads-line); }
+}
