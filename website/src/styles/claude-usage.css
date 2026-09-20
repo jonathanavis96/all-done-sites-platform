@@ -148,9 +148,10 @@
 .cut .chart-tabs { align-items: baseline; }
 @media (max-width: 640px) { .cut .section-sel { margin-left: 0; } }
 
-/* Effort matrix: on desktop this is an ordinary table (see .cut table / th / td above);
-   on a phone the 6-column grid wraps every cell into several lines, so it becomes one
-   stacked block per model with the effort name as a left-hand label instead of a header. */
+/* Effort matrix: on desktop this is an ordinary table (see .cut table / th / td above), rows
+   are efforts (max down to low) and columns are models. On a phone the 4-column grid wraps
+   every cell into several lines, so it becomes one stacked block per effort with the model
+   name as a left-hand label instead of a header. */
 @media (max-width: 640px) {
   .cut table.effort thead { display: none; }
   .cut table.effort, .cut table.effort tbody, .cut table.effort tr, .cut table.effort td {
@@ -159,14 +160,14 @@
     box-sizing: border-box;
   }
   .cut table.effort th:not(:first-child), .cut table.effort td:not(:first-child) { text-align: left; }
-  .cut table.effort td[data-model] {
+  .cut table.effort td[data-effort] {
     padding: 16px 0 6px;
     font-size: 15px;
     font-weight: 600;
     border-bottom: none;
   }
-  .cut table.effort td[data-model].hl { color: var(--ads-acd); }
-  .cut table.effort td[data-effort] {
+  .cut table.effort td[data-effort].hl { color: var(--ads-acd); }
+  .cut table.effort td[data-model] {
     display: grid;
     grid-template-columns: 64px 1fr;
     column-gap: 12px;
@@ -176,18 +177,18 @@
     border-bottom: 1px solid var(--ads-line);
     position: relative;
   }
-  .cut table.effort td[data-effort]::before {
-    content: attr(data-effort);
+  .cut table.effort td[data-model]::before {
+    content: attr(data-model-label);
     color: var(--ads-mut);
     font-size: 13px;
     grid-row: 1 / span 3;
   }
-  .cut table.effort td[data-effort] .fig { font-size: 15px; }
-  .cut table.effort td[data-effort] div { font-size: 12.5px; line-height: 1.5; }
-  .cut table.effort td[data-effort].hl .fig,
-  .cut table.effort td[data-effort].hl::before {
+  .cut table.effort td[data-model] .fig { font-size: 15px; }
+  .cut table.effort td[data-model] div { font-size: 12.5px; line-height: 1.5; }
+  .cut table.effort td[data-model].hl .fig,
+  .cut table.effort td[data-model].hl::before {
     color: var(--ads-acd);
   }
-  .cut table.effort tr:not(:last-child) td[data-effort]:last-child { border-bottom: none; }
-  .cut table.effort tr:last-child td[data-effort]:last-child { border-bottom: 1px solid var(--ads-line); }
+  .cut table.effort tr:not(:last-child) td[data-model]:last-child { border-bottom: none; }
+  .cut table.effort tr:last-child td[data-model]:last-child { border-bottom: 1px solid var(--ads-line); }
 }

@@ -270,7 +270,10 @@ function LevelChart({
   if (plotted.length === 0) return <p className="sub">Not enough history yet.</p>;
   const W = 840, H = 260, L = 44, R = plotRight, T = 20, B = 200;
   const readings = overlay?.readings ?? [];
-  const pooled = overlay?.weekly ?? [];
+  // A partial (in-progress) week is dropped entirely -- not drawn, not in the y-axis range, not
+  // in the x-axis span, not in the aria label -- so it neither hangs a huge whisker in the
+  // margin nor stretches this chart's x domain past its sibling chart's.
+  const pooled = (overlay?.weekly ?? []).filter((p) => !p.partial);
   // A whisker end the collector could not bound (null) is not drawn, so it sets no range either.
   const whisker = (iv: (number | null)[] | null | undefined): [number, number] | null =>
     iv && typeof iv[0] === "number" && typeof iv[1] === "number" ? [iv[0], iv[1]] : null;
@@ -331,7 +334,7 @@ function LevelChart({
     plotted.map((p) => ({ plan: p.plan, y: y(p.levels[p.levels.length - 1].value) })),
     T + 6,
     B,
-    34,
+    16,
   );
   const dayMs = 86400e3;
   const spanDays = span / dayMs;
@@ -494,17 +497,15 @@ function LevelChart({
                 x1={xAt(last.end)}
                 x2={R + 6}
                 y1={y(last.value)}
-                y2={(labelY.get(p.plan) ?? y(last.value)) - 4}
+                y2={labelY.get(p.plan) ?? y(last.value)}
                 stroke={color}
                 strokeWidth="1"
                 strokeDasharray="2 3"
                 opacity=".6"
               />
-              <text x={R + 10} y={(labelY.get(p.plan) ?? y(last.value)) - 8} style={{ fill: ink, fontWeight: 500 }}>
-                {p.label}
-              </text>
-              <text x={R + 10} y={(labelY.get(p.plan) ?? y(last.value)) + 8} style={{ fill: ink, fontWeight: 700 }}>
-                {fmtValue(last.value)}
+              <text x={R + 10} y={(labelY.get(p.plan) ?? y(last.value)) + 4}>
+                <tspan style={{ fill: ink, fontWeight: 700 }}>{fmtValue(last.value)}</tspan>
+                <tspan style={{ fill: ink, fontWeight: 500 }}> – {p.label}</tspan>
               </text>
             </g>
           </g>
@@ -917,6 +918,13 @@ export default function ClaudeUsageTracker({
       : null;
   const effortMix = credits?.effort_cache_mix ?? null;
   const effortCredits = credits?.effort_credits ?? null;
+  // The effort table's own column order: Sonnet, Opus, Fable first (the plan's own progression),
+  // then any other model key the file happens to publish, kept in whatever order the file gives
+  // them so a new model never silently drops off the table.
+  const EFFORT_MODEL_ORDER = ["claude-sonnet-5", "claude-opus-5", "claude-fable-5-1"];
+  const effortModelOrder = effortMix
+    ? [...EFFORT_MODEL_ORDER.filter((m) => m in effortMix), ...Object.keys(effortMix).filter((m) => !EFFORT_MODEL_ORDER.includes(m))]
+    : [];
   // True once the credits block can state this model's window in credits. Everything the page
   // says about the meter, the API value it holds and the sessions it buys then comes from that one
   // block, so the hero, the chart headlines and the plan table cannot disagree. The token figures
@@ -1260,9 +1268,6 @@ export default function ClaudeUsageTracker({
                       ))}
                     </div>
                   )}
-                  {/* What the family's figure rests on where it is not the measured family's own:
-                      the conversion the block publishes, in its own words. */}
-                  {wt?.conversion && <div className="quiet">Conversion: {wt.conversion}.</div>}
                   {/* The credits route: what the meter charges for that window, what it is worth
                       at API list price, and the sessions it buys. The dollar route below is what
                       the page showed before the block existed. */}
@@ -1483,6 +1488,7 @@ export default function ClaudeUsageTracker({
                   fmtValue={fmtTokens}
                   plotRight={732}
                   title="Tokens per week over time"
+                  changeFromLevels
                 />
               </>
             )}
@@ -1650,23 +1656,23 @@ export default function ClaudeUsageTracker({
               <thead>
                 <tr>
                   <th></th>
-                  {EFFORTS.map((e) => (
-                    <th key={e} className={e === effort ? "hl" : ""}>{e}</th>
+                  {effortModelOrder.map((m) => (
+                    <th key={m} className={m === model ? "hl" : ""}>{MODEL_LABELS[m] ?? m}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {Object.keys(effortMix).map((m) => (
-                  <tr key={m}>
-                    <td data-model="" className={m === model ? "hl" : ""}>{MODEL_LABELS[m] ?? m}</td>
-                    {EFFORTS.map((e) => {
+                {[...EFFORTS].reverse().map((e) => (
+                  <tr key={e}>
+                    <td data-effort={e} className={e === effort ? "hl" : ""}>{e}</td>
+                    {effortModelOrder.map((m) => {
                       const usd = data.effort_usd?.[m]?.[e];
                       const tokens = data.effort[m]?.[e];
                       const cell = effortMix[m]?.[e];
                       const ec = effortCredits ? computeCredits(data, plan, m, e)?.effortCredits ?? null : null;
                       const hl = m === model && e === effort ? "hl" : "";
                       return (
-                        <td key={e} data-effort={e} className={hl}>
+                        <td key={m} data-model={m} data-model-label={MODEL_LABELS[m] ?? m} className={hl}>
                           <b className="fig">
                             {typeof usd === "number" ? fmtUsd2(usd) : typeof tokens === "number" ? fmtTokens(tokens) : "—"}
                           </b>
@@ -1731,6 +1737,12 @@ export default function ClaudeUsageTracker({
               The weekly limit is measured the same way, per five-hour window: how far the seven-day meter moves for
               each full window spent. A change is dated to the day it lands rather than averaged into a calendar week.
             </p>
+            {wt?.conversion && (
+              <p>
+                Fable and Sonnet window figures are the Opus window converted at the two families' measured input
+                rates, at the same token-class mix.
+              </p>
+            )}
           </details>
           <details>
             <summary>Caveats</summary>

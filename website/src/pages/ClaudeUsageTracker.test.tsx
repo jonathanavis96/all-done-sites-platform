@@ -368,13 +368,18 @@ describe("the weekly chart and plan table with tracker wf-50's fields", () => {
     );
   });
 
-  it("draws the weekly pooled points with whiskers, the partial week hollow, beneath the step line", () => {
+  it("draws the weekly pooled points with whiskers, dropping any week still in progress, beneath the step line", () => {
     const chart = weeklyChart(renderHtml(WF50));
     const weekly = WF50.weekly_windows!.max20!.weekly!;
+    const complete = weekly.filter((w) => !w.partial);
     const markers: string[] = chart.match(/<circle[^>]*r="4\.5"[^>]*>/g) ?? [];
-    expect(markers).toHaveLength(weekly.length);
-    expect(markers.filter((m) => m.includes('fill="var(--ads-bg)"'))).toHaveLength(weekly.filter((w) => w.partial).length);
+    // A partial (in-progress) week is dropped entirely, so no hollow marker is ever drawn for
+    // one -- it used to hang a huge whisker out in the right margin and stretch this chart's
+    // x-axis past its sibling chart's.
     expect(weekly.some((w) => w.partial)).toBe(true);
+    expect(markers).toHaveLength(complete.length);
+    expect(markers.filter((m) => m.includes('fill="var(--ads-bg)"'))).toHaveLength(0);
+    expect(markers.every((m) => !m.includes('stroke-width="1.75"'))).toBe(true);
     expect(chart).toContain("readings pooled");
     // The regime step line stays the top layer: every reading and marker comes before it.
     expect(chart.lastIndexOf("<circle")).toBeLessThan(chart.indexOf('stroke-width="3"'));
@@ -1049,11 +1054,16 @@ describe("the measured window in tokens", () => {
     const text = render(WT, "max20", "claude-sonnet-5");
     expect(text).toContain("610M tokens per 5-hour window");
     expect(text).toContain("Range 380M to 967M.");
+    // The conversion sentence moved out of the hero (a per-model "Conversion: …" line) into the
+    // shared "How we measure this" details, as one plain sentence.
+    expect(text).not.toContain("Conversion: the measured Opus window converted at the meter's measured Sonnet rate");
     expect(text).toContain(
-      "Conversion: the measured Opus window converted at the meter's measured Sonnet rate, 0.6667 credits per input token over 0.5178",
+      "Fable and Sonnet window figures are the Opus window converted at the two families' measured input rates, at the same token-class mix.",
     );
-    // The classes were measured on Opus, so they are not restated at another family's rate.
-    expect(text).not.toContain("cache reads (96.1%)");
+    // The class breakdown is the Opus-measured split scaled by the same ratio the window figure
+    // itself was converted at -- the conversion text says the class mix is assumed unchanged, so
+    // the hero now states that split rather than omitting it.
+    expect(text).toContain("572M cache reads (96.1%)");
     // The list-price window this page used to lead on for Sonnet, and the credits route's own.
     expect(text).not.toContain("1498M");
     expect(text).not.toContain("38M input tokens");

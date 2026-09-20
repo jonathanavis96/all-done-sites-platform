@@ -1748,8 +1748,33 @@ describe("computeWindowTokens", () => {
     expect(w.perWindowValue).toBeCloseTo(473_774_890 * (0.6666666666666666 / 0.5177756137802535), 0);
     expect(w.rateSource).toBe("measured");
     expect(w.conversion).toContain("converted at the meter's measured Sonnet rate");
-    // The classes were measured on Opus and are not restated at another family's rate.
-    expect(w.perClass).toEqual([]);
+    // The classes were measured on Opus, but the conversion text says the class mix is assumed
+    // unchanged -- so a converted family's split is that same measured breakdown, scaled by the
+    // same ratio its own window figure was.
+    expect(w.perClass.map((c) => c.cls)).toEqual(["cache_read", "cache_write", "output", "input"]);
+    const ratio = block.per_family!.sonnet.all.value! / block.all.value!;
+    for (const cls of ["cache_read", "cache_write", "output", "input"] as const) {
+      const raw = block.per_class![cls]!.value!;
+      expect(w.perClass.find((c) => c.cls === cls)!.fig.text).toBe(fmtTokens(raw * ratio));
+    }
+  });
+
+  it("scales the cache-read class the same ratio as the window figure, for a converted family with a value", () => {
+    // Fable's own window has no identified rate in this fixture (status only), so it carries no
+    // class split -- but the ratio math is the same one that produces Sonnet's split above, and
+    // this pins it against the measured family's own class figure directly.
+    const opus = computeWindowTokens(WT, "max20", OPUS)!;
+    const sonnet = computeWindowTokens(WT, "max20", SONNET)!;
+    const opusCacheRead = opus.perClass.find((c) => c.cls === "cache_read")!.fig.text;
+    expect(opusCacheRead).toBe("444M");
+    const ratio = block.per_family!.sonnet.all.value! / block.all.value!;
+    expect(sonnet.perClass.find((c) => c.cls === "cache_read")!.fig.text).toBe(
+      fmtTokens(block.per_class!.cache_read!.value! * ratio),
+    );
+    const fable = computeWindowTokens(WT, "max20", FABLE)!;
+    // Fable's own family has no value in this fixture, so its class split stays empty rather
+    // than dividing by a ratio that does not exist.
+    expect(fable.perClass).toEqual([]);
   });
 
   it("prints a family's status where it has no value, with no interval beside it", () => {
