@@ -1607,16 +1607,22 @@ describe("inferred Opus 5.5 and Haiku rows", () => {
     }
   });
 
-  it("changes nothing on today's live file, where both rows are null with a status", () => {
+  // The live snapshot as of the 2026-09-23 data refresh: both rows now carry inferred figures.
+  it("renders today's live file with Opus 5.5 and Haiku both inferred", () => {
+    // A measured model's page carries none of the inferred wording.
     const html = renderHtml(LIVE_NOW, "max20", "claude-opus-5");
     expect(html).not.toMatch(/not yet measured|inferred (Opus|Haiku)/);
     for (const list of options(html)) {
-      expect(list).not.toContain(OPUS55);
+      expect(list).toContain(OPUS55);
       expect(list).toContain(HAIKU);
     }
+    const opus55 = render(LIVE_NOW, "max20", OPUS55);
+    expect(opus55).toContain("tokens per 5-hour window Inferred from Anthropic's list price, not yet measured.");
+    expect(opus55).toContain("Priced at an inferred Opus 5.5 rate");
     const haiku = render(LIVE_NOW, "max20", HAIKU);
-    expect(haiku).toContain("not measurable");
-    expect(haiku).not.toContain("not yet measured");
+    expect(haiku).toContain("Inferred from the January 2026 credit table, not yet measured.");
+    expect(haiku).toContain("Priced at an inferred Haiku rate");
+    expect(haiku).not.toContain("not measurable");
   });
 });
 
