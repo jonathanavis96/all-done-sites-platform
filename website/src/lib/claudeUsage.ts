@@ -1358,6 +1358,11 @@ export interface PerModelCredits {
   // accounts or at the published reference table's figure, and that table's figure beside it.
   // The reference rate is drawn next to the measurement and is never an input to one.
   rate_source?: string | null;
+  // Where `rate_source` is "inferred" (a family the fits cannot identify yet): what the rate was
+  // inferred from, "reference_table" (the January 2026 credit table) or "list_price" (its API list
+  // price against the anchor's). The row's figures are filled as a measured row's are, with no
+  // interval.
+  inferred_from?: string | null;
   reference_rate?: { input: number | null; output: number | null } | null;
   reference_rate_note?: string | null;
   // The newest stretch this row's own figures rest on. Null where the row has no stretch to
@@ -1601,8 +1606,36 @@ export function modelFamily(model: string): string | null {
   return /^claude-(opus-5-5|opus|sonnet|haiku|fable)\b/.exec(model)?.[1] ?? null;
 }
 
-// Families the page leaves out entirely until the block measures them: no option, no column, no
-// sentence. Haiku is not here; it keeps the status the page already gives it.
+// The published JSON names watched accounts only by anonymous labels, a1 to a4, all of them Max
+// accounts. The page shows each as "Max account N"; anything else is shown as published.
+export function accountLabel(label: string): string {
+  const m = /^a([1-9]\d*)$/.exec(label);
+  return m ? `Max account ${m[1]}` : label;
+}
+
+// True when the block publishes this family's figures at an inferred rate rather than a measured
+// one: either the per-model row or the window-tokens family says so.
+export function familyRateInferred(j: UsageJson, family: string | null): boolean {
+  if (!family) return false;
+  const credits = creditsOf(j);
+  return (
+    credits?.per_model?.[family]?.rate_source === "inferred" ||
+    credits?.window_tokens?.per_family?.[family]?.rate_source === "inferred"
+  );
+}
+
+// The words set beside an inferred family's figures, from what the block says it was inferred from.
+export function inferredRateNote(j: UsageJson, family: string | null): string | null {
+  if (!familyRateInferred(j, family)) return null;
+  const from = creditsOf(j)?.per_model?.[family!]?.inferred_from;
+  if (from === "list_price") return "Inferred from Anthropic's list price, not yet measured.";
+  if (from === "reference_table") return "Inferred from the January 2026 credit table, not yet measured.";
+  return "Inferred, not yet measured.";
+}
+
+// Families the page leaves out entirely until the block has figures for them, measured or
+// inferred: no option, no column, no sentence. Haiku is not here; it keeps the status the page
+// already gives it until then.
 const HIDDEN_UNTIL_MEASURED = ["opus-5-5"];
 // Where a model sits among the others wherever the page lists them: directly after the one named.
 const MODEL_PLACED_AFTER: Record<string, string> = { "claude-opus-5-5": "claude-opus-5" };
@@ -1748,19 +1781,25 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
     weekScale === null ? null : fig(f, fmt, weekScale);
   const count = (n: number) => Math.round(n).toLocaleString("en-US");
   const cell = effort ? credits.effort_credits?.[model]?.[effort] ?? null : null;
+  // An inferred rate is a single figure the fits did not measure, so no figure priced at it
+  // carries an interval, whatever the row publishes.
+  const inferred = familyRateInferred(j, family);
+  const noRange = (f: CreditFigureText | null) => (f && inferred ? { ...f, range: null } : f);
   return {
     included: limit.included,
     family,
+    rateInferred: inferred,
+    inferredNote: inferredRateNote(j, family),
     // No token figure here. `per_model[family].tokens_per_window` is the window's credits over
     // that family's credits per token -- the whole window spent on nothing but fresh input, or
     // nothing but output, and on Sonnet it carries the fitted rate's 0.33-to-0.83 interval with
     // it. The page states the measured window instead; see computeWindowTokens (wf-60).
-    usdIn: fig(per?.api_value_per_window_usd?.input, fmtUsd2),
-    usdOut: fig(per?.api_value_per_window_usd?.output, fmtUsd2),
+    usdIn: noRange(fig(per?.api_value_per_window_usd?.input, fmtUsd2)),
+    usdOut: noRange(fig(per?.api_value_per_window_usd?.output, fmtUsd2)),
     // The same window's API value a week of windows holds. The dollar route publishes its own
     // per-window figure ($144.05 against the credits block's $75.49 on the same file), so the
     // table takes this from the block too rather than putting the two side by side.
-    usdInPerWeek: perWeek(per?.api_value_per_window_usd?.input, fmtUsd),
+    usdInPerWeek: noRange(perWeek(per?.api_value_per_window_usd?.input, fmtUsd)),
     windowCredits: fig(wc, fmtCredits),
     windowCreditsN: typeof wc?.n === "number" ? wc.n : null,
     pureFamily: wc?.pure_family ?? null,
@@ -1773,7 +1812,7 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
     creditsAsOf: credits.as_of ?? null,
     familyAsOf: per?.as_of ?? null,
     creditsPerTokenIn: per?.credits_per_token?.input ?? null,
-    creditsPerTokenInInterval: per?.credits_per_token_interval?.input ?? null,
+    creditsPerTokenInInterval: inferred ? null : per?.credits_per_token_interval?.input ?? null,
     referenceRateIn: per?.reference_rate?.input ?? null,
     sessionsPerWindow: fig(session?.per_window, count),
     // The published per-week figure already carries the measured windows per week; the model's
@@ -1839,7 +1878,10 @@ export function windowTokensCutFor(j: UsageJson, model: string): WindowTokensCut
   return {
     cutAt,
     value: before.value * conversion,
-    interval: Array.isArray(iv) ? iv.map((n) => (typeof n === "number" && Number.isFinite(n) ? n * conversion : null)) : null,
+    interval:
+      Array.isArray(iv) && !familyRateInferred(j, modelFamily(model))
+        ? iv.map((n) => (typeof n === "number" && Number.isFinite(n) ? n * conversion : null))
+        : null,
   };
 }
 
@@ -1857,8 +1899,10 @@ function windowTokensAt(
 }
 
 // The published spread of the current window figure for one model, as the levels' own range.
+// An inferred family's figure has none: the page never draws an interval around an inferred rate.
 function windowTokensIntervalFor(j: UsageJson, model: string): (number | null)[] | null {
   const family = modelFamily(model);
+  if (familyRateInferred(j, family)) return null;
   const iv = family ? creditsOf(j)?.window_tokens?.per_family?.[family]?.all?.interval : null;
   return Array.isArray(iv) ? iv : null;
 }
@@ -1889,6 +1933,8 @@ export interface WindowTokensView {
   // figure above rests on that plan's measurement. The table marks those cells, as it does the
   // credits route's.
   weeklyInferred: boolean;
+  // The words beside every figure here when the family's rate is inferred rather than measured.
+  inferredNote: string | null;
   n: number | null;
 }
 
@@ -1906,10 +1952,12 @@ export function computeWindowTokens(j: UsageJson, plan: Plan, model: string): Wi
   const fam = family ? wt.per_family?.[family] ?? null : null;
   // A published sentence stands in the number's place and is the whole figure: no interval is
   // drawn beside it, so an unmeasured family is never quoted as a range the page did not measure.
+  // An inferred family's figure draws no interval either.
+  const inferred = familyRateInferred(j, family);
   const fig = (f: CreditsFigure | undefined | null, s = scale): CreditFigureText | null => {
     if (!limit.included) return null;
     const text = creditFigure(f, fmtTokens, s);
-    return text && text.kind === "status" ? { ...text, range: null } : text;
+    return text && (text.kind === "status" || inferred) ? { ...text, range: null } : text;
   };
   const value = (f: CreditsFigure | undefined | null, s = scale): number | null =>
     limit.included && typeof f?.value === "number" && Number.isFinite(f.value) ? f.value * s : null;
@@ -1963,6 +2011,7 @@ export function computeWindowTokens(j: UsageJson, plan: Plan, model: string): Wi
     asOf: wt.as_of ?? null,
     windowsPerWeek: typeof published === "number" ? published : null,
     weeklyInferred: week.value !== null && week.inferred,
+    inferredNote: inferredRateNote(j, family),
     n: typeof wt.n === "number" ? wt.n : null,
   };
 }

@@ -2085,3 +2085,15 @@ describe("stoppedFeeds", () => {
     expect(stoppedFeedsLine(two)).toBe("Two accounts' data has not arrived since 20 Sep.");
   });
 });
+
+describe("accountLabel", () => {
+  it("names an anonymous a<N> label as a Max account, and leaves anything else alone", async () => {
+    const { accountLabel } = await import("./claudeUsage");
+    expect(accountLabel("a1")).toBe("Max account 1");
+    expect(accountLabel("a4")).toBe("Max account 4");
+    expect(accountLabel("a12")).toBe("Max account 12");
+    expect(accountLabel("a0")).toBe("a0");
+    expect(accountLabel("masterrig")).toBe("masterrig");
+    expect(accountLabel("ab1")).toBe("ab1");
+  });
+});
