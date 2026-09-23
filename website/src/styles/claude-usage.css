@@ -51,6 +51,12 @@
 .cut td em { font-style: normal; font-weight: 400; color: var(--ads-mut); }
 .cut td .nowrap { white-space: nowrap; }
 .cut td .fig { font-weight: inherit; }
+/* The selected model and effort: the whole cell, tinted and outlined in the accent. An inset
+   shadow rather than a border, so the highlighted cell takes no more room than its neighbours. */
+.cut table.effort td[data-model].hl {
+  background: color-mix(in srgb, var(--ads-acd) 9%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--ads-acd);
+}
 .cut details { border-top: 1px solid var(--ads-line); }
 .cut summary { padding: 18px 0; font-weight: 500; font-size: 15px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; }
 .cut summary::after { content: "expand ⌄"; color: var(--ads-mut); font-weight: 400; font-size: 13px; }
@@ -189,6 +195,9 @@
   .cut table.effort td[data-model].hl::before {
     color: var(--ads-acd);
   }
+  /* Stacked cells run edge to edge with no side padding; the highlighted one gets some, so its
+     tint and outline do not touch the label or the figures. */
+  .cut table.effort td[data-model].hl { padding: 8px 10px; }
   .cut table.effort tr:not(:last-child) td[data-model]:last-child { border-bottom: none; }
   .cut table.effort tr:last-child td[data-model]:last-child { border-bottom: 1px solid var(--ads-line); }
 }
