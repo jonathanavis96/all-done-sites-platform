@@ -19,6 +19,8 @@ import {
   rateStaleAfter,
   rateEvidenceAt,
   staleEvidenceAt,
+  stoppedFeeds,
+  stoppedFeedsLine,
   weeklyReadingsFor,
   weeklyCurrentFor,
   planScaling,
@@ -2045,5 +2047,41 @@ describe("modelsNewestFirst", () => {
       "claude-new-9",
       "claude-other-1",
     ]);
+  });
+});
+
+describe("stoppedFeeds", () => {
+  const feed = (state: string, feed_at: string) => ({ feed_at, newest_stretch_end: feed_at, state });
+
+  it("finds nothing when the file predates account_feeds", () => {
+    expect(stoppedFeeds(J)).toEqual([]);
+    expect(stoppedFeedsLine(J)).toBeNull();
+  });
+
+  it("finds nothing when every feed is fresh or idle", () => {
+    const fresh: UsageJson = { ...J, account_feeds: { a1: feed("fresh", "2026-09-23T01:15:29+00:00"), a2: feed("fresh", "2026-09-23T01:10:00+00:00") } };
+    expect(stoppedFeeds(fresh)).toEqual([]);
+    const idle: UsageJson = { ...J, account_feeds: { a1: feed("fresh", "2026-09-23T01:15:29+00:00"), a2: feed("idle", "2026-09-19T08:00:00+00:00") } };
+    expect(stoppedFeeds(idle)).toEqual([]);
+    expect(stoppedFeedsLine(idle)).toBeNull();
+  });
+
+  it("returns a stopped feed by the published state alone", () => {
+    const one: UsageJson = { ...J, account_feeds: { a1: feed("fresh", "2026-09-23T01:15:29+00:00"), a3: feed("stopped", "2026-09-22T06:00:00+00:00") } };
+    expect(stoppedFeeds(one)).toEqual([{ label: "a3", feed_at: "2026-09-22T06:00:00+00:00" }]);
+    expect(stoppedFeedsLine(one)).toBe("One account's data has not arrived since 22 Sep.");
+  });
+
+  it("dates two stopped feeds by the oldest", () => {
+    const two: UsageJson = {
+      ...J,
+      account_feeds: {
+        a1: feed("stopped", "2026-09-22T06:00:00+00:00"),
+        a2: feed("idle", "2026-09-15T06:00:00+00:00"),
+        a4: feed("stopped", "2026-09-20T23:00:00+00:00"),
+      },
+    };
+    expect(stoppedFeeds(two).map((f) => f.label)).toEqual(["a4", "a1"]);
+    expect(stoppedFeedsLine(two)).toBe("Two accounts' data has not arrived since 20 Sep.");
   });
 });
