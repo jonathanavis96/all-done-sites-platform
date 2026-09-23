@@ -644,6 +644,7 @@ export type RangeDays = (typeof RANGE_DAYS)[number];
 export const MODEL_LABELS: Record<string, string> = {
   "claude-sonnet-5": "Sonnet 5",
   "claude-opus-5": "Opus 5",
+  "claude-opus-5-5": "Opus 5.5",
   "claude-fable-5-1": "Fable 5.1",
 };
 export const PLAN_LABELS: Record<Plan, string> = { pro: "Pro", max5: "Max 5x", max20: "Max 20x" };
@@ -1511,8 +1512,30 @@ export function shortfallRows(j: UsageJson): { plan: Plan; row: ShortfallPlan }[
 // `per_model` is keyed by family, not by model id: the meter's rates are per family and "Opus of
 // any version" is one rate. Null for a model id no family can be read from, which is how a model
 // the block does not price is skipped rather than mispriced.
+// Mirrors tracker/credits.py family(), which takes the longest `matches` that fits the model id:
+// claude-opus-5-5 is its own family, and claude-opus-5, -4-8 and -4-7 stay "opus".
 export function modelFamily(model: string): string | null {
-  return /^claude-(opus|sonnet|haiku|fable)\b/.exec(model)?.[1] ?? null;
+  return /^claude-(opus-5-5|opus|sonnet|haiku|fable)\b/.exec(model)?.[1] ?? null;
+}
+
+// Families the page leaves out entirely until the block measures them: no option, no column, no
+// sentence. Haiku is not here; it keeps the status the page already gives it.
+const HIDDEN_UNTIL_MEASURED = ["opus-5-5"];
+// Where a model sits among the others wherever the page lists them: directly after the one named.
+const MODEL_PLACED_AFTER: Record<string, string> = { "claude-opus-5-5": "claude-opus-5" };
+
+// The models a list on the page shows, in the order it shows them: the given keys less any model
+// whose family is hidden until measured and has no window figure yet, each placed model moved to
+// directly after its anchor when that anchor is in the list.
+export function pageModels(j: UsageJson, models: string[]): string[] {
+  const shown = models.filter((m) => {
+    const family = modelFamily(m);
+    return !(family && HIDDEN_UNTIL_MEASURED.includes(family) && windowTokensValueFor(j, m) === null);
+  });
+  const placed = shown.filter((m) => shown.includes(MODEL_PLACED_AFTER[m] ?? ""));
+  return shown
+    .filter((m) => !placed.includes(m))
+    .flatMap((m) => [m, ...placed.filter((p) => MODEL_PLACED_AFTER[p] === m)]);
 }
 
 export function fmtCredits(n: number): string {

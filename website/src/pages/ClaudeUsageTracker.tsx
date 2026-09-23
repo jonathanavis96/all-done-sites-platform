@@ -7,6 +7,7 @@ import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
   EFFORTS,
   MODEL_LABELS,
+  pageModels,
   accountWindowsPerWeek,
   basisDate,
   captureEmptyNote,
@@ -940,9 +941,13 @@ export default function ClaudeUsageTracker({
   // then any other model key the file happens to publish, kept in whatever order the file gives
   // them so a new model never silently drops off the table.
   const EFFORT_MODEL_ORDER = ["claude-sonnet-5", "claude-opus-5", "claude-fable-5-1"];
-  const effortModelOrder = effortMix
-    ? [...EFFORT_MODEL_ORDER.filter((m) => m in effortMix), ...Object.keys(effortMix).filter((m) => !EFFORT_MODEL_ORDER.includes(m))]
-    : [];
+  const effortModelOrder =
+    effortMix && data
+      ? pageModels(data, [
+          ...EFFORT_MODEL_ORDER.filter((m) => m in effortMix),
+          ...Object.keys(effortMix).filter((m) => !EFFORT_MODEL_ORDER.includes(m)),
+        ])
+      : [];
   // True once the credits block can state this model's window in credits. Everything the page
   // says about the meter, the API value it holds and the sessions it buys then comes from that one
   // block, so the hero, the chart headlines and the plan table cannot disagree. The token figures
@@ -1240,7 +1245,7 @@ export default function ClaudeUsageTracker({
                 , running{" "}
                 <span className="sel">
                   <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
-                    {Object.keys(data.rates).map((m) => (
+                    {pageModels(data, Object.keys(data.rates)).map((m) => (
                       <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
                     ))}
                   </select>
@@ -1630,7 +1635,7 @@ export default function ClaudeUsageTracker({
                     </span>
                     <span className="sel">
                       <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
-                        {Object.keys(data.rates).map((m) => (
+                        {pageModels(data, Object.keys(data.rates)).map((m) => (
                           <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
                         ))}
                       </select>
