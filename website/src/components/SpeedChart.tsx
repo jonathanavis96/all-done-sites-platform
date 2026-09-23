@@ -163,26 +163,29 @@ export default function SpeedChart({ series, selectedModel }: { series: SpeedSer
   );
 }
 
-// One colour per account, from the palette the contributor chart already uses, keyed by the
-// account's place in the block so an account keeps its colour whichever model is picked.
-function accountColor(index: number): string {
-  return CONTRIB_PALETTE[index % CONTRIB_PALETTE.length];
+// The account colours: the contributor palette without the two hues the plan and model lines
+// use -- the accent sky blue of a selected line and the slate beside the muted grey of the
+// others -- so an account line is never mistaken for a plan's or a model's.
+const ACCOUNT_PALETTE = CONTRIB_PALETTE.filter((c) => c !== ACCENT && c !== "#64748B");
+
+// One colour per account, keyed on the account's own label (a1 is always the first colour), so
+// each Max account has the one colour on every chart on the page, whichever chart lists it.
+export function accountColor(account: string): string {
+  const n = /^a([1-9]\d*)$/.exec(account)?.[1];
+  return ACCOUNT_PALETTE[n ? (Number(n) - 1) % ACCOUNT_PALETTE.length : 0];
 }
 
-// Median output tokens per second per day for one model, one line per account. Where a row
-// publishes its fast sessions separately, those are drawn for the account as a dotted line in the
-// same colour. A missing day is a gap; an account with no rows for the model has no line, and the
+// Median output tokens per second per day for one model, one line per account, charted as
+// published. A missing day is a gap; an account with no rows for the model has no line, and the
 // legend names it.
 export function SpeedByAccountChart({
   series,
   missing,
-  accounts,
   model,
   span: dayRange,
 }: {
   series: SpeedAccountSeries[];
   missing: string[];
-  accounts: string[];
   model: string;
   // First and last day of the chart above, so the two share a day axis.
   span?: [string, string];
@@ -192,7 +195,7 @@ export function SpeedByAccountChart({
     const el = scroller.current;
     if (el) el.scrollLeft = el.scrollWidth;
   }, [series.length, model]);
-  const colorOf = (a: string) => accountColor(Math.max(0, accounts.indexOf(a)));
+  const colorOf = accountColor;
   const legend = (
     <ul className="share-legend speed-legend">
       {series.map((s) => (
@@ -201,14 +204,6 @@ export function SpeedByAccountChart({
           {accountLabel(s.account)}
         </li>
       ))}
-      {series.some((s) => s.fastRuns.length > 0) && (
-        <li data-legend="fast-sessions">
-          <svg width="22" height="10" aria-hidden="true">
-            <line x1="1" x2="21" y1="5" y2="5" stroke="var(--ads-mut)" strokeWidth="2.5" strokeDasharray="1 4" strokeLinecap="round" />
-          </svg>
-          fast sessions
-        </li>
-      )}
       {missing.length > 0 && (
         <li data-legend="no-data">
           No data for {modelLabel(model)}: {missing.map(accountLabel).join(", ")}
@@ -219,7 +214,7 @@ export function SpeedByAccountChart({
   if (series.length === 0) return <div className="speed-chart">{legend}</div>;
   // The same plot box as the chart above, so a day sits under the same day there.
   const W = 840, H = 250, L = 44, R = 732, T = 20, B = 200;
-  const points = series.flatMap((s) => [...s.runs.flat(), ...s.fastRuns.flat()]);
+  const points = series.flatMap((s) => s.runs.flat());
   const vals = points.map((p) => p.median);
   const lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.05;
   const t = (d: string) => Date.parse(`${d}T00:00:00Z`);
@@ -238,15 +233,8 @@ export function SpeedByAccountChart({
   const line = (run: SpeedPoint[]) => run.map((p, i) => `${i === 0 ? "M" : "L"} ${x(p.day)},${y(p.median)}`).join(" ");
   const ariaLabel = [
     `Median output tokens per second by day for ${modelLabel(model)}, by account`,
-    ...series.map((s) =>
-      [
-        `${accountLabel(s.account)}: ${s.runs.flat().map((p) => `${fmtDate(p.day)} ${p.median.toFixed(1)}`).join(", ")}`,
-        s.fastRuns.length > 0
-          ? `${accountLabel(s.account)} fast sessions: ${s.fastRuns.flat().map((p) => `${fmtDate(p.day)} ${p.median.toFixed(1)}`).join(", ")}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(". "),
+    ...series.map(
+      (s) => `${accountLabel(s.account)}: ${s.runs.flat().map((p) => `${fmtDate(p.day)} ${p.median.toFixed(1)}`).join(", ")}`,
     ),
   ].join(". ");
   return (
@@ -270,13 +258,6 @@ export function SpeedByAccountChart({
                     <path key={run[0].day} data-run={run[0].day} d={line(run)} fill="none" stroke={color} strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" />
                   ) : (
                     <circle key={run[0].day} data-run={run[0].day} cx={x(run[0].day)} cy={y(run[0].median)} r="3" fill={color} />
-                  ),
-                )}
-                {s.fastRuns.map((run) =>
-                  run.length > 1 ? (
-                    <path key={`fast-${run[0].day}`} data-fast={run[0].day} d={line(run)} fill="none" stroke={color} strokeWidth="2.5" strokeDasharray="1 5" strokeLinecap="round" />
-                  ) : (
-                    <circle key={`fast-${run[0].day}`} data-fast={run[0].day} cx={x(run[0].day)} cy={y(run[0].median)} r="3.5" fill="var(--ads-bg)" stroke={color} strokeWidth="1.5" strokeDasharray="1 2" />
                   ),
                 )}
               </g>

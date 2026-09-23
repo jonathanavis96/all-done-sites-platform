@@ -113,6 +113,16 @@ export interface TokensPerWeekChange {
   five_hour_window_pct?: number;
   five_hour_accounts?: string[];
   method?: string;
+  // Tracker PR #90: each account's own tokens-per-week change, measured against itself across
+  // its own last step. Absent on files published before it.
+  per_account?: Record<string, { signed_pct?: number | null; windows_per_week_pct?: number; five_hour_window_pct?: number; weight?: number }>;
+}
+
+// Tracker PR #90: the windows-per-week change on the event, measured on each account against
+// itself over its own last two certified regimes. Only the fields the page reads are typed.
+export interface WindowsPerWeekRatio {
+  per_account?: Record<string, { change_pct?: number | null; ratio_after_over_before?: number; weight?: number }>;
+  excluded?: Record<string, string>;
 }
 
 // A detected change. Schema 1 publishes only date, direction, percent, model and scope. Schema 2
@@ -154,6 +164,7 @@ export interface ChangeRecord {
   // block carries the tokens figure the headline and the tokens-per-week chart read instead.
   // Absent or null on JSON published before wf-61, and on an event where it was not measured.
   tokens_per_week_change?: TokensPerWeekChange | null;
+  windows_per_week_ratio?: WindowsPerWeekRatio | null;
   // Anthropic's own figure for the change, quoted. A published claim shown beside the
   // measurement, never mixed into it.
   announced?: {
@@ -443,21 +454,14 @@ export interface SpeedStat {
 export interface SpeedDay {
   day: string;
   n: number;
-  // Requests in fast sessions, left out of this day's figures. The tracker renames it to
-  // fast_session_requests and keeps fast_excluded for one release; read it with
-  // speedFastSessionRequests.
+  // Requests that ran at about twice the usual speed, published under either name while the
+  // tracker renames the field; read it with speedFastSessionRequests. The page draws no separate
+  // series for them: each day's `output_tokens_per_s` is charted as published, and the tracker is
+  // moving to publish it with those requests included.
   fast_excluded?: number;
   fast_session_requests?: number;
   output_tokens_per_s: SpeedStat;
   time_to_first_block_s: SpeedStat | null;
-  // The same figures for the fast sessions alone, where the tracker publishes them.
-  fast_sessions?: SpeedFastSessions | null;
-}
-
-export interface SpeedFastSessions {
-  n: number;
-  output_tokens_per_s: SpeedStat;
-  time_to_first_block_s?: SpeedStat | null;
 }
 
 export interface SpeedModel {
@@ -518,17 +522,18 @@ export interface SpeedPoint {
   median: number;
 }
 
-// One account's lines on the per-account speed chart for one model: its own days, and the days
-// its fast sessions were published separately, each cut into runs of consecutive days.
+// One account's line on the per-account speed chart for one model: its own days, cut into runs
+// of consecutive days.
 export interface SpeedAccountSeries {
   account: string;
   runs: SpeedPoint[][];
-  fastRuns: SpeedPoint[][];
 }
 
-// Requests in fast sessions on one row, under either name the tracker publishes it by.
-export function speedFastSessionRequests(d: SpeedDay): number {
-  return d.fast_session_requests ?? d.fast_excluded ?? 0;
+// Requests at about twice the usual speed on one row, under either name the tracker publishes
+// it by. Null where the row carries neither.
+export function speedFastSessionRequests(d: SpeedDay): number | null {
+  const n = d.fast_session_requests ?? d.fast_excluded;
+  return typeof n === "number" && Number.isFinite(n) ? n : null;
 }
 
 // Every account the block knows, in label order: those with a first and last day, and any
@@ -553,14 +558,11 @@ export function speedAccountSeries(
     const points = rows
       .filter((d) => typeof d?.output_tokens_per_s?.median === "number")
       .map((d) => ({ day: d.day, median: d.output_tokens_per_s.median }));
-    const fast = rows
-      .filter((d) => typeof d?.fast_sessions?.output_tokens_per_s?.median === "number")
-      .map((d) => ({ day: d.day, median: d.fast_sessions!.output_tokens_per_s.median }));
-    if (points.length === 0 && fast.length === 0) {
+    if (points.length === 0) {
       missing.push(account);
       continue;
     }
-    series.push({ account, runs: consecutiveRuns(points), fastRuns: consecutiveRuns(fast) });
+    series.push({ account, runs: consecutiveRuns(points) });
   }
   return { series, missing };
 }
@@ -577,14 +579,19 @@ export function speedFirstBlockCaveat(block: SpeedBlock): string | null {
   return (block.caveats ?? []).find((c) => c.startsWith("Time to first block")) ?? null;
 }
 
-// The newest day any model has a row for, and the requests in fast sessions that day, summed
-// across models.
+// The newest day any model has a row for, and the requests at about twice the usual speed that
+// day, summed across models. Null where no row that day carries the count, so the page states it
+// only while the tracker still publishes it.
 export function speedFastSessionRequestsLatest(block: SpeedBlock): { day: string; count: number } | null {
   const days = Object.values(block.models ?? {}).flatMap((m) => m?.daily ?? []);
   if (days.length === 0) return null;
   const day = days.reduce((a, d) => (d.day > a ? d.day : a), days[0].day);
-  const count = days.filter((d) => d.day === day).reduce((a, d) => a + speedFastSessionRequests(d), 0);
-  return { day, count };
+  const counts = days
+    .filter((d) => d.day === day)
+    .map(speedFastSessionRequests)
+    .filter((n): n is number => n !== null);
+  if (counts.length === 0) return null;
+  return { day, count: counts.reduce((a, n) => a + n, 0) };
 }
 
 export function isSchema2(j: UsageJson): boolean {
@@ -1444,6 +1451,139 @@ export function tokensPerWeekChangePct(j: UsageJson): number | null {
   const t = tokensPerWeekChangeFor(j);
   if (!t || typeof t.percent !== "number" || !Number.isFinite(t.percent)) return null;
   return t.direction === "decreased" ? -t.percent : t.percent;
+}
+
+// ---------------------------------------------------------------------------
+// One line per watched account on the three plan charts
+// ---------------------------------------------------------------------------
+//
+// Every watched account is a Max 20x account, so its lines sit beside the Max 20x plan line and on
+// the same scale. Each line is flat per regime, as the plan lines are: the account's own regimes
+// from `weekly_windows.max20.by_account`, one level each. An account with nothing to draw on a
+// chart is named, never drawn at a guessed value.
+
+export interface AccountLine {
+  account: string;
+  levels: { start: string; end: string; value: number }[];
+  // The account's own change across the cut, where the file publishes one for this chart's own
+  // quantity. Null where it does not; the page then states none.
+  changePct: number | null;
+}
+
+export interface AccountLines {
+  lines: AccountLine[];
+  // Accounts the file knows that have nothing on this chart.
+  missing: string[];
+}
+
+// Every account the file names on any of the three charts' sources, in label order.
+export function chartAccounts(j: UsageJson): string[] {
+  const credits = creditsOf(j);
+  const set = new Set([
+    ...Object.keys(j.weekly_windows?.max20?.by_account ?? {}),
+    ...Object.keys(credits?.window_tokens?.accounts ?? {}),
+    ...Object.keys(credits?.five_hour_window_across_cut?.per_account ?? {}),
+  ]);
+  return [...set].sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+}
+
+// One account's own regimes on Max 20x, oldest first. `regimes` is published untyped, so each
+// entry is checked before it is used.
+function accountRegimes(j: UsageJson, account: string): { start: string; end: string; windows: number }[] {
+  const regimes = j.weekly_windows?.max20?.by_account?.[account]?.regimes ?? [];
+  return regimes
+    .flatMap((r) => {
+      const o = r as { start?: unknown; end?: unknown; windows?: unknown };
+      return typeof o.start === "string" && typeof o.end === "string" && typeof o.windows === "number" && Number.isFinite(o.windows)
+        ? [{ start: o.start, end: o.end, windows: o.windows }]
+        : [];
+    })
+    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+}
+
+// The newest weekly change record, wherever the publisher put it: the event, or `last_change`.
+function newestWeeklyChange(j: UsageJson): Partial<ChangeRecord> | null {
+  const ev = latestWeeklyChange(weeklyEventsFor(j));
+  const c = j.last_change;
+  return ev ?? (c?.scope === "weekly" ? c : null);
+}
+
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+function linesFor(accounts: string[], lineOf: (a: string) => AccountLine | null): AccountLines {
+  const lines: AccountLine[] = [];
+  const missing: string[] = [];
+  for (const a of accounts) {
+    const line = lineOf(a);
+    if (line && line.levels.length > 0) lines.push(line);
+    else missing.push(a);
+  }
+  return { lines, missing };
+}
+
+// Windows per week: each account's own regimes. The change is PR #90's paired per-account figure
+// where the file carries it, else the account's own detected step.
+export function accountWindowLines(j: UsageJson): AccountLines {
+  const paired = newestWeeklyChange(j)?.windows_per_week_ratio?.per_account;
+  return linesFor(chartAccounts(j), (a) => {
+    const pairedPct = paired?.[a]?.change_pct;
+    const stepPct = j.weekly_windows?.max20?.by_account?.[a]?.step?.percent;
+    return {
+      account: a,
+      levels: accountRegimes(j, a).map((r) => ({ start: r.start, end: r.end, value: r.windows })),
+      changePct: finite(pairedPct) ? pairedPct : finite(stepPct) ? stepPct : null,
+    };
+  });
+}
+
+// The account's own measured window in tokens, on the selected model: its published pure-Opus
+// figure times the same conversion the family's own figure carries (current over raw), the one
+// `windowTokensCutFor` already applies to the before-cut side. Null where the account, the family
+// or the plan has no figure.
+function accountWindowTokens(j: UsageJson, account: string, model: string): number | null {
+  if (!modelPlanLimit(j, model, "max20").included) return null;
+  const wt = creditsOf(j)?.window_tokens;
+  const current = windowTokensValueFor(j, model);
+  const raw = wt?.all?.value;
+  const own = wt?.accounts?.[account]?.all?.value;
+  if (current === null || !finite(raw) || raw === 0 || !finite(own)) return null;
+  return own * (current / raw) * (j.plan_ratios?.max20 ?? 1);
+}
+
+// Effective window size: the account's own window held flat across its own regimes. The file
+// publishes one window figure per account, not one per side of the cut, so every regime carries
+// the same value. The change beside it is the account's own five-hour change across the cut from
+// `five_hour_window_across_cut`, which is in credits per 1% and so is a percent only, never a level.
+export function accountWindowTokenLines(j: UsageJson, model: string): AccountLines {
+  const across = creditsOf(j)?.five_hour_window_across_cut?.per_account;
+  return linesFor(chartAccounts(j), (a) => {
+    const w = accountWindowTokens(j, a, model);
+    if (w === null) return null;
+    const pct = across?.[a]?.change_pct;
+    return {
+      account: a,
+      levels: accountRegimes(j, a).map((r) => ({ start: r.start, end: r.end, value: w })),
+      changePct: finite(pct) ? pct : null,
+    };
+  });
+}
+
+// Tokens per week: each of the account's own regimes, its windows per week times its own window,
+// at the model's share of the week. Only where both exist for that account; nothing is filled in.
+// The change is PR #90's paired per-account tokens-per-week figure where the file carries it.
+export function accountWeeklyTokenLines(j: UsageJson, model: string): AccountLines {
+  const paired = newestWeeklyChange(j)?.tokens_per_week_change?.per_account;
+  const fraction = modelPlanLimit(j, model, "max20").weekly_fraction;
+  return linesFor(chartAccounts(j), (a) => {
+    const w = accountWindowTokens(j, a, model);
+    if (w === null) return null;
+    const pct = paired?.[a]?.signed_pct;
+    return {
+      account: a,
+      levels: accountRegimes(j, a).map((r) => ({ start: r.start, end: r.end, value: r.windows * w * fraction })),
+      changePct: finite(pct) ? pct : null,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

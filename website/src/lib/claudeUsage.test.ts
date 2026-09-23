@@ -50,6 +50,10 @@ import {
   type UsageJson,
 } from "./claudeUsage";
 import {
+  accountWeeklyTokenLines,
+  accountWindowLines,
+  accountWindowTokenLines,
+  chartAccounts,
   captureEmptyNote,
   changeLines,
   computeCredits,
@@ -2148,7 +2152,7 @@ describe("the speed block", () => {
     expect(speedFirstBlockCaveat({ ...block, caveats: [] })).toBeNull();
   });
 
-  it("counts the requests in fast sessions on the newest day, under either name", () => {
+  it("counts the requests at about 2x speed on the newest day, under either name", () => {
     expect(speedFastSessionRequestsLatest(block)).toEqual({ day: "2026-09-04", count: 3 });
     expect(speedFastSessionRequestsLatest({ ...block, models: {} })).toBeNull();
     const renamed: SpeedBlock = {
@@ -2163,10 +2167,18 @@ describe("the speed block", () => {
       },
     };
     expect(speedFastSessionRequestsLatest(renamed)).toEqual({ day: "2026-09-04", count: 7 });
+    // Once the tracker stops publishing the count, there is nothing to state.
+    const none: SpeedBlock = {
+      ...block,
+      models: { "claude-opus-5": { daily: [{ ...day("2026-09-04", 72), fast_excluded: undefined }] } },
+    };
+    expect(speedFastSessionRequestsLatest(none)).toBeNull();
   });
 
   describe("by account", () => {
-    const fast = (median: number) => ({ n: 12, output_tokens_per_s: { median, q1: median - 9, q3: median + 9 } });
+    // A fast-session figure on a row, the shape the tracker published before it folded those
+    // requests back into the day's own figures. The page no longer reads it.
+    const fast = (median: number) => ({ fast_sessions: { n: 12, output_tokens_per_s: { median, q1: median - 9, q3: median + 9 } } }) as Partial<SpeedDay>;
     const acct: SpeedBlock = {
       ...block,
       accounts: { a1: { first_day: "2026-09-01", last_day: "2026-09-04" }, a2: { first_day: "2026-09-01", last_day: "2026-09-04" }, a10: { first_day: "2026-09-01", last_day: "2026-09-01" } },
@@ -2174,8 +2186,8 @@ describe("the speed block", () => {
         "claude-opus-5": {
           daily: [day("2026-09-01", 70)],
           by_account: {
-            a2: [day("2026-09-04", 60), { ...day("2026-09-02", 61), fast_sessions: fast(150) }, { ...day("2026-09-01", 62), fast_sessions: fast(155) }],
-            a3: [{ ...day("2026-09-01", 50), fast_sessions: null }],
+            a2: [day("2026-09-04", 60), { ...day("2026-09-02", 61), ...fast(150) }, { ...day("2026-09-01", 62), ...fast(155) }],
+            a3: [day("2026-09-01", 50)],
           },
         },
         "claude-sonnet-5": { daily: [], by_account: { a1: [day("2026-09-01", 90)] } },
@@ -2192,8 +2204,8 @@ describe("the speed block", () => {
       const a2 = series[0];
       expect(a2.runs.map((r) => r.map((p) => p.day))).toEqual([["2026-09-01", "2026-09-02"], ["2026-09-04"]]);
       expect(a2.runs[0].map((p) => p.median)).toEqual([62, 61]);
-      expect(a2.fastRuns).toEqual([[{ day: "2026-09-01", median: 155 }, { day: "2026-09-02", median: 150 }]]);
-      expect(series[1].fastRuns).toEqual([]);
+      // One line per account: a row's fast-session figure draws no second series.
+      expect(Object.keys(a2)).toEqual(["account", "runs"]);
       expect(missing).toEqual(["a1", "a10"]);
     });
 
@@ -2201,5 +2213,97 @@ describe("the speed block", () => {
       expect(speedAccountSeries(acct, "claude-opus-4-8")).toEqual({ series: [], missing: ["a1", "a2", "a3", "a10"] });
       expect(speedAccountSeries(undefined, "claude-opus-5")).toEqual({ series: [], missing: [] });
     });
+  });
+});
+
+// One line per watched Max 20x account on the three plan charts. The tokens-per-week fixture has
+// three accounts: a1 with regimes but no clean pure-Opus stretch, a2 and a3 with both.
+describe("per-account lines on the plan charts", () => {
+  const TPW = schema3TokensPerWeek as unknown as UsageJson;
+  // The same file with tracker PR #90's paired per-account fields on the weekly event.
+  const withPaired = (j: UsageJson): UsageJson => ({
+    ...j,
+    events: j.events.map((e) =>
+      e.scope === "weekly" && e.kind === "change"
+        ? {
+            ...e,
+            windows_per_week_ratio: {
+              per_account: { a1: { change_pct: -23.0 }, a2: { change_pct: -30.4 } },
+              excluded: { a3: "readings_only_after_the_change" },
+            },
+            tokens_per_week_change: {
+              ...e.tokens_per_week_change!,
+              per_account: { a1: { signed_pct: -29.2 }, a2: { signed_pct: -30.4 } },
+            },
+          }
+        : e,
+    ),
+  });
+
+  it("names every account any of the three sources knows, in label order", () => {
+    expect(chartAccounts(TPW)).toEqual(["a1", "a2", "a3"]);
+  });
+
+  it("draws each account's own windows per week, flat per regime", () => {
+    const { lines, missing } = accountWindowLines(TPW);
+    expect(missing).toEqual([]);
+    expect(lines.map((l) => l.account)).toEqual(["a1", "a2", "a3"]);
+    expect(lines[0].levels.map((l) => l.value)).toEqual([6.54, 5.15]);
+    expect(lines[2].levels.map((l) => l.value)).toEqual([5.52]);
+    // Without PR #90 the change is the account's own detected step, and none where it has no step.
+    expect(lines.map((l) => l.changePct)).toEqual([-21, -29, null]);
+  });
+
+  it("reads PR #90's paired windows-per-week change where the file carries it", () => {
+    expect(accountWindowLines(withPaired(TPW)).lines.map((l) => l.changePct)).toEqual([-23.0, -30.4, null]);
+  });
+
+  it("holds each account's own window flat, and names an account with no window figure", () => {
+    const { lines, missing } = accountWindowTokenLines(TPW, "claude-opus-5");
+    expect(missing).toEqual(["a1"]);
+    expect(lines.map((l) => l.account)).toEqual(["a2", "a3"]);
+    expect(lines[0].levels.map((l) => l.value)).toEqual([462184345, 462184345]);
+    expect(lines[1].levels.map((l) => l.value)).toEqual([539959273]);
+    // The account's own five-hour change across the cut, a percent only.
+    expect(lines.map((l) => l.changePct)).toEqual([9.0, null]);
+  });
+
+  it("converts an account's window to another family by the family's own conversion", () => {
+    const opus = accountWindowTokenLines(TPW, "claude-opus-5").lines[0].levels[0].value;
+    const sonnet = accountWindowTokenLines(TPW, "claude-sonnet-5").lines[0].levels[0].value;
+    expect(sonnet / opus).toBeCloseTo(646354632 / 502000000, 9);
+  });
+
+  it("prices tokens per week at the account's own windows times its own window", () => {
+    const { lines, missing } = accountWeeklyTokenLines(TPW, "claude-opus-5");
+    expect(missing).toEqual(["a1"]);
+    expect(lines[0].levels.map((l) => l.value)).toEqual([6.41 * 462184345, 4.53 * 462184345]);
+    // No per-account tokens-per-week figure is derived: without PR #90 there is none.
+    expect(lines.map((l) => l.changePct)).toEqual([null, null]);
+    expect(accountWeeklyTokenLines(withPaired(TPW), "claude-opus-5").lines.map((l) => l.changePct)).toEqual([-30.4, null]);
+  });
+
+  it("takes the model's share of the week, and draws nothing where the model is not on Max 20x", () => {
+    const opus = accountWeeklyTokenLines(TPW, "claude-opus-5").lines[0].levels[0].value;
+    const limits = TPW.model_plan_limits!["claude-opus-5"];
+    const half: UsageJson = {
+      ...TPW,
+      model_plan_limits: { ...TPW.model_plan_limits, "claude-opus-5": { ...limits, max20: { ...limits.max20, weekly_fraction: 0.5 } } },
+    };
+    expect(accountWeeklyTokenLines(half, "claude-opus-5").lines[0].levels[0].value).toBeCloseTo(opus * 0.5, 3);
+    // The window itself is not split by the week's share.
+    expect(accountWindowTokenLines(half, "claude-opus-5").lines[0].levels[0].value).toBe(462184345);
+    const off: UsageJson = {
+      ...TPW,
+      model_plan_limits: { ...TPW.model_plan_limits, "claude-opus-5": { ...TPW.model_plan_limits!["claude-opus-5"], max20: { included: false, weekly_fraction: 0 } } },
+    };
+    expect(accountWindowTokenLines(off, "claude-opus-5")).toEqual({ lines: [], missing: ["a1", "a2", "a3"] });
+  });
+
+  it("draws no line at all for a file without per-account figures", () => {
+    const bare = schema1 as unknown as UsageJson;
+    expect(accountWindowLines(bare).lines).toEqual([]);
+    expect(accountWindowTokenLines(bare, "claude-opus-5").lines).toEqual([]);
+    expect(accountWeeklyTokenLines(bare, "claude-opus-5").lines).toEqual([]);
   });
 });
