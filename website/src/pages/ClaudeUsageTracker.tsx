@@ -1852,7 +1852,8 @@ export default function ClaudeUsageTracker({
             )}
             <SpeedChart series={speed} selectedModel={model} />
             {speedMethod && <p className="sub speed-note">{speedMethod}</p>}
-            {speedFast && (
+            {/* A count of 0 says nothing a reader needs, so the line shows only when there is one. */}
+            {speedFast && speedFast.count > 0 && (
               <p className="sub speed-note">
                 Requests at about 2x usual speed: {speedFast.count.toLocaleString("en-GB")} on {fmtDate(speedFast.day)}.
               </p>

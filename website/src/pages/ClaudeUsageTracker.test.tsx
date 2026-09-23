@@ -1648,7 +1648,8 @@ describe("how fast each model answers", () => {
     expect(text).toContain(`${latest.time_to_first_block_s!.median.toFixed(1)} s to first block`);
     expect(text).toContain(`Opus 5, ${latest.n} requests on ${fmtDate(latest.day)}`);
     expect(text).toContain("Output speed is the response's output tokens over that time");
-    expect(text).toContain(`Requests at about 2x usual speed: 0 on ${fmtDate("2026-09-23")}.`);
+    // The fixture's count is 0 on its newest day, so the line is not shown.
+    expect(text).not.toContain("Requests at about 2x usual speed");
     expect(text).toContain("Time to first block includes writing the whole first block");
     // Placed after the charts above it, before the contribute form.
     expect(text.indexOf("How fast each model answers")).toBeGreaterThan(text.indexOf("Five-hour windows per week"));
@@ -1794,8 +1795,16 @@ describe("how fast each model answers, by account", () => {
     expect(legend(html)).not.toContain("fast sessions");
   });
 
-  it("states the request count at about 2x speed only while the data carries it", () => {
-    expect(render(withSpeed(BLOCK), "max20", "claude-opus-5")).toContain(`Requests at about 2x usual speed: 0 on ${fmtDate("2026-09-23")}.`);
+  it("states the request count at about 2x speed only while the data carries a count above 0", () => {
+    // A count of 0 is not stated.
+    expect(render(withSpeed(BLOCK), "max20", "claude-opus-5")).not.toContain("Requests at about 2x usual speed");
+    const counted: SpeedBlock = {
+      ...BLOCK,
+      models: Object.fromEntries(
+        Object.entries(BLOCK.models).map(([m, v]) => [m, { ...v, daily: v.daily.map((d) => (d.day === "2026-09-23" ? { ...d, fast_excluded: 7 } : d)) }]),
+      ),
+    };
+    expect(render(withSpeed(counted), "max20", "claude-opus-5")).toContain("Requests at about 2x usual speed:");
     const stripped: SpeedBlock = {
       ...BLOCK,
       models: Object.fromEntries(
