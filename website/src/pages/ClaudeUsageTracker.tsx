@@ -1650,6 +1650,70 @@ export default function ClaudeUsageTracker({
           </section>
         )}
 
+        {/* How fast each model answers, from the block tracker PR #87 publishes. Figures only:
+            the chart, the selected model's latest day, and the block's own method and caveats.
+            An older file has no block, and the section is not drawn at all. */}
+        {!unavailable && data?.speed && speed.length > 0 && (
+          <section id="speed">
+            <div className="h2row">
+              <h2>How fast each model answers</h2>
+              <div className="section-sel">
+                <span className="sel">
+                  <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
+                    {modelsNewestFirst(pageModels(data, Object.keys(data.rates))).map((m) => (
+                      <option key={m} value={m}>{modelLabel(m)}</option>
+                    ))}
+                  </select>
+                </span>
+              </div>
+            </div>
+            <p className="sub">
+              Median output tokens per second, per UTC day, one line per model.
+              {speedSelected ? ` The band is ${modelLabel(model)}'s interquartile range.` : ""}
+            </p>
+            {speedLatest ? (
+              <div className="rate">
+                <span>
+                  <b>{speedLatest.output_tokens_per_s.median.toFixed(1)}</b> output tokens per second
+                  {` (${speedLatest.output_tokens_per_s.q1.toFixed(1)} to ${speedLatest.output_tokens_per_s.q3.toFixed(1)})`}
+                </span>
+                {speedLatest.time_to_first_block_s && (
+                  <>
+                    <em className="brk">·</em>
+                    <span>
+                      <b>{speedLatest.time_to_first_block_s.median.toFixed(1)} s</b> to first block
+                      {` (${speedLatest.time_to_first_block_s.q1.toFixed(1)} to ${speedLatest.time_to_first_block_s.q3.toFixed(1)} s)`}
+                    </span>
+                  </>
+                )}
+                <em className="brk">·</em>
+                <span>
+                  {modelLabel(model)}, {speedLatest.n.toLocaleString("en-GB")} requests on {fmtDate(speedLatest.day)}
+                </span>
+              </div>
+            ) : (
+              <div className="rate">
+                <span>No speed figures for {modelLabel(model)} yet.</span>
+              </div>
+            )}
+            <SpeedChart series={speed} selectedModel={model} />
+            {speedMethod && <p className="sub speed-note">{speedMethod}</p>}
+            {speedFast && (
+              <p className="sub speed-note">
+                Requests in fast sessions, shown separately: {speedFast.count.toLocaleString("en-GB")} on {fmtDate(speedFast.day)}.
+              </p>
+            )}
+            {speedFirstBlock && <p className="sub speed-note">{speedFirstBlock}</p>}
+            {speedAccountList.length > 0 && (
+              <>
+                <h3 className="speed-sub">{modelLabel(model)} by account</h3>
+                <p className="sub">Median output tokens per second, per UTC day, one line per account.</p>
+                <SpeedByAccountChart series={speedByAccount.series} missing={speedByAccount.missing} accounts={speedAccountList} model={model} span={speedSpan} />
+              </>
+            )}
+          </section>
+        )}
+
         {!unavailable && data && r && (
           <section>
             <h2>Plan comparison</h2>
@@ -1751,70 +1815,6 @@ export default function ClaudeUsageTracker({
                 sitting under whichever chart happens to be open. */}
             {contributed.cost && (!hasContribPoints || contribTab.key === "usd") && (
               <p className="sub">{contributed.cost}</p>
-            )}
-          </section>
-        )}
-
-        {/* How fast each model answers, from the block tracker PR #87 publishes. Figures only:
-            the chart, the selected model's latest day, and the block's own method and caveats.
-            An older file has no block, and the section is not drawn at all. */}
-        {!unavailable && data?.speed && speed.length > 0 && (
-          <section id="speed">
-            <div className="h2row">
-              <h2>How fast each model answers</h2>
-              <div className="section-sel">
-                <span className="sel">
-                  <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
-                    {modelsNewestFirst(pageModels(data, Object.keys(data.rates))).map((m) => (
-                      <option key={m} value={m}>{modelLabel(m)}</option>
-                    ))}
-                  </select>
-                </span>
-              </div>
-            </div>
-            <p className="sub">
-              Median output tokens per second, per UTC day, one line per model.
-              {speedSelected ? ` The band is ${modelLabel(model)}'s interquartile range.` : ""}
-            </p>
-            {speedLatest ? (
-              <div className="rate">
-                <span>
-                  <b>{speedLatest.output_tokens_per_s.median.toFixed(1)}</b> output tokens per second
-                  {` (${speedLatest.output_tokens_per_s.q1.toFixed(1)} to ${speedLatest.output_tokens_per_s.q3.toFixed(1)})`}
-                </span>
-                {speedLatest.time_to_first_block_s && (
-                  <>
-                    <em className="brk">·</em>
-                    <span>
-                      <b>{speedLatest.time_to_first_block_s.median.toFixed(1)} s</b> to first block
-                      {` (${speedLatest.time_to_first_block_s.q1.toFixed(1)} to ${speedLatest.time_to_first_block_s.q3.toFixed(1)} s)`}
-                    </span>
-                  </>
-                )}
-                <em className="brk">·</em>
-                <span>
-                  {modelLabel(model)}, {speedLatest.n.toLocaleString("en-GB")} requests on {fmtDate(speedLatest.day)}
-                </span>
-              </div>
-            ) : (
-              <div className="rate">
-                <span>No speed figures for {modelLabel(model)} yet.</span>
-              </div>
-            )}
-            <SpeedChart series={speed} selectedModel={model} />
-            {speedMethod && <p className="sub speed-note">{speedMethod}</p>}
-            {speedFast && (
-              <p className="sub speed-note">
-                Requests in fast sessions, shown separately: {speedFast.count.toLocaleString("en-GB")} on {fmtDate(speedFast.day)}.
-              </p>
-            )}
-            {speedFirstBlock && <p className="sub speed-note">{speedFirstBlock}</p>}
-            {speedAccountList.length > 0 && (
-              <>
-                <h3 className="speed-sub">{modelLabel(model)} by account</h3>
-                <p className="sub">Median output tokens per second, per UTC day, one line per account.</p>
-                <SpeedByAccountChart series={speedByAccount.series} missing={speedByAccount.missing} accounts={speedAccountList} model={model} span={speedSpan} />
-              </>
             )}
           </section>
         )}
