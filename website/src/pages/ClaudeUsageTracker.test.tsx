@@ -1041,8 +1041,9 @@ describe("the measured window in tokens", () => {
     );
     expect(html).toContain('<option value="claude-opus-5" selected="">Opus 5</option>');
     expect(html).not.toContain('<option value="claude-sonnet-5" selected="">');
-    // Both pickers are the one selection, so the contributors chart starts on Opus too.
-    expect(html.match(/<option value="claude-opus-5" selected="">/g)).toHaveLength(2);
+    // The contributors section opens on the cost tab, which has no model picker, so the hero's
+    // is the only model picker on the page.
+    expect(html.match(/<option value="claude-opus-5" selected="">/g)).toHaveLength(1);
   });
 
   it("leads on the measured window, with its interval and its classes", () => {
@@ -1348,7 +1349,8 @@ describe("the Opus 5.5 row", () => {
     }
     const html = renderHtml(NULL55, "max20", OPUS, NOW);
     expect(html).not.toMatch(/opus-5-5|Opus 5\.5/);
-    expect(options(html).length).toBe(2);
+    // The hero's picker only: the contributors section opens on the cost tab, which has none.
+    expect(options(html).length).toBe(1);
   });
 
   it("keeps Haiku as it is", () => {
@@ -1359,7 +1361,7 @@ describe("the Opus 5.5 row", () => {
   it("lists Opus 5.5 once it is measured: just before Opus 5 in the newest-first pickers, just after it in the table", () => {
     const html = renderHtml(measured55(), "max20", OPUS, NOW);
     const lists = options(html);
-    expect(lists.length).toBe(2);
+    expect(lists.length).toBe(1);
     for (const list of lists) {
       const at = list.findIndex(([v]) => v === OPUS);
       expect(list[at - 1]).toEqual(["claude-opus-5-5", "Opus 5.5"]);
@@ -1935,5 +1937,58 @@ describe("plan chart toggle", () => {
       expect(p, key).toContain('<g data-account="Max account 3"');
       expect(p.replace(/<!-- -->/g, ""), key).toContain("No data for Opus 5: Max account 1");
     }
+  });
+});
+
+describe("the contributors model picker", () => {
+  const SNAP = liveSnapshot as unknown as UsageJson;
+  const NOW = Date.parse("2026-09-23T12:00:00Z");
+  // The frozen file's max20 readings carry Fable only. One reading also gets an Opus 5 window
+  // figure (and no weekly one), so the window tab has two models and the weekly tab one.
+  function withOpusWindow(): UsageJson {
+    const j = structuredClone(SNAP);
+    const p = j.contributed!.max20!.points![0];
+    p.tokens_per_pct_by_model = { ...p.tokens_per_pct_by_model, "claude-opus-5": 2_500_000 };
+    return j;
+  }
+  function contributors(html: string): string {
+    const at = html.indexOf('<section id="contributors">');
+    return html.slice(at, html.indexOf("</section>", at));
+  }
+  function modelSelect(section: string): string | null {
+    const m = section.match(/<select aria-label="Model"[^>]*>(.*?)<\/select>/);
+    return m ? m[1] : null;
+  }
+  const options = (select: string) => [...select.matchAll(/<option value="([^"]+)"/g)].map((m) => m[1]);
+  const selected = (select: string) => select.match(/<option value="([^"]+)" selected="">/)?.[1];
+
+  it("offers a plan picker and no model picker on the cost tab", () => {
+    const section = contributors(renderHtml(withOpusWindow(), "max20", "claude-fable-5-1", NOW, "usd"));
+    expect(section).toContain('aria-label="Plan"');
+    expect(modelSelect(section)).toBeNull();
+  });
+
+  it("lists only the models the readings have figures for, per tab", () => {
+    const window = modelSelect(contributors(renderHtml(withOpusWindow(), "max20", "claude-fable-5-1", NOW, "window")));
+    expect(options(window!)).toEqual(["claude-fable-5-1", "claude-opus-5"]);
+    const weekly = modelSelect(contributors(renderHtml(withOpusWindow(), "max20", "claude-fable-5-1", NOW, "weekly")));
+    expect(options(weekly!)).toEqual(["claude-fable-5-1"]);
+  });
+
+  it("shows the first listed model where the hero's is absent, and leaves the hero alone", () => {
+    const html = renderHtml(withOpusWindow(), "max20", "claude-sonnet-5", NOW, "window");
+    const window = modelSelect(contributors(html))!;
+    expect(selected(window)).toBe("claude-fable-5-1");
+    // The hero's picker comes first on the page and keeps Sonnet.
+    const hero = html.match(/<select aria-label="Model"[^>]*>(.*?)<\/select>/)![1];
+    expect(selected(hero)).toBe("claude-sonnet-5");
+    // The tracker's line is Fable's window, the same model as the dots, not Sonnet's.
+    const fable = computeWindowTokens(withOpusWindow(), "max20", "claude-fable-5-1")!;
+    const sonnet = computeWindowTokens(withOpusWindow(), "max20", "claude-sonnet-5")!;
+    expect(fable.perWindowValue).not.toBe(sonnet.perWindowValue);
+    const text = render(withOpusWindow(), "max20", "claude-sonnet-5", NOW, "window");
+    const sectionText = text.slice(text.indexOf("From contributors"), text.indexOf("Contribute your own meter"));
+    expect(sectionText).toContain(`tracker ${fmtTokens(fable.perWindowValue!)}`);
+    expect(sectionText).not.toContain(`tracker ${fmtTokens(sonnet.perWindowValue!)}`);
   });
 });
