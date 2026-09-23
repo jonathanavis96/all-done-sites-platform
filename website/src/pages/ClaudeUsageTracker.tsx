@@ -1124,6 +1124,23 @@ export default function ClaudeUsageTracker({
   // window section, the per-week card and the per-week chart -- so they cannot state one quantity
   // at two scales. Null for a file published before the block, which the page says in words.
   const wt = useMemo(() => (data ? computeWindowTokens(data, plan, model) : null), [data, plan, model]);
+  // The models the contributors section can offer on the open tab: only those at least one of
+  // this plan's readings has a figure for. The cost tab's figure covers every model together, so
+  // it offers none. A model the readings lack would only draw an empty chart.
+  const contribModels = useMemo(() => {
+    if (!data || contribTab.key === "usd") return [];
+    const points = data.contributed?.[plan]?.points ?? [];
+    return modelsNewestFirst(pageModels(data, Object.keys(data.rates))).filter((m) =>
+      points.some((p) => typeof contribTab.value(p, m) === "number"),
+    );
+  }, [data, plan, contribTab]);
+  // The hero's model where the readings have it, otherwise the first they do have. The hero keeps
+  // its own choice; only this section's dots, line and select move to the stand-in.
+  const contribModel = contribModels.length === 0 || contribModels.includes(model) ? model : contribModels[0];
+  const contribWt = useMemo(
+    () => (contribModel === model ? wt : data ? computeWindowTokens(data, plan, contribModel) : null),
+    [contribModel, model, wt, data, plan],
+  );
   const changeSentences = useMemo(() => (data ? changeLines(data) : []), [data]);
   // How many accounts the passive readings rest on, in words. Null without the credits block, in
   // which case the page keeps saying "a real account" as it does today.
@@ -1919,8 +1936,10 @@ export default function ClaudeUsageTracker({
         {!unavailable && data && contributed && (
           <section id="contributors">
             {/* The same pickers as the hero, so a reader comparing their own plan does not have
-                to scroll back up. Plan picks whose readings are plotted; model picks each
-                reading's own figure for that model and the tracker's line for it. */}
+                to scroll back up. Plan picks whose readings are plotted. On the two token tabs,
+                model picks each reading's own figure for that model and the tracker's line for
+                it, and lists only the models the readings have figures for. The cost tab has no
+                model picker: its figure is the meter's dollars per 1% across every model. */}
             <h2>From contributors</h2>
             <p className="sub">{contributed.intro}</p>
             {hasContribPoints && (
@@ -1938,9 +1957,11 @@ export default function ClaudeUsageTracker({
                       {t.label}
                     </button>
                   ))}
-                  {/* Plan chooses whose readings are plotted, model puts the dots and the
-                      tracker's line on the same model. No effort picker: nothing on these
-                      charts depends on effort, and a contributed reading does not carry it. */}
+                  {/* Plan chooses whose readings are plotted, always. Model appears only on the
+                      token tabs, lists only models the readings cover, and puts the dots and the
+                      tracker's line on the same model; where the hero's model is not among them
+                      it shows the first that is, without changing the hero. No effort picker:
+                      nothing on these charts depends on effort, and a reading does not carry it. */}
                   <div className="section-sel">
                     <span className="sel">
                       <select aria-label="Plan" value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
@@ -1949,20 +1970,22 @@ export default function ClaudeUsageTracker({
                         ))}
                       </select>
                     </span>
-                    <span className="sel">
-                      <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
-                        {modelsNewestFirst(pageModels(data, Object.keys(data.rates))).map((m) => (
-                          <option key={m} value={m}>{modelLabel(m)}</option>
-                        ))}
-                      </select>
-                    </span>
+                    {contribModels.length > 0 && (
+                      <span className="sel">
+                        <select aria-label="Model" value={contribModel} onChange={(e) => setModel(e.target.value)}>
+                          {contribModels.map((m) => (
+                            <option key={m} value={m}>{modelLabel(m)}</option>
+                          ))}
+                        </select>
+                      </span>
+                    )}
                   </div>
                 </div>
                 <ContributorsChart
                   points={data.contributed[plan]!.points!}
                   tab={contribTab}
-                  reference={contribTab.reference(wt, fleetUsdPerPercent(data, plan))}
-                  model={model}
+                  reference={contribTab.reference(contribWt, fleetUsdPerPercent(data, plan))}
+                  model={contribModel}
                 />
               </>
             )}
