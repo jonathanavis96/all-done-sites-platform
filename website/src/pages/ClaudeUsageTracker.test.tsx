@@ -48,9 +48,6 @@ import { withWf50 } from "@/lib/__fixtures__/wf50";
 import liveJson from "../../public/data/claude-usage.json";
 // The speed block as tracker/speed.py speed_block built it on 2026-09-23, splits trimmed.
 import speedBlock from "@/lib/__fixtures__/claude-usage-speed-block.json";
-// The live block of 2026-09-23 with fast_sessions added to some of Opus 5's account rows, the
-// shape the tracker publishes next.
-import speedFastSessions from "@/lib/__fixtures__/claude-usage-speed-fast-sessions.json";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
   return renderToString(
@@ -1651,7 +1648,7 @@ describe("how fast each model answers", () => {
     expect(text).toContain(`${latest.time_to_first_block_s!.median.toFixed(1)} s to first block`);
     expect(text).toContain(`Opus 5, ${latest.n} requests on ${fmtDate(latest.day)}`);
     expect(text).toContain("Output speed is the response's output tokens over that time");
-    expect(text).toContain(`Requests in fast sessions, shown separately: 0 on ${fmtDate("2026-09-23")}.`);
+    expect(text).toContain(`Requests at about 2x usual speed: 0 on ${fmtDate("2026-09-23")}.`);
     expect(text).toContain("Time to first block includes writing the whole first block");
     // Placed after the charts above it, before the contribute form.
     expect(text.indexOf("How fast each model answers")).toBeGreaterThan(text.indexOf("Five-hour windows per week"));
@@ -1705,7 +1702,21 @@ describe("how fast each model answers", () => {
 
 describe("how fast each model answers, by account", () => {
   const LIVE = (liveJson as unknown as UsageJson).speed!;
-  const FAST = speedFastSessions as unknown as SpeedBlock;
+  // The speed-block fixture, which carries no fast-session figures anywhere, with a row added
+  // that does: the shape the tracker published before it folded those requests back in.
+  const BLOCK = speedBlock as unknown as SpeedBlock;
+  const withFastRows = (block: SpeedBlock): SpeedBlock => {
+    const opus = block.models["claude-opus-5"];
+    const a1 = opus.by_account!.a1;
+    const fast = { n: 12, output_tokens_per_s: { median: 180, q1: 170, q3: 190 } };
+    return {
+      ...block,
+      models: {
+        ...block.models,
+        "claude-opus-5": { ...opus, by_account: { ...opus.by_account, a1: a1.map((d) => ({ ...d, fast_sessions: fast })) } },
+      },
+    };
+  };
   const withSpeed = (block: SpeedBlock): UsageJson => ({ ...(liveJson as unknown as UsageJson), speed: block });
   const accountSvg = (html: string): string => {
     const at = html.indexOf('aria-label="Median output tokens per second by day for ');
@@ -1720,7 +1731,7 @@ describe("how fast each model answers, by account", () => {
     return html.slice(at, html.indexOf("</ul>", at));
   };
   // One run of consecutive days is a path, or a dot for a day alone.
-  const pieces = (g: string, attr: "data-run" | "data-fast") => (g.match(new RegExp(`${attr}="`, "g")) ?? []).length;
+  const pieces = (g: string, attr: "data-run") => (g.match(new RegExp(`${attr}="`, "g")) ?? []).length;
   const runsOf = (days: string[]) =>
     days.filter((d, i) => i === 0 || Date.parse(d) - Date.parse(days[i - 1]) > 86400e3).length;
 
@@ -1736,7 +1747,8 @@ describe("how fast each model answers, by account", () => {
       expect(pieces(g, "data-run")).toBe(runsOf(days));
       colours.add(g.match(/(?:stroke|fill)="(#[0-9A-F]{6})"/)![1]);
     }
-    expect([...colours]).toEqual(CONTRIB_PALETTE.slice(0, 4));
+    // The palette less the sky blue and slate the plan and model lines use, keyed on the label.
+    expect([...colours]).toEqual(CONTRIB_PALETTE.slice(1, 5));
     const leg = legend(html);
     for (const n of [1, 2, 3, 4]) expect(leg).toContain(`Max account ${n}`);
     expect(leg).not.toContain("No data for");
@@ -1764,28 +1776,33 @@ describe("how fast each model answers, by account", () => {
     expect(legend(html).replace(/<!-- -->/g, "")).toContain("No data for Haiku 4.5: Max account 1, Max account 2");
   });
 
-  it("draws fast sessions as a dotted line in the account's colour where a row has them", () => {
-    const html = renderHtml(withSpeed(FAST), "max20", "claude-opus-5");
+  it("draws one line per account and no separate fast-session series, even where a row carries one", () => {
+    const html = renderHtml(withSpeed(withFastRows(BLOCK)), "max20", "claude-opus-5");
     const svg = accountSvg(html);
     const a1 = accountGroup(svg, "a1");
-    const colour = a1.match(/stroke="(#[0-9A-F]{6})"/)![1];
-    // 2026-09-19 alone, then 2026-09-22 and 23: a dot and a dotted path.
-    expect(pieces(a1, "data-fast")).toBe(2);
-    expect(a1).toMatch(new RegExp(`data-fast="2026-09-22"[^>]*stroke="${colour}"[^>]*stroke-dasharray="1 5"`));
-    expect(a1).toContain('data-fast="2026-09-19"');
-    expect(pieces(accountGroup(svg, "a2"), "data-fast")).toBe(1);
-    expect(pieces(accountGroup(svg, "a3"), "data-fast")).toBe(0);
-    expect(legend(html)).toContain("fast sessions");
-    const text = render(withSpeed(FAST), "max20", "claude-opus-5");
-    expect(text).toContain(`Requests in fast sessions, shown separately: 40 on ${fmtDate("2026-09-23")}.`);
+    const days = BLOCK.models["claude-opus-5"].by_account!.a1.map((d) => d.day).sort();
+    expect(pieces(a1, "data-run")).toBe(runsOf(days));
+    expect(svg).not.toContain("data-fast");
+    expect(svg).not.toContain('stroke-dasharray="1 5"');
+    expect(legend(html)).not.toContain("fast sessions");
+    expect(legend(html)).not.toContain("2x");
   });
 
   it("has no dotted line and no fast-sessions legend when no row has fast sessions", () => {
-    const html = renderHtml(withSpeed(LIVE), "max20", "claude-opus-5");
+    const html = renderHtml(withSpeed(BLOCK), "max20", "claude-opus-5");
     expect(accountSvg(html)).not.toContain("data-fast");
     expect(legend(html)).not.toContain("fast sessions");
-    // Another model in the fast-sessions file has none either.
-    expect(accountSvg(renderHtml(withSpeed(FAST), "max20", "claude-sonnet-5"))).not.toContain("data-fast");
+  });
+
+  it("states the request count at about 2x speed only while the data carries it", () => {
+    expect(render(withSpeed(BLOCK), "max20", "claude-opus-5")).toContain(`Requests at about 2x usual speed: 0 on ${fmtDate("2026-09-23")}.`);
+    const stripped: SpeedBlock = {
+      ...BLOCK,
+      models: Object.fromEntries(
+        Object.entries(BLOCK.models).map(([m, v]) => [m, { ...v, daily: v.daily.map(({ fast_excluded: _f, fast_session_requests: _r, ...d }) => d) }]),
+      ),
+    };
+    expect(render(withSpeed(stripped), "max20", "claude-opus-5")).not.toContain("Requests at about 2x usual speed");
   });
 
   // The tracker's old name for fast sessions, which the page must never print: the cause of the
@@ -1793,7 +1810,7 @@ describe("how fast each model answers, by account", () => {
   const OLD_NAME = new RegExp(["fast", "mode"].join("[ -]"), "i");
 
   it("never gives fast sessions their old name anywhere on the page", () => {
-    for (const block of [LIVE, FAST, speedBlock as unknown as SpeedBlock]) {
+    for (const block of [LIVE, BLOCK, withFastRows(BLOCK)]) {
       for (const model of ["claude-opus-5", "claude-sonnet-5"]) {
         const html = renderHtml(withSpeed(block), "max20", model);
         expect(html).not.toMatch(OLD_NAME);
@@ -1862,9 +1879,16 @@ describe("plan chart toggle", () => {
     const windows = panel(html, "windows");
     for (const n of [1, 2, 3]) expect(windows).toContain(`<g data-account="Max account ${n}"`);
     expect(windows).not.toContain('data-legend="no-data"');
-    // With no speed block the colours key on the accounts' own order, the palette's first three.
-    expect(windows).toContain(`stroke="${CONTRIB_PALETTE[1]}"`);
-    expect(windows).toContain(`stroke="${CONTRIB_PALETTE[2]}"`);
+    // Each account's colour is keyed on its label, the same as on the speed-by-account chart, and
+    // none is a colour a plan line uses (the selected sky blue, the muted grey, or the slate
+    // beside it).
+    const planColours = ["#0EA5E9", "#94A3B8", "#64748B"];
+    for (const [n, colour] of [[1, CONTRIB_PALETTE[1]], [2, CONTRIB_PALETTE[2]], [3, CONTRIB_PALETTE[3]]] as [number, string][]) {
+      const at = windows.indexOf(`<g data-account="Max account ${n}"`);
+      const g = windows.slice(at, windows.indexOf("</g>", at));
+      expect(g).toContain(`stroke="${colour}"`);
+      for (const c of planColours) expect(g).not.toContain(c);
+    }
     // The legend states each account's own step where it has one.
     expect(windows.replace(/<!-- -->/g, "")).toContain("Max account 1 (-21% across the change)");
   });

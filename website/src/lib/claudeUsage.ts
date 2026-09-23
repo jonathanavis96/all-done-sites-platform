@@ -454,21 +454,14 @@ export interface SpeedStat {
 export interface SpeedDay {
   day: string;
   n: number;
-  // Requests in fast sessions, left out of this day's figures. The tracker renames it to
-  // fast_session_requests and keeps fast_excluded for one release; read it with
-  // speedFastSessionRequests.
+  // Requests that ran at about twice the usual speed, published under either name while the
+  // tracker renames the field; read it with speedFastSessionRequests. The page draws no separate
+  // series for them: each day's `output_tokens_per_s` is charted as published, and the tracker is
+  // moving to publish it with those requests included.
   fast_excluded?: number;
   fast_session_requests?: number;
   output_tokens_per_s: SpeedStat;
   time_to_first_block_s: SpeedStat | null;
-  // The same figures for the fast sessions alone, where the tracker publishes them.
-  fast_sessions?: SpeedFastSessions | null;
-}
-
-export interface SpeedFastSessions {
-  n: number;
-  output_tokens_per_s: SpeedStat;
-  time_to_first_block_s?: SpeedStat | null;
 }
 
 export interface SpeedModel {
@@ -529,17 +522,18 @@ export interface SpeedPoint {
   median: number;
 }
 
-// One account's lines on the per-account speed chart for one model: its own days, and the days
-// its fast sessions were published separately, each cut into runs of consecutive days.
+// One account's line on the per-account speed chart for one model: its own days, cut into runs
+// of consecutive days.
 export interface SpeedAccountSeries {
   account: string;
   runs: SpeedPoint[][];
-  fastRuns: SpeedPoint[][];
 }
 
-// Requests in fast sessions on one row, under either name the tracker publishes it by.
-export function speedFastSessionRequests(d: SpeedDay): number {
-  return d.fast_session_requests ?? d.fast_excluded ?? 0;
+// Requests at about twice the usual speed on one row, under either name the tracker publishes
+// it by. Null where the row carries neither.
+export function speedFastSessionRequests(d: SpeedDay): number | null {
+  const n = d.fast_session_requests ?? d.fast_excluded;
+  return typeof n === "number" && Number.isFinite(n) ? n : null;
 }
 
 // Every account the block knows, in label order: those with a first and last day, and any
@@ -564,14 +558,11 @@ export function speedAccountSeries(
     const points = rows
       .filter((d) => typeof d?.output_tokens_per_s?.median === "number")
       .map((d) => ({ day: d.day, median: d.output_tokens_per_s.median }));
-    const fast = rows
-      .filter((d) => typeof d?.fast_sessions?.output_tokens_per_s?.median === "number")
-      .map((d) => ({ day: d.day, median: d.fast_sessions!.output_tokens_per_s.median }));
-    if (points.length === 0 && fast.length === 0) {
+    if (points.length === 0) {
       missing.push(account);
       continue;
     }
-    series.push({ account, runs: consecutiveRuns(points), fastRuns: consecutiveRuns(fast) });
+    series.push({ account, runs: consecutiveRuns(points) });
   }
   return { series, missing };
 }
@@ -588,14 +579,19 @@ export function speedFirstBlockCaveat(block: SpeedBlock): string | null {
   return (block.caveats ?? []).find((c) => c.startsWith("Time to first block")) ?? null;
 }
 
-// The newest day any model has a row for, and the requests in fast sessions that day, summed
-// across models.
+// The newest day any model has a row for, and the requests at about twice the usual speed that
+// day, summed across models. Null where no row that day carries the count, so the page states it
+// only while the tracker still publishes it.
 export function speedFastSessionRequestsLatest(block: SpeedBlock): { day: string; count: number } | null {
   const days = Object.values(block.models ?? {}).flatMap((m) => m?.daily ?? []);
   if (days.length === 0) return null;
   const day = days.reduce((a, d) => (d.day > a ? d.day : a), days[0].day);
-  const count = days.filter((d) => d.day === day).reduce((a, d) => a + speedFastSessionRequests(d), 0);
-  return { day, count };
+  const counts = days
+    .filter((d) => d.day === day)
+    .map(speedFastSessionRequests)
+    .filter((n): n is number => n !== null);
+  if (counts.length === 0) return null;
+  return { day, count: counts.reduce((a, n) => a + n, 0) };
 }
 
 export function isSchema2(j: UsageJson): boolean {

@@ -19,7 +19,6 @@ import {
   basisDate,
   captureEmptyNote,
   changeLines,
-  chartAccounts,
   computeCredits,
   computeWindowTokens,
   creditsOf,
@@ -290,7 +289,6 @@ function LevelChart({
   changeFromLevels,
   changePct,
   accountLines,
-  accountOrder = [],
   missingFor,
   shown = true,
 }: {
@@ -312,11 +310,10 @@ function LevelChart({
   // from the drawn step, so the line and the label cannot name two different days. Earlier markers,
   // and every marker on a chart without one, read the percent off their own step.
   changePct?: number | null;
-  // One line per watched Max 20x account, in the account colours the speed-by-account chart uses
-  // (`accountOrder` is the list those colours are keyed on), with the same legend and the same
-  // "No data for ..." note for an account that has nothing to draw here.
+  // One line per watched Max 20x account, in the account colours the speed-by-account chart uses,
+  // with the same legend and the same "No data for ..." note for an account that has nothing to
+  // draw here.
   accountLines?: AccountLines;
-  accountOrder?: string[];
   missingFor?: string;
   // False while the chart sits in a hidden panel; the scroller re-opens on the newest readings
   // when it is shown.
@@ -336,7 +333,7 @@ function LevelChart({
   }, [dense, shown]);
   const plotted = levelsByPlan.filter((p) => p.levels.length > 0);
   const accounts = accountLines?.lines ?? [];
-  const colorOf = (a: string) => accountColor(Math.max(0, accountOrder.indexOf(a)));
+  const colorOf = accountColor;
   // A reading tagged with a drawn account takes that account's colour, so the dots read against
   // the account's own line; any other reading keeps the plan's hue.
   const drawnAccounts = new Set(accounts.map((l) => l.account));
@@ -986,12 +983,6 @@ export default function ClaudeUsageTracker({
     return days.length > 0 ? [days[0], days[days.length - 1]] : undefined;
   }, [speed]);
   const speedAccountList = useMemo(() => (data?.speed ? speedAccounts(data.speed) : []), [data]);
-  // The list account colours are keyed on: the speed chart's own, so an account is one colour on
-  // every chart, then any account only the plan charts know.
-  const accountOrder = useMemo(
-    () => [...speedAccountList, ...(data ? chartAccounts(data) : []).filter((a) => !speedAccountList.includes(a))],
-    [data, speedAccountList],
-  );
   const speedFirstBlock = data?.speed ? speedFirstBlockCaveat(data.speed) : null;
   const [contribMetric, setContribMetric] = useState<ContribMetric>(initialContribMetric);
   // Which plan chart the panel shows. The remembered choice is read after mount, so the prerender
@@ -1114,8 +1105,8 @@ export default function ClaudeUsageTracker({
         : [],
     [data, model],
   );
-  // One line per watched Max 20x account on each of the three plan charts, keyed to the colours
-  // the speed-by-account chart gives the same accounts.
+  // One line per watched Max 20x account on each of the three plan charts, in the colours the
+  // speed-by-account chart gives the same accounts.
   const windowAccountLines = useMemo(() => (data ? accountWindowTokenLines(data, model) : undefined), [data, model]);
   const weeklyTokenAccountLines = useMemo(() => (data ? accountWeeklyTokenLines(data, model) : undefined), [data, model]);
   const windowsAccountLines = useMemo(() => (data ? accountWindowLines(data) : undefined), [data]);
@@ -1714,7 +1705,6 @@ export default function ClaudeUsageTracker({
                         title="Effective window size over time"
                         changeFromLevels
                         accountLines={windowAccountLines}
-                        accountOrder={accountOrder}
                         missingFor={modelLabel(model)}
                         shown={planChart === "window"}
                       />
@@ -1766,7 +1756,6 @@ export default function ClaudeUsageTracker({
                       title="Tokens per week over time"
                       changeFromLevels
                       accountLines={weeklyTokenAccountLines}
-                      accountOrder={accountOrder}
                       missingFor={modelLabel(model)}
                       shown={planChart === "tokens"}
                       // This chart's quantity is tokens a week buys, so its marker states the
@@ -1803,7 +1792,6 @@ export default function ClaudeUsageTracker({
                       overlay={weeklyOverlay}
                       changeFromLevels
                       accountLines={windowsAccountLines}
-                      accountOrder={accountOrder}
                       missingFor="five-hour windows per week"
                       shown={planChart === "windows"}
                     />
@@ -1866,7 +1854,7 @@ export default function ClaudeUsageTracker({
             {speedMethod && <p className="sub speed-note">{speedMethod}</p>}
             {speedFast && (
               <p className="sub speed-note">
-                Requests in fast sessions, shown separately: {speedFast.count.toLocaleString("en-GB")} on {fmtDate(speedFast.day)}.
+                Requests at about 2x usual speed: {speedFast.count.toLocaleString("en-GB")} on {fmtDate(speedFast.day)}.
               </p>
             )}
             {speedFirstBlock && <p className="sub speed-note">{speedFirstBlock}</p>}
@@ -1874,7 +1862,7 @@ export default function ClaudeUsageTracker({
               <>
                 <h3 className="speed-sub">{modelLabel(model)} by account</h3>
                 <p className="sub">Median output tokens per second, per UTC day, one line per account.</p>
-                <SpeedByAccountChart series={speedByAccount.series} missing={speedByAccount.missing} accounts={speedAccountList} model={model} span={speedSpan} />
+                <SpeedByAccountChart series={speedByAccount.series} missing={speedByAccount.missing} model={model} span={speedSpan} />
               </>
             )}
           </section>

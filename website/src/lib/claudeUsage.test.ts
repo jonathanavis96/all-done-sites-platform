@@ -2152,7 +2152,7 @@ describe("the speed block", () => {
     expect(speedFirstBlockCaveat({ ...block, caveats: [] })).toBeNull();
   });
 
-  it("counts the requests in fast sessions on the newest day, under either name", () => {
+  it("counts the requests at about 2x speed on the newest day, under either name", () => {
     expect(speedFastSessionRequestsLatest(block)).toEqual({ day: "2026-09-04", count: 3 });
     expect(speedFastSessionRequestsLatest({ ...block, models: {} })).toBeNull();
     const renamed: SpeedBlock = {
@@ -2167,10 +2167,18 @@ describe("the speed block", () => {
       },
     };
     expect(speedFastSessionRequestsLatest(renamed)).toEqual({ day: "2026-09-04", count: 7 });
+    // Once the tracker stops publishing the count, there is nothing to state.
+    const none: SpeedBlock = {
+      ...block,
+      models: { "claude-opus-5": { daily: [{ ...day("2026-09-04", 72), fast_excluded: undefined }] } },
+    };
+    expect(speedFastSessionRequestsLatest(none)).toBeNull();
   });
 
   describe("by account", () => {
-    const fast = (median: number) => ({ n: 12, output_tokens_per_s: { median, q1: median - 9, q3: median + 9 } });
+    // A fast-session figure on a row, the shape the tracker published before it folded those
+    // requests back into the day's own figures. The page no longer reads it.
+    const fast = (median: number) => ({ fast_sessions: { n: 12, output_tokens_per_s: { median, q1: median - 9, q3: median + 9 } } }) as Partial<SpeedDay>;
     const acct: SpeedBlock = {
       ...block,
       accounts: { a1: { first_day: "2026-09-01", last_day: "2026-09-04" }, a2: { first_day: "2026-09-01", last_day: "2026-09-04" }, a10: { first_day: "2026-09-01", last_day: "2026-09-01" } },
@@ -2178,8 +2186,8 @@ describe("the speed block", () => {
         "claude-opus-5": {
           daily: [day("2026-09-01", 70)],
           by_account: {
-            a2: [day("2026-09-04", 60), { ...day("2026-09-02", 61), fast_sessions: fast(150) }, { ...day("2026-09-01", 62), fast_sessions: fast(155) }],
-            a3: [{ ...day("2026-09-01", 50), fast_sessions: null }],
+            a2: [day("2026-09-04", 60), { ...day("2026-09-02", 61), ...fast(150) }, { ...day("2026-09-01", 62), ...fast(155) }],
+            a3: [day("2026-09-01", 50)],
           },
         },
         "claude-sonnet-5": { daily: [], by_account: { a1: [day("2026-09-01", 90)] } },
@@ -2196,8 +2204,8 @@ describe("the speed block", () => {
       const a2 = series[0];
       expect(a2.runs.map((r) => r.map((p) => p.day))).toEqual([["2026-09-01", "2026-09-02"], ["2026-09-04"]]);
       expect(a2.runs[0].map((p) => p.median)).toEqual([62, 61]);
-      expect(a2.fastRuns).toEqual([[{ day: "2026-09-01", median: 155 }, { day: "2026-09-02", median: 150 }]]);
-      expect(series[1].fastRuns).toEqual([]);
+      // One line per account: a row's fast-session figure draws no second series.
+      expect(Object.keys(a2)).toEqual(["account", "runs"]);
       expect(missing).toEqual(["a1", "a10"]);
     });
 
