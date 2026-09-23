@@ -1832,11 +1832,11 @@ describe("how fast each model answers, by account", () => {
 // two not chosen are hidden, so a switch only moves `hidden` and the selected tab.
 describe("plan chart toggle", () => {
   const TPW = schema3TokensPerWeek as unknown as UsageJson;
-  const htmlFor = (chart?: PlanChart) =>
+  const htmlFor = (chart?: PlanChart, j: UsageJson = TPW) =>
     renderToString(
       <HelmetProvider context={{}}>
         <MemoryRouter>
-          <ClaudeUsageTracker initial={TPW} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart={chart} />
+          <ClaudeUsageTracker initial={j} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart={chart} />
         </MemoryRouter>
       </HelmetProvider>,
     );
@@ -1903,7 +1903,20 @@ describe("plan chart toggle", () => {
   });
 
   it("names an account with nothing to draw instead of drawing it", () => {
-    const html = htmlFor();
+    // Max account 1 without its five-hour credits either side of the cut: the window and tokens
+    // charts have nothing to build its line from.
+    const across = TPW.credits!.five_hour_window_across_cut!;
+    const noA1: UsageJson = {
+      ...TPW,
+      credits: {
+        ...TPW.credits!,
+        five_hour_window_across_cut: {
+          ...across,
+          per_account: { ...across.per_account, a1: { ...across.per_account.a1, before: null, after: null } },
+        },
+      },
+    };
+    const html = htmlFor(undefined, noA1);
     for (const key of ["window", "tokens"] as PlanChart[]) {
       const p = panel(html, key);
       expect(p, key).not.toContain('<g data-account="Max account 1"');

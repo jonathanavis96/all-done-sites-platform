@@ -1536,24 +1536,52 @@ export function accountWindowLines(j: UsageJson): AccountLines {
   });
 }
 
-// The account's own measured window in tokens, on the selected model: its published pure-Opus
-// figure times the same conversion the family's own figure carries (current over raw), the one
-// `windowTokensCutFor` already applies to the before-cut side. Null where the account, the family
-// or the plan has no figure.
-function accountWindowTokens(j: UsageJson, account: string, model: string): number | null {
+// The account's own window in the selected model's tokens, either side of the cut, from credits.
+//
+// `five_hour_window_across_cut.per_account` publishes each account's credits per 1% of the
+// five-hour meter before and after the cut. Credits are model independent, so the account's window
+// is that figure times 100 as a share of the pooled window in credits (`window_credits.value`, the
+// Max 20x headline's window size), times the plan's own window in the selected model's tokens (the
+// figure the Max 20x plan line draws). The account's raw token figure under `window_tokens.accounts`
+// is not used: it rests on a handful of stretches whose model and cache mix moves raw tokens per
+// window without moving credits, which drew one account at 600M a window and another near Max 5x.
+// A side the file has no figure for is null; nothing is filled in from the other side.
+interface AccountWindowSides {
+  cutAt: string | null;
+  before: number | null;
+  after: number | null;
+}
+function accountWindowTokens(j: UsageJson, account: string, model: string): AccountWindowSides | null {
   if (!modelPlanLimit(j, model, "max20").included) return null;
-  const wt = creditsOf(j)?.window_tokens;
-  const current = windowTokensValueFor(j, model);
-  const raw = wt?.all?.value;
-  const own = wt?.accounts?.[account]?.all?.value;
-  if (current === null || !finite(raw) || raw === 0 || !finite(own)) return null;
-  return own * (current / raw) * (j.plan_ratios?.max20 ?? 1);
+  const credits = creditsOf(j);
+  const across = credits?.five_hour_window_across_cut;
+  const own = across?.per_account?.[account];
+  const pooled = credits?.window_credits?.value;
+  const planTokens = windowTokensValueFor(j, model);
+  if (!own || planTokens === null || !finite(pooled) || pooled === 0) return null;
+  const tokensPerCredit = (planTokens / pooled) * (j.plan_ratios?.max20 ?? 1);
+  const side = (perPct: number | null | undefined) => (finite(perPct) ? perPct * 100 * tokensPerCredit : null);
+  const before = side(own.before);
+  const after = side(own.after);
+  if (before === null && after === null) return null;
+  const cutAt = across?.cut_at ?? credits?.window_tokens?.cut_at ?? credits?.window_credits?.cut_at ?? null;
+  return { cutAt, before, after };
 }
 
-// Effective window size: the account's own window held flat across its own regimes. The file
-// publishes one window figure per account, not one per side of the cut, so every regime carries
-// the same value. The change beside it is the account's own five-hour change across the cut from
-// `five_hour_window_across_cut`, which is in credits per 1% and so is a percent only, never a level.
+// Which side of the cut one of the account's own regimes belongs to, by its midpoint. An account's
+// regimes break at its own detected step, which lands a day or so either side of the publisher's
+// cut, so a regime that straddles the cut is on the side it mostly ran. A file with no cut prices
+// every regime at the current (after) figure.
+function accountWindowAt(w: AccountWindowSides, r: { start: string; end: string }): number | null {
+  if (!w.cutAt) return w.after;
+  const mid = (Date.parse(r.start) + Date.parse(r.end)) / 2;
+  return mid < Date.parse(w.cutAt) ? w.before : w.after;
+}
+
+// Effective window size: the account's own window per regime, at the before-cut level for its
+// regimes before the cut and the after-cut level after it, so the line steps at the account's own
+// step. A regime on a side the account has no figure for is not drawn. The change beside it is the
+// account's own five-hour change across the cut, the same credits figures' own percent.
 export function accountWindowTokenLines(j: UsageJson, model: string): AccountLines {
   const across = creditsOf(j)?.five_hour_window_across_cut?.per_account;
   return linesFor(chartAccounts(j), (a) => {
@@ -1562,15 +1590,19 @@ export function accountWindowTokenLines(j: UsageJson, model: string): AccountLin
     const pct = across?.[a]?.change_pct;
     return {
       account: a,
-      levels: accountRegimes(j, a).map((r) => ({ start: r.start, end: r.end, value: w })),
+      levels: accountRegimes(j, a).flatMap((r) => {
+        const value = accountWindowAt(w, r);
+        return value === null ? [] : [{ start: r.start, end: r.end, value }];
+      }),
       changePct: finite(pct) ? pct : null,
     };
   });
 }
 
-// Tokens per week: each of the account's own regimes, its windows per week times its own window,
-// at the model's share of the week. Only where both exist for that account; nothing is filled in.
-// The change is PR #90's paired per-account tokens-per-week figure where the file carries it.
+// Tokens per week: each of the account's own regimes, its windows per week times its own window on
+// the matching side of the cut, at the model's share of the week. Only where both exist for that
+// regime; nothing is filled in. The change is PR #90's paired per-account tokens-per-week figure
+// where the file carries it.
 export function accountWeeklyTokenLines(j: UsageJson, model: string): AccountLines {
   const paired = newestWeeklyChange(j)?.tokens_per_week_change?.per_account;
   const fraction = modelPlanLimit(j, model, "max20").weekly_fraction;
@@ -1580,7 +1612,10 @@ export function accountWeeklyTokenLines(j: UsageJson, model: string): AccountLin
     const pct = paired?.[a]?.signed_pct;
     return {
       account: a,
-      levels: accountRegimes(j, a).map((r) => ({ start: r.start, end: r.end, value: r.windows * w * fraction })),
+      levels: accountRegimes(j, a).flatMap((r) => {
+        const value = accountWindowAt(w, r);
+        return value === null ? [] : [{ start: r.start, end: r.end, value: r.windows * value * fraction }];
+      }),
       changePct: finite(pct) ? pct : null,
     };
   });

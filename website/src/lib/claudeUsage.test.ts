@@ -2258,41 +2258,82 @@ describe("per-account lines on the plan charts", () => {
     expect(accountWindowLines(withPaired(TPW)).lines.map((l) => l.changePct)).toEqual([-23.0, -30.4, null]);
   });
 
-  it("holds each account's own window flat, and names an account with no window figure", () => {
+  // The fixture's pooled window is 19,543,887 credits and its Opus window 502,000,000 tokens, so a
+  // credit per 1% of the meter is worth 100 x 502,000,000 / 19,543,887 tokens of window.
+  const perPct = (100 * 502000000) / 19543887;
+
+  it("builds each account's window from its own credits per 1%, stepping at its own regimes", () => {
     const { lines, missing } = accountWindowTokenLines(TPW, "claude-opus-5");
-    expect(missing).toEqual(["a1"]);
-    expect(lines.map((l) => l.account)).toEqual(["a2", "a3"]);
-    expect(lines[0].levels.map((l) => l.value)).toEqual([462184345, 462184345]);
-    expect(lines[1].levels.map((l) => l.value)).toEqual([539959273]);
+    expect(missing).toEqual([]);
+    expect(lines.map((l) => l.account)).toEqual(["a1", "a2", "a3"]);
+    // Each regime takes the side of the cut it mostly ran on.
+    expect(lines[0].levels.map((l) => l.value)).toEqual([123599 * perPct, 139377 * perPct].map((v) => expect.closeTo(v, 0)));
+    expect(lines[1].levels.map((l) => l.value)).toEqual([187797 * perPct, 204632 * perPct].map((v) => expect.closeTo(v, 0)));
+    // An account with only an after-cut figure draws only that side.
+    expect(lines[2].levels.map((l) => l.value)).toEqual([158809 * perPct].map((v) => expect.closeTo(v, 0)));
     // The account's own five-hour change across the cut, a percent only.
-    expect(lines.map((l) => l.changePct)).toEqual([9.0, null]);
+    expect(lines.map((l) => l.changePct)).toEqual([12.8, 9.0, null]);
   });
 
-  it("converts an account's window to another family by the family's own conversion", () => {
-    const opus = accountWindowTokenLines(TPW, "claude-opus-5").lines[0].levels[0].value;
-    const sonnet = accountWindowTokenLines(TPW, "claude-sonnet-5").lines[0].levels[0].value;
+  it("draws an account at the plan's level when its credits match the pool, whatever its raw tokens", () => {
+    const pooledPerPct = 19543887 / 100;
+    const credits = TPW.credits!;
+    const across = credits.five_hour_window_across_cut!;
+    const j: UsageJson = {
+      ...TPW,
+      credits: {
+        ...credits,
+        window_tokens: {
+          ...credits.window_tokens!,
+          accounts: {
+            a2: { n: 1, all: { value: 50000000 } },
+            a3: { n: 1, all: { value: 5000000000 } },
+          },
+        },
+        five_hour_window_across_cut: {
+          ...across,
+          per_account: {
+            ...across.per_account,
+            a2: { ...across.per_account.a2, before: pooledPerPct, after: pooledPerPct },
+            a3: { ...across.per_account.a3, after: pooledPerPct },
+          },
+        },
+      },
+    };
+    const lines = accountWindowTokenLines(j, "claude-opus-5").lines;
+    const plan = windowTokenRegimeLevelsFor(j, "max20", "claude-opus-5").at(-1)!.tokens;
+    for (const a of ["a2", "a3"]) {
+      for (const l of lines.find((x) => x.account === a)!.levels) expect(l.value).toBeCloseTo(plan, 0);
+    }
+  });
+
+  it("converts an account's window to another family by the plan's own window for that family", () => {
+    const opus = accountWindowTokenLines(TPW, "claude-opus-5").lines[1].levels[0].value;
+    const sonnet = accountWindowTokenLines(TPW, "claude-sonnet-5").lines[1].levels[0].value;
     expect(sonnet / opus).toBeCloseTo(646354632 / 502000000, 9);
   });
 
-  it("prices tokens per week at the account's own windows times its own window", () => {
+  it("prices tokens per week at the account's own windows times its own window on that side", () => {
     const { lines, missing } = accountWeeklyTokenLines(TPW, "claude-opus-5");
-    expect(missing).toEqual(["a1"]);
-    expect(lines[0].levels.map((l) => l.value)).toEqual([6.41 * 462184345, 4.53 * 462184345]);
+    expect(missing).toEqual([]);
+    expect(lines[1].levels.map((l) => l.value)).toEqual(
+      [6.41 * 187797 * perPct, 4.53 * 204632 * perPct].map((v) => expect.closeTo(v, 0)),
+    );
     // No per-account tokens-per-week figure is derived: without PR #90 there is none.
-    expect(lines.map((l) => l.changePct)).toEqual([null, null]);
-    expect(accountWeeklyTokenLines(withPaired(TPW), "claude-opus-5").lines.map((l) => l.changePct)).toEqual([-30.4, null]);
+    expect(lines.map((l) => l.changePct)).toEqual([null, null, null]);
+    expect(accountWeeklyTokenLines(withPaired(TPW), "claude-opus-5").lines.map((l) => l.changePct)).toEqual([-29.2, -30.4, null]);
   });
 
   it("takes the model's share of the week, and draws nothing where the model is not on Max 20x", () => {
-    const opus = accountWeeklyTokenLines(TPW, "claude-opus-5").lines[0].levels[0].value;
+    const opus = accountWeeklyTokenLines(TPW, "claude-opus-5").lines[1].levels[0].value;
     const limits = TPW.model_plan_limits!["claude-opus-5"];
     const half: UsageJson = {
       ...TPW,
       model_plan_limits: { ...TPW.model_plan_limits, "claude-opus-5": { ...limits, max20: { ...limits.max20, weekly_fraction: 0.5 } } },
     };
-    expect(accountWeeklyTokenLines(half, "claude-opus-5").lines[0].levels[0].value).toBeCloseTo(opus * 0.5, 3);
+    expect(accountWeeklyTokenLines(half, "claude-opus-5").lines[1].levels[0].value).toBeCloseTo(opus * 0.5, 3);
     // The window itself is not split by the week's share.
-    expect(accountWindowTokenLines(half, "claude-opus-5").lines[0].levels[0].value).toBe(462184345);
+    expect(accountWindowTokenLines(half, "claude-opus-5").lines[1].levels[0].value).toBeCloseTo(187797 * perPct, 3);
     const off: UsageJson = {
       ...TPW,
       model_plan_limits: { ...TPW.model_plan_limits, "claude-opus-5": { ...TPW.model_plan_limits!["claude-opus-5"], max20: { included: false, weekly_fraction: 0 } } },
