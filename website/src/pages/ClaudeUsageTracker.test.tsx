@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider, type HelmetServerState } from "react-helmet-async";
@@ -8,6 +8,7 @@ import {
   computeCredits,
   computeWindowTokens,
   windowTokenRegimeLevelsFor,
+  windowTokensValueFor,
   fmtTokens,
   fmtUsd,
   weeklyTokenRegimeLevelsFor,
@@ -34,6 +35,8 @@ import schema3WindowTokens from "@/lib/__fixtures__/claude-usage-schema3-window-
 // Tracker wf-61: the weekly change also stated in tokens a week buys, and the window figure split
 // either side of the 14 September cut.
 import schema3TokensPerWeek from "@/lib/__fixtures__/claude-usage-schema3-tokens-per-week.json";
+// The file published at 2026-09-23T11:30Z plus a null opus-5-5 family (tracker branch opus-5-5-family).
+import opus55 from "@/lib/__fixtures__/claude-usage-opus-5-5.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
@@ -1240,5 +1243,105 @@ describe("the weekly change stated in tokens a week buys", () => {
     expect(svg).toContain("-22% on 14 Sep");
     // And the effective-window chart is the one flat level it has always been.
     expect(new Set(windowTokenRegimeLevelsFor(WITHOUT, "max20", OPUS).map((l) => l.tokens)).size).toBe(1);
+  });
+});
+
+// Tracker branch opus-5-5-family: Claude Opus 5.5 is its own family, published beside opus,
+// sonnet, haiku and fable, null with a status until the fits can identify its rate. The fixture
+// is the file published at 2026-09-23T11:30Z with that null entry added.
+describe("the Opus 5.5 row", () => {
+  const NULL55 = opus55 as unknown as UsageJson;
+  const OPUS = "claude-opus-5";
+  const NOW = Date.parse("2026-09-23T12:00:00Z");
+  // The contributed-readings chart places its dots against the wall clock, so two renders a few
+  // milliseconds apart differ in the last digits unless the clock is held.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  // The same file without the Opus 5.5 family and without Opus 5.5 among the rated models: the
+  // page as it would be if the model did not exist. Its contributed readings stay, as they would.
+  function without55(j: UsageJson): UsageJson {
+    const out = structuredClone(j);
+    delete out.rates["claude-opus-5-5"];
+    const c = out.credits!;
+    delete c.per_model!["opus-5-5"];
+    delete c.window_tokens!.per_family!["opus-5-5"];
+    delete c.window_tokens!.per_week!.per_family!["opus-5-5"];
+    return out;
+  }
+
+  // The same file once the tracker measures it: a window figure, and an effort cell beside Opus's.
+  function measured55(): UsageJson {
+    const j = structuredClone(NULL55);
+    const wt = j.credits!.window_tokens!;
+    wt.per_family!["opus-5-5"] = {
+      all: { value: 543066605, interval: [467944166, 637336321], status: null },
+      conversion: "the Opus window tokens times the Opus input rate over the measured Opus 5.5 input rate",
+      rate_source: "measured",
+    };
+    const mix = j.credits!.effort_cache_mix as Record<string, unknown>;
+    mix["claude-opus-5-5"] = structuredClone(mix[OPUS]);
+    const perModel = j.credits!.per_model!;
+    // Opus's row as the base, rated on its own measurement rather than as the unit anchor.
+    perModel["opus-5-5"] = {
+      ...structuredClone(perModel.opus),
+      ...({ anchor: false } as object),
+      rate_source: "measured",
+      credits_per_token: { input: 0.533, output: 2.667 },
+      list_price_model: "claude-opus-5-5",
+    };
+    return j;
+  }
+
+  const options = (html: string) =>
+    [...html.matchAll(/<select aria-label="Model"[^>]*>(.*?)<\/select>/g)].map((m) =>
+      [...m[1].matchAll(/<option value="([^"]+)"[^>]*>([^<]*)<\/option>/g)].map((o) => [o[1], o[2]]),
+    );
+
+  it("leaves the page as it would be without Opus 5.5 while its value is null", () => {
+    for (const model of [OPUS, "claude-sonnet-5", "claude-fable-5-1"]) {
+      expect(renderHtml(NULL55, "max20", model, NOW)).toBe(renderHtml(without55(NULL55), "max20", model, NOW));
+    }
+    const html = renderHtml(NULL55, "max20", OPUS, NOW);
+    expect(html).not.toMatch(/opus-5-5|Opus 5\.5/);
+    expect(options(html).length).toBe(2);
+  });
+
+  it("keeps Haiku as it is", () => {
+    const html = renderHtml(NULL55, "max20", OPUS, NOW);
+    for (const list of options(html)) expect(list.map(([v]) => v)).toContain("claude-haiku-4-5");
+  });
+
+  it("lists Opus 5.5 directly after Opus once it is measured", () => {
+    const html = renderHtml(measured55(), "max20", OPUS, NOW);
+    const lists = options(html);
+    expect(lists.length).toBe(2);
+    for (const list of lists) {
+      const at = list.findIndex(([v]) => v === OPUS);
+      expect(list[at + 1]).toEqual(["claude-opus-5-5", "Opus 5.5"]);
+    }
+    const heads = [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
+    expect(heads.indexOf("Opus 5.5")).toBe(heads.indexOf("Opus 5") + 1);
+  });
+
+  it("reads Opus 5.5's own family figure, not Opus's", () => {
+    const j = measured55();
+    expect(windowTokensValueFor(j, "claude-opus-5-5")).toBe(543066605);
+    expect(windowTokensValueFor(j, OPUS)).not.toBe(543066605);
+    expect(windowTokensValueFor(NULL55, "claude-opus-5-5")).toBeNull();
+    expect(render(j, "max20", "claude-opus-5-5", NOW)).toContain("Opus 5.5");
+  });
+
+  it("names the credit rate Opus 5.5, never Opus-5-5", () => {
+    const j = measured55();
+    expect(computeCredits(j, "max20", "claude-opus-5-5")!.creditsPerTokenIn).toBe(0.533);
+    const text = render(j, "max20", "claude-opus-5-5", NOW);
+    expect(text).toContain("Priced at the meter's measured Opus 5.5 rate");
+    expect(text).not.toMatch(/Opus-5-5/i);
+    // Opus 5 keeps its family name.
+    expect(render(j, "max20", OPUS, NOW)).not.toContain("measured Opus 5.5 rate");
   });
 });

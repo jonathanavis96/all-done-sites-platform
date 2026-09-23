@@ -7,6 +7,7 @@ import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
   EFFORTS,
   MODEL_LABELS,
+  pageModels,
   accountWindowsPerWeek,
   basisDate,
   captureEmptyNote,
@@ -775,6 +776,15 @@ function ContributorsChart({
 // The contributor chart starts on `initialContribMetric`. `now` fixes the clock the stale line
 // reads. The prerender leaves it unset, so its output never depends on when it ran; a test sets it
 // to render the stale line without mounting.
+// A credit family's name as the page writes it: the capitalised family ("Opus", "Sonnet"), except
+// where the family is one model version and so takes that model's own label ("Opus 5.5", never
+// "Opus-5-5"). Without a family, the selected model's label.
+const FAMILY_LABELS: Record<string, string> = { "opus-5-5": MODEL_LABELS["claude-opus-5-5"] };
+function familyLabel(family: string | null, model: string): string {
+  if (!family) return MODEL_LABELS[model] ?? model;
+  return FAMILY_LABELS[family] ?? family.charAt(0).toUpperCase() + family.slice(1);
+}
+
 export default function ClaudeUsageTracker({
   initial = initialData,
   initialPlan = "max20",
@@ -940,9 +950,13 @@ export default function ClaudeUsageTracker({
   // then any other model key the file happens to publish, kept in whatever order the file gives
   // them so a new model never silently drops off the table.
   const EFFORT_MODEL_ORDER = ["claude-sonnet-5", "claude-opus-5", "claude-fable-5-1"];
-  const effortModelOrder = effortMix
-    ? [...EFFORT_MODEL_ORDER.filter((m) => m in effortMix), ...Object.keys(effortMix).filter((m) => !EFFORT_MODEL_ORDER.includes(m))]
-    : [];
+  const effortModelOrder =
+    effortMix && data
+      ? pageModels(data, [
+          ...EFFORT_MODEL_ORDER.filter((m) => m in effortMix),
+          ...Object.keys(effortMix).filter((m) => !EFFORT_MODEL_ORDER.includes(m)),
+        ])
+      : [];
   // True once the credits block can state this model's window in credits. Everything the page
   // says about the meter, the API value it holds and the sessions it buys then comes from that one
   // block, so the hero, the chart headlines and the plan table cannot disagree. The token figures
@@ -1061,7 +1075,7 @@ export default function ClaudeUsageTracker({
   const creditRateLine = (() => {
     if (!cr || cr.modelStatus || typeof cr.creditsPerTokenIn !== "number") return null;
     const rate = (n: number) => n.toFixed(3);
-    const family = cr.family ? cr.family.charAt(0).toUpperCase() + cr.family.slice(1) : MODEL_LABELS[model] ?? model;
+    const family = familyLabel(cr.family, model);
     const at = cr.familyAsOf ? `, as of ${fmtDate(cr.familyAsOf)}` : "";
     const lead =
       cr.rateSource === "measured"
@@ -1240,7 +1254,7 @@ export default function ClaudeUsageTracker({
                 , running{" "}
                 <span className="sel">
                   <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
-                    {Object.keys(data.rates).map((m) => (
+                    {pageModels(data, Object.keys(data.rates)).map((m) => (
                       <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
                     ))}
                   </select>
@@ -1630,7 +1644,7 @@ export default function ClaudeUsageTracker({
                     </span>
                     <span className="sel">
                       <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
-                        {Object.keys(data.rates).map((m) => (
+                        {pageModels(data, Object.keys(data.rates)).map((m) => (
                           <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
                         ))}
                       </select>
@@ -1850,7 +1864,7 @@ export default function ClaudeUsageTracker({
             {cr &&
               (cr.modelStatus ? (
                 <p>
-                  {cr.family ? `${cr.family.charAt(0).toUpperCase()}${cr.family.slice(1)}` : MODEL_LABELS[model] ?? model} rate
+                  {familyLabel(cr.family, model)} rate
                   {cr.familyAsOf ? `, as of ${fmtDate(cr.familyAsOf)}` : ""}: {cr.modelStatus}.
                 </p>
               ) : (
