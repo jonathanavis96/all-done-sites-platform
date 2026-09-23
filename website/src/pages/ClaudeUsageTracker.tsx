@@ -38,6 +38,7 @@ import {
   weeklySeriesFor,
   weeklyTokenRegimeLevelsFor,
   windowTokenRegimeLevelsFor,
+  tokensPerWeekChangePct,
   type ContribPoint,
   type CreditFigureText,
   type Effort,
@@ -242,6 +243,7 @@ function LevelChart({
   title,
   overlay,
   changeFromLevels,
+  changePct,
 }: {
   levelsByPlan: PlanLevels[];
   events: UsageEvent[];
@@ -256,6 +258,11 @@ function LevelChart({
   // day Anthropic said so -- and a marker on the wrong date used to sit beside a step drawn
   // somewhere else entirely.
   changeFromLevels?: boolean;
+  // The signed percent the marker states, where the publisher publishes the figure for this
+  // chart's own quantity (tracker wf-61's tokens-per-week change). The marker's DATE still comes
+  // from the drawn step, so the line and the label cannot name two different days. Omitted on
+  // every other chart, which keeps reading the percent off the step it drew.
+  changePct?: number | null;
 }) {
   // With readings to show, the plot keeps a legible width and scrolls inside its own container on
   // a phone, rather than shrinking a hundred dots into a smear. It opens on the newest readings,
@@ -313,17 +320,25 @@ function LevelChart({
   const eventChange = latestWeeklyChange(events);
   const levelStep = changeFromLevels ? levelStepFor(plotted, plotted.find(isSelectedPlan)) : null;
   const changedLevelStart = levelStep?.date ?? null;
+  const pctText = (pct: number) => `${pct > 0 ? "+" : ""}${Math.round(pct)}%`;
   const changeMarker: { x: (() => number | null); date: string; text: string } | null = changeFromLevels
     ? levelStep
       ? {
           x: () => xAt(levelStep.date),
           date: levelStep.date,
-          text: `${levelStep.pct > 0 ? "+" : ""}${Math.round(levelStep.pct)}% on ${fmtDateShort(levelStep.date.slice(0, 10))}`,
+          text: `${pctText(typeof changePct === "number" ? changePct : levelStep.pct)} on ${fmtDateShort(levelStep.date.slice(0, 10))}`,
         }
       : // No real step anywhere in the fallback chain (should not happen while Max 20x has its
         // own measured regimes) -- fall back to the announced event rather than show nothing.
         eventChange
-        ? { x: () => xDay(eventChange.date), date: eventChange.date, text: shortChangeLabel(eventChange) }
+        ? {
+            x: () => xDay(eventChange.date),
+            date: eventChange.date,
+            text:
+              typeof changePct === "number"
+                ? `${pctText(changePct)} on ${fmtDateShort(eventChange.date.slice(0, 10))}`
+                : shortChangeLabel(eventChange),
+          }
         : null
     : eventChange
       ? { x: () => xDay(eventChange.date), date: eventChange.date, text: shortChangeLabel(eventChange) }
@@ -863,6 +878,9 @@ export default function ClaudeUsageTracker({
         : [],
     [data],
   );
+  // The signed tokens-per-week figure for the newest weekly change, when the publisher measured
+  // one: what the tokens-per-week chart's marker states instead of the step it happens to draw.
+  const tokensPerWeekPct = useMemo(() => (data ? tokensPerWeekChangePct(data) : null), [data]);
   const weeklyTokenLevels = useMemo(
     () =>
       data
@@ -1489,6 +1507,10 @@ export default function ClaudeUsageTracker({
                   plotRight={732}
                   title="Tokens per week over time"
                   changeFromLevels
+                  // This chart's quantity is tokens a week buys, so its marker states the
+                  // published tokens-per-week figure where there is one. The windows-per-week
+                  // chart below keeps its own windows-per-week figure.
+                  changePct={tokensPerWeekPct}
                 />
               </>
             )}

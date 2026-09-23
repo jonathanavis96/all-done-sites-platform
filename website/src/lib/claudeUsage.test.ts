@@ -32,6 +32,9 @@ import {
   shortfallRows,
   computeWindowTokens,
   windowTokensValueFor,
+  windowTokensCutFor,
+  tokensPerWeekChangeFor,
+  tokensPerWeekChangePct,
   type UsageJson,
 } from "./claudeUsage";
 import {
@@ -66,6 +69,9 @@ import schema3Measured from "./__fixtures__/claude-usage-schema3-measured-rates.
 import schema3Shortfall from "./__fixtures__/claude-usage-schema3-shortfall.json";
 // Tracker wf-59: the window measured in tokens, per class and per family.
 import schema3WindowTokens from "./__fixtures__/claude-usage-schema3-window-tokens.json";
+// Tracker wf-61: the same file with the weekly change also stated in tokens a week buys, and the
+// window figure split either side of the 14 September cut it was measured across.
+import schema3TokensPerWeek from "./__fixtures__/claude-usage-schema3-tokens-per-week.json";
 
 const J: UsageJson = {
   generated_at: "2026-09-05T20:15:00+00:00",
@@ -1805,5 +1811,117 @@ describe("computeWindowTokens", () => {
     const noCredits: UsageJson = structuredClone(WT);
     delete noCredits.credits;
     expect(computeWindowTokens(noCredits, "max20", OPUS)).toBeNull();
+  });
+});
+
+// wf-61. At the 14 September cut two things moved at once: five-hour windows per week fell about
+// 22%, and the five-hour window itself grew about 8.6%. A week therefore buys about 15% fewer
+// tokens, and that is the figure the headline and the tokens-per-week chart state -- the
+// windows-per-week figure stays on `percent`, where the windows-per-week chart reads it.
+describe("the weekly change measured in tokens a week buys", () => {
+  const TPW = schema3TokensPerWeek as unknown as UsageJson;
+  const OPUS = "claude-opus-5";
+  const BEFORE = 462_000_000;
+  const CURRENT = 502_000_000;
+  // The same file as the publisher sent it before wf-61: the change stated in windows per week
+  // only, and one window figure with no side to it.
+  const WITHOUT: UsageJson = (() => {
+    const j = structuredClone(TPW);
+    delete j.last_change!.tokens_per_week_change;
+    for (const e of j.events ?? []) delete e.tokens_per_week_change;
+    const wt = j.credits!.window_tokens!;
+    delete wt.cut_at;
+    delete wt.before;
+    delete wt.after;
+    delete wt.current_source;
+    return j;
+  })();
+
+  it("says the tokens-per-week figure in the headline, not the windows-per-week one", () => {
+    expect(TPW.last_change!.percent).toBe(22);
+    expect(TPW.last_change!.tokens_per_week_change!.percent).toBe(15);
+    expect(headline(TPW)).toEqual({
+      text: "Anthropic last decreased Claude's weekly limit by 15% on 14 Sep 2026.",
+      tone: "down",
+    });
+  });
+
+  it("falls back to the windows-per-week figure where the tokens figure is not published", () => {
+    expect(headline(WITHOUT).text).toBe("Anthropic last decreased Claude's weekly limit by 22% on 14 Sep 2026.");
+    // And a file with no weekly scope at all is untouched by any of this.
+    const windowScope: UsageJson = structuredClone(TPW);
+    windowScope.last_change!.scope = "window";
+    expect(headline(windowScope).text).toBe("Anthropic last decreased Claude's limits by 22% on 14 Sep 2026.");
+  });
+
+  it("reads the published change off the event or off last_change, signed for the chart marker", () => {
+    expect(tokensPerWeekChangeFor(TPW)!.windows_per_week_pct).toBe(-21.8);
+    expect(tokensPerWeekChangeFor(TPW)!.five_hour_window_pct).toBe(8.6);
+    expect(tokensPerWeekChangePct(TPW)).toBe(-15);
+    expect(tokensPerWeekChangeFor(WITHOUT)).toBeNull();
+    expect(tokensPerWeekChangePct(WITHOUT)).toBeNull();
+    // On last_change alone, with the events stripped of it.
+    const eventless: UsageJson = structuredClone(TPW);
+    for (const e of eventless.events ?? []) delete e.tokens_per_week_change;
+    expect(tokensPerWeekChangePct(eventless)).toBe(-15);
+  });
+
+  it("reads the before-cut window on the measured family, and converts it for another", () => {
+    const cut = windowTokensCutFor(TPW, OPUS)!;
+    expect(cut.cutAt).toBe("2026-09-14T12:00:00+00:00");
+    expect(cut.value).toBe(BEFORE);
+    // Sonnet's before-cut window is the same raw figure on the same conversion its current
+    // figure already carries, not a second measurement.
+    const sonnetNow = windowTokensValueFor(TPW, SONNET)!;
+    expect(windowTokensCutFor(TPW, SONNET)!.value).toBeCloseTo((BEFORE * sonnetNow) / CURRENT, 0);
+    // No split published: every caller keeps drawing the one current figure.
+    expect(windowTokensCutFor(WITHOUT, OPUS)).toBeNull();
+    // A family with no current figure has nothing to convert a before-cut figure onto.
+    expect(windowTokensCutFor(TPW, FABLE)).toBeNull();
+  });
+
+  it("prices each weekly regime at the window that was current while it ran", () => {
+    const levels = weeklyTokenRegimeLevelsFor(TPW, "max20", OPUS);
+    // The two measured Max 20x regimes, 6.48 windows before the cut and 5.07 after it, plus the
+    // Max 5x span borrowed for the months before the account moved onto Max 20x.
+    expect(levels.map((l) => [l.start.slice(0, 10), +(l.tokens / 1e6).toFixed(1)])).toEqual([
+      ["2026-06-13", 3009.8],
+      ["2026-08-15", 2993.8],
+      ["2026-09-14", 2545.1],
+    ]);
+    // Which is the -15% the headline says, not the -22% windows per week fell by.
+    const step = (levels[2].tokens - levels[1].tokens) / levels[1].tokens;
+    expect(+(step * 100).toFixed(1)).toBe(-15.0);
+    // A pre-cut level's range is the before-cut interval on the same windows; a later one's is
+    // the current interval.
+    const before = TPW.credits!.window_tokens!.before!.interval![0] as number;
+    expect(levels[1].tokensInterval![0]).toBeCloseTo(before * 6.48, 0);
+    const now = TPW.credits!.window_tokens!.per_family!.opus.all.interval![0] as number;
+    expect(levels[2].tokensInterval![0]).toBeCloseTo(now * 5.07, 0);
+  });
+
+  it("prices every regime at the one current window where no split is published", () => {
+    const levels = weeklyTokenRegimeLevelsFor(WITHOUT, "max20", OPUS);
+    expect(levels.map((l) => +(l.tokens / 1e6).toFixed(1))).toEqual([3270.4, 3253.0, 2545.1]);
+    // -22%: the whole of the fall in windows per week, which is what the chart drew before wf-61.
+    const step = (levels[2].tokens - levels[1].tokens) / levels[1].tokens;
+    expect(Math.round(step * 100)).toBe(-22);
+  });
+
+  it("steps the effective-window chart at the cut instead of holding one flat level", () => {
+    const levels = windowTokenRegimeLevelsFor(TPW, "max20", OPUS);
+    expect(levels.map((l) => [l.start.slice(0, 10), l.tokens])).toEqual([
+      ["2026-06-13", BEFORE],
+      ["2026-08-15", BEFORE],
+      ["2026-09-14", CURRENT],
+    ]);
+    // Without the split it is the flat line it has always been.
+    expect(new Set(windowTokenRegimeLevelsFor(WITHOUT, "max20", OPUS).map((l) => l.tokens))).toEqual(
+      new Set([CURRENT]),
+    );
+  });
+
+  it("leaves the windows-per-week levels alone: they are a count, not a token figure", () => {
+    expect(weeklyRegimeLevelsFor(TPW, "max20").map((l) => +l.windows.toFixed(2))).toEqual([6.51, 6.48, 5.07]);
   });
 });

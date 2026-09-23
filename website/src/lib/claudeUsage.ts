@@ -101,6 +101,20 @@ export type EventKind = "plan" | "change";
 // date instead of a day the limit itself moved.
 export type EventScope = "window" | "weekly";
 
+// A weekly-scope change stated in tokens a week buys. `percent` is the unsigned figure the
+// headline says, `direction` which way it went; `signed_pct` is the same figure signed, and the
+// two components beside it are what it was assembled from -- the change in windows per week and
+// the change in the five-hour window itself, the latter measured on the accounts named.
+export interface TokensPerWeekChange {
+  percent: number;
+  direction: "increased" | "decreased";
+  signed_pct?: number;
+  windows_per_week_pct?: number;
+  five_hour_window_pct?: number;
+  five_hour_accounts?: string[];
+  method?: string;
+}
+
 // A detected change. Schema 1 publishes only date, direction, percent, model and scope. Schema 2
 // adds what the detection rests on: it is a change in one account's observed metric, with bounds
 // on when it happened and how it was confirmed, not a dated policy change (audit finding 4).
@@ -133,6 +147,13 @@ export interface ChangeRecord {
   // separate a smaller weekly cap from a bigger five-hour window; the page says so rather than
   // picking one.
   meter_attribution?: string;
+  // The same change measured in tokens a week buys rather than windows a week holds (tracker
+  // wf-61). At the 14 September cut the two differ: windows per week fell 22% while the
+  // five-hour window itself grew, so a week buys about 15% fewer tokens. `percent` above stays
+  // the windows-per-week figure -- the windows-per-week chart's own marker reads it -- and this
+  // block carries the tokens figure the headline and the tokens-per-week chart read instead.
+  // Absent or null on JSON published before wf-61, and on an event where it was not measured.
+  tokens_per_week_change?: TokensPerWeekChange | null;
   // Anthropic's own figure for the change, quoted. A published claim shown beside the
   // measurement, never mixed into it.
   announced?: {
@@ -847,7 +868,15 @@ export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "f
     if (!first) return { text: "Anthropic hasn't changed Claude's limits since we started measuring.", tone: "flat" };
     return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
   }
-  const tone = c.direction === "increased" ? "up" : "down";
+  // A weekly change published with a tokens-per-week figure says that figure (tracker wf-61):
+  // the sentence is about what a week buys, and windows per week is only one of the two things
+  // that moved. `percent`/`direction` on the record itself stay the windows-per-week figure the
+  // windows-per-week chart marks, and are what an older file -- or an unmeasured event -- falls
+  // back to.
+  const tpw = c.scope === "weekly" ? c.tokens_per_week_change ?? null : null;
+  const percent = tpw ? tpw.percent : c.percent;
+  const direction = tpw ? tpw.direction : c.direction;
+  const tone = direction === "increased" ? "up" : "down";
   // The #78 headline, restored (Jonathan's decision, 2026-09-20): "Anthropic last <direction>
   // Claude's <weekly> limit by N% on <date>", the same sentence regardless of whether the
   // credits block is published. The onset-bounded "fell by ... between ..." wording this
@@ -861,9 +890,9 @@ export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "f
   // `c.date` for older JSON that does not carry it.
   const date = c.onset?.from_windows?.earliest ?? c.date;
   if (c.scope === "weekly") {
-    return { text: `Anthropic last ${c.direction} Claude's weekly limit by ${c.percent}% on ${fmtDate(date)}.`, tone };
+    return { text: `Anthropic last ${direction} Claude's weekly limit by ${percent}% on ${fmtDate(date)}.`, tone };
   }
-  return { text: `Anthropic last ${c.direction} Claude's limits by ${c.percent}% on ${fmtDate(date)}.`, tone };
+  return { text: `Anthropic last ${direction} Claude's limits by ${percent}% on ${fmtDate(date)}.`, tone };
 }
 
 export function fmtTokens(n: number): string {
@@ -1018,6 +1047,9 @@ export function weeklySeriesFor(j: UsageJson): WeeklySeries[] {
 export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[] {
   const perWindow = windowTokensValueFor(j, model);
   if (perWindow === null) return [];
+  // The same split the regime levels apply: a week that ended at or before the cut is priced at
+  // the window that was current while it ran.
+  const cut = windowTokensCutFor(j, model);
   const base = weeklySeriesFor(j);
   const withTokens = (s: WeeklySeries, plan: Plan, label: string): WeeklySeries[] => {
     const limit = modelPlanLimit(j, model, plan);
@@ -1029,7 +1061,10 @@ export function weeklyTokenSeriesFor(j: UsageJson, model: string): WeeklySeries[
         plan,
         label,
         sharedWithPro: false,
-        points: s.points.map((p) => ({ ...p, tokens: p.windows * perWindow * scale })),
+        points: s.points.map((p) => ({
+          ...p,
+          tokens: p.windows * windowTokensAt(p.date, perWindow, null, cut).value * scale,
+        })),
       },
     ];
   };
@@ -1054,13 +1089,28 @@ export function weeklyTokenRegimeLevelsFor(
   j: UsageJson,
   plan: Plan,
   model: string,
-): (RegimeLevel & { tokens: number })[] {
+): (RegimeLevel & { tokens: number; tokensInterval: (number | null)[] | null })[] {
   const limit = modelPlanLimit(j, model, plan);
   if (!limit.included) return [];
   const perWindow = windowTokensValueFor(j, model);
   if (perWindow === null) return [];
   const scale = j.plan_ratios[plan] * limit.weekly_fraction;
-  return weeklyRegimeLevelsFor(j, plan).map((r) => ({ ...r, tokens: r.windows * perWindow * scale }));
+  // Each regime is priced at the window figure that was current while it ran (tracker wf-61).
+  // Drawing every regime at today's window made the 14 September step read as the whole fall in
+  // windows per week (-22%), which is not what a week buys: the window itself grew across the
+  // same cut, so the step the chart draws is the -15% the headline says. A file that publishes
+  // no split prices every regime at the one current figure, exactly as before.
+  const cut = windowTokensCutFor(j, model);
+  const interval = windowTokensIntervalFor(j, model);
+  return weeklyRegimeLevelsFor(j, plan).map((r) => {
+    const w = windowTokensAt(r.end, perWindow, interval, cut);
+    const factor = r.windows * scale;
+    return {
+      ...r,
+      tokens: factor * w.value,
+      tokensInterval: w.interval ? w.interval.map((n) => (n === null ? null : n * factor)) : null,
+    };
+  });
 }
 
 // The window itself, held flat at the measured `credits.window_tokens` figure across the same
@@ -1075,13 +1125,25 @@ export function windowTokenRegimeLevelsFor(
   j: UsageJson,
   plan: Plan,
   model: string,
-): (RegimeLevel & { tokens: number })[] {
+): (RegimeLevel & { tokens: number; tokensInterval: (number | null)[] | null })[] {
   const limit = modelPlanLimit(j, model, plan);
   if (!limit.included) return [];
   const perWindow = windowTokensValueFor(j, model);
   if (perWindow === null) return [];
   const scale = j.plan_ratios[plan];
-  return weeklyRegimeLevelsFor(j, plan).map((r) => ({ ...r, tokens: perWindow * scale }));
+  // One flat level per regime still, but at two levels once the block splits its own figure at
+  // the cut (tracker wf-61): the before-cut window up to `cut_at`, the current one after it. A
+  // file that publishes no split holds the one figure across every regime, as it did before.
+  const cut = windowTokensCutFor(j, model);
+  const interval = windowTokensIntervalFor(j, model);
+  return weeklyRegimeLevelsFor(j, plan).map((r) => {
+    const w = windowTokensAt(r.end, perWindow, interval, cut);
+    return {
+      ...r,
+      tokens: w.value * scale,
+      tokensInterval: w.interval ? w.interval.map((n) => (n === null ? null : n * scale)) : null,
+    };
+  });
 }
 
 export interface AccountOnset {
@@ -1121,6 +1183,25 @@ export function latestWeeklyChange(events: UsageEvent[]): UsageEvent | null {
   );
 }
 
+// The tokens-per-week figure for the newest weekly change, wherever the publisher put it: on the
+// event itself, or -- for a file whose `last_change` is that same event -- on `last_change`.
+// Null for JSON published before tracker wf-61, and for a change where it was not measured.
+export function tokensPerWeekChangeFor(j: UsageJson): TokensPerWeekChange | null {
+  const ev = latestWeeklyChange(weeklyEventsFor(j));
+  const c = j.last_change;
+  return (
+    ev?.tokens_per_week_change ??
+    (c?.scope === "weekly" ? c.tokens_per_week_change ?? null : null)
+  );
+}
+
+// The same figure signed: what the tokens-per-week chart's own change marker reads.
+export function tokensPerWeekChangePct(j: UsageJson): number | null {
+  const t = tokensPerWeekChangeFor(j);
+  if (!t || typeof t.percent !== "number" || !Number.isFinite(t.percent)) return null;
+  return t.direction === "decreased" ? -t.percent : t.percent;
+}
+
 // ---------------------------------------------------------------------------
 // The credits block
 // ---------------------------------------------------------------------------
@@ -1135,7 +1216,27 @@ export function latestWeeklyChange(events: UsageEvent[]): UsageEvent | null {
 // missing figure -- it is one the tracker can bound but not identify -- so the page prints the
 // sentence where the number would go and the interval as the range, never a dash and never a zero.
 
-export interface CreditsFigure {
+// One side of a figure the publisher measured separately either side of a limit change: that
+// side's own cluster, its spread and how many readings went in.
+export interface CutSide {
+  value: number | null;
+  interval?: (number | null)[] | null;
+  n?: number;
+}
+
+// A figure split at a cut (tracker wf-61). The figure's own `value` is already the current
+// (post-cut) one; `before` is the cluster measured on the other side of `cut_at`, and
+// `current_source` says whether the current figure came from the after cluster or from the
+// before cluster scaled by the measured five-hour change. All optional: JSON without them is a
+// figure that was never split, and everything here reads it exactly as it read it before.
+export interface CutSplit {
+  cut_at?: string;
+  before?: CutSide | null;
+  after?: CutSide | null;
+  current_source?: string;
+}
+
+export interface CreditsFigure extends CutSplit {
   value: number | null;
   // The cluster's own min to max: the spread of readings of the same quantity, not a confidence
   // interval. The publisher's own words; no error model is implied and none is drawn.
@@ -1308,7 +1409,7 @@ export interface WindowTokensPerWeek {
   per_family?: Record<string, { all: CreditsFigure }>;
 }
 
-export interface WindowTokens {
+export interface WindowTokens extends CutSplit {
   derivation?: string;
   as_of?: string | null;
   method?: string;
@@ -1602,6 +1703,58 @@ export function windowTokensValueFor(j: UsageJson, model: string): number | null
   const family = modelFamily(model);
   const value = family ? creditsOf(j)?.window_tokens?.per_family?.[family]?.all?.value : null;
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+// The same window before the cut, on the same per-model conversion the current figure carries.
+//
+// From tracker wf-61 the block splits its own measurement at `cut_at`: `all.value` (and every
+// family's figure derived from it) is the current, post-cut window, and `before` is the cluster
+// measured on the other side. Only the measured family's raw figure is published either side, so
+// a converted family's before-cut window is that raw figure times the ratio its own current
+// figure already stands in -- the same conversion, applied to the other side of the cut.
+//
+// Null where the block publishes no split, or where the family has no current figure to convert
+// from: in that case every caller draws the one current level it drew before wf-61.
+export interface WindowTokensCut {
+  cutAt: string;
+  value: number;
+  interval: (number | null)[] | null;
+}
+export function windowTokensCutFor(j: UsageJson, model: string): WindowTokensCut | null {
+  const wt = creditsOf(j)?.window_tokens;
+  const before = wt?.before;
+  const cutAt = wt?.cut_at;
+  if (!wt || !cutAt || typeof before?.value !== "number" || !Number.isFinite(before.value)) return null;
+  const current = windowTokensValueFor(j, model);
+  const raw = wt.all?.value;
+  if (current === null || typeof raw !== "number" || !Number.isFinite(raw) || raw === 0) return null;
+  const conversion = current / raw;
+  const iv = before.interval;
+  return {
+    cutAt,
+    value: before.value * conversion,
+    interval: Array.isArray(iv) ? iv.map((n) => (typeof n === "number" && Number.isFinite(n) ? n * conversion : null)) : null,
+  };
+}
+
+// Which window figure a span of time is priced at: the before-cut one for a span that ends at or
+// before the cut, the current one for every later span. Returns the current figure unchanged when
+// the block publishes no split at all.
+function windowTokensAt(
+  endIso: string,
+  current: number,
+  currentInterval: (number | null)[] | null,
+  cut: WindowTokensCut | null,
+): { value: number; interval: (number | null)[] | null } {
+  if (cut && Date.parse(endIso) <= Date.parse(cut.cutAt)) return { value: cut.value, interval: cut.interval };
+  return { value: current, interval: currentInterval };
+}
+
+// The published spread of the current window figure for one model, as the levels' own range.
+function windowTokensIntervalFor(j: UsageJson, model: string): (number | null)[] | null {
+  const family = modelFamily(model);
+  const iv = family ? creditsOf(j)?.window_tokens?.per_family?.[family]?.all?.interval : null;
+  return Array.isArray(iv) ? iv : null;
 }
 
 // The breakdown's own order: what the meter mostly sees first, the tokens it charges most for

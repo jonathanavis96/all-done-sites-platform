@@ -7,6 +7,7 @@ import {
   compute,
   computeCredits,
   computeWindowTokens,
+  windowTokenRegimeLevelsFor,
   fmtTokens,
   fmtUsd,
   weeklyTokenRegimeLevelsFor,
@@ -30,6 +31,9 @@ import schema3Measured from "@/lib/__fixtures__/claude-usage-schema3-measured-ra
 import schema3Shortfall from "@/lib/__fixtures__/claude-usage-schema3-shortfall.json";
 // Tracker wf-59: the window measured in tokens, per class and per family, under credits.window_tokens.
 import schema3WindowTokens from "@/lib/__fixtures__/claude-usage-schema3-window-tokens.json";
+// Tracker wf-61: the weekly change also stated in tokens a week buys, and the window figure split
+// either side of the 14 September cut.
+import schema3TokensPerWeek from "@/lib/__fixtures__/claude-usage-schema3-tokens-per-week.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
@@ -1145,5 +1149,96 @@ describe("the measured window in tokens", () => {
         expect(render(WT, plan, model), `${model} ${plan}`).not.toMatch(/\bnull\b|\bNaN\b|\bundefined\b/);
       }
     }
+  });
+});
+
+// wf-62. The 14 September cut moved two things at once: five-hour windows per week fell about
+// 22%, and the five-hour window itself grew about 8.6%, so a week buys about 15% fewer tokens.
+// The headline and the tokens-per-week chart say the 15%; the windows-per-week chart keeps the
+// 22% it measures; the effective-window chart steps at the cut instead of drawing one flat level
+// over both sides.
+describe("the weekly change stated in tokens a week buys", () => {
+  const TPW = schema3TokensPerWeek as unknown as UsageJson;
+  const OPUS = "claude-opus-5";
+  // The same file as the publisher sent it before wf-61: no tokens-per-week figure and no split
+  // window. It must render exactly what the page rendered then.
+  const WITHOUT: UsageJson = (() => {
+    const j = structuredClone(TPW);
+    delete j.last_change!.tokens_per_week_change;
+    for (const e of j.events ?? []) delete e.tokens_per_week_change;
+    const wt = j.credits!.window_tokens!;
+    delete wt.cut_at;
+    delete wt.before;
+    delete wt.after;
+    delete wt.current_source;
+    return j;
+  })();
+  // One chart's own svg, found by the accessible title every LevelChart carries.
+  const chart = (j: UsageJson, title: string): string => {
+    const html = renderHtml(j, "max20", OPUS);
+    const at = html.indexOf(`aria-label="${title} over time`);
+    expect(at, title).toBeGreaterThan(-1);
+    return html.slice(html.lastIndexOf("<svg", at), html.indexOf("</svg>", at));
+  };
+
+  it("says the tokens-per-week figure in the headline", () => {
+    expect(render(TPW, "max20", OPUS)).toContain(
+      "Anthropic last decreased Claude's weekly limit by 15% on 14 Sep 2026.",
+    );
+  });
+
+  it("steps the tokens-per-week chart on what a week buys, and marks it -15%", () => {
+    const svg = chart(TPW, "Tokens per week");
+    // 6.48 windows at the pre-cut window, then 5.07 at the current one.
+    expect(svg).toContain("2994M");
+    expect(svg).toContain("2545M");
+    // The step the chart used to draw: today's window at both regimes' windows per week.
+    expect(svg).not.toContain("3253M");
+    expect(svg).toContain("-15% on 14 Sep");
+    expect(svg).not.toContain("-22% on 14 Sep");
+  });
+
+  it("keeps the windows-per-week chart on its own figure", () => {
+    const svg = chart(TPW, "Five-hour windows per week");
+    expect(svg).toContain("-22% on 14 Sep");
+    expect(svg).not.toContain("-15% on 14 Sep");
+  });
+
+  it("steps the effective-window chart at the cut, held flat on each side", () => {
+    const svg = chart(TPW, "Effective window size");
+    expect(svg).toContain("462M");
+    expect(svg).toContain("502M");
+    // Still no marker of its own: the section draws no change line, only the step.
+    expect(svg).not.toContain("#B42318");
+    // Two levels and no more: one before the cut, one after, each held flat.
+    expect(new Set(windowTokenRegimeLevelsFor(TPW, "max20", OPUS).map((l) => l.tokens)).size).toBe(2);
+  });
+
+  it("leaves the plan table and the sessions lines on the current regime", () => {
+    const text = render(TPW, "max20", OPUS);
+    const w = computeWindowTokens(TPW, "max20", OPUS)!;
+    // The card, the table cell and the chart's last level are one figure.
+    expect(w.perWeek!.text).toBe("2545M");
+    expect(row(text, "Tokens per week")[2]).toBe("2545M");
+    expect(row(text, "Tokens per 5-hour window")[2]).toBe("502M");
+    expect(text).toContain("502M tokens per 5-hour window");
+    // The sessions lines are the publisher's own per-window and per-week figures, which describe
+    // the current regime and take no window figure of their own: unchanged by the split.
+    const c = computeCredits(TPW, "max20", OPUS)!;
+    expect(text).toContain(`${c.sessionsPerWindow!.text} sessions per window`);
+    expect(text).toContain(`${c.sessionsPerWeek!.text} per week`);
+    expect(row(text, "Sessions per week")[2]).toBe(c.sessionsPerWeek!.text);
+  });
+
+  it("renders the old headline and the old levels for a file without the new fields", () => {
+    const text = render(WITHOUT, "max20", OPUS);
+    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 22% on 14 Sep 2026.");
+    const svg = chart(WITHOUT, "Tokens per week");
+    expect(svg).toContain("3253M");
+    expect(svg).toContain("2545M");
+    expect(svg).not.toContain("2994M");
+    expect(svg).toContain("-22% on 14 Sep");
+    // And the effective-window chart is the one flat level it has always been.
+    expect(new Set(windowTokenRegimeLevelsFor(WITHOUT, "max20", OPUS).map((l) => l.tokens)).size).toBe(1);
   });
 });
