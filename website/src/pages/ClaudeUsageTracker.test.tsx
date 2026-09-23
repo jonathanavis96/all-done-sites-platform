@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider, type HelmetServerState } from "react-helmet-async";
 import ClaudeUsageTracker, { markerColour, markerPctText, realSteps } from "./ClaudeUsageTracker";
 import {
+  accountLabel,
   compute,
   computeCredits,
   computeWindowTokens,
@@ -18,7 +19,7 @@ import {
   type SpeedBlock,
   type UsageJson,
 } from "@/lib/claudeUsage";
-import type { ContribMetric } from "@/lib/contrib";
+import { CONTRIB_PALETTE, type ContribMetric } from "@/lib/contrib";
 // Schema 1: the published file as of 4401911 (generated 2026-09-16T16:30Z), what the live page
 // renders until the collector change merges. Schema 2: tracker PR #57's offline rebuild from the
 // same inputs, in which max20's weekly figure is unavailable until passive.json is re-paired.
@@ -47,6 +48,9 @@ import { withWf50 } from "@/lib/__fixtures__/wf50";
 import liveJson from "../../public/data/claude-usage.json";
 // The speed block as tracker/speed.py speed_block built it on 2026-09-23, splits trimmed.
 import speedBlock from "@/lib/__fixtures__/claude-usage-speed-block.json";
+// The live block of 2026-09-23 with fast_sessions added to some of Opus 5's account rows, the
+// shape the tracker publishes next.
+import speedFastSessions from "@/lib/__fixtures__/claude-usage-speed-fast-sessions.json";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
   return renderToString(
@@ -1647,7 +1651,7 @@ describe("how fast each model answers", () => {
     expect(text).toContain(`${latest.time_to_first_block_s!.median.toFixed(1)} s to first block`);
     expect(text).toContain(`Opus 5, ${latest.n} requests on ${fmtDate(latest.day)}`);
     expect(text).toContain("Output speed is the response's output tokens over that time");
-    expect(text).toContain(`Opus fast-mode requests are left out: 0 on ${fmtDate("2026-09-23")}.`);
+    expect(text).toContain(`Requests in fast sessions, shown separately: 0 on ${fmtDate("2026-09-23")}.`);
     expect(text).toContain("Time to first block includes writing the whole first block");
     // Placed after the charts above it, before the contribute form.
     expect(text.indexOf("How fast each model answers")).toBeGreaterThan(text.indexOf("Five-hour windows per week"));
@@ -1696,5 +1700,104 @@ describe("how fast each model answers", () => {
     const only = { ...BLOCK, models: { "claude-sonnet-5": BLOCK.models["claude-sonnet-5"] } };
     const text = render(withSpeed(only), "max20", "claude-opus-5");
     expect(text).toContain("No speed figures for Opus 5 yet.");
+  });
+});
+
+describe("how fast each model answers, by account", () => {
+  const LIVE = (liveJson as unknown as UsageJson).speed!;
+  const FAST = speedFastSessions as unknown as SpeedBlock;
+  const withSpeed = (block: SpeedBlock): UsageJson => ({ ...(liveJson as unknown as UsageJson), speed: block });
+  const accountSvg = (html: string): string => {
+    const at = html.indexOf('aria-label="Median output tokens per second by day for ');
+    return html.slice(html.lastIndexOf("<svg", at), html.indexOf("</svg>", at));
+  };
+  const accountGroup = (svg: string, account: string): string => {
+    const at = svg.indexOf(`data-account="${accountLabel(account)}"`);
+    return at < 0 ? "" : svg.slice(at, svg.indexOf("</g>", at));
+  };
+  const legend = (html: string): string => {
+    const at = html.indexOf('class="share-legend speed-legend"');
+    return html.slice(at, html.indexOf("</ul>", at));
+  };
+  // One run of consecutive days is a path, or a dot for a day alone.
+  const pieces = (g: string, attr: "data-run" | "data-fast") => (g.match(new RegExp(`${attr}="`, "g")) ?? []).length;
+  const runsOf = (days: string[]) =>
+    days.filter((d, i) => i === 0 || Date.parse(d) - Date.parse(days[i - 1]) > 86400e3).length;
+
+  it("draws one line per account with data, labelled Max account N, in distinct palette colours", () => {
+    const html = renderHtml(withSpeed(LIVE), "max20", "claude-opus-5");
+    const svg = accountSvg(html);
+    const byAccount = LIVE.models["claude-opus-5"].by_account!;
+    const colours = new Set<string>();
+    for (const a of ["a1", "a2", "a3", "a4"]) {
+      const g = accountGroup(svg, a);
+      expect(g).not.toBe("");
+      const days = byAccount[a].map((d) => d.day).sort();
+      expect(pieces(g, "data-run")).toBe(runsOf(days));
+      colours.add(g.match(/(?:stroke|fill)="(#[0-9A-F]{6})"/)![1]);
+    }
+    expect([...colours]).toEqual(CONTRIB_PALETTE.slice(0, 4));
+    const leg = legend(html);
+    for (const n of [1, 2, 3, 4]) expect(leg).toContain(`Max account ${n}`);
+    expect(leg).not.toContain("No data for");
+    expect(render(withSpeed(LIVE), "max20", "claude-opus-5")).toContain("Opus 5 by account");
+  });
+
+  it("leaves a gap for a missing day rather than drawing it at zero", () => {
+    const svg = accountSvg(renderHtml(withSpeed(LIVE), "max20", "claude-opus-5"));
+    const days = LIVE.models["claude-opus-5"].by_account!.a1.map((d) => d.day).sort();
+    // The live rows have gaps, so a1 is drawn in more than one piece.
+    expect(runsOf(days)).toBeGreaterThan(1);
+    const g = accountGroup(svg, "a1");
+    expect(pieces(g, "data-run")).toBe(runsOf(days));
+    const ys = [...g.matchAll(/[ML] [\d.]+,([\d.]+)/g)].map((m) => Number(m[1]));
+    expect(Math.max(...ys)).toBeLessThan(200);
+  });
+
+  it("gives an account with no rows for the model no line, and names it in the legend", () => {
+    const html = renderHtml(withSpeed(LIVE), "max20", "claude-haiku-4-5");
+    const svg = accountSvg(html);
+    expect(accountGroup(svg, "a1")).toBe("");
+    expect(accountGroup(svg, "a2")).toBe("");
+    expect(accountGroup(svg, "a3")).not.toBe("");
+    expect(accountGroup(svg, "a4")).not.toBe("");
+    expect(legend(html).replace(/<!-- -->/g, "")).toContain("No data for Haiku 4.5: Max account 1, Max account 2");
+  });
+
+  it("draws fast sessions as a dotted line in the account's colour where a row has them", () => {
+    const html = renderHtml(withSpeed(FAST), "max20", "claude-opus-5");
+    const svg = accountSvg(html);
+    const a1 = accountGroup(svg, "a1");
+    const colour = a1.match(/stroke="(#[0-9A-F]{6})"/)![1];
+    // 2026-09-19 alone, then 2026-09-22 and 23: a dot and a dotted path.
+    expect(pieces(a1, "data-fast")).toBe(2);
+    expect(a1).toMatch(new RegExp(`data-fast="2026-09-22"[^>]*stroke="${colour}"[^>]*stroke-dasharray="1 5"`));
+    expect(a1).toContain('data-fast="2026-09-19"');
+    expect(pieces(accountGroup(svg, "a2"), "data-fast")).toBe(1);
+    expect(pieces(accountGroup(svg, "a3"), "data-fast")).toBe(0);
+    expect(legend(html)).toContain("fast sessions");
+    const text = render(withSpeed(FAST), "max20", "claude-opus-5");
+    expect(text).toContain(`Requests in fast sessions, shown separately: 40 on ${fmtDate("2026-09-23")}.`);
+  });
+
+  it("has no dotted line and no fast-sessions legend when no row has fast sessions", () => {
+    const html = renderHtml(withSpeed(LIVE), "max20", "claude-opus-5");
+    expect(accountSvg(html)).not.toContain("data-fast");
+    expect(legend(html)).not.toContain("fast sessions");
+    // Another model in the fast-sessions file has none either.
+    expect(accountSvg(renderHtml(withSpeed(FAST), "max20", "claude-sonnet-5"))).not.toContain("data-fast");
+  });
+
+  // The tracker's old name for fast sessions, which the page must never print: the cause of the
+  // speed-up is unknown. Spelt in pieces so the name itself appears nowhere in this file.
+  const OLD_NAME = new RegExp(["fast", "mode"].join("[ -]"), "i");
+
+  it("never gives fast sessions their old name anywhere on the page", () => {
+    for (const block of [LIVE, FAST, speedBlock as unknown as SpeedBlock]) {
+      for (const model of ["claude-opus-5", "claude-sonnet-5"]) {
+        const html = renderHtml(withSpeed(block), "max20", model);
+        expect(html).not.toMatch(OLD_NAME);
+      }
+    }
   });
 });

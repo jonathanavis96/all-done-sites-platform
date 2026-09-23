@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ContributeMeter from "@/components/ContributeMeter";
 import NotifyForm from "@/components/NotifyForm";
 import Seo from "@/components/Seo";
-import SpeedChart from "@/components/SpeedChart";
+import SpeedChart, { SpeedByAccountChart } from "@/components/SpeedChart";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
   EFFORTS,
@@ -39,7 +39,9 @@ import {
   weeklyReadingsFor,
   effortRunCounts,
   shortfallRows,
-  speedFastExcludedLatest,
+  speedAccountSeries,
+  speedAccounts,
+  speedFastSessionRequestsLatest,
   speedFirstBlockCaveat,
   speedMethodSentence,
   speedSeries,
@@ -876,7 +878,13 @@ export default function ClaudeUsageTracker({
   const speedSelected = speed.find((s) => s.model === model) ?? null;
   const speedLatest = speedSelected?.last ?? null;
   const speedMethod = data?.speed ? speedMethodSentence(data.speed) : null;
-  const speedFast = data?.speed ? speedFastExcludedLatest(data.speed) : null;
+  const speedFast = data?.speed ? speedFastSessionRequestsLatest(data.speed) : null;
+  const speedByAccount = useMemo(() => speedAccountSeries(data?.speed, model), [data, model]);
+  const speedSpan = useMemo((): [string, string] | undefined => {
+    const days = speed.flatMap((s) => s.runs.flat().map((d) => d.day)).sort();
+    return days.length > 0 ? [days[0], days[days.length - 1]] : undefined;
+  }, [speed]);
+  const speedAccountList = useMemo(() => (data?.speed ? speedAccounts(data.speed) : []), [data]);
   const speedFirstBlock = data?.speed ? speedFirstBlockCaveat(data.speed) : null;
   const [contribMetric, setContribMetric] = useState<ContribMetric>(initialContribMetric);
   const contribTab = CONTRIB_TABS.find((t) => t.key === contribMetric) ?? CONTRIB_TABS[0];
@@ -1797,10 +1805,17 @@ export default function ClaudeUsageTracker({
             {speedMethod && <p className="sub speed-note">{speedMethod}</p>}
             {speedFast && (
               <p className="sub speed-note">
-                Opus fast-mode requests are left out: {speedFast.count.toLocaleString("en-GB")} on {fmtDate(speedFast.day)}.
+                Requests in fast sessions, shown separately: {speedFast.count.toLocaleString("en-GB")} on {fmtDate(speedFast.day)}.
               </p>
             )}
             {speedFirstBlock && <p className="sub speed-note">{speedFirstBlock}</p>}
+            {speedAccountList.length > 0 && (
+              <>
+                <h3 className="speed-sub">{modelLabel(model)} by account</h3>
+                <p className="sub">Median output tokens per second, per UTC day, one line per account.</p>
+                <SpeedByAccountChart series={speedByAccount.series} missing={speedByAccount.missing} accounts={speedAccountList} model={model} span={speedSpan} />
+              </>
+            )}
           </section>
         )}
 

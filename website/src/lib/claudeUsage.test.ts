@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
-  speedFastExcludedLatest,
+  speedAccountSeries,
+  speedAccounts,
+  speedFastSessionRequestsLatest,
   speedFirstBlockCaveat,
   speedMethodSentence,
   speedSeries,
@@ -2114,7 +2116,7 @@ describe("the speed block", () => {
   });
   const block: SpeedBlock = {
     method: "Each request is timed from Claude Code's transcripts. Output speed is the response's output tokens over that time. Figures are the median.",
-    caveats: ["Opus fast mode is recorded as standard.", "Time to first block includes writing the whole first block."],
+    caveats: ["Fast sessions are counted separately.", "Time to first block includes writing the whole first block."],
     models: {
       "claude-sonnet-5": { daily: [day("2026-09-03", 90), day("2026-09-01", 88), day("2026-09-02", 89)] },
       "claude-opus-5": { daily: [day("2026-09-01", 70, 4), day("2026-09-02", 71), day("2026-09-04", 72, 3)] },
@@ -2146,8 +2148,58 @@ describe("the speed block", () => {
     expect(speedFirstBlockCaveat({ ...block, caveats: [] })).toBeNull();
   });
 
-  it("counts the fast-mode requests left out on the newest day", () => {
-    expect(speedFastExcludedLatest(block)).toEqual({ day: "2026-09-04", count: 3 });
-    expect(speedFastExcludedLatest({ ...block, models: {} })).toBeNull();
+  it("counts the requests in fast sessions on the newest day, under either name", () => {
+    expect(speedFastSessionRequestsLatest(block)).toEqual({ day: "2026-09-04", count: 3 });
+    expect(speedFastSessionRequestsLatest({ ...block, models: {} })).toBeNull();
+    const renamed: SpeedBlock = {
+      ...block,
+      models: {
+        "claude-opus-5": {
+          daily: [
+            { ...day("2026-09-04", 72, 3), fast_session_requests: 5 },
+            { ...day("2026-09-04", 72), fast_excluded: undefined, fast_session_requests: 2 },
+          ],
+        },
+      },
+    };
+    expect(speedFastSessionRequestsLatest(renamed)).toEqual({ day: "2026-09-04", count: 7 });
+  });
+
+  describe("by account", () => {
+    const fast = (median: number) => ({ n: 12, output_tokens_per_s: { median, q1: median - 9, q3: median + 9 } });
+    const acct: SpeedBlock = {
+      ...block,
+      accounts: { a1: { first_day: "2026-09-01", last_day: "2026-09-04" }, a2: { first_day: "2026-09-01", last_day: "2026-09-04" }, a10: { first_day: "2026-09-01", last_day: "2026-09-01" } },
+      models: {
+        "claude-opus-5": {
+          daily: [day("2026-09-01", 70)],
+          by_account: {
+            a2: [day("2026-09-04", 60), { ...day("2026-09-02", 61), fast_sessions: fast(150) }, { ...day("2026-09-01", 62), fast_sessions: fast(155) }],
+            a3: [{ ...day("2026-09-01", 50), fast_sessions: null }],
+          },
+        },
+        "claude-sonnet-5": { daily: [], by_account: { a1: [day("2026-09-01", 90)] } },
+      },
+    };
+
+    it("lists every account the block knows, in label order", () => {
+      expect(speedAccounts(acct)).toEqual(["a1", "a2", "a3", "a10"]);
+    });
+
+    it("gives one series per account with rows, runs cut at missing days, and names the rest", () => {
+      const { series, missing } = speedAccountSeries(acct, "claude-opus-5");
+      expect(series.map((s) => s.account)).toEqual(["a2", "a3"]);
+      const a2 = series[0];
+      expect(a2.runs.map((r) => r.map((p) => p.day))).toEqual([["2026-09-01", "2026-09-02"], ["2026-09-04"]]);
+      expect(a2.runs[0].map((p) => p.median)).toEqual([62, 61]);
+      expect(a2.fastRuns).toEqual([[{ day: "2026-09-01", median: 155 }, { day: "2026-09-02", median: 150 }]]);
+      expect(series[1].fastRuns).toEqual([]);
+      expect(missing).toEqual(["a1", "a10"]);
+    });
+
+    it("has no account lines for a model with no by_account, or without a block", () => {
+      expect(speedAccountSeries(acct, "claude-opus-4-8")).toEqual({ series: [], missing: ["a1", "a2", "a3", "a10"] });
+      expect(speedAccountSeries(undefined, "claude-opus-5")).toEqual({ series: [], missing: [] });
+    });
   });
 });

@@ -443,10 +443,21 @@ export interface SpeedStat {
 export interface SpeedDay {
   day: string;
   n: number;
-  // Opus fast-mode requests left out of this day's figures.
-  fast_excluded: number;
+  // Requests in fast sessions, left out of this day's figures. The tracker renames it to
+  // fast_session_requests and keeps fast_excluded for one release; read it with
+  // speedFastSessionRequests.
+  fast_excluded?: number;
+  fast_session_requests?: number;
   output_tokens_per_s: SpeedStat;
   time_to_first_block_s: SpeedStat | null;
+  // The same figures for the fast sessions alone, where the tracker publishes them.
+  fast_sessions?: SpeedFastSessions | null;
+}
+
+export interface SpeedFastSessions {
+  n: number;
+  output_tokens_per_s: SpeedStat;
+  time_to_first_block_s?: SpeedStat | null;
 }
 
 export interface SpeedModel {
@@ -483,17 +494,75 @@ export function speedSeries(block: SpeedBlock | undefined): SpeedSeries[] {
       .filter((d) => typeof d?.output_tokens_per_s?.median === "number")
       .sort((a, b) => a.day.localeCompare(b.day));
     if (days.length === 0) continue;
-    const runs: SpeedDay[][] = [];
-    let prev: number | null = null;
-    for (const d of days) {
-      const t = Date.parse(`${d.day}T00:00:00Z`);
-      if (prev === null || t - prev > DAY_MS) runs.push([]);
-      runs[runs.length - 1].push(d);
-      prev = t;
-    }
-    out.push({ model, runs, last: days[days.length - 1] });
+    out.push({ model, runs: consecutiveRuns(days), last: days[days.length - 1] });
   }
   return out;
+}
+
+// Days in order, cut wherever a day is missing.
+function consecutiveRuns<T extends { day: string }>(days: T[]): T[][] {
+  const runs: T[][] = [];
+  let prev: number | null = null;
+  for (const d of days) {
+    const t = Date.parse(`${d.day}T00:00:00Z`);
+    if (prev === null || t - prev > DAY_MS) runs.push([]);
+    runs[runs.length - 1].push(d);
+    prev = t;
+  }
+  return runs;
+}
+
+// One point of an account's line: a day and its median output tokens per second.
+export interface SpeedPoint {
+  day: string;
+  median: number;
+}
+
+// One account's lines on the per-account speed chart for one model: its own days, and the days
+// its fast sessions were published separately, each cut into runs of consecutive days.
+export interface SpeedAccountSeries {
+  account: string;
+  runs: SpeedPoint[][];
+  fastRuns: SpeedPoint[][];
+}
+
+// Requests in fast sessions on one row, under either name the tracker publishes it by.
+export function speedFastSessionRequests(d: SpeedDay): number {
+  return d.fast_session_requests ?? d.fast_excluded ?? 0;
+}
+
+// Every account the block knows, in label order: those with a first and last day, and any
+// with rows under a model.
+export function speedAccounts(block: SpeedBlock): string[] {
+  const set = new Set(Object.keys(block.accounts ?? {}));
+  for (const m of Object.values(block.models ?? {})) for (const a of Object.keys(m?.by_account ?? {})) set.add(a);
+  return [...set].sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+}
+
+// One model's per-account lines, and the accounts with no rows for it.
+export function speedAccountSeries(
+  block: SpeedBlock | undefined,
+  model: string,
+): { series: SpeedAccountSeries[]; missing: string[] } {
+  if (!block?.models) return { series: [], missing: [] };
+  const byAccount = block.models[model]?.by_account ?? {};
+  const series: SpeedAccountSeries[] = [];
+  const missing: string[] = [];
+  for (const account of speedAccounts(block)) {
+    const rows = [...(byAccount[account] ?? [])].sort((a, b) => a.day.localeCompare(b.day));
+    const points = rows
+      .filter((d) => typeof d?.output_tokens_per_s?.median === "number")
+      .map((d) => ({ day: d.day, median: d.output_tokens_per_s.median }));
+    const fast = rows
+      .filter((d) => typeof d?.fast_sessions?.output_tokens_per_s?.median === "number")
+      .map((d) => ({ day: d.day, median: d.fast_sessions!.output_tokens_per_s.median }));
+    if (points.length === 0 && fast.length === 0) {
+      missing.push(account);
+      continue;
+    }
+    series.push({ account, runs: consecutiveRuns(points), fastRuns: consecutiveRuns(fast) });
+  }
+  return { series, missing };
 }
 
 // The one sentence of the block's own method that defines the charted figure (the one starting
@@ -508,13 +577,13 @@ export function speedFirstBlockCaveat(block: SpeedBlock): string | null {
   return (block.caveats ?? []).find((c) => c.startsWith("Time to first block")) ?? null;
 }
 
-// The newest day any model has a row for, and the Opus fast-mode requests left out that day,
-// summed across models.
-export function speedFastExcludedLatest(block: SpeedBlock): { day: string; count: number } | null {
+// The newest day any model has a row for, and the requests in fast sessions that day, summed
+// across models.
+export function speedFastSessionRequestsLatest(block: SpeedBlock): { day: string; count: number } | null {
   const days = Object.values(block.models ?? {}).flatMap((m) => m?.daily ?? []);
   if (days.length === 0) return null;
   const day = days.reduce((a, d) => (d.day > a ? d.day : a), days[0].day);
-  const count = days.filter((d) => d.day === day).reduce((a, d) => a + (d.fast_excluded ?? 0), 0);
+  const count = days.filter((d) => d.day === day).reduce((a, d) => a + speedFastSessionRequests(d), 0);
   return { day, count };
 }
 
