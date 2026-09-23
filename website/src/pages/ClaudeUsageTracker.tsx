@@ -183,6 +183,23 @@ function levelStepsFor(
   return source ? realSteps(source.levels) : [];
 }
 
+// A change marker's percent as its label prints it: whole percent, signed.
+export const markerPctText = (pct: number) => `${Math.round(pct) > 0 ? "+" : ""}${Math.round(pct)}%`;
+
+// The signed percent inside a label such as "weekly ratio -4%", or null when it names none.
+function labelPct(text: string): number | null {
+  const m = text.match(/([-+\u2212])(\d+(?:\.\d+)?)%/);
+  return m ? (m[1] === "+" ? 1 : -1) * Number(m[2]) : null;
+}
+
+// Every chart with change markers measures how much a plan holds, so a fall is red and a rise
+// green. The colour keys off the same rounded percent the label prints, so the two cannot
+// disagree: a step that prints "0%", or a label with no percent, is grey.
+export function markerColour(pct: number | null): string {
+  const shown = pct === null ? 0 : Math.round(pct);
+  return shown < 0 ? "#B42318" : shown > 0 ? "#059669" : "#94A3B8";
+}
+
 // Rough width of an 11px chart label: enough to tell whether two labels would overlap.
 const LABEL_CHAR_PX = 6.5;
 // How far an older marker's label drops when a newer one would cover it: one line of 11px text.
@@ -335,27 +352,36 @@ function LevelChart({
   // drawn step really is.
   const eventChange = latestWeeklyChange(events);
   const levelSteps = changeFromLevels ? levelStepsFor(plotted, plotted.find(isSelectedPlan)) : [];
-  const pctText = (pct: number) => `${pct > 0 ? "+" : ""}${Math.round(pct)}%`;
-  const rawMarkers: { x: number; date: string; text: string }[] =
+  const rawMarkers: { x: number; date: string; text: string; pct: number | null }[] =
     levelSteps.length > 0
-      ? levelSteps.map((st, i) => ({
-          x: xAt(st.date),
-          date: st.date,
+      ? levelSteps.map((st, i) => {
           // Only the newest step is the change the publisher's figure describes.
-          text: `${pctText(i === levelSteps.length - 1 && typeof changePct === "number" ? changePct : st.pct)} on ${fmtDateShort(st.date.slice(0, 10))}`,
-        }))
+          const pct = i === levelSteps.length - 1 && typeof changePct === "number" ? changePct : st.pct;
+          return {
+            x: xAt(st.date),
+            date: st.date,
+            pct,
+            text: `${markerPctText(pct)} on ${fmtDateShort(st.date.slice(0, 10))}`,
+          };
+        })
       : // No real step anywhere in the fallback chain (should not happen while Max 20x has its
         // own measured regimes) -- fall back to the announced event rather than show nothing.
         eventChange
         ? [
-            {
-              x: xDay(eventChange.date),
-              date: eventChange.date,
-              text:
-                changeFromLevels && typeof changePct === "number"
-                  ? `${pctText(changePct)} on ${fmtDateShort(eventChange.date.slice(0, 10))}`
-                  : shortChangeLabel(eventChange),
-            },
+            changeFromLevels && typeof changePct === "number"
+              ? {
+                  x: xDay(eventChange.date),
+                  date: eventChange.date,
+                  pct: changePct,
+                  text: `${markerPctText(changePct)} on ${fmtDateShort(eventChange.date.slice(0, 10))}`,
+                }
+              : {
+                  x: xDay(eventChange.date),
+                  date: eventChange.date,
+                  // The label's own percent, parsed from the same text it shows.
+                  pct: labelPct(shortChangeLabel(eventChange)),
+                  text: shortChangeLabel(eventChange),
+                },
           ]
         : [];
   // Each label sits beside its own line, anchored off the plot's own right edge (not the wider
@@ -433,8 +459,8 @@ function LevelChart({
       ))}
       {changeMarkers.map((m) => (
         <g key={m.date}>
-          <line x1={m.x} x2={m.x} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
-          <text x={m.tx} y={m.ty} textAnchor={m.anchor} style={{ fill: "#B42318", fontWeight: 600 }}>
+          <line x1={m.x} x2={m.x} y1={T} y2={B} stroke={markerColour(m.pct)} strokeWidth="1.5" strokeDasharray="5 4" />
+          <text x={m.tx} y={m.ty} textAnchor={m.anchor} style={{ fill: markerColour(m.pct), fontWeight: 600 }}>
             {m.text}
           </text>
         </g>
@@ -1730,6 +1756,12 @@ export default function ClaudeUsageTracker({
             <p className="sub">
               One calibration task at each effort level, with the cache-read share and the run count of the
               cell it was measured over{effortCredits ? `, and what the cell's own runs cost against a ${PLAN_LABELS[plan]} window` : ""}.
+              {effortCredits && cr?.windowCredits?.kind === "value" && (
+                <>
+                  {" "}A credit is the unit Claude's usage meter counts. One {PLAN_LABELS[plan]} five-hour window is{" "}
+                  <b>{cr.windowCredits.text}</b> credits.
+                </>
+              )}
             </p>
             <table className="effort">
               <thead>
@@ -1752,13 +1784,20 @@ export default function ClaudeUsageTracker({
                       const hl = m === model && e === effort ? "hl" : "";
                       return (
                         <td key={m} data-model={m} data-model-label={modelLabel(m)} className={hl}>
-                          <b className="fig">
-                            {typeof usd === "number" ? fmtUsd2(usd) : typeof tokens === "number" ? fmtTokens(tokens) : "—"}
-                          </b>
+                          {/* One element, so the stacked phone layout keeps the figure and its unit
+                              in one grid cell. */}
+                          <span>
+                            <b className="fig">
+                              {typeof usd === "number" ? fmtUsd2(usd) : typeof tokens === "number" ? fmtTokens(tokens) : "—"}
+                            </b>
+                            {typeof usd === "number" ? " at API prices" : typeof tokens === "number" ? " tokens" : ""}
+                          </span>
                           {ec?.credits && (
                             <div>
                               <em>
-                                <Fig fig={ec.credits} unit="credits" />
+                                <span className="nowrap">
+                                  <Fig fig={ec.credits} unit="credits" />
+                                </span>
                                 {ec.credits.kind === "value" && ec.percentOfWindow && (
                                   <span className="nowrap">
                                     {" · "}

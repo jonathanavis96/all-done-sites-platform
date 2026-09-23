@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider, type HelmetServerState } from "react-helmet-async";
-import ClaudeUsageTracker, { realSteps } from "./ClaudeUsageTracker";
+import ClaudeUsageTracker, { markerColour, markerPctText, realSteps } from "./ClaudeUsageTracker";
 import {
   compute,
   computeCredits,
@@ -597,10 +597,10 @@ describe("the credits block on the page", () => {
     // The Sonnet row inverts -- low reads dearer than medium -- and the share is what explains it.
     expect(mix.low!.cache_read_share!).toBeGreaterThan(mix.medium!.cache_read_share!);
     // Four of the seven low runs ran cold, which is the whole reason the cell reads dearer.
-    expect(text).toContain("$0.02 91.5% cache read · 7 runs · 4 cold");
-    expect(text).toContain("$0.03 80.4% cache read · 7 runs · 3 cold");
+    expect(text).toContain("$0.02 at API prices 91.5% cache read · 7 runs · 4 cold");
+    expect(text).toContain("$0.03 at API prices 80.4% cache read · 7 runs · 3 cold");
     // Another model's row, so the matrix is not one row wide.
-    expect(text).toContain("$0.22 61.0% cache read · 7 runs · 6 cold");
+    expect(text).toContain("$0.22 at API prices 61.0% cache read · 7 runs · 6 cold");
   });
 
   it("states what the plan ratios rest on, and dates the table they come from", () => {
@@ -1238,10 +1238,11 @@ describe("the weekly change stated in tokens a week buys", () => {
     const svg = chart(TPW, "Effective window size");
     expect(svg).toContain("462M");
     expect(svg).toContain("502M");
-    // The chart marks its own step (462M to 502M is +9%) with a dashed line, and draws no solid
-    // red run.
+    // The chart marks its own step (462M to 502M is +9%) with a dashed line, green for a rise, and
+    // draws no solid red run.
     expect(svg).toContain("+9% on 14 Sep");
-    expect(svg.match(/<line[^>]*stroke="#B42318"[^>]*stroke-dasharray="5 4"/g)?.length).toBe(1);
+    expect(svg.match(/<line[^>]*stroke="#059669"[^>]*stroke-dasharray="5 4"/g)?.length).toBe(1);
+    expect(svg).not.toMatch(/<line[^>]*stroke="#B42318"/);
     expect(svg).not.toMatch(/<path[^>]*stroke="#B42318"/);
     // Two levels and no more: one before the cut, one after, each held flat.
     expect(new Set(windowTokenRegimeLevelsFor(TPW, "max20", OPUS).map((l) => l.tokens)).size).toBe(2);
@@ -1451,6 +1452,74 @@ describe("a dashed change marker at every real step", () => {
     }
     expect(markers(weeklyChart(html)).length).toBe(1);
     expect(weeklyChart(html)).toMatch(/on 14 Sep/);
+  });
+});
+
+// Jonathan, 2026-09-23: "+7% on 14 Sep" drawn in red. Every chart with markers measures how much a
+// plan holds, so a rise is green and a fall red, keyed off the percent the label prints.
+describe("change marker colours", () => {
+  it("colours by the sign of the printed whole percent", () => {
+    expect(markerColour(-23)).toBe("#B42318");
+    expect(markerColour(7.4)).toBe("#059669");
+    // Both print "0%", so neither is a rise or a fall.
+    expect(markerPctText(-0.4)).toBe("0%");
+    expect(markerColour(-0.4)).toBe("#94A3B8");
+    expect(markerPctText(0.4)).toBe("0%");
+    expect(markerColour(0.4)).toBe("#94A3B8");
+    expect(markerColour(null)).toBe("#94A3B8");
+    expect(markerPctText(7.4)).toBe("+7%");
+  });
+
+  it("draws a rise green and a fall red, line and label from the same step", () => {
+    const j: UsageJson = structuredClone(PUBLISHED);
+    const reg = (start: string, end: string, windows: number) => ({
+      start, end, windows, seven_day_pct: 100, points: 20, source: "passive_paired_deltas", assumed: false,
+    });
+    j.weekly_windows!.max20 = {
+      ...j.weekly_windows!.max20!,
+      regimes: [
+        reg("2026-07-01T00:00:00+00:00", "2026-08-01T00:00:00+00:00", 8),
+        reg("2026-08-01T00:00:00+00:00", "2026-09-11T00:00:00+00:00", 6.5),
+        reg("2026-09-11T00:00:00+00:00", "2026-09-16T00:00:00+00:00", 7.5),
+      ],
+    };
+    const svg = weeklyChart(renderHtml(j, "max20"));
+    const marks = [
+      ...svg.matchAll(/<g><line [^>]*stroke="(#[0-9A-F]{6})"[^>]*stroke-dasharray="5 4"[^>]*><\/line><text [^>]*style="fill:(#[0-9A-F]{6})[^"]*"[^>]*>([^<]*)<\/text><\/g>/g),
+    ].map((m) => ({ line: m[1], label: m[2], text: m[3] }));
+    expect(marks).toEqual([
+      { line: "#B42318", label: "#B42318", text: "-19% on 1 Aug" },
+      { line: "#059669", label: "#059669", text: "+15% on 11 Sep" },
+    ]);
+  });
+});
+
+// Jonathan, 2026-09-23: with Opus at high selected the whole cell should be highlighted, and "what
+// is the 28,000, is that tokens?".
+describe("the effort table", () => {
+  const MEASURED = schema3Measured as unknown as UsageJson;
+  const effortTable = (html: string) => html.slice(html.indexOf('<table class="effort"'), html.indexOf("</table>", html.indexOf('<table class="effort"')));
+
+  it("marks only the selected model and effort's cell", () => {
+    const table = effortTable(renderHtml(MEASURED, "max20", "claude-opus-5"));
+    const hl = [...table.matchAll(/<td data-model="([^"]+)"[^>]*class="hl"/g)].map((m) => m[1]);
+    expect(hl).toEqual(["claude-opus-5"]);
+    // In the high row: the effort cell beside it is the one row marked.
+    expect([...table.matchAll(/<td data-effort="(\w+)" class="hl"/g)].map((m) => m[1])).toEqual(["high"]);
+  });
+
+  it("names the unit of every figure, and says what a credit is", () => {
+    for (const plan of ["max20", "pro"] as Plan[]) {
+      const text = render(MEASURED, plan, "claude-opus-5");
+      const c = computeCredits(MEASURED, plan, "claude-opus-5", "high")!;
+      expect(c.windowCredits!.kind).toBe("value");
+      expect(text).toContain(
+        `A credit is the unit Claude's usage meter counts. One ${plan === "pro" ? "Pro" : "Max 20x"} five-hour window is ${c.windowCredits!.text} credits.`,
+      );
+      expect(text).toContain(`${c.effortCredits!.credits!.text} credits`);
+      expect(text).toMatch(/\$\d+\.\d\d at API prices/);
+      expect(text).not.toMatch(/\$\d+\.\d\d \d/);
+    }
   });
 });
 
