@@ -13,6 +13,8 @@ import {
   fmtDate,
   fmtTokens,
   fmtUsd,
+  latestWeeklyChange,
+  weeklyEventsFor,
   weeklyTokenRegimeLevelsFor,
   weeklyRegimeLevelsFor,
   type Plan,
@@ -46,6 +48,9 @@ import opus55 from "@/lib/__fixtures__/claude-usage-opus-5-5.json";
 import inferredRates from "@/lib/__fixtures__/claude-usage-inferred-rates.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
 import liveJson from "../../public/data/claude-usage.json";
+// The published file frozen as it stood at 2026-09-23 (commit 4577da8), for tests that need the
+// real file's shape but must not move when the data refreshes.
+import liveSnapshot from "@/lib/__fixtures__/claude-usage-live-2026-09-23.json";
 // The speed block as tracker/speed.py speed_block built it on 2026-09-23, splits trimmed.
 import speedBlock from "@/lib/__fixtures__/claude-usage-speed-block.json";
 
@@ -1445,7 +1450,8 @@ describe("a dashed change marker at every real step", () => {
   });
 
   it("marks one step per chart on the published file, and never the inferred seam", () => {
-    const j = liveJson as unknown as UsageJson;
+    // A frozen copy of the published file, so a data refresh cannot move the step under the test.
+    const j = liveSnapshot as unknown as UsageJson;
     const html = renderHtml(j, "max20", "claude-opus-5");
     for (const title of ["Effective window size", "Tokens per week", "Five-hour windows per week"]) {
       const at = html.indexOf(`aria-label="${title} over time`);
@@ -1456,7 +1462,12 @@ describe("a dashed change marker at every real step", () => {
       expect(svg).not.toMatch(/on 1[45] Aug/);
     }
     expect(markers(weeklyChart(html)).length).toBe(1);
-    expect(weeklyChart(html)).toMatch(/on 14 Sep/);
+    // The marker sits on the weekly change the file itself carries (11 Sep in this copy).
+    const change = latestWeeklyChange(weeklyEventsFor(j))!;
+    const at = new Date(`${change.date}T00:00:00Z`);
+    const day = `${at.getUTCDate()} ${at.toLocaleString("en-US", { month: "short", timeZone: "UTC" })}`;
+    expect(day).toBe("11 Sep");
+    expect(weeklyChart(html)).toContain(`on ${day}`);
   });
 });
 
@@ -1832,11 +1843,11 @@ describe("how fast each model answers, by account", () => {
 // two not chosen are hidden, so a switch only moves `hidden` and the selected tab.
 describe("plan chart toggle", () => {
   const TPW = schema3TokensPerWeek as unknown as UsageJson;
-  const htmlFor = (chart?: PlanChart) =>
+  const htmlFor = (chart?: PlanChart, j: UsageJson = TPW) =>
     renderToString(
       <HelmetProvider context={{}}>
         <MemoryRouter>
-          <ClaudeUsageTracker initial={TPW} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart={chart} />
+          <ClaudeUsageTracker initial={j} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart={chart} />
         </MemoryRouter>
       </HelmetProvider>,
     );
@@ -1903,7 +1914,20 @@ describe("plan chart toggle", () => {
   });
 
   it("names an account with nothing to draw instead of drawing it", () => {
-    const html = htmlFor();
+    // Max account 1 without its five-hour credits either side of the cut: the window and tokens
+    // charts have nothing to build its line from.
+    const across = TPW.credits!.five_hour_window_across_cut!;
+    const noA1: UsageJson = {
+      ...TPW,
+      credits: {
+        ...TPW.credits!,
+        five_hour_window_across_cut: {
+          ...across,
+          per_account: { ...across.per_account, a1: { ...across.per_account.a1, before: null, after: null } },
+        },
+      },
+    };
+    const html = htmlFor(undefined, noA1);
     for (const key of ["window", "tokens"] as PlanChart[]) {
       const p = panel(html, key);
       expect(p, key).not.toContain('<g data-account="Max account 1"');
