@@ -50,6 +50,10 @@ import {
   type UsageJson,
 } from "./claudeUsage";
 import {
+  accountWeeklyTokenLines,
+  accountWindowLines,
+  accountWindowTokenLines,
+  chartAccounts,
   captureEmptyNote,
   changeLines,
   computeCredits,
@@ -2201,5 +2205,97 @@ describe("the speed block", () => {
       expect(speedAccountSeries(acct, "claude-opus-4-8")).toEqual({ series: [], missing: ["a1", "a2", "a3", "a10"] });
       expect(speedAccountSeries(undefined, "claude-opus-5")).toEqual({ series: [], missing: [] });
     });
+  });
+});
+
+// One line per watched Max 20x account on the three plan charts. The tokens-per-week fixture has
+// three accounts: a1 with regimes but no clean pure-Opus stretch, a2 and a3 with both.
+describe("per-account lines on the plan charts", () => {
+  const TPW = schema3TokensPerWeek as unknown as UsageJson;
+  // The same file with tracker PR #90's paired per-account fields on the weekly event.
+  const withPaired = (j: UsageJson): UsageJson => ({
+    ...j,
+    events: j.events.map((e) =>
+      e.scope === "weekly" && e.kind === "change"
+        ? {
+            ...e,
+            windows_per_week_ratio: {
+              per_account: { a1: { change_pct: -23.0 }, a2: { change_pct: -30.4 } },
+              excluded: { a3: "readings_only_after_the_change" },
+            },
+            tokens_per_week_change: {
+              ...e.tokens_per_week_change!,
+              per_account: { a1: { signed_pct: -29.2 }, a2: { signed_pct: -30.4 } },
+            },
+          }
+        : e,
+    ),
+  });
+
+  it("names every account any of the three sources knows, in label order", () => {
+    expect(chartAccounts(TPW)).toEqual(["a1", "a2", "a3"]);
+  });
+
+  it("draws each account's own windows per week, flat per regime", () => {
+    const { lines, missing } = accountWindowLines(TPW);
+    expect(missing).toEqual([]);
+    expect(lines.map((l) => l.account)).toEqual(["a1", "a2", "a3"]);
+    expect(lines[0].levels.map((l) => l.value)).toEqual([6.54, 5.15]);
+    expect(lines[2].levels.map((l) => l.value)).toEqual([5.52]);
+    // Without PR #90 the change is the account's own detected step, and none where it has no step.
+    expect(lines.map((l) => l.changePct)).toEqual([-21, -29, null]);
+  });
+
+  it("reads PR #90's paired windows-per-week change where the file carries it", () => {
+    expect(accountWindowLines(withPaired(TPW)).lines.map((l) => l.changePct)).toEqual([-23.0, -30.4, null]);
+  });
+
+  it("holds each account's own window flat, and names an account with no window figure", () => {
+    const { lines, missing } = accountWindowTokenLines(TPW, "claude-opus-5");
+    expect(missing).toEqual(["a1"]);
+    expect(lines.map((l) => l.account)).toEqual(["a2", "a3"]);
+    expect(lines[0].levels.map((l) => l.value)).toEqual([462184345, 462184345]);
+    expect(lines[1].levels.map((l) => l.value)).toEqual([539959273]);
+    // The account's own five-hour change across the cut, a percent only.
+    expect(lines.map((l) => l.changePct)).toEqual([9.0, null]);
+  });
+
+  it("converts an account's window to another family by the family's own conversion", () => {
+    const opus = accountWindowTokenLines(TPW, "claude-opus-5").lines[0].levels[0].value;
+    const sonnet = accountWindowTokenLines(TPW, "claude-sonnet-5").lines[0].levels[0].value;
+    expect(sonnet / opus).toBeCloseTo(646354632 / 502000000, 9);
+  });
+
+  it("prices tokens per week at the account's own windows times its own window", () => {
+    const { lines, missing } = accountWeeklyTokenLines(TPW, "claude-opus-5");
+    expect(missing).toEqual(["a1"]);
+    expect(lines[0].levels.map((l) => l.value)).toEqual([6.41 * 462184345, 4.53 * 462184345]);
+    // No per-account tokens-per-week figure is derived: without PR #90 there is none.
+    expect(lines.map((l) => l.changePct)).toEqual([null, null]);
+    expect(accountWeeklyTokenLines(withPaired(TPW), "claude-opus-5").lines.map((l) => l.changePct)).toEqual([-30.4, null]);
+  });
+
+  it("takes the model's share of the week, and draws nothing where the model is not on Max 20x", () => {
+    const opus = accountWeeklyTokenLines(TPW, "claude-opus-5").lines[0].levels[0].value;
+    const limits = TPW.model_plan_limits!["claude-opus-5"];
+    const half: UsageJson = {
+      ...TPW,
+      model_plan_limits: { ...TPW.model_plan_limits, "claude-opus-5": { ...limits, max20: { ...limits.max20, weekly_fraction: 0.5 } } },
+    };
+    expect(accountWeeklyTokenLines(half, "claude-opus-5").lines[0].levels[0].value).toBeCloseTo(opus * 0.5, 3);
+    // The window itself is not split by the week's share.
+    expect(accountWindowTokenLines(half, "claude-opus-5").lines[0].levels[0].value).toBe(462184345);
+    const off: UsageJson = {
+      ...TPW,
+      model_plan_limits: { ...TPW.model_plan_limits, "claude-opus-5": { ...TPW.model_plan_limits!["claude-opus-5"], max20: { included: false, weekly_fraction: 0 } } },
+    };
+    expect(accountWindowTokenLines(off, "claude-opus-5")).toEqual({ lines: [], missing: ["a1", "a2", "a3"] });
+  });
+
+  it("draws no line at all for a file without per-account figures", () => {
+    const bare = schema1 as unknown as UsageJson;
+    expect(accountWindowLines(bare).lines).toEqual([]);
+    expect(accountWindowTokenLines(bare, "claude-opus-5").lines).toEqual([]);
+    expect(accountWeeklyTokenLines(bare, "claude-opus-5").lines).toEqual([]);
   });
 });

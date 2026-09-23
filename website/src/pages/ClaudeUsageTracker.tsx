@@ -1,9 +1,9 @@
 // website/src/pages/ClaudeUsageTracker.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import ContributeMeter from "@/components/ContributeMeter";
 import NotifyForm from "@/components/NotifyForm";
 import Seo from "@/components/Seo";
-import SpeedChart, { SpeedByAccountChart } from "@/components/SpeedChart";
+import SpeedChart, { SpeedByAccountChart, accountColor } from "@/components/SpeedChart";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
   EFFORTS,
@@ -12,10 +12,14 @@ import {
   modelsNewestFirst,
   pageModels,
   accountLabel,
+  accountWeeklyTokenLines,
+  accountWindowLines,
+  accountWindowTokenLines,
   accountWindowsPerWeek,
   basisDate,
   captureEmptyNote,
   changeLines,
+  chartAccounts,
   computeCredits,
   computeWindowTokens,
   creditsOf,
@@ -51,6 +55,7 @@ import {
   weeklyTokenRegimeLevelsFor,
   windowTokenRegimeLevelsFor,
   tokensPerWeekChangePct,
+  type AccountLines,
   type ContribPoint,
   type CreditFigureText,
   type Effort,
@@ -284,6 +289,10 @@ function LevelChart({
   overlay,
   changeFromLevels,
   changePct,
+  accountLines,
+  accountOrder = [],
+  missingFor,
+  shown = true,
 }: {
   levelsByPlan: PlanLevels[];
   events: UsageEvent[];
@@ -303,17 +312,51 @@ function LevelChart({
   // from the drawn step, so the line and the label cannot name two different days. Earlier markers,
   // and every marker on a chart without one, read the percent off their own step.
   changePct?: number | null;
+  // One line per watched Max 20x account, in the account colours the speed-by-account chart uses
+  // (`accountOrder` is the list those colours are keyed on), with the same legend and the same
+  // "No data for ..." note for an account that has nothing to draw here.
+  accountLines?: AccountLines;
+  accountOrder?: string[];
+  missingFor?: string;
+  // False while the chart sits in a hidden panel; the scroller re-opens on the newest readings
+  // when it is shown.
+  shown?: boolean;
 }) {
   // With readings to show, the plot keeps a legible width and scrolls inside its own container on
   // a phone, rather than shrinking a hundred dots into a smear. It opens on the newest readings,
   // which sit at the right-hand end.
   const dense = (overlay?.readings.length ?? 0) > 0 || (overlay?.weekly.length ?? 0) > 0;
   const scroller = useRef<HTMLDivElement>(null);
+  // Each chart's own gradient id: the three plan charts share one plot width, and two of them sit
+  // in hidden panels, where a gradient another chart points at would not paint.
+  const fillId = `lvlfill-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
   useEffect(() => {
     const el = scroller.current;
     if (el) el.scrollLeft = el.scrollWidth;
-  }, [dense]);
+  }, [dense, shown]);
   const plotted = levelsByPlan.filter((p) => p.levels.length > 0);
+  const accounts = accountLines?.lines ?? [];
+  const colorOf = (a: string) => accountColor(Math.max(0, accountOrder.indexOf(a)));
+  // A reading tagged with a drawn account takes that account's colour, so the dots read against
+  // the account's own line; any other reading keeps the plan's hue.
+  const drawnAccounts = new Set(accounts.map((l) => l.account));
+  const readingColor = (a: string | undefined) => (a && drawnAccounts.has(a) ? colorOf(a) : "var(--ads-ac)");
+  const accountLegend = accountLines && (accounts.length > 0 || accountLines.missing.length > 0) && (
+    <ul className="share-legend speed-legend level-accounts">
+      {accounts.map((l) => (
+        <li key={l.account} data-account={accountLabel(l.account)}>
+          <span className="swatch" style={{ background: colorOf(l.account) }} />
+          {accountLabel(l.account)}
+          {l.changePct !== null ? ` (${markerPctText(l.changePct)} across the change)` : ""}
+        </li>
+      ))}
+      {accountLines.missing.length > 0 && (
+        <li data-legend="no-data">
+          No data for {missingFor ?? "this chart"}: {accountLines.missing.map(accountLabel).join(", ")}
+        </li>
+      )}
+    </ul>
+  );
   if (plotted.length === 0) return <p className="sub">Not enough history yet.</p>;
   const W = 840, H = 260, L = 44, R = plotRight, T = 20, B = 200;
   const readings = overlay?.readings ?? [];
@@ -327,6 +370,7 @@ function LevelChart({
   // One y-axis for everything drawn: the levels, every reading and every whisker.
   const vals = [
     ...plotted.flatMap((p) => p.levels.map((l) => l.value)),
+    ...accounts.flatMap((a) => a.levels.map((l) => l.value)),
     ...readings.map((r) => r.windows),
     ...pooled.flatMap((p) => [p.windows, ...(whisker(p.rounding_interval) ?? [])]),
   ];
@@ -336,6 +380,7 @@ function LevelChart({
   const stamp = (s: string) => (s.length === 10 ? day(s) : Date.parse(s));
   const stamps = [
     ...plotted.flatMap((p) => p.levels.flatMap((l) => [Date.parse(l.start), Date.parse(l.end)])),
+    ...accounts.flatMap((a) => a.levels.flatMap((l) => [Date.parse(l.start), Date.parse(l.end)])),
     ...readings.map((r) => stamp(r.window_ending)),
     ...pooled.map((p) => stamp(p.week_ending)),
   ].filter(Number.isFinite);
@@ -431,6 +476,12 @@ function LevelChart({
           .map((l) => `${fmtDate(l.start.slice(0, 10))} to ${fmtDate(l.end.slice(0, 10))} ${fmtValue(l.value)}${l.inferred ? " (dashed)" : ""}`)
           .join(", ")}`,
     ),
+    ...accounts.map(
+      (a) =>
+        `${accountLabel(a.account)}: ${a.levels
+          .map((l) => `${fmtDate(l.start.slice(0, 10))} to ${fmtDate(l.end.slice(0, 10))} ${fmtValue(l.value)}`)
+          .join(", ")}`,
+    ),
     ...changeMarkers.map((m) => `${fmtDate(m.date.slice(0, 10))}: ${m.text}`),
     ...(readings.length > 0
       ? [
@@ -451,7 +502,7 @@ function LevelChart({
       aria-label={ariaLabel}
     >
       <defs>
-        <linearGradient id={`lvlfill-${plotRight}`} x1="0" x2="0" y1="0" y2="1">
+        <linearGradient id={fillId} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0" stopColor="#0EA5E9" stopOpacity=".22" />
           <stop offset="1" stopColor="#0EA5E9" stopOpacity=".02" />
         </linearGradient>
@@ -477,7 +528,7 @@ function LevelChart({
       {plotted.filter(isSelectedPlan).map((p) => (
         <polygon
           key={p.plan}
-          fill={`url(#lvlfill-${plotRight})`}
+          fill={`url(#${fillId})`}
           points={`${xAt(p.levels[0].start)},${B} ${p.levels
             .map((l) => `${xAt(l.start)},${y(l.value)} ${xAt(l.end)},${y(l.value)}`)
             .join(" ")} ${xAt(p.levels[p.levels.length - 1].end)},${B}`}
@@ -494,8 +545,8 @@ function LevelChart({
               cx={xStamp(r.window_ending)}
               cy={y(r.windows)}
               r="2.5"
-              fill={coarse ? "none" : "var(--ads-ac)"}
-              stroke="var(--ads-ac)"
+              fill={coarse ? "none" : readingColor(r.account)}
+              stroke={readingColor(r.account)}
               strokeWidth={coarse ? 1 : 0}
               opacity={coarse ? 0.3 : 0.45}
             >
@@ -538,6 +589,19 @@ function LevelChart({
           );
         })}
       </g>
+      {/* The accounts' own lines, beneath the plans' so the plan lines and their labels stay
+          on top. Flat per regime, like the plans'. */}
+      {accounts.map((a) => (
+        <g key={a.account} data-account={accountLabel(a.account)}>
+          {stepRuns(
+            a.levels.map((l) => ({ ...l, inferred: false })),
+            xAt,
+            (l) => y(l.value),
+          ).map((run, i) => (
+            <path key={i} d={run.d} fill="none" stroke={colorOf(a.account)} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity=".9" />
+          ))}
+        </g>
+      ))}
       {plotted.map((p) => {
         const isSelected = isSelectedPlan(p);
         const color = isSelected ? "#0EA5E9" : "#94A3B8";
@@ -593,7 +657,15 @@ function LevelChart({
       </g>
     </svg>
   );
-  return dense ? <div ref={scroller} style={{ overflowX: "auto", maxWidth: "100%" }}>{svg}</div> : svg;
+  const plot = dense ? <div ref={scroller} style={{ overflowX: "auto", maxWidth: "100%" }}>{svg}</div> : svg;
+  return accountLegend ? (
+    <>
+      {plot}
+      {accountLegend}
+    </>
+  ) : (
+    plot
+  );
 }
 
 // The legend's key for one of the marks beneath the levels, drawn as the chart draws it.
@@ -726,6 +798,33 @@ const CONTRIB_TABS: ContribTab[] = [
   },
 ];
 
+// The three plan charts that share one panel, in the order the page used to stack them.
+export type PlanChart = "window" | "tokens" | "windows";
+const PLAN_CHARTS: { key: PlanChart; label: string }[] = [
+  { key: "window", label: "Window size" },
+  { key: "tokens", label: "Tokens per week" },
+  { key: "windows", label: "Windows per week" },
+];
+const PLAN_CHART_STORE = "claude-usage-plan-chart";
+
+// The tab a key press moves to, the ARIA tabs pattern: arrows step and wrap, Home and End jump to
+// either end. Null for any other key, which the tab leaves alone.
+export function planChartForKey(current: PlanChart, key: string): PlanChart | null {
+  const i = PLAN_CHARTS.findIndex((c) => c.key === current);
+  const n = PLAN_CHARTS.length;
+  const at =
+    key === "ArrowRight" || key === "ArrowDown"
+      ? (i + 1) % n
+      : key === "ArrowLeft" || key === "ArrowUp"
+        ? (i - 1 + n) % n
+        : key === "Home"
+          ? 0
+          : key === "End"
+            ? n - 1
+            : null;
+  return at === null ? null : PLAN_CHARTS[at].key;
+}
+
 function ContributorsChart({
   points,
   reference,
@@ -845,12 +944,14 @@ export default function ClaudeUsageTracker({
   initialPlan = "max20",
   initialModel = "claude-opus-5",
   initialContribMetric = "usd",
+  initialPlanChart = "tokens",
   now,
 }: {
   initial?: UsageJson | null;
   initialPlan?: Plan;
   initialModel?: string;
   initialContribMetric?: ContribMetric;
+  initialPlanChart?: PlanChart;
   now?: number;
 } = {}) {
   const [data, setData] = useState<UsageJson | null>(initial);
@@ -885,8 +986,33 @@ export default function ClaudeUsageTracker({
     return days.length > 0 ? [days[0], days[days.length - 1]] : undefined;
   }, [speed]);
   const speedAccountList = useMemo(() => (data?.speed ? speedAccounts(data.speed) : []), [data]);
+  // The list account colours are keyed on: the speed chart's own, so an account is one colour on
+  // every chart, then any account only the plan charts know.
+  const accountOrder = useMemo(
+    () => [...speedAccountList, ...(data ? chartAccounts(data) : []).filter((a) => !speedAccountList.includes(a))],
+    [data, speedAccountList],
+  );
   const speedFirstBlock = data?.speed ? speedFirstBlockCaveat(data.speed) : null;
   const [contribMetric, setContribMetric] = useState<ContribMetric>(initialContribMetric);
+  // Which plan chart the panel shows. The remembered choice is read after mount, so the prerender
+  // and the first client render agree; storage can be missing or throw, and then the default holds.
+  const [planChart, setPlanChart] = useState<PlanChart>(initialPlanChart);
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(PLAN_CHART_STORE);
+      if (saved && PLAN_CHARTS.some((c) => c.key === saved)) setPlanChart(saved as PlanChart);
+    } catch {
+      /* no storage: keep the default */
+    }
+  }, []);
+  const choosePlanChart = (c: PlanChart) => {
+    setPlanChart(c);
+    try {
+      window.localStorage.setItem(PLAN_CHART_STORE, c);
+    } catch {
+      /* no storage: the choice lasts this visit only */
+    }
+  };
   const contribTab = CONTRIB_TABS.find((t) => t.key === contribMetric) ?? CONTRIB_TABS[0];
   const hasContribPoints = !!data?.contributed?.[plan]?.points?.length;
   const contributed = useMemo(
@@ -988,6 +1114,11 @@ export default function ClaudeUsageTracker({
         : [],
     [data, model],
   );
+  // One line per watched Max 20x account on each of the three plan charts, keyed to the colours
+  // the speed-by-account chart gives the same accounts.
+  const windowAccountLines = useMemo(() => (data ? accountWindowTokenLines(data, model) : undefined), [data, model]);
+  const weeklyTokenAccountLines = useMemo(() => (data ? accountWeeklyTokenLines(data, model) : undefined), [data, model]);
+  const windowsAccountLines = useMemo(() => (data ? accountWindowLines(data) : undefined), [data]);
   // The readings behind the selected plan's levels, and the documented level beside them. Only a
   // plan's own readings: today that is Max 20x, so Pro and Max 5x get the reference alone.
   const weeklyOverlay = useMemo(() => (data ? weeklyReadingsFor(data, plan) : undefined), [data, plan]);
@@ -1502,151 +1633,186 @@ export default function ClaudeUsageTracker({
         </div>
 
         {!unavailable && data && (
-          <section>
-            <h2>Effective window size</h2>
-            <div className="sub">
-              {PLAN_LABELS[plan]} · {modelLabel(model)} tokens per 5-hour window. Full history.
+          <section id="plan-charts">
+            {/* One panel for the three plan charts, one shown at a time. Every panel is rendered
+                and the others hidden, so the prerendered page still carries all three charts'
+                figures and switching does not re-mount a chart. */}
+            <div className="chart-tabs plan-chart-tabs" role="tablist" aria-label="Plan chart">
+              {PLAN_CHARTS.map((c) => (
+                <button
+                  key={c.key}
+                  id={`plan-chart-tab-${c.key}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={c.key === planChart}
+                  aria-controls={`plan-chart-${c.key}`}
+                  tabIndex={c.key === planChart ? 0 : -1}
+                  className={c.key === planChart ? "on" : undefined}
+                  onClick={() => choosePlanChart(c.key)}
+                  onKeyDown={(e) => {
+                    const next = planChartForKey(c.key, e.key);
+                    if (next === null) return;
+                    e.preventDefault();
+                    choosePlanChart(next);
+                    document.getElementById(`plan-chart-tab-${next}`)?.focus();
+                  }}
+                >
+                  {c.label}
+                </button>
+              ))}
             </div>
-            {/* The same measured window the hero states, from the same published figure, so this
-                section and the hero cannot disagree. There is no reading series beneath it: the
-                window is measured on the stretches the block names, not read off a daily list-price
-                history, and that history is not a second answer to this question (wf-60). The chart
-                below is a flat line for the same reason: `credits.window_tokens` publishes one
-                number, not a series, so it is held at that one value across the regime dates the
-                windows-per-week chart uses (there is no per-day range to toggle any more; a range
-                toggle here would slice a line that never changes). */}
-            {r && !r.included ? (
-              <p className="sub">{notIncluded}</p>
-            ) : (
-              <>
-                <div className="rate">
-                  <span>
-                    {wt?.perWindow ? (
-                      <>
-                        <Fig fig={wt.perWindow} unit="tokens per 5-hour window" />
-                        {wt.perWindow.range ? ` (${wt.perWindow.range})` : ""}
-                        {wt.inferredNote && wt.perWindow.kind === "value" && (
-                          <em>{wt.inferredNote}</em>
-                        )}
-                      </>
-                    ) : (
-                      <>tokens per 5-hour window: <b>window tokens not yet published</b></>
-                    )}
-                  </span>
-                  {cr?.sessionsPerWindow && (
-                    <>
-                      <em className="brk">·</em>
-                      <span>
-                        <Fig fig={cr.sessionsPerWindow} unit="sessions" />
-                      </span>
-                    </>
-                  )}
+            <div role="tabpanel" id="plan-chart-window" aria-labelledby="plan-chart-tab-window" hidden={planChart !== "window"}>
+                <h2>Effective window size</h2>
+                <div className="sub">
+                  {PLAN_LABELS[plan]} · {modelLabel(model)} tokens per 5-hour window. Full history.
                 </div>
-                {windowTokenLevels.some((p) => p.levels.length > 0) && (
-                  <LevelChart
-                    levelsByPlan={windowTokenLevels}
-                    // Markers only where this chart's own levels step: no announced event, so a
-                    // flat window (which meter moved is unresolved) draws no marker on a line that
-                    // never actually stepped.
-                    events={[]}
-                    selectedPlan={plan}
-                    fmtValue={fmtTokens}
-                    plotRight={732}
-                    title="Effective window size over time"
-                    changeFromLevels
-                  />
+                {/* The same measured window the hero states, from the same published figure, so this
+                    section and the hero cannot disagree. There is no reading series beneath it: the
+                    window is measured on the stretches the block names, not read off a daily list-price
+                    history, and that history is not a second answer to this question (wf-60). The chart
+                    below is a flat line for the same reason: `credits.window_tokens` publishes one
+                    number, not a series, so it is held at that one value across the regime dates the
+                    windows-per-week chart uses (there is no per-day range to toggle any more; a range
+                    toggle here would slice a line that never changes). */}
+                {r && !r.included ? (
+                  <p className="sub">{notIncluded}</p>
+                ) : (
+                  <>
+                    <div className="rate">
+                      <span>
+                        {wt?.perWindow ? (
+                          <>
+                            <Fig fig={wt.perWindow} unit="tokens per 5-hour window" />
+                            {wt.perWindow.range ? ` (${wt.perWindow.range})` : ""}
+                            {wt.inferredNote && wt.perWindow.kind === "value" && (
+                              <em>{wt.inferredNote}</em>
+                            )}
+                          </>
+                        ) : (
+                          <>tokens per 5-hour window: <b>window tokens not yet published</b></>
+                        )}
+                      </span>
+                      {cr?.sessionsPerWindow && (
+                        <>
+                          <em className="brk">·</em>
+                          <span>
+                            <Fig fig={cr.sessionsPerWindow} unit="sessions" />
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {windowTokenLevels.some((p) => p.levels.length > 0) && (
+                      <LevelChart
+                        levelsByPlan={windowTokenLevels}
+                        // Markers only where this chart's own levels step: no announced event, so a
+                        // flat window (which meter moved is unresolved) draws no marker on a line that
+                        // never actually stepped.
+                        events={[]}
+                        selectedPlan={plan}
+                        fmtValue={fmtTokens}
+                        plotRight={732}
+                        title="Effective window size over time"
+                        changeFromLevels
+                        accountLines={windowAccountLines}
+                        accountOrder={accountOrder}
+                        missingFor={modelLabel(model)}
+                        shown={planChart === "window"}
+                      />
+                    )}
+                  </>
                 )}
-              </>
-            )}
+            </div>
+            <div role="tabpanel" id="plan-chart-tokens" aria-labelledby="plan-chart-tab-tokens" hidden={planChart !== "tokens"}>
+                <h2>Tokens per week</h2>
+                <p className="sub">
+                  {PLAN_LABELS[plan]} · {modelLabel(model)} · how many tokens a full week of five-hour windows
+                  buys. Full history.
+                </p>
+                {/* The same notice as the window chart: another plan's line under this plan's heading would
+                    read as this plan's figure (audit finding 2, kept). */}
+                {r && !r.included ? (
+                  <p className="sub">{notIncluded}</p>
+                ) : (
+                  <>
+                    {/* The measured window a week of windows holds: the published per-week figure,
+                        on this plan's own windows per week. The chart below draws the same figure at
+                        each regime's windows, so the card and the chart cannot disagree. */}
+                    <div className="rate">
+                      <span>
+                        {wt?.perWeek ? (
+                          <>
+                            <Fig fig={wt.perWeek} unit="tokens per week" />
+                            {wt.perWeek.range ? ` (${wt.perWeek.range})` : ""}
+                          </>
+                        ) : (
+                          <>tokens per week: <b>window tokens not yet published</b></>
+                        )}
+                      </span>
+                      {cr?.sessionsPerWeek && (
+                        <>
+                          <em className="brk">·</em>
+                          <span>
+                            <Fig fig={cr.sessionsPerWeek} unit="sessions" />
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <LevelChart
+                      levelsByPlan={weeklyTokenLevels}
+                      events={weeklyEvents}
+                      selectedPlan={plan}
+                      fmtValue={fmtTokens}
+                      plotRight={732}
+                      title="Tokens per week over time"
+                      changeFromLevels
+                      accountLines={weeklyTokenAccountLines}
+                      accountOrder={accountOrder}
+                      missingFor={modelLabel(model)}
+                      shown={planChart === "tokens"}
+                      // This chart's quantity is tokens a week buys, so its marker states the
+                      // published tokens-per-week figure where there is one. The windows-per-week
+                      // chart below keeps its own windows-per-week figure.
+                      changePct={tokensPerWeekPct}
+                    />
+                  </>
+                )}
+            </div>
+            <div role="tabpanel" id="plan-chart-windows" aria-labelledby="plan-chart-tab-windows" hidden={planChart !== "windows"}>
+                <h2>Five-hour windows per week</h2>
+                <p className="sub">
+                  How many 5-hour windows fit in one week, read from the usage meter. Full history.
+                </p>
+                {r && !r.included ? (
+                  <p className="sub">{notIncluded}</p>
+                ) : (
+                  <>
+                    {r && r.planWindowsPerWeek !== null && (
+                      <div className="rate">
+                        <span>
+                          <b>{r.planWindowsPerWeek.toFixed(1)}</b> five-hour windows per week
+                        </span>
+                      </div>
+                    )}
+                    <LevelChart
+                      levelsByPlan={weeklyLevels}
+                      events={weeklyEvents}
+                      selectedPlan={plan}
+                      fmtValue={(v) => v.toFixed(1)}
+                      plotRight={732}
+                      title="Five-hour windows per week over time"
+                      overlay={weeklyOverlay}
+                      changeFromLevels
+                      accountLines={windowsAccountLines}
+                      accountOrder={accountOrder}
+                      missingFor="five-hour windows per week"
+                      shown={planChart === "windows"}
+                    />
+                  </>
+                )}
+            </div>
             <p className="stats-cta-row mob">
               <a className="stats-cta" href="#contribute">See your own stats &darr;</a>
             </p>
-          </section>
-        )}
-
-        {!unavailable && data && (
-          <section>
-            <h2>Tokens per week</h2>
-            <p className="sub">
-              {PLAN_LABELS[plan]} · {modelLabel(model)} · how many tokens a full week of five-hour windows
-              buys. Full history.
-            </p>
-            {/* The same notice as the window chart: another plan's line under this plan's heading would
-                read as this plan's figure (audit finding 2, kept). */}
-            {r && !r.included ? (
-              <p className="sub">{notIncluded}</p>
-            ) : (
-              <>
-                {/* The measured window a week of windows holds: the published per-week figure,
-                    on this plan's own windows per week. The chart below draws the same figure at
-                    each regime's windows, so the card and the chart cannot disagree. */}
-                <div className="rate">
-                  <span>
-                    {wt?.perWeek ? (
-                      <>
-                        <Fig fig={wt.perWeek} unit="tokens per week" />
-                        {wt.perWeek.range ? ` (${wt.perWeek.range})` : ""}
-                      </>
-                    ) : (
-                      <>tokens per week: <b>window tokens not yet published</b></>
-                    )}
-                  </span>
-                  {cr?.sessionsPerWeek && (
-                    <>
-                      <em className="brk">·</em>
-                      <span>
-                        <Fig fig={cr.sessionsPerWeek} unit="sessions" />
-                      </span>
-                    </>
-                  )}
-                </div>
-                <LevelChart
-                  levelsByPlan={weeklyTokenLevels}
-                  events={weeklyEvents}
-                  selectedPlan={plan}
-                  fmtValue={fmtTokens}
-                  plotRight={732}
-                  title="Tokens per week over time"
-                  changeFromLevels
-                  // This chart's quantity is tokens a week buys, so its marker states the
-                  // published tokens-per-week figure where there is one. The windows-per-week
-                  // chart below keeps its own windows-per-week figure.
-                  changePct={tokensPerWeekPct}
-                />
-              </>
-            )}
-          </section>
-        )}
-
-        {!unavailable && data && (
-          <section>
-            <h2>Five-hour windows per week</h2>
-            <p className="sub">
-              How many 5-hour windows fit in one week, read from the usage meter. Full history.
-            </p>
-            {r && !r.included ? (
-              <p className="sub">{notIncluded}</p>
-            ) : (
-              <>
-                {r && r.planWindowsPerWeek !== null && (
-                  <div className="rate">
-                    <span>
-                      <b>{r.planWindowsPerWeek.toFixed(1)}</b> five-hour windows per week
-                    </span>
-                  </div>
-                )}
-                <LevelChart
-                  levelsByPlan={weeklyLevels}
-                  events={weeklyEvents}
-                  selectedPlan={plan}
-                  fmtValue={(v) => v.toFixed(1)}
-                  plotRight={732}
-                  title="Five-hour windows per week over time"
-                  overlay={weeklyOverlay}
-                  changeFromLevels
-                />
-              </>
-            )}
           </section>
         )}
 

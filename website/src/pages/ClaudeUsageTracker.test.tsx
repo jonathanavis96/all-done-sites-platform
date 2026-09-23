@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider, type HelmetServerState } from "react-helmet-async";
-import ClaudeUsageTracker, { markerColour, markerPctText, realSteps } from "./ClaudeUsageTracker";
+import ClaudeUsageTracker, { markerColour, markerPctText, planChartForKey, realSteps, type PlanChart } from "./ClaudeUsageTracker";
 import {
   accountLabel,
   compute,
@@ -1798,6 +1798,85 @@ describe("how fast each model answers, by account", () => {
         const html = renderHtml(withSpeed(block), "max20", model);
         expect(html).not.toMatch(OLD_NAME);
       }
+    }
+  });
+});
+
+// The three plan charts share one panel with a three-way toggle. Every chart is rendered and the
+// two not chosen are hidden, so a switch only moves `hidden` and the selected tab.
+describe("plan chart toggle", () => {
+  const TPW = schema3TokensPerWeek as unknown as UsageJson;
+  const htmlFor = (chart?: PlanChart) =>
+    renderToString(
+      <HelmetProvider context={{}}>
+        <MemoryRouter>
+          <ClaudeUsageTracker initial={TPW} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart={chart} />
+        </MemoryRouter>
+      </HelmetProvider>,
+    );
+  // The opening tag of one panel, and the panel itself up to the next one.
+  const panelTag = (html: string, key: PlanChart) => html.match(new RegExp(`<div role="tabpanel" id="plan-chart-${key}"[^>]*>`))![0];
+  const panel = (html: string, key: PlanChart) => {
+    const at = html.indexOf(panelTag(html, key));
+    const next = html.indexOf('<div role="tabpanel"', at + 1);
+    const end = next > 0 ? next : html.indexOf("</section>", at);
+    return html.slice(at, end);
+  };
+  const tab = (html: string, key: PlanChart) => html.match(new RegExp(`<button[^>]*id="plan-chart-tab-${key}"[^>]*>`))![0];
+  const shown = (html: string) => (["window", "tokens", "windows"] as PlanChart[]).filter((k) => !/ hidden=""/.test(panelTag(html, k)));
+
+  it("opens on tokens per week", () => {
+    const html = htmlFor();
+    expect(shown(html)).toEqual(["tokens"]);
+    expect(tab(html, "tokens")).toContain('aria-selected="true"');
+    expect(tab(html, "tokens")).toContain('tabindex="0"');
+    expect(tab(html, "window")).toContain('aria-selected="false"');
+    expect(tab(html, "window")).toContain('tabindex="-1"');
+  });
+
+  it("switches the panel to the chosen chart, each with its own heading and chart", () => {
+    for (const [key, heading, title] of [
+      ["window", "Effective window size", "Effective window size over time"],
+      ["tokens", "Tokens per week", "Tokens per week over time"],
+      ["windows", "Five-hour windows per week", "Five-hour windows per week over time"],
+    ] as [PlanChart, string, string][]) {
+      const html = htmlFor(key);
+      expect(shown(html), key).toEqual([key]);
+      expect(tab(html, key)).toContain('aria-selected="true"');
+      expect(panel(html, key)).toContain(`<h2>${heading}</h2>`);
+      expect(panel(html, key)).toContain(`aria-label="${title}`);
+    }
+  });
+
+  it("moves between the tabs with the arrow keys, Home and End", () => {
+    expect(planChartForKey("window", "ArrowRight")).toBe("tokens");
+    expect(planChartForKey("windows", "ArrowRight")).toBe("window");
+    expect(planChartForKey("window", "ArrowLeft")).toBe("windows");
+    expect(planChartForKey("tokens", "Home")).toBe("window");
+    expect(planChartForKey("tokens", "End")).toBe("windows");
+    expect(planChartForKey("tokens", "a")).toBeNull();
+  });
+
+  it("draws one line per account with data, in the speed chart's account colours", () => {
+    const html = htmlFor("windows");
+    const windows = panel(html, "windows");
+    for (const n of [1, 2, 3]) expect(windows).toContain(`<g data-account="Max account ${n}"`);
+    expect(windows).not.toContain('data-legend="no-data"');
+    // With no speed block the colours key on the accounts' own order, the palette's first three.
+    expect(windows).toContain(`stroke="${CONTRIB_PALETTE[1]}"`);
+    expect(windows).toContain(`stroke="${CONTRIB_PALETTE[2]}"`);
+    // The legend states each account's own step where it has one.
+    expect(windows.replace(/<!-- -->/g, "")).toContain("Max account 1 (-21% across the change)");
+  });
+
+  it("names an account with nothing to draw instead of drawing it", () => {
+    const html = htmlFor();
+    for (const key of ["window", "tokens"] as PlanChart[]) {
+      const p = panel(html, key);
+      expect(p, key).not.toContain('<g data-account="Max account 1"');
+      expect(p, key).toContain('<g data-account="Max account 2"');
+      expect(p, key).toContain('<g data-account="Max account 3"');
+      expect(p.replace(/<!-- -->/g, ""), key).toContain("No data for Opus 5: Max account 1");
     }
   });
 });

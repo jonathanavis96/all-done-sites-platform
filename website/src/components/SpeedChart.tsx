@@ -165,7 +165,7 @@ export default function SpeedChart({ series, selectedModel }: { series: SpeedSer
 
 // One colour per account, from the palette the contributor chart already uses, keyed by the
 // account's place in the block so an account keeps its colour whichever model is picked.
-function accountColor(index: number): string {
+export function accountColor(index: number): string {
   return CONTRIB_PALETTE[index % CONTRIB_PALETTE.length];
 }
 
