@@ -425,6 +425,97 @@ export interface UsageJson {
   // The published reference table the measurements are shown beside, with its own date and the
   // announced changes since. Never an input to a figure on this page.
   reference?: ReferenceBlock;
+  // How fast each model answers, per UTC day, timed from Claude Code transcripts (tracker PR
+  // #87, tracker/speed.py speed_block). Optional: every file published before 2026-09-23 17:30
+  // UTC has none, in which case the speed section does not render.
+  speed?: SpeedBlock;
+}
+
+// A median with its interquartile range, across one day's requests.
+export interface SpeedStat {
+  median: number;
+  q1: number;
+  q3: number;
+}
+
+// One model's figures for one UTC day. A day with fewer than the block's `min_requests` is not
+// published at all, so a missing day is a gap, never a zero.
+export interface SpeedDay {
+  day: string;
+  n: number;
+  // Opus fast-mode requests left out of this day's figures.
+  fast_excluded: number;
+  output_tokens_per_s: SpeedStat;
+  time_to_first_block_s: SpeedStat | null;
+}
+
+export interface SpeedModel {
+  daily: SpeedDay[];
+  by_account?: Record<string, SpeedDay[]>;
+  by_entrypoint?: Record<string, SpeedDay[]>;
+  by_account_entrypoint?: Record<string, SpeedDay[]>;
+}
+
+export interface SpeedBlock {
+  method: string;
+  caveats: string[];
+  min_requests?: number;
+  input_measure?: string;
+  models: Record<string, SpeedModel>;
+  accounts?: Record<string, { first_day: string; last_day: string }>;
+}
+
+// One model's line on the speed chart: its days in order, cut into runs of consecutive days so
+// a day the block has no row for breaks the line instead of drawing through it.
+export interface SpeedSeries {
+  model: string;
+  runs: SpeedDay[][];
+  last: SpeedDay;
+}
+
+const DAY_MS = 86400e3;
+
+export function speedSeries(block: SpeedBlock | undefined): SpeedSeries[] {
+  if (!block?.models) return [];
+  const out: SpeedSeries[] = [];
+  for (const model of modelsNewestFirst(Object.keys(block.models))) {
+    const days = [...(block.models[model]?.daily ?? [])]
+      .filter((d) => typeof d?.output_tokens_per_s?.median === "number")
+      .sort((a, b) => a.day.localeCompare(b.day));
+    if (days.length === 0) continue;
+    const runs: SpeedDay[][] = [];
+    let prev: number | null = null;
+    for (const d of days) {
+      const t = Date.parse(`${d.day}T00:00:00Z`);
+      if (prev === null || t - prev > DAY_MS) runs.push([]);
+      runs[runs.length - 1].push(d);
+      prev = t;
+    }
+    out.push({ model, runs, last: days[days.length - 1] });
+  }
+  return out;
+}
+
+// The one sentence of the block's own method that defines the charted figure (the one starting
+// "Output speed"), or its first sentence if a later method is worded otherwise.
+export function speedMethodSentence(block: SpeedBlock): string | null {
+  const sentences = (block.method ?? "").split(/(?<=\.)\s+(?=[A-Z])/).map((s) => s.trim()).filter(Boolean);
+  return sentences.find((s) => s.startsWith("Output speed")) ?? sentences[0] ?? null;
+}
+
+// The block's own caveat about time to first block, where it publishes one.
+export function speedFirstBlockCaveat(block: SpeedBlock): string | null {
+  return (block.caveats ?? []).find((c) => c.startsWith("Time to first block")) ?? null;
+}
+
+// The newest day any model has a row for, and the Opus fast-mode requests left out that day,
+// summed across models.
+export function speedFastExcludedLatest(block: SpeedBlock): { day: string; count: number } | null {
+  const days = Object.values(block.models ?? {}).flatMap((m) => m?.daily ?? []);
+  if (days.length === 0) return null;
+  const day = days.reduce((a, d) => (d.day > a ? d.day : a), days[0].day);
+  const count = days.filter((d) => d.day === day).reduce((a, d) => a + (d.fast_excluded ?? 0), 0);
+  return { day, count };
 }
 
 export function isSchema2(j: UsageJson): boolean {
