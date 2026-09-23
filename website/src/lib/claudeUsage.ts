@@ -450,6 +450,9 @@ export interface RegimeLevel {
   // ratio, rather than measured on this plan's own windows.
   inferred: boolean;
   plan: Plan;
+  // True when an inferred level carries the value of the plan's own measured level beside it
+  // rather than its scaled one. It stays inferred (dashed); only `windows` changed.
+  continued?: boolean;
 }
 
 // A plan's five-hour windows per week relative to Max 20x. Schema 1 publishes it directly under
@@ -523,7 +526,19 @@ export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
     seen.add(key);
     return true;
   });
-  return unique.sort((a, b) => t(a.start) - t(b.start));
+  const sorted = unique.sort((a, b) => t(a.start) - t(b.start));
+  // The account moved from Max 5x to Max 20x on 15 Aug and the collector's regime detector
+  // certified no change there, so an inferred level beside one of the plan's own measured levels
+  // continues that measured value instead of drawing a false step from the table ratio. Only a
+  // direct neighbour counts, preferring the level it ends into, and nothing propagates further.
+  // A level borrowed at a ratio of 1 (Pro on a file that gives it Max 5x's ratio) is that plan's
+  // figure unchanged, so it anchors too; otherwise Pro would part from the Max 5x line it copies.
+  const anchors = sorted.map((r) => !r.inferred || ratioOf(r.plan) === own);
+  return sorted.map((r, i) => {
+    if (anchors[i]) return r;
+    const anchor = anchors[i + 1] ? sorted[i + 1] : anchors[i - 1] ? sorted[i - 1] : null;
+    return anchor ? { ...r, windows: anchor.windows, continued: true } : r;
+  });
 }
 
 // The factor that puts `other`'s windows per week on `own`'s scale, for filling gaps in the
