@@ -351,27 +351,29 @@ describe("weekly levels drawn across plans (kept from PR #76)", () => {
       // #74/#76 behaviour: the plan's own `current` still wins when present.
       expect(r.planWindowsPerWeek).toBe(11.02);
     }
-    // Max 5x keeps its own history, then max20 scaled across the seam: 6.2 and 4.61 x 1.668.
+    // Max 5x keeps its own history, then max20 scaled across: the level beside its own measured
+    // one continues it (no step at the plan move), and the one after that is 4.61 x 1.668.
     const rounded = (j: UsageJson, plan: "max5" | "pro") =>
       weeklyRegimeLevelsFor(j, plan).map((l) => [l.start, +l.windows.toFixed(4), l.inferred]);
     expect(rounded(LIVE, "max5")).toEqual([
       ["2026-06-13T01:30:00+00:00", 10.34, false],
-      ["2026-08-19T17:00:00+00:00", +(6.2 * 1.668).toFixed(4), true],
+      ["2026-08-19T17:00:00+00:00", 10.34, true],
       ["2026-09-14T16:30:00+00:00", +(4.61 * 1.668).toFixed(4), true],
     ]);
     // Pro republishes Max 5x's first regime as its own (deduped, so not flagged inferred); the
-    // rest of its history is genuinely borrowed and scaled.
+    // rest of its history is genuinely borrowed, continued and scaled exactly as Max 5x's is.
     expect(rounded(LIVE, "pro")).toEqual([
       ["2026-06-13T01:30:00+00:00", 10.34, false],
-      ["2026-08-19T17:00:00+00:00", +(6.2 * 1.668).toFixed(4), true],
+      ["2026-08-19T17:00:00+00:00", 10.34, true],
       ["2026-09-14T16:30:00+00:00", +(4.61 * 1.668).toFixed(4), true],
     ]);
     // Schema 2 publishes no ratio: 10.86 / 6.34 = 1.713. The borrowed level scales max20's own
     // regime windows (6.34), not its `current` (6.13) - the chart is built from regimes alone.
+    // That borrowed level sits beside Max 5x's own measured 6.61, so it continues it instead.
     expect(rounded(V2, "max5")).toEqual([
       ["2026-06-13T01:30:00+00:00", 10.86, false],
       ["2026-08-14T19:19:00+00:00", 6.61, false],
-      ["2026-08-19T17:00:00+00:00", +(6.34 * 1.713).toFixed(4), true],
+      ["2026-08-19T17:00:00+00:00", 6.61, true],
     ]);
     expect(rounded(V2, "pro").map((l) => l[2])).toEqual([true, true, true]);
   });
@@ -838,6 +840,64 @@ describe("weeklyRegimeLevelsFor", () => {
     expect(levels.map((l) => [l.start, l.inferred, +l.windows.toFixed(2)])).toEqual([
       ["2026-01-01", false, 10.68],
       ["2026-08-01", true, 10.68],
+    ]);
+  });
+  // The live file's shape on 2026-09-23: Max 5x measured 13 Jun to 14 Aug, then the account moved
+  // onto Max 20x on 15 Aug, measured until the 14 Sep cut and after it. The detector certified no
+  // change at the move, only at the cut.
+  const SEAM: UsageJson = {
+    ...RJ,
+    weekly_window_ratios: { max20: 1, max5: 1.667, pro: 1.2 },
+    weekly_windows: {
+      max20: {
+        current: 5.05,
+        history: [],
+        regimes: [
+          { start: "2026-08-15T00:20:00+00:00", end: "2026-09-14T03:45:24+00:00", windows: 6.48, seven_day_pct: 519, points: 144 },
+          { start: "2026-09-14T11:30:00+00:00", end: "2026-09-23T16:40:00+00:00", windows: 5.05, seven_day_pct: 318, points: 93 },
+        ],
+      },
+      max5: {
+        current: null,
+        history: [],
+        regimes: [
+          { start: "2026-06-13T01:30:00+00:00", end: "2026-08-14T16:20:00+00:00", windows: 10.86, seven_day_pct: 773, points: 204 },
+        ],
+      },
+      pro: { current: null, history: [], regimes: [] },
+    },
+  };
+  const levelsOf = (j: UsageJson, plan: Plan) =>
+    weeklyRegimeLevelsFor(j, plan).map((l) => [l.start.slice(0, 10), +l.windows.toFixed(4), l.inferred, l.continued ?? false]);
+
+  it("continues Max 20x's own measured level back across the 15 Aug plan move rather than stepping onto it", () => {
+    // Scaled, the borrowed level would be 10.86 / 1.667 = 6.515: a 0.5% drop onto the measured
+    // 6.48 that the detector never certified. It stays dashed; only its value changes.
+    expect(levelsOf(SEAM, "max20")).toEqual([
+      ["2026-06-13", 6.48, true, true],
+      ["2026-08-15", 6.48, false, false],
+      ["2026-09-14", 5.05, false, false],
+    ]);
+  });
+  it("leaves the 14 Sep step as it was: both sides are measured", () => {
+    const levels = weeklyRegimeLevelsFor(SEAM, "max20");
+    expect(Math.round(((levels[2].windows - levels[1].windows) / levels[1].windows) * 100)).toBe(-22);
+  });
+  it("continues only a direct neighbour: an inferred level between two inferred ones keeps its scaled value", () => {
+    // Max 5x: its own 10.86 carries onto the level beside it, but the one after that sits between
+    // inferred levels, so it keeps Max 20x's 5.05 x 1.667 and the 14 Sep step stays Max 20x's.
+    expect(levelsOf(SEAM, "max5")).toEqual([
+      ["2026-06-13", 10.86, false, false],
+      ["2026-08-15", 10.86, true, true],
+      ["2026-09-14", +(5.05 * 1.667).toFixed(4), true, false],
+    ]);
+  });
+  it("leaves a plan with no measured level of its own unaffected", () => {
+    // Pro here borrows on its own ratio (1.2), so nothing it borrows is its own figure.
+    expect(levelsOf(SEAM, "pro")).toEqual([
+      ["2026-06-13", +((10.86 * 1.2) / 1.667).toFixed(4), true, false],
+      ["2026-08-15", +(6.48 * 1.2).toFixed(4), true, false],
+      ["2026-09-14", +(5.05 * 1.2).toFixed(4), true, false],
     ]);
   });
   it("derives schema 2's missing ratio from the first Max 5x and Max 20x levels, with Pro taking Max 5x's", () => {
@@ -1885,9 +1945,10 @@ describe("the weekly change measured in tokens a week buys", () => {
   it("prices each weekly regime at the window that was current while it ran", () => {
     const levels = weeklyTokenRegimeLevelsFor(TPW, "max20", OPUS);
     // The two measured Max 20x regimes, 6.48 windows before the cut and 5.07 after it, plus the
-    // Max 5x span borrowed for the months before the account moved onto Max 20x.
+    // Max 5x span borrowed for the months before the account moved onto Max 20x, which continues
+    // the measured 6.48 rather than stepping onto it.
     expect(levels.map((l) => [l.start.slice(0, 10), +(l.tokens / 1e6).toFixed(1)])).toEqual([
-      ["2026-06-13", 3009.8],
+      ["2026-06-13", 2993.8],
       ["2026-08-15", 2993.8],
       ["2026-09-14", 2545.1],
     ]);
@@ -1904,7 +1965,7 @@ describe("the weekly change measured in tokens a week buys", () => {
 
   it("prices every regime at the one current window where no split is published", () => {
     const levels = weeklyTokenRegimeLevelsFor(WITHOUT, "max20", OPUS);
-    expect(levels.map((l) => +(l.tokens / 1e6).toFixed(1))).toEqual([3270.4, 3253.0, 2545.1]);
+    expect(levels.map((l) => +(l.tokens / 1e6).toFixed(1))).toEqual([3253.0, 3253.0, 2545.1]);
     // -22%: the whole of the fall in windows per week, which is what the chart drew before wf-61.
     const step = (levels[2].tokens - levels[1].tokens) / levels[1].tokens;
     expect(Math.round(step * 100)).toBe(-22);
@@ -1924,7 +1985,7 @@ describe("the weekly change measured in tokens a week buys", () => {
   });
 
   it("leaves the windows-per-week levels alone: they are a count, not a token figure", () => {
-    expect(weeklyRegimeLevelsFor(TPW, "max20").map((l) => +l.windows.toFixed(2))).toEqual([6.51, 6.48, 5.07]);
+    expect(weeklyRegimeLevelsFor(TPW, "max20").map((l) => +l.windows.toFixed(2))).toEqual([6.48, 6.48, 5.07]);
   });
 });
 
