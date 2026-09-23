@@ -29,6 +29,7 @@ import {
   headline,
   modelPlanLimit,
   staleEvidenceAt,
+  stoppedFeedsLine,
   weeklyEventsFor,
   latestWeeklyChange,
   planScaling,
@@ -1183,6 +1184,14 @@ export default function ClaudeUsageTracker({
   useEffect(() => {
     setStaleAt(data ? staleEvidenceAt(data, model, now ?? Date.now()) : null);
   }, [data, model, now]);
+  // An account whose feed has stopped can leave a figure looking current. Decided after mount
+  // like the stale line, so the prerender matches the first client render.
+  const [stoppedLine, setStoppedLine] = useState<string | null>(() =>
+    now !== undefined && initial ? stoppedFeedsLine(initial) : null,
+  );
+  useEffect(() => {
+    setStoppedLine(data ? stoppedFeedsLine(data) : null);
+  }, [data]);
   useEffect(() => {
     // "Last sample" means the meter reading, so show when the meter was last read.
     // The old pair is the fallback for JSON published before meter_read_at existed, and
@@ -1430,6 +1439,7 @@ export default function ClaudeUsageTracker({
                     </div>
                   )}
                   {staleAt && <div className="stale">Last measured {fmtDate(staleAt.slice(0, 10))}.</div>}
+                  {stoppedLine && <div className="stale">{stoppedLine}</div>}
                 </>
               )}
             </>

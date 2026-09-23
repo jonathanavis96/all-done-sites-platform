@@ -340,6 +340,12 @@ export interface PlanLimit {
   as_of?: string;
 }
 
+export interface AccountFeed {
+  feed_at?: string | null;
+  newest_stretch_end?: string | null;
+  state?: "fresh" | "idle" | "stopped" | string;
+}
+
 export interface UsageJson {
   schema_version?: number;
   rate_basis?: string;
@@ -348,6 +354,10 @@ export interface UsageJson {
   // When a watched account's meter was last read. Published since 2026-09-16; older
   // JSON has only last_sample_at, which is the newest completed measurement instead.
   meter_read_at?: string | null;
+  // Per-account feed state, keyed by the anonymous account label (tracker issues #32/#33).
+  // "stopped" means the collector has not delivered on schedule; "idle" means it ran but the
+  // account was not used. Absent from JSON published before the field existed.
+  account_feeds?: Record<string, AccountFeed>;
   // Newest passive (non-probe) measurement's timestamp. Optional: older JSON predates passive
   // measurement.
   passive_generated_at?: string | null;
@@ -889,6 +899,27 @@ export function staleEvidenceAt(j: UsageJson, model: string, now: number): strin
   const after = rateStaleAfter(j, model);
   if (after === null || !(now > Date.parse(after))) return null;
   return rateEvidenceAt(j, model);
+}
+
+// The accounts whose feed the tracker marks stopped, oldest feed first. The published state is
+// trusted as it stands: the page does not recompute the collector's schedule thresholds.
+export function stoppedFeeds(j: UsageJson): { label: string; feed_at: string | null }[] {
+  const t = (at: string | null) => (at && Number.isFinite(Date.parse(at)) ? Date.parse(at) : Infinity);
+  return Object.entries(j.account_feeds ?? {})
+    .filter(([, f]) => f?.state === "stopped")
+    .map(([label, f]) => ({ label, feed_at: f.feed_at ?? null }))
+    .sort((a, b) => t(a.feed_at) - t(b.feed_at));
+}
+
+// The page's sentence for stopped feeds, or null when none is stopped. No account label and
+// no reason: only how many, and the oldest date one of them last arrived.
+export function stoppedFeedsLine(j: UsageJson): string | null {
+  const stopped = stoppedFeeds(j);
+  if (stopped.length === 0) return null;
+  const oldest = stopped[0].feed_at;
+  const since = oldest && Number.isFinite(Date.parse(oldest)) ? ` since ${fmtDate(oldest.slice(0, 10)).slice(0, -5)}` : " on schedule";
+  const count = ["One account's", "Two accounts'", "Three accounts'", "Four accounts'"][stopped.length - 1] ?? `${stopped.length} accounts'`;
+  return `${count} data has not arrived${since}.`;
 }
 
 export function fmtUsd(n: number): string {

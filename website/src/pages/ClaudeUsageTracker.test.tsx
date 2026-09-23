@@ -206,6 +206,25 @@ describe("the tracker page renders both schemas", () => {
     expect(render(oldOpus, "max20", "claude-opus-5")).not.toContain("Last measured");
   });
 
+  it("says when an account's feed has stopped, without naming it, and says nothing for an idle one", () => {
+    const now = Date.parse("2026-09-16T17:00:00Z");
+    const feeds: UsageJson = structuredClone(LIVE);
+    feeds.account_feeds = {
+      a1: { feed_at: "2026-09-16T16:00:00+00:00", newest_stretch_end: "2026-09-16T15:00:00+00:00", state: "fresh" },
+      a2: { feed_at: "2026-09-14T09:00:00+00:00", newest_stretch_end: "2026-09-12T15:00:00+00:00", state: "idle" },
+      a3: { feed_at: "2026-09-15T02:00:00+00:00", newest_stretch_end: "2026-09-14T22:00:00+00:00", state: "stopped" },
+    };
+    const text = render(feeds, "max20", "claude-sonnet-5", now);
+    expect(text).toContain("One account's data has not arrived since 15 Sep.");
+    expect(text).not.toContain("a3");
+    delete feeds.account_feeds.a3;
+    expect(render(feeds, "max20", "claude-sonnet-5", now)).not.toContain("has not arrived");
+    // Absent field: no sentence. Without a fixed clock the prerender never shows it either.
+    expect(render(LIVE, "max20", "claude-sonnet-5", now)).not.toContain("has not arrived");
+    feeds.account_feeds.a4 = { feed_at: "2026-09-15T02:00:00+00:00", newest_stretch_end: null, state: "stopped" };
+    expect(render(feeds, "max20", "claude-sonnet-5")).not.toContain("has not arrived");
+  });
+
   it("says the data is unavailable when schema 2 publishes no eligible measurement, rather than substituting one (finding 13, kept)", () => {
     const none: UsageJson = structuredClone(REBUILT);
     for (const rate of Object.values(none.rates)) {
