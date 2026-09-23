@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
+  speedFastExcludedLatest,
+  speedFirstBlockCaveat,
+  speedMethodSentence,
+  speedSeries,
+  type SpeedBlock,
+  type SpeedDay,
   compute,
   headline,
   fmtTokens,
@@ -2095,5 +2101,53 @@ describe("accountLabel", () => {
     expect(accountLabel("a0")).toBe("a0");
     expect(accountLabel("masterrig")).toBe("masterrig");
     expect(accountLabel("ab1")).toBe("ab1");
+  });
+});
+
+describe("the speed block", () => {
+  const day = (d: string, median: number, fast = 0): SpeedDay => ({
+    day: d,
+    n: 40,
+    fast_excluded: fast,
+    output_tokens_per_s: { median, q1: median - 5, q3: median + 5 },
+    time_to_first_block_s: { median: 4, q1: 3, q3: 6 },
+  });
+  const block: SpeedBlock = {
+    method: "Each request is timed from Claude Code's transcripts. Output speed is the response's output tokens over that time. Figures are the median.",
+    caveats: ["Opus fast mode is recorded as standard.", "Time to first block includes writing the whole first block."],
+    models: {
+      "claude-sonnet-5": { daily: [day("2026-09-03", 90), day("2026-09-01", 88), day("2026-09-02", 89)] },
+      "claude-opus-5": { daily: [day("2026-09-01", 70, 4), day("2026-09-02", 71), day("2026-09-04", 72, 3)] },
+      "claude-opus-4-8": { daily: [] },
+    },
+  };
+
+  it("cuts each model's days into runs of consecutive days, so a missing day is a gap", () => {
+    const series = speedSeries(block);
+    expect(series.map((s) => s.model)).toEqual(["claude-opus-5", "claude-sonnet-5"]);
+    const opus = series.find((s) => s.model === "claude-opus-5")!;
+    expect(opus.runs.map((r) => r.map((d) => d.day))).toEqual([["2026-09-01", "2026-09-02"], ["2026-09-04"]]);
+    expect(opus.last.day).toBe("2026-09-04");
+    const sonnet = series.find((s) => s.model === "claude-sonnet-5")!;
+    expect(sonnet.runs.map((r) => r.map((d) => d.day))).toEqual([["2026-09-01", "2026-09-02", "2026-09-03"]]);
+  });
+
+  it("has no series without a block", () => {
+    expect(speedSeries(undefined)).toEqual([]);
+  });
+
+  it("takes the method's own sentence on output speed", () => {
+    expect(speedMethodSentence(block)).toBe("Output speed is the response's output tokens over that time.");
+    expect(speedMethodSentence({ ...block, method: "Timed per request. Median per day." })).toBe("Timed per request.");
+  });
+
+  it("takes the block's own time-to-first-block caveat", () => {
+    expect(speedFirstBlockCaveat(block)).toBe("Time to first block includes writing the whole first block.");
+    expect(speedFirstBlockCaveat({ ...block, caveats: [] })).toBeNull();
+  });
+
+  it("counts the fast-mode requests left out on the newest day", () => {
+    expect(speedFastExcludedLatest(block)).toEqual({ day: "2026-09-04", count: 3 });
+    expect(speedFastExcludedLatest({ ...block, models: {} })).toBeNull();
   });
 });

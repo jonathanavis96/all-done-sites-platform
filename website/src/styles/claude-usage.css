@@ -201,3 +201,7 @@
   .cut table.effort tr:not(:last-child) td[data-model]:last-child { border-bottom: none; }
   .cut table.effort tr:last-child td[data-model]:last-child { border-bottom: 1px solid var(--ads-line); }
 }
+
+/* How fast each model answers: the method and caveat lines under the chart sit tight to it. */
+.cut .speed-chart { margin-top: 18px; }
+.cut .sub.speed-note { margin: 10px 0 0; line-height: 1.55; }

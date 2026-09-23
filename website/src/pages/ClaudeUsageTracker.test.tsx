@@ -9,11 +9,13 @@ import {
   computeWindowTokens,
   windowTokenRegimeLevelsFor,
   windowTokensValueFor,
+  fmtDate,
   fmtTokens,
   fmtUsd,
   weeklyTokenRegimeLevelsFor,
   weeklyRegimeLevelsFor,
   type Plan,
+  type SpeedBlock,
   type UsageJson,
 } from "@/lib/claudeUsage";
 import type { ContribMetric } from "@/lib/contrib";
@@ -43,6 +45,8 @@ import opus55 from "@/lib/__fixtures__/claude-usage-opus-5-5.json";
 import inferredRates from "@/lib/__fixtures__/claude-usage-inferred-rates.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
 import liveJson from "../../public/data/claude-usage.json";
+// The speed block as tracker/speed.py speed_block built it on 2026-09-23, splits trimmed.
+import speedBlock from "@/lib/__fixtures__/claude-usage-speed-block.json";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
   return renderToString(
@@ -1603,15 +1607,94 @@ describe("inferred Opus 5.5 and Haiku rows", () => {
     }
   });
 
-  it("changes nothing on today's live file, where both rows are null with a status", () => {
+  // The live snapshot as of the 2026-09-23 data refresh: both rows now carry inferred figures.
+  it("renders today's live file with Opus 5.5 and Haiku both inferred", () => {
+    // A measured model's page carries none of the inferred wording.
     const html = renderHtml(LIVE_NOW, "max20", "claude-opus-5");
     expect(html).not.toMatch(/not yet measured|inferred (Opus|Haiku)/);
     for (const list of options(html)) {
-      expect(list).not.toContain(OPUS55);
+      expect(list).toContain(OPUS55);
       expect(list).toContain(HAIKU);
     }
+    const opus55 = render(LIVE_NOW, "max20", OPUS55);
+    expect(opus55).toContain("tokens per 5-hour window Inferred from Anthropic's list price, not yet measured.");
+    expect(opus55).toContain("Priced at an inferred Opus 5.5 rate");
     const haiku = render(LIVE_NOW, "max20", HAIKU);
-    expect(haiku).toContain("not measurable");
-    expect(haiku).not.toContain("not yet measured");
+    expect(haiku).toContain("Inferred from the January 2026 credit table, not yet measured.");
+    expect(haiku).toContain("Priced at an inferred Haiku rate");
+    expect(haiku).not.toContain("not measurable");
+  });
+});
+
+describe("how fast each model answers", () => {
+  const BLOCK = speedBlock as unknown as SpeedBlock;
+  const withSpeed = (block: SpeedBlock | undefined): UsageJson => ({ ...(liveJson as unknown as UsageJson), speed: block });
+  const speedSvg = (html: string): string => {
+    const at = html.indexOf('aria-label="Median output tokens per second by day');
+    return html.slice(html.lastIndexOf("<svg", at), html.indexOf("</svg>", at));
+  };
+  // One model's group in the chart: its line runs, dots and label.
+  const modelGroup = (svg: string, model: string): string => {
+    const at = svg.indexOf(`data-model="${model}"`);
+    return svg.slice(at, svg.indexOf("</g>", at));
+  };
+
+  it("renders the section, the selected model's figures and the block's own method and caveats", () => {
+    const text = render(withSpeed(BLOCK), "max20", "claude-opus-5");
+    expect(text).toContain("How fast each model answers");
+    const latest = BLOCK.models["claude-opus-5"].daily.at(-1)!;
+    expect(text).toContain(`${latest.output_tokens_per_s.median.toFixed(1)} output tokens per second`);
+    expect(text).toContain(`${latest.time_to_first_block_s!.median.toFixed(1)} s to first block`);
+    expect(text).toContain(`Opus 5, ${latest.n} requests on ${fmtDate(latest.day)}`);
+    expect(text).toContain("Output speed is the response's output tokens over that time");
+    expect(text).toContain(`Opus fast-mode requests are left out: 0 on ${fmtDate("2026-09-23")}.`);
+    expect(text).toContain("Time to first block includes writing the whole first block");
+    // Placed after the charts above it, before the contribute form.
+    expect(text.indexOf("How fast each model answers")).toBeGreaterThan(text.indexOf("Five-hour windows per week"));
+    expect(text.indexOf("How fast each model answers")).toBeLessThan(text.indexOf("Contribute your own meter"));
+  });
+
+  it("draws the selected model in the accent with its band, and every other model muted", () => {
+    const svg = speedSvg(renderHtml(withSpeed(BLOCK), "max20", "claude-sonnet-5"));
+    const sonnet = modelGroup(svg, "claude-sonnet-5");
+    expect(sonnet).toContain('data-selected="true"');
+    expect(sonnet).toContain('stroke="#0EA5E9"');
+    expect(svg).toContain('data-iqr="claude-sonnet-5"');
+    for (const other of Object.keys(BLOCK.models).filter((m) => m !== "claude-sonnet-5")) {
+      const g = modelGroup(svg, other);
+      expect(g).not.toContain("data-selected");
+      expect(g).not.toContain("#0EA5E9");
+      expect(svg).not.toContain(`data-iqr="${other}"`);
+    }
+  });
+
+  it("breaks a model's line at a day with no row rather than drawing it at zero", () => {
+    const daily = BLOCK.models["claude-opus-5"].daily;
+    const gapped = structuredClone(BLOCK);
+    // Drop one day from the middle of Opus 5's run.
+    const mid = daily.findIndex((d, i) => i > 0 && i < daily.length - 2 && Date.parse(daily[i + 1].day) - Date.parse(d.day) === 86400e3);
+    gapped.models["claude-opus-5"].daily = daily.filter((_, i) => i !== mid);
+    const before = modelGroup(speedSvg(renderHtml(withSpeed(BLOCK), "max20", "claude-opus-5")), "claude-opus-5");
+    const after = modelGroup(speedSvg(renderHtml(withSpeed(gapped), "max20", "claude-opus-5")), "claude-opus-5");
+    const pieces = (g: string) => (g.match(/<path /g) ?? []).length + (g.match(/<circle /g) ?? []).length;
+    expect(pieces(after)).toBe(pieces(before) + 1);
+    // No point sits on the chart's floor: the missing day is not drawn at all.
+    const ys = [...after.matchAll(/[ML] [\d.]+,([\d.]+)/g)].map((m) => Number(m[1]));
+    expect(Math.max(...ys)).toBeLessThan(200);
+    const opusLabel = speedSvg(renderHtml(withSpeed(gapped), "max20", "claude-opus-5")).match(/\. Opus 5: (.*?)\. [A-Z]/)![1];
+    expect(opusLabel).not.toContain(fmtDate(daily[mid].day) + " ");
+    expect(opusLabel).toContain(fmtDate(daily[mid + 1].day) + " ");
+  });
+
+  it("does not render without the block", () => {
+    const text = render(withSpeed(undefined), "max20", "claude-opus-5");
+    expect(text).not.toContain("How fast each model answers");
+    expect(text).not.toContain("output tokens per second");
+  });
+
+  it("says so when the selected model has no speed figures", () => {
+    const only = { ...BLOCK, models: { "claude-sonnet-5": BLOCK.models["claude-sonnet-5"] } };
+    const text = render(withSpeed(only), "max20", "claude-opus-5");
+    expect(text).toContain("No speed figures for Opus 5 yet.");
   });
 });
