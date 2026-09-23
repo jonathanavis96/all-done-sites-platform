@@ -7,6 +7,8 @@ import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
   EFFORTS,
   MODEL_LABELS,
+  modelLabel,
+  modelsNewestFirst,
   pageModels,
   accountWindowsPerWeek,
   basisDate,
@@ -126,7 +128,7 @@ function stepRuns<T extends { start: string; end: string; inferred: boolean }>(
   return runs;
 }
 
-// The most recent real step in one plan's own levels: two array-adjacent, non-inferred levels
+// Every real step in one plan's own levels, oldest first: two array-adjacent, non-inferred levels
 // whose value differs. This is where the drawn step actually lands, which is not always the day
 // an announced event names -- the collector's own regime detector and an announcement can
 // disagree.
@@ -139,39 +141,50 @@ function stepRuns<T extends { start: string; end: string; inferred: boolean }>(
 // leaves a real gap of hours between adjacent regimes (its own regime detector does not require
 // the boundary of one clean stretch to be the literal start instant of the next), so live data
 // almost always fails a millisecond-exact touch check and the step silently vanished.
-function lastRealStep(
+//
+// A seam between an inferred level and a measured one is never a step. On Max 20x the level
+// before 2026-08-15 is Max 5x's measured level scaled by the plan ratio, and the measured level
+// after it differs by a fraction of a percent: that is where the plan's own measurements begin,
+// not a limit change, so it gets no marker.
+export function realSteps(
   levels: { start: string; end: string; value: number; inferred: boolean }[],
-): { date: string; pct: number } | null {
-  for (let i = levels.length - 1; i > 0; i--) {
+): { date: string; pct: number }[] {
+  const steps: { date: string; pct: number }[] = [];
+  for (let i = 1; i < levels.length; i++) {
     const cur = levels[i];
     const prev = levels[i - 1];
     if (cur.inferred || prev.inferred) continue;
     if (!prev.value || cur.value === prev.value) continue;
-    return { date: cur.start, pct: ((cur.value - prev.value) / prev.value) * 100 };
+    steps.push({ date: cur.start, pct: ((cur.value - prev.value) / prev.value) * 100 });
   }
-  return null;
+  return steps;
 }
 
-// The change marker for one plan, falling back across plans when the selected plan has no real
+// The change markers for one plan, falling back across plans when the selected plan has no real
 // step of its own. Pro and Max 5x currently carry no measured regime at all near the change --
-// every recent level on both is inferred (scaled) from Max 20x -- so `lastRealStep` on their own
-// levels always returns null and the marker used to vanish for those two plans. The fallback
-// walks to the plan the SELECTED plan's own most recent level was inferred from (carried on each
-// level as `plan`, the source of that row) and draws the marker where that plan's own step
-// really is, so all three plans mark the same date. If no source plan is found this way, the
-// tokens-per-week chart's own announced-event marker is used instead, rather than showing none.
-function levelStepFor(
+// every recent level on both is inferred (scaled) from Max 20x -- so `realSteps` on their own
+// levels is empty and the markers used to vanish for those two plans. The fallback walks to the
+// plan the SELECTED plan's own most recent level was inferred from (carried on each level as
+// `plan`, the source of that row) and draws the markers where that plan's own steps really are,
+// so all three plans mark the same dates. If no source plan is found this way, the chart's own
+// announced-event marker is used instead, rather than showing none.
+function levelStepsFor(
   plotted: { plan: Plan; levels: { start: string; end: string; value: number; inferred: boolean; plan: Plan }[] }[],
   selected: { levels: { start: string; end: string; value: number; inferred: boolean; plan: Plan }[] } | undefined,
-): { date: string; pct: number } | null {
-  if (!selected) return null;
-  const own = lastRealStep(selected.levels);
-  if (own) return own;
+): { date: string; pct: number }[] {
+  if (!selected) return [];
+  const own = realSteps(selected.levels);
+  if (own.length > 0) return own;
   const last = selected.levels[selected.levels.length - 1];
-  if (!last || !last.inferred) return null;
+  if (!last || !last.inferred) return [];
   const source = plotted.find((p) => p.plan === last.plan);
-  return source ? lastRealStep(source.levels) : null;
+  return source ? realSteps(source.levels) : [];
 }
+
+// Rough width of an 11px chart label: enough to tell whether two labels would overlap.
+const LABEL_CHAR_PX = 6.5;
+// How far an older marker's label drops when a newer one would cover it: one line of 11px text.
+const LABEL_LINE_PX = 12;
 
 function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: number, gap = 16): Map<Plan, number> {
   const sorted = [...items].sort((a, b) => a.y - b.y);
@@ -253,16 +266,16 @@ function LevelChart({
   plotRight: number;
   title: string;
   overlay?: LevelOverlay;
-  // The windows-per-week chart's own change marker: the most recent real step in the SELECTED
-  // plan's own levels, not the announced event. The two can disagree by days -- the collector's
+  // The chart's change markers: every real step in the SELECTED plan's own levels, not the
+  // announced event. The two can disagree by days -- the collector's
   // regime detector draws the step where the meter actually moved, an announced event names the
   // day Anthropic said so -- and a marker on the wrong date used to sit beside a step drawn
   // somewhere else entirely.
   changeFromLevels?: boolean;
-  // The signed percent the marker states, where the publisher publishes the figure for this
+  // The signed percent the most recent marker states, where the publisher publishes the figure for this
   // chart's own quantity (tracker wf-61's tokens-per-week change). The marker's DATE still comes
-  // from the drawn step, so the line and the label cannot name two different days. Omitted on
-  // every other chart, which keeps reading the percent off the step it drew.
+  // from the drawn step, so the line and the label cannot name two different days. Earlier markers,
+  // and every marker on a chart without one, read the percent off their own step.
   changePct?: number | null;
 }) {
   // With readings to show, the plot keeps a legible width and scrolls inside its own container on
@@ -314,36 +327,54 @@ function LevelChart({
   const ticks = [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3);
   const isSelectedPlan = (p: PlanLevels) =>
     p.plan === selectedPlan || (selectedPlan === "pro" && p.plan === "max5" && !levelsByPlan.some((o) => o.plan === "pro"));
-  // The change marker. Two sources: the announced event (tokens-per-week chart, as before), or --
-  // for the windows-per-week chart -- the most recent real step in the selected plan's own
-  // levels, the two contiguous, non-inferred levels the step actually lands between. The two can
-  // name different days; the level source is where the drawn step really is.
+  // The change markers. Two sources: the announced event, or -- where the chart asks for it --
+  // every real step in the selected plan's own levels, the two adjacent, non-inferred levels each
+  // step actually lands between. The two can name different days; the level source is where the
+  // drawn step really is.
   const eventChange = latestWeeklyChange(events);
-  const levelStep = changeFromLevels ? levelStepFor(plotted, plotted.find(isSelectedPlan)) : null;
-  const changedLevelStart = levelStep?.date ?? null;
+  const levelSteps = changeFromLevels ? levelStepsFor(plotted, plotted.find(isSelectedPlan)) : [];
   const pctText = (pct: number) => `${pct > 0 ? "+" : ""}${Math.round(pct)}%`;
-  const changeMarker: { x: (() => number | null); date: string; text: string } | null = changeFromLevels
-    ? levelStep
-      ? {
-          x: () => xAt(levelStep.date),
-          date: levelStep.date,
-          text: `${pctText(typeof changePct === "number" ? changePct : levelStep.pct)} on ${fmtDateShort(levelStep.date.slice(0, 10))}`,
-        }
+  const rawMarkers: { x: number; date: string; text: string }[] =
+    levelSteps.length > 0
+      ? levelSteps.map((st, i) => ({
+          x: xAt(st.date),
+          date: st.date,
+          // Only the newest step is the change the publisher's figure describes.
+          text: `${pctText(i === levelSteps.length - 1 && typeof changePct === "number" ? changePct : st.pct)} on ${fmtDateShort(st.date.slice(0, 10))}`,
+        }))
       : // No real step anywhere in the fallback chain (should not happen while Max 20x has its
         // own measured regimes) -- fall back to the announced event rather than show nothing.
         eventChange
-        ? {
-            x: () => xDay(eventChange.date),
-            date: eventChange.date,
-            text:
-              typeof changePct === "number"
-                ? `${pctText(changePct)} on ${fmtDateShort(eventChange.date.slice(0, 10))}`
-                : shortChangeLabel(eventChange),
-          }
-        : null
-    : eventChange
-      ? { x: () => xDay(eventChange.date), date: eventChange.date, text: shortChangeLabel(eventChange) }
-      : null;
+        ? [
+            {
+              x: xDay(eventChange.date),
+              date: eventChange.date,
+              text:
+                changeFromLevels && typeof changePct === "number"
+                  ? `${pctText(changePct)} on ${fmtDateShort(eventChange.date.slice(0, 10))}`
+                  : shortChangeLabel(eventChange),
+            },
+          ]
+        : [];
+  // Each label sits beside its own line, anchored off the plot's own right edge (not the wider
+  // viewBox) so a label near the right margin never runs past it and gets clipped. Where a newer
+  // label would cover an older one, the older drops a line, newest placed first.
+  const placed: { lo: number; hi: number; row: number }[] = [];
+  const changeMarkers = rawMarkers
+    .map((m) => {
+      const end = m.x > R - 130;
+      const w = m.text.length * LABEL_CHAR_PX;
+      const tx = end ? m.x - 6 : m.x + 6;
+      return { ...m, tx, anchor: end ? ("end" as const) : ("start" as const), lo: end ? tx - w : tx, hi: end ? tx : tx + w };
+    })
+    .reverse()
+    .map((m) => {
+      let row = 0;
+      while (placed.some((p) => p.row === row && m.lo < p.hi && p.lo < m.hi)) row++;
+      placed.push({ lo: m.lo, hi: m.hi, row });
+      return { ...m, ty: T - 3 + row * LABEL_LINE_PX };
+    })
+    .reverse();
   // Two lines per plan on the right edge — name above, current value below — so the
   // gap has to clear both, not one.
   const labelY = stackLabels(
@@ -365,7 +396,7 @@ function LevelChart({
           .map((l) => `${fmtDate(l.start.slice(0, 10))} to ${fmtDate(l.end.slice(0, 10))} ${fmtValue(l.value)}${l.inferred ? " (dashed)" : ""}`)
           .join(", ")}`,
     ),
-    ...(changeMarker ? [`${fmtDate(changeMarker.date.slice(0, 10))}: ${changeMarker.text}`] : []),
+    ...changeMarkers.map((m) => `${fmtDate(m.date.slice(0, 10))}: ${m.text}`),
     ...(readings.length > 0
       ? [
           `${readings.length} five-hour window readings, ${fmtValue(Math.min(...readings.map((r) => r.windows)))} to ${fmtValue(Math.max(...readings.map((r) => r.windows)))}`,
@@ -398,21 +429,14 @@ function LevelChart({
       {ticks.map((t) => (
         <text key={t} x={0} y={y(t) + 4}>{fmtValue(t)}</text>
       ))}
-      {changeMarker !== null && changeMarker.x() !== null && (
-        <g>
-          <line x1={changeMarker.x()!} x2={changeMarker.x()!} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
-          {/* Outside the plot, anchored off the plot's own right edge (not the wider viewBox) so a
-              label near the right margin never runs past it and gets clipped. */}
-          <text
-            x={changeMarker.x()! > R - 130 ? changeMarker.x()! - 6 : changeMarker.x()! + 6}
-            y={T - 3}
-            textAnchor={changeMarker.x()! > R - 130 ? "end" : "start"}
-            style={{ fill: "#B42318", fontWeight: 600 }}
-          >
-            {changeMarker.text}
+      {changeMarkers.map((m) => (
+        <g key={m.date}>
+          <line x1={m.x} x2={m.x} y1={T} y2={B} stroke="#B42318" strokeWidth="1.5" strokeDasharray="5 4" />
+          <text x={m.tx} y={m.ty} textAnchor={m.anchor} style={{ fill: "#B42318", fontWeight: 600 }}>
+            {m.text}
           </text>
         </g>
-      )}
+      ))}
       {/* Shade under the selected plan's own steps, so the eye lands on the plan in view. Drawn
           first: a fill above the readings would tint them and take their hover. */}
       {plotted.filter(isSelectedPlan).map((p) => (
@@ -488,24 +512,20 @@ function LevelChart({
         const last = p.levels[p.levels.length - 1];
         return (
           <g key={p.plan}>
-            {runs.map((run, i) => {
-              // The one run whose level starts on the measured step: red, since that is the
-              // segment the limit actually changed on (the vertical jump and the new level both
-              // sit in this one path, `stepRuns` draws them as a single run per level).
-              const isChangedRun = isSelected && changedLevelStart !== null && p.levels[i]?.start === changedLevelStart;
-              return (
-                <path
-                  key={i}
-                  d={run.d}
-                  fill="none"
-                  stroke={isChangedRun ? "#B42318" : color}
-                  strokeWidth={isSelected ? 3 : 1.75}
-                  strokeDasharray={run.inferred ? "6 4" : undefined}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              );
-            })}
+            {/* Every run in the plan's own colour: the dashed red markers say where the limit
+                changed, so the line itself stays one series. */}
+            {runs.map((run, i) => (
+              <path
+                key={i}
+                d={run.d}
+                fill="none"
+                stroke={color}
+                strokeWidth={isSelected ? 3 : 1.75}
+                strokeDasharray={run.inferred ? "6 4" : undefined}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            ))}
             <g>
               {/* Leader from the line's end to its label, so a stacked label still reads
                   against the right level. */}
@@ -781,7 +801,7 @@ function ContributorsChart({
 // "Opus-5-5"). Without a family, the selected model's label.
 const FAMILY_LABELS: Record<string, string> = { "opus-5-5": MODEL_LABELS["claude-opus-5-5"] };
 function familyLabel(family: string | null, model: string): string {
-  if (!family) return MODEL_LABELS[model] ?? model;
+  if (!family) return modelLabel(model);
   return FAMILY_LABELS[family] ?? family.charAt(0).toUpperCase() + family.slice(1);
 }
 
@@ -1188,11 +1208,11 @@ export default function ClaudeUsageTracker({
   const limit = data ? modelPlanLimit(data, model, plan) : null;
   const notIncluded = limit?.source_url ? (
     <>
-      {MODEL_LABELS[model] ?? model} is <a href={limit.source_url}>not included</a> with {PLAN_LABELS[plan]}.
+      {modelLabel(model)} is <a href={limit.source_url}>not included</a> with {PLAN_LABELS[plan]}.
     </>
   ) : (
     <>
-      {MODEL_LABELS[model] ?? model} is not included with {PLAN_LABELS[plan]}.
+      {modelLabel(model)} is not included with {PLAN_LABELS[plan]}.
     </>
   );
 
@@ -1254,8 +1274,8 @@ export default function ClaudeUsageTracker({
                 , running{" "}
                 <span className="sel">
                   <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
-                    {pageModels(data, Object.keys(data.rates)).map((m) => (
-                      <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
+                    {modelsNewestFirst(pageModels(data, Object.keys(data.rates))).map((m) => (
+                      <option key={m} value={m}>{modelLabel(m)}</option>
                     ))}
                   </select>
                 </span>
@@ -1400,7 +1420,7 @@ export default function ClaudeUsageTracker({
                       the five moved sentences. */}
                   {r.planWindowsPerWeek !== null && r.weeklyFraction < 1 && (
                     <div className="quiet">
-                      {MODEL_LABELS[model] ?? model} may use{" "}
+                      {modelLabel(model)} may use{" "}
                       {limit?.source_url ? (
                         <a href={limit.source_url}>{Math.round(r.weeklyFraction * 100)}% of the weekly limit</a>
                       ) : (
@@ -1420,7 +1440,7 @@ export default function ClaudeUsageTracker({
           <section>
             <h2>Effective window size</h2>
             <div className="sub">
-              {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} tokens per 5-hour window. Full history.
+              {PLAN_LABELS[plan]} · {modelLabel(model)} tokens per 5-hour window. Full history.
             </div>
             {/* The same measured window the hero states, from the same published figure, so this
                 section and the hero cannot disagree. There is no reading series beneath it: the
@@ -1457,16 +1477,15 @@ export default function ClaudeUsageTracker({
                 {windowTokenLevels.some((p) => p.levels.length > 0) && (
                   <LevelChart
                     levelsByPlan={windowTokenLevels}
-                    // No change marker on this chart: the five-hour window itself has no
-                    // published step -- which meter moved is unresolved -- so the announced
-                    // event's marker would sit on a flat line that never actually stepped.
-                    // Passing no events draws none, rather than a red segment/marker that
-                    // implies a measured change this figure does not carry.
+                    // Markers only where this chart's own levels step: no announced event, so a
+                    // flat window (which meter moved is unresolved) draws no marker on a line that
+                    // never actually stepped.
                     events={[]}
                     selectedPlan={plan}
                     fmtValue={fmtTokens}
                     plotRight={732}
                     title="Effective window size over time"
+                    changeFromLevels
                   />
                 )}
               </>
@@ -1481,7 +1500,7 @@ export default function ClaudeUsageTracker({
           <section>
             <h2>Tokens per week</h2>
             <p className="sub">
-              {PLAN_LABELS[plan]} · {MODEL_LABELS[model] ?? model} · how many tokens a full week of five-hour windows
+              {PLAN_LABELS[plan]} · {modelLabel(model)} · how many tokens a full week of five-hour windows
               buys. Full history.
             </p>
             {/* The same notice as the window chart: another plan's line under this plan's heading would
@@ -1567,7 +1586,7 @@ export default function ClaudeUsageTracker({
           <section>
             <h2>Plan comparison</h2>
             <div className="sub">
-              {MODEL_LABELS[model] ?? model}
+              {modelLabel(model)}
               {creditsRoute ? "" : ` at ${effort} effort`}. Max 20x is measured; Pro and Max 5x are scaled from it by{" "}
               {scaling?.credits ? `the credits table, ${scaling.perWindow} per five-hour window` : `Anthropic's published ${planScaling(data, ":").perWindow} ratios`}.
             </div>
@@ -1644,8 +1663,8 @@ export default function ClaudeUsageTracker({
                     </span>
                     <span className="sel">
                       <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
-                        {pageModels(data, Object.keys(data.rates)).map((m) => (
-                          <option key={m} value={m}>{MODEL_LABELS[m] ?? m}</option>
+                        {modelsNewestFirst(pageModels(data, Object.keys(data.rates))).map((m) => (
+                          <option key={m} value={m}>{modelLabel(m)}</option>
                         ))}
                       </select>
                     </span>
@@ -1693,7 +1712,7 @@ export default function ClaudeUsageTracker({
                 <tr>
                   <th></th>
                   {effortModelOrder.map((m) => (
-                    <th key={m} className={m === model ? "hl" : ""}>{MODEL_LABELS[m] ?? m}</th>
+                    <th key={m} className={m === model ? "hl" : ""}>{modelLabel(m)}</th>
                   ))}
                 </tr>
               </thead>
@@ -1708,7 +1727,7 @@ export default function ClaudeUsageTracker({
                       const ec = effortCredits ? computeCredits(data, plan, m, e)?.effortCredits ?? null : null;
                       const hl = m === model && e === effort ? "hl" : "";
                       return (
-                        <td key={m} data-model={m} data-model-label={MODEL_LABELS[m] ?? m} className={hl}>
+                        <td key={m} data-model={m} data-model-label={modelLabel(m)} className={hl}>
                           <b className="fig">
                             {typeof usd === "number" ? fmtUsd2(usd) : typeof tokens === "number" ? fmtTokens(tokens) : "—"}
                           </b>

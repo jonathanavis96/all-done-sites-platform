@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
-import { MODEL_LABELS, PLAN_LABELS, fmtTokens, fmtUsd2, type UsageJson } from "@/lib/claudeUsage";
+import { PLAN_LABELS, fmtTokens, fmtUsd2, modelLabel, type UsageJson } from "@/lib/claudeUsage";
 import {
   COARSE_BELOW,
   fleetTokensPerPercent,
@@ -42,10 +42,6 @@ function fmtDay(t: number): string {
 
 function modelColor(i: number): string {
   return MODEL_COLORS[i % MODEL_COLORS.length];
-}
-
-function modelLabel(m: string): string {
-  return MODEL_LABELS[m] ?? m;
 }
 
 /** Horizontal stacked bar of one sample's per-model dollar shares, plus a legend. */
