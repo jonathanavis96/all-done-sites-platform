@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider, type HelmetServerState } from "react-helmet-async";
-import ClaudeUsageTracker from "./ClaudeUsageTracker";
+import ClaudeUsageTracker, { realSteps } from "./ClaudeUsageTracker";
 import {
   compute,
   computeCredits,
@@ -38,6 +38,7 @@ import schema3TokensPerWeek from "@/lib/__fixtures__/claude-usage-schema3-tokens
 // The file published at 2026-09-23T11:30Z plus a null opus-5-5 family (tracker branch opus-5-5-family).
 import opus55 from "@/lib/__fixtures__/claude-usage-opus-5-5.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
+import liveJson from "../../public/data/claude-usage.json";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
   return renderToString(
@@ -316,16 +317,18 @@ describe("the weekly chart and plan table with tracker wf-50's fields", () => {
     return j;
   })();
 
-  it("draws the change marker and the red step on Max 20x's own real step", () => {
+  it("draws the dashed change marker on Max 20x's own real step, and the step in the plan's colour", () => {
     const chart = weeklyChart(renderHtml(CHANGE, "max20"));
     // The label carries the date and the rounded percent, not the generic announced-event text.
     expect(chart).toMatch(/11 Sep 2026: -28% on 11 Sep/);
     const markerLine = chart.match(/<line x1="([\d.]+)"[^>]*stroke="#B42318"[^>]*>/);
     expect(markerLine).not.toBeNull();
-    const redPath = chart.match(/<path d="M ([\d.]+),[\d.]+ L ([\d.]+),[\d.]+ L \2,[\d.]+[^"]*"[^>]*stroke="#B42318"/);
-    expect(redPath).not.toBeNull();
-    // The dashed marker sits at the same x the red step's vertical jump sits at.
-    expect(Number(redPath![2])).toBeCloseTo(Number(markerLine![1]), 5);
+    // No solid red run any more: the step is drawn in the plan's own colour.
+    expect(chart).not.toMatch(/<path[^>]*stroke="#B42318"/);
+    const step = chart.match(/<path d="M ([\d.]+),[\d.]+ L ([\d.]+),[\d.]+ L \2,[\d.]+[^"]*"[^>]*stroke="#0EA5E9"/);
+    expect(step).not.toBeNull();
+    // The dashed marker sits at the same x the step's vertical jump sits at.
+    expect(Number(step![2])).toBeCloseTo(Number(markerLine![1]), 5);
   });
 
   it("falls back to Max 20x's step for Pro and Max 5x, whose own recent levels are all inferred", () => {
@@ -352,9 +355,10 @@ describe("the weekly chart and plan table with tracker wf-50's fields", () => {
     const chart = weeklyChart(renderHtml(PUBLISHED, "max20"));
     const markerLine = chart.match(/<line x1="([\d.]+)"[^>]*stroke="#B42318"[^>]*>/);
     expect(markerLine).not.toBeNull();
-    const redPath = chart.match(/<path d="M ([\d.]+),[\d.]+ L ([\d.]+),[\d.]+ L \2,[\d.]+[^"]*"[^>]*stroke="#B42318"/);
-    expect(redPath).not.toBeNull();
-    expect(Number(redPath![2])).toBeCloseTo(Number(markerLine![1]), 5);
+    expect(chart).not.toMatch(/<path[^>]*stroke="#B42318"/);
+    // One of the selected plan's runs steps at the marker's x.
+    const stepXs = [...chart.matchAll(/<path d="M [\d.]+,[\d.]+ L ([\d.]+),[\d.]+ L \1,[\d.]+[^"]*"[^>]*stroke="#0EA5E9"/g)].map((m) => Number(m[1]));
+    expect(stepXs.some((x) => Math.abs(x - Number(markerLine![1])) < 1e-5)).toBe(true);
     // The step lands on Max 20x's real regime boundary (14 Sep 2026, 11:30), not the announced
     // event's own date (11 Sep): the two can disagree, and the level source wins.
     expect(chart).toMatch(/14 Sep 2026: -28% on 14 Sep/);
@@ -1211,8 +1215,11 @@ describe("the weekly change stated in tokens a week buys", () => {
     const svg = chart(TPW, "Effective window size");
     expect(svg).toContain("462M");
     expect(svg).toContain("502M");
-    // Still no marker of its own: the section draws no change line, only the step.
-    expect(svg).not.toContain("#B42318");
+    // The chart marks its own step (462M to 502M is +9%) with a dashed line, and draws no solid
+    // red run.
+    expect(svg).toContain("+9% on 14 Sep");
+    expect(svg.match(/<line[^>]*stroke="#B42318"[^>]*stroke-dasharray="5 4"/g)?.length).toBe(1);
+    expect(svg).not.toMatch(/<path[^>]*stroke="#B42318"/);
     // Two levels and no more: one before the cut, one after, each held flat.
     expect(new Set(windowTokenRegimeLevelsFor(TPW, "max20", OPUS).map((l) => l.tokens)).size).toBe(2);
   });
@@ -1315,13 +1322,13 @@ describe("the Opus 5.5 row", () => {
     for (const list of options(html)) expect(list.map(([v]) => v)).toContain("claude-haiku-4-5");
   });
 
-  it("lists Opus 5.5 directly after Opus once it is measured", () => {
+  it("lists Opus 5.5 once it is measured: just before Opus 5 in the newest-first pickers, just after it in the table", () => {
     const html = renderHtml(measured55(), "max20", OPUS, NOW);
     const lists = options(html);
     expect(lists.length).toBe(2);
     for (const list of lists) {
       const at = list.findIndex(([v]) => v === OPUS);
-      expect(list[at + 1]).toEqual(["claude-opus-5-5", "Opus 5.5"]);
+      expect(list[at - 1]).toEqual(["claude-opus-5-5", "Opus 5.5"]);
     }
     const heads = [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
     expect(heads.indexOf("Opus 5.5")).toBe(heads.indexOf("Opus 5") + 1);
@@ -1343,5 +1350,83 @@ describe("the Opus 5.5 row", () => {
     expect(text).not.toMatch(/Opus-5-5/i);
     // Opus 5 keeps its family name.
     expect(render(j, "max20", OPUS, NOW)).not.toContain("measured Opus 5.5 rate");
+  });
+});
+
+// Jonathan, 2026-09-23: no solid red run on any level chart, and a dashed marker at every real
+// step of the selected plan, not only the newest.
+describe("a dashed change marker at every real step", () => {
+  const lvl = (start: string, value: number, inferred = false) => ({ start, end: start, value, inferred });
+
+  it("returns every measured step, oldest first", () => {
+    const steps = realSteps([lvl("2026-07-01", 10), lvl("2026-08-01", 8), lvl("2026-09-01", 8), lvl("2026-09-14", 6)]);
+    expect(steps.map((s) => s.date)).toEqual(["2026-08-01", "2026-09-14"]);
+    expect(steps[0].pct).toBeCloseTo(-20, 5);
+    expect(steps[1].pct).toBeCloseTo(-25, 5);
+  });
+
+  it("ignores an inferred-to-measured seam", () => {
+    // The live Max 20x shape: Max 5x's 10.86 scaled to 6.51, then measured 6.48, then 5.05.
+    const steps = realSteps([lvl("2026-06-13", 6.51, true), lvl("2026-08-15", 6.48), lvl("2026-09-14", 5.05)]);
+    expect(steps.map((s) => s.date)).toEqual(["2026-09-14"]);
+  });
+
+  it("returns nothing for a single level", () => {
+    expect(realSteps([lvl("2026-08-15", 6.48)])).toEqual([]);
+    expect(realSteps([])).toEqual([]);
+  });
+
+  const twoSteps = (second: string): UsageJson => {
+    const j: UsageJson = structuredClone(PUBLISHED);
+    const reg = (start: string, end: string, windows: number) => ({
+      start, end, windows, seven_day_pct: 100, points: 20, source: "passive_paired_deltas", assumed: false,
+    });
+    j.weekly_windows!.max20 = {
+      ...j.weekly_windows!.max20!,
+      regimes: [
+        reg("2026-07-01T00:00:00+00:00", "2026-08-01T00:00:00+00:00", 8),
+        reg("2026-08-01T00:00:00+00:00", `${second}T00:00:00+00:00`, 6.5),
+        reg(`${second}T00:00:00+00:00`, "2026-09-16T00:00:00+00:00", 5),
+      ],
+    };
+    return j;
+  };
+  const markers = (svg: string) => [...svg.matchAll(/<line x1="([\d.]+)"[^>]*stroke="#B42318"[^>]*stroke-dasharray="5 4"[^>]*>/g)];
+  const labels = (svg: string) =>
+    [...svg.matchAll(/<text x="[\d.]+" y="([\d.]+)"[^>]*style="fill:#B42318[^"]*"[^>]*>([^<]*)<\/text>/g)].map((m) => ({ y: Number(m[1]), text: m[2] }));
+
+  it("draws two dashed markers for two measured steps, and no solid red path", () => {
+    const svg = weeklyChart(renderHtml(twoSteps("2026-09-11"), "max20"));
+    expect(markers(svg).length).toBe(2);
+    expect(svg).not.toMatch(/<path[^>]*stroke="#B42318"/);
+    // Each marker states its own step.
+    expect(svg).toContain("-19% on 1 Aug");
+    expect(svg).toContain("-23% on 11 Sep");
+    // Far apart, so both labels sit on the top line.
+    expect(new Set(labels(svg).map((l) => l.y)).size).toBe(1);
+  });
+
+  it("drops the older label a line when the two would overlap", () => {
+    const svg = weeklyChart(renderHtml(twoSteps("2026-08-03"), "max20"));
+    const ls = labels(svg);
+    expect(ls.length).toBe(2);
+    const older = ls.find((l) => l.text.includes("1 Aug"))!;
+    const newer = ls.find((l) => l.text.includes("3 Aug"))!;
+    expect(older.y - newer.y).toBe(12);
+  });
+
+  it("marks one step per chart on the published file, and never the inferred seam", () => {
+    const j = liveJson as unknown as UsageJson;
+    const html = renderHtml(j, "max20", "claude-opus-5");
+    for (const title of ["Effective window size", "Tokens per week", "Five-hour windows per week"]) {
+      const at = html.indexOf(`aria-label="${title} over time`);
+      expect(at, title).toBeGreaterThan(-1);
+      const svg = html.slice(html.lastIndexOf("<svg", at), html.indexOf("</svg>", at));
+      expect(svg).not.toMatch(/<path[^>]*stroke="#B42318"/);
+      expect(markers(svg).length, title).toBeLessThanOrEqual(1);
+      expect(svg).not.toMatch(/on 1[45] Aug/);
+    }
+    expect(markers(weeklyChart(html)).length).toBe(1);
+    expect(weeklyChart(html)).toMatch(/on 14 Sep/);
   });
 });

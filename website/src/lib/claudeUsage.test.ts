@@ -35,6 +35,8 @@ import {
   windowTokensCutFor,
   tokensPerWeekChangeFor,
   tokensPerWeekChangePct,
+  modelLabel,
+  modelsNewestFirst,
   type UsageJson,
 } from "./claudeUsage";
 import {
@@ -1923,5 +1925,64 @@ describe("the weekly change measured in tokens a week buys", () => {
 
   it("leaves the windows-per-week levels alone: they are a count, not a token figure", () => {
     expect(weeklyRegimeLevelsFor(TPW, "max20").map((l) => +l.windows.toFixed(2))).toEqual([6.51, 6.48, 5.07]);
+  });
+});
+
+describe("modelLabel", () => {
+  it("names every model the page has published", () => {
+    expect(modelLabel("claude-opus-4-8")).toBe("Opus 4.8");
+    expect(modelLabel("claude-opus-4-7")).toBe("Opus 4.7");
+    expect(modelLabel("claude-sonnet-4-6")).toBe("Sonnet 4.6");
+    expect(modelLabel("claude-haiku-4-5")).toBe("Haiku 4.5");
+    expect(modelLabel("claude-opus-5-5")).toBe("Opus 5.5");
+  });
+
+  it("derives a name for a model the map does not know", () => {
+    expect(modelLabel("claude-sonnet-4-6")).toBe("Sonnet 4.6");
+    expect(modelLabel("claude-opus-5")).toBe("Opus 5");
+    expect(modelLabel("claude-fable-5-1")).toBe("Fable 5.1");
+    expect(modelLabel("claude-opus-6")).toBe("Opus 6");
+    expect(modelLabel("claude-haiku-5-2")).toBe("Haiku 5.2");
+  });
+
+  it("drops a trailing date suffix", () => {
+    expect(modelLabel("claude-haiku-4-5-20251001")).toBe("Haiku 4.5");
+    expect(modelLabel("claude-sonnet-6-20270101")).toBe("Sonnet 6");
+  });
+
+  it("returns anything that is not a model id unchanged", () => {
+    expect(modelLabel("gpt-5")).toBe("gpt-5");
+    expect(modelLabel("claude")).toBe("claude");
+    expect(modelLabel("")).toBe("");
+  });
+});
+
+describe("modelsNewestFirst", () => {
+  it("orders the pickers newest first, unknown models after the known ones in arrival order", () => {
+    expect(
+      modelsNewestFirst([
+        "claude-haiku-4-5",
+        "claude-new-9",
+        "claude-sonnet-5",
+        "claude-opus-4-7",
+        "claude-opus-5",
+        "claude-fable-5-1",
+        "claude-other-1",
+        "claude-sonnet-4-6",
+        "claude-opus-4-8",
+        "claude-opus-5-5",
+      ]),
+    ).toEqual([
+      "claude-fable-5-1",
+      "claude-opus-5-5",
+      "claude-opus-5",
+      "claude-sonnet-5",
+      "claude-opus-4-8",
+      "claude-opus-4-7",
+      "claude-sonnet-4-6",
+      "claude-haiku-4-5",
+      "claude-new-9",
+      "claude-other-1",
+    ]);
   });
 });

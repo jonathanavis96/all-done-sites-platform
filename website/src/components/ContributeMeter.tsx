@@ -2,7 +2,7 @@
 // Claude usage tracker: the two prompts to paste into Claude Code, and the paste box
 // that decodes a `CUT1:` line, shows what is in it, and posts it to /api/contribute.
 import { useState, type ReactNode } from "react";
-import { MODEL_LABELS, PLAN_LABELS, fmtTokens } from "@/lib/claudeUsage";
+import { PLAN_LABELS, fmtTokens, modelLabel } from "@/lib/claudeUsage";
 import { decodeCut1, totalTokens, validateSample, type Sample } from "@/lib/contrib";
 import { DEFAULT_INTERVAL_MINUTES, INTERVALS, ONE_OFF_PROMPT, README_URL, SCRIPT_URL, continuousPrompt } from "@/lib/contribPrompts";
 
@@ -68,7 +68,7 @@ function SampleTable({ sample }: { sample: Sample }) {
         )}
         {models.map((m) => (
           <tr key={m}>
-            <td>{MODEL_LABELS[m] ?? m}</td>
+            <td>{modelLabel(m)}</td>
             <td>
               {fmtTokens(totalTokens(sample.tokens_since_five_hour_reset[m]))} since the five-hour reset ·{" "}
               {fmtTokens(totalTokens(sample.tokens_since_seven_day_reset[m]))} since the seven-day reset

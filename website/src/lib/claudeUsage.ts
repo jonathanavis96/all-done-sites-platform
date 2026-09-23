@@ -646,7 +646,44 @@ export const MODEL_LABELS: Record<string, string> = {
   "claude-opus-5": "Opus 5",
   "claude-opus-5-5": "Opus 5.5",
   "claude-fable-5-1": "Fable 5.1",
+  "claude-opus-4-8": "Opus 4.8",
+  "claude-opus-4-7": "Opus 4.7",
+  "claude-sonnet-4-6": "Sonnet 4.6",
+  "claude-haiku-4-5": "Haiku 4.5",
 };
+
+// A model's name as the page writes it: its own label where the map has one, otherwise read off
+// any `claude-<family>-<major>[-<minor>]` id ("claude-opus-5" -> "Opus 5"), with a trailing date
+// suffix ("-20251001") dropped first. A model the collector starts publishing tomorrow still gets
+// a human name, never its raw id. A string that is not a model id comes back unchanged.
+export function modelLabel(id: string): string {
+  const known = MODEL_LABELS[id];
+  if (known) return known;
+  const m = id.replace(/-\d{8}$/, "").match(/^claude-([a-z]+)-(\d+)(?:-(\d+))?$/);
+  if (!m) return id;
+  const [, family, major, minor] = m;
+  return `${family.charAt(0).toUpperCase()}${family.slice(1)} ${major}${minor !== undefined ? `.${minor}` : ""}`;
+}
+
+// The order a model picker lists its options in: newest first. A model not named here goes after
+// every named one, keeping the order it arrived in.
+const MODEL_PICKER_ORDER = [
+  "claude-fable-5-1",
+  "claude-opus-5-5",
+  "claude-opus-5",
+  "claude-sonnet-5",
+  "claude-opus-4-8",
+  "claude-opus-4-7",
+  "claude-sonnet-4-6",
+  "claude-haiku-4-5",
+];
+export function modelsNewestFirst(models: string[]): string[] {
+  const rank = (m: string) => {
+    const i = MODEL_PICKER_ORDER.indexOf(m);
+    return i === -1 ? MODEL_PICKER_ORDER.length : i;
+  };
+  return models.map((m, i) => ({ m, i })).sort((a, b) => rank(a.m) - rank(b.m) || a.i - b.i).map(({ m }) => m);
+}
 export const PLAN_LABELS: Record<Plan, string> = { pro: "Pro", max5: "Max 5x", max20: "Max 20x" };
 export const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh", "max"];
 export const CLASSES: TokenClass[] = ["input", "output", "cache_read", "cache_write"];
