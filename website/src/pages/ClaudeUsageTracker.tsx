@@ -10,6 +10,7 @@ import {
   modelLabel,
   modelsNewestFirst,
   pageModels,
+  accountLabel,
   accountWindowsPerWeek,
   basisDate,
   captureEmptyNote,
@@ -466,7 +467,7 @@ function LevelChart({
               opacity={coarse ? 0.3 : 0.45}
             >
               <title>
-                {`${fmtDate(r.window_ending.slice(0, 10))}: ${fmtValue(r.windows)} windows per week. Five-hour meter moved ${r.five_hour_pct}%, seven-day meter ${r.seven_day_pct}%${coarse ? " (under 5%, so rounding dominates)" : ""}.${r.account ? ` Account ${r.account}.` : ""}`}
+                {`${fmtDate(r.window_ending.slice(0, 10))}: ${fmtValue(r.windows)} windows per week. Five-hour meter moved ${r.five_hour_pct}%, seven-day meter ${r.seven_day_pct}%${coarse ? " (under 5%, so rounding dominates)" : ""}.${r.account ? ` ${accountLabel(r.account)}.` : ""}`}
               </title>
             </circle>
           );
@@ -1103,7 +1104,9 @@ export default function ClaudeUsageTracker({
         ? `Priced at the meter's measured ${family} rate${at}`
         : cr.rateSource === "reference"
           ? `Priced at the reference ${family} rate${at}`
-          : null;
+          : cr.rateSource === "inferred"
+            ? `Priced at an inferred ${family} rate${at}`
+            : null;
     if (lead === null) return null;
     const iv = cr.creditsPerTokenInInterval;
     const interval =
@@ -1304,7 +1307,14 @@ export default function ClaudeUsageTracker({
                       it, and nothing stands in for it -- a file that does not publish it says so
                       rather than falling back to the list-price arithmetic it replaced. */}
                   {wt?.perWindow ? (
-                    <HeroFigure fig={wt.perWindow} unit="tokens per 5-hour window" statusUnit="tokens per 5-hour window" />
+                    <>
+                      <HeroFigure fig={wt.perWindow} unit="tokens per 5-hour window" statusUnit="tokens per 5-hour window" />
+                      {/* An inferred rate's figures are marked in words, as the plan table marks an
+                          inferred plan's, and draw no range. */}
+                      {wt.inferredNote && wt.perWindow.kind === "value" && (
+                        <div className="quiet">{wt.inferredNote}</div>
+                      )}
+                    </>
                   ) : (
                     <div className="rate">
                       <span>tokens per 5-hour window: <b>window tokens not yet published</b></span>
@@ -1470,6 +1480,9 @@ export default function ClaudeUsageTracker({
                       <>
                         <Fig fig={wt.perWindow} unit="tokens per 5-hour window" />
                         {wt.perWindow.range ? ` (${wt.perWindow.range})` : ""}
+                        {wt.inferredNote && wt.perWindow.kind === "value" && (
+                          <em>{wt.inferredNote}</em>
+                        )}
                       </>
                     ) : (
                       <>tokens per 5-hour window: <b>window tokens not yet published</b></>
@@ -1618,8 +1631,9 @@ export default function ClaudeUsageTracker({
                       return (
                         <td key={p} className={p === plan ? "hl" : ""}>
                           {text}
-                          {/* The table's form of the dashed line the weekly charts draw for an inferred level. */}
-                          {rw.label.endsWith("per week") && text !== "\u2014" && inferred && (
+                          {/* The table's form of the dashed line the weekly charts draw for an inferred level,
+                              and every figure of a model priced at an inferred rate. */}
+                          {text !== "\u2014" && ((rw.label.endsWith("per week") && inferred) || cr?.rateInferred) && (
                             <>
                               {" "}
                               <em>inferred</em>
@@ -1910,7 +1924,7 @@ export default function ClaudeUsageTracker({
                   : ""}
                 .
                 {cr.accountsWithoutStretch.length > 0
-                  ? ` ${cr.accountsWithoutStretch.join(", ")} contributed no clean ${
+                  ? ` ${cr.accountsWithoutStretch.map(accountLabel).join(", ")} contributed no clean ${
                       cr.pureFamily ? `pure-${cr.pureFamily} ` : ""
                     }stretch.`
                   : ""}
@@ -1957,7 +1971,7 @@ export default function ClaudeUsageTracker({
               <p>
                 Each watched account's own figure:{" "}
                 {accountWeekly
-                  .map((a) => `${a.account} ${a.value.toFixed(2)}${a.n !== null ? ` (${a.n} readings)` : ""}`)
+                  .map((a) => `${accountLabel(a.account)} ${a.value.toFixed(2)}${a.n !== null ? ` (${a.n} readings)` : ""}`)
                   .join(", ")}
                 .
               </p>
@@ -2032,7 +2046,7 @@ export default function ClaudeUsageTracker({
                   <tbody>
                     {Object.entries(acrossCut.per_account).map(([label, a]) => (
                       <tr key={label}>
-                        <td>{label}</td>
+                        <td>{accountLabel(label)}</td>
                         <td>{typeof a.before === "number" ? fmtCredits(a.before) : "—"}</td>
                         <td>{typeof a.after === "number" ? fmtCredits(a.after) : "—"}</td>
                         <td>{typeof a.change_pct === "number" ? `${a.change_pct}%` : "—"}</td>
@@ -2045,7 +2059,7 @@ export default function ClaudeUsageTracker({
                 </table>
                 {emptyCapture.length > 0 && captureNote && (
                   <div className="quiet">
-                    {emptyCapture.join(", ")}: {captureNote}.
+                    {emptyCapture.map(accountLabel).join(", ")}: {captureNote}.
                   </div>
                 )}
                 {typeof weeklyRatioFellPct === "number" && Math.round(weeklyRatioFellPct) >= 1 && (

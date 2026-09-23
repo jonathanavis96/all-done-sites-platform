@@ -37,6 +37,10 @@ import schema3WindowTokens from "@/lib/__fixtures__/claude-usage-schema3-window-
 import schema3TokensPerWeek from "@/lib/__fixtures__/claude-usage-schema3-tokens-per-week.json";
 // The file published at 2026-09-23T11:30Z plus a null opus-5-5 family (tracker branch opus-5-5-family).
 import opus55 from "@/lib/__fixtures__/claude-usage-opus-5-5.json";
+// The file published at 2026-09-23T15:30Z with the opus-5-5 and haiku rows filled at an inferred
+// rate, per tracker seat wf-102's contract: Opus 5.5 at 0.8x Opus (list price), Haiku at 0.2x
+// (the January 2026 credit table), each row's figures scaled from Opus's.
+import inferredRates from "@/lib/__fixtures__/claude-usage-inferred-rates.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
 import liveJson from "../../public/data/claude-usage.json";
 
@@ -394,7 +398,7 @@ describe("the weekly chart and plan table with tracker wf-50's fields", () => {
     expect(dots.filter((d) => d.includes('fill="none"'))).toHaveLength(readings.filter((r) => r.seven_day_pct < 5).length);
     const one = readings.find((r) => r.seven_day_pct >= 5)!;
     expect(chart).toContain(
-      `${one.windows!.toFixed(1)} windows per week. Five-hour meter moved ${one.five_hour_pct}%, seven-day meter ${one.seven_day_pct}%. Account ${one.account}.`,
+      `${one.windows!.toFixed(1)} windows per week. Five-hour meter moved ${one.five_hour_pct}%, seven-day meter ${one.seven_day_pct}%. Max account ${one.account!.slice(1)}.`,
     );
   });
 
@@ -420,8 +424,8 @@ describe("the weekly chart and plan table with tracker wf-50's fields", () => {
   it("draws no per-account onset ticks -- the change marker alone carries the step (removed 2026-09-20)", () => {
     const chart = weeklyChart(renderHtml(WF50));
     expect(chart).not.toContain("Onset across");
-    expect(chart).not.toContain("Account a1: step on");
-    expect(chart).not.toContain("Account a2: step on");
+    expect(chart).not.toContain("Max account 1: step on");
+    expect(chart).not.toContain("Max account 2: step on");
   });
 
   it("adds reading and weekly to the legend and keeps what was there, with no documented entry", () => {
@@ -501,7 +505,7 @@ describe("the credits block on the page", () => {
     expect(text).toContain("$146.58 of API value per window, the same window priced at each class's own rate");
     expect(text).not.toContain("of API value per window in output tokens");
     expect(text).toContain(
-      "19,543,887 credits per 5-hour window (17,250,018 to 20,819,693), n=11, pure-opus stretches, on 2 accounts. a1 contributed no clean pure-opus stretch.",
+      "19,543,887 credits per 5-hour window (17,250,018 to 20,819,693), n=11, pure-opus stretches, on 2 accounts. Max account 1 contributed no clean pure-opus stretch.",
     );
     // The provenance under the credits figures is what the credits block says, not the date on
     // another block's rate (finding 5).
@@ -627,11 +631,11 @@ describe("the credits block on the page", () => {
     const text = render(CREDITS, "max20", "claude-opus-5");
     expect(text).toContain("The five-hour window across the change");
     expect(text).toContain("Each account's own meter either side of 14 Sep 2026, in credits per 1% of the five-hour meter.");
-    expect(text).toContain("a1 123,599 139,377 12.8% 166 24 0");
-    expect(text).toContain("a2 187,168 204,632 9.3% 41 14 56");
+    expect(text).toContain("Max account 1 123,599 139,377 12.8% 166 24 0");
+    expect(text).toContain("Max account 2 187,168 204,632 9.3% 41 14 56");
     // a3 has no before, so the cells that would carry one are empty rather than zero.
-    expect(text).toContain("a3 — 158,809 — 0 14 14");
-    expect(text).toContain("a1: An account whose n_with_capture is 0 has no usable capture column");
+    expect(text).toContain("Max account 3 — 158,809 — 0 14 14");
+    expect(text).toContain("Max account 1: An account whose n_with_capture is 0 has no usable capture column");
     expect(text).toContain(
       "The windows-per-week ratio fell about 23%. That is consistent with a smaller weekly cap, a larger five-hour window, or both; which meter moved is unresolved.",
     );
@@ -880,7 +884,7 @@ describe("the page states one figure per quantity", () => {
     const text = render(MEASURED, "max20", "claude-sonnet-5");
     expect(text).toContain("Five-hour windows per week How many 5-hour windows fit in one week");
     expect(text).not.toContain("Weekly limit, 5-hour windows per week");
-    expect(text).toContain("Each watched account's own figure: a1 5.15 (128 readings), a2 4.53 (63 readings), a3 5.48 (9 readings).");
+    expect(text).toContain("Each watched account's own figure: Max account 1 5.15 (128 readings), Max account 2 4.53 (63 readings), Max account 3 5.48 (9 readings).");
   });
 
   it("counts the accounts in the page description", () => {
@@ -1447,5 +1451,98 @@ describe("a dashed change marker at every real step", () => {
     }
     expect(markers(weeklyChart(html)).length).toBe(1);
     expect(weeklyChart(html)).toMatch(/on 14 Sep/);
+  });
+});
+
+// Jonathan, 2026-09-23: the published file names the watched accounts a1 to a4; the page calls
+// them "Max account 1" to "Max account 4" wherever it shows one.
+describe("account labels", () => {
+  it("never prints a bare a1..a4 label, on any plan or model", () => {
+    for (const j of [liveJson, inferredRates] as unknown as UsageJson[]) {
+      for (const plan of ["pro", "max5", "max20"] as Plan[]) {
+        for (const model of Object.keys(j.rates)) {
+          const html = renderHtml(j, plan, model);
+          expect(html, `${plan} ${model}`).not.toMatch(/\ba[1-4]\b/);
+        }
+      }
+    }
+    const text = render(liveJson as unknown as UsageJson, "max20", "claude-opus-5");
+    expect(text).toContain("Max account 1");
+    expect(text).toMatch(/Max account \d \d+\.\d{2} \(\d+ readings\)/);
+  });
+});
+
+// Tracker seat wf-102: a family the fits cannot identify yet is published with a full row priced
+// at an inferred rate, `rate_source: "inferred"` and `inferred_from` naming the basis.
+describe("inferred Opus 5.5 and Haiku rows", () => {
+  const INFERRED = inferredRates as unknown as UsageJson;
+  const LIVE_NOW = liveJson as unknown as UsageJson;
+  const OPUS55 = "claude-opus-5-5";
+  const HAIKU = "claude-haiku-4-5";
+  const options = (html: string) =>
+    [...html.matchAll(/<select aria-label="Model"[^>]*>(.*?)<\/select>/g)].map((m) =>
+      [...m[1].matchAll(/<option value="([^"]+)"[^>]*>([^<]*)<\/option>/g)].map((o) => o[1]),
+    );
+
+  it("renders Opus 5.5 with its figures and the list-price sentence, and no range", () => {
+    const wt = computeWindowTokens(INFERRED, "max20", OPUS55)!;
+    const opus = computeWindowTokens(INFERRED, "max20", "claude-opus-5")!;
+    expect(wt.perWindowValue).toBeCloseTo(opus.perWindowValue! * 1.25, -1);
+    expect(wt.perWindow!.range).toBeNull();
+    expect(wt.perWeek!.range).toBeNull();
+    expect(wt.perClass.every(({ fig }) => fig.range === null)).toBe(true);
+    const cr = computeCredits(INFERRED, "max20", OPUS55)!;
+    expect(cr.usdIn!.range).toBeNull();
+    expect(cr.creditsPerTokenInInterval).toBeNull();
+    const text = render(INFERRED, "max20", OPUS55);
+    expect(text).toContain(`${wt.perWindow!.text} tokens per 5-hour window Inferred from Anthropic's list price, not yet measured.`);
+    expect(text).toContain("Priced at an inferred Opus 5.5 rate");
+    expect(text).not.toContain("Range ");
+    // Every figure in the plan table is marked, as an inferred plan's weekly figures are.
+    expect(row(text, "Tokens per 5-hour window")).toEqual(
+      (["pro", "max5", "max20"] as Plan[]).map((p) => `${computeWindowTokens(INFERRED, p, OPUS55)!.perWindow!.text} inferred`),
+    );
+  });
+
+  it("renders Haiku with its figures and the credit-table sentence in place of its status", () => {
+    const wt = computeWindowTokens(INFERRED, "max20", HAIKU)!;
+    expect(wt.perWindow!.kind).toBe("value");
+    expect(wt.perWindow!.range).toBeNull();
+    const text = render(INFERRED, "max20", HAIKU);
+    expect(text).toContain("Inferred from the January 2026 credit table, not yet measured.");
+    expect(text).not.toContain("not measurable");
+    expect(text).toContain("Priced at an inferred Haiku rate");
+  });
+
+  it("draws no interval around an inferred figure on the level charts", () => {
+    for (const levels of [
+      windowTokenRegimeLevelsFor(INFERRED, "max20", OPUS55),
+      weeklyTokenRegimeLevelsFor(INFERRED, "max20", HAIKU),
+    ]) {
+      expect(levels.length).toBeGreaterThan(0);
+      expect(levels.every((l) => l.tokensInterval === null)).toBe(true);
+    }
+  });
+
+  it("lists Opus 5.5 in the model pickers once its row has inferred figures", () => {
+    for (const list of options(renderHtml(INFERRED, "max20", "claude-opus-5"))) expect(list).toContain(OPUS55);
+  });
+
+  it("leaves the measured rows as they were", () => {
+    for (const model of ["claude-opus-5", "claude-sonnet-5", "claude-fable-5-1"]) {
+      expect(render(INFERRED, "max20", model)).not.toMatch(/[Ii]nferred (from Anthropic|from the January|,? not yet measured| Opus| Haiku)/);
+    }
+  });
+
+  it("changes nothing on today's live file, where both rows are null with a status", () => {
+    const html = renderHtml(LIVE_NOW, "max20", "claude-opus-5");
+    expect(html).not.toMatch(/not yet measured|inferred (Opus|Haiku)/);
+    for (const list of options(html)) {
+      expect(list).not.toContain(OPUS55);
+      expect(list).toContain(HAIKU);
+    }
+    const haiku = render(LIVE_NOW, "max20", HAIKU);
+    expect(haiku).toContain("not measurable");
+    expect(haiku).not.toContain("not yet measured");
   });
 });
