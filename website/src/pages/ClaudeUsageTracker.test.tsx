@@ -1284,6 +1284,15 @@ describe("the Opus 5.5 row", () => {
     };
     const mix = j.credits!.effort_cache_mix as Record<string, unknown>;
     mix["claude-opus-5-5"] = structuredClone(mix[OPUS]);
+    const perModel = j.credits!.per_model!;
+    // Opus's row as the base, rated on its own measurement rather than as the unit anchor.
+    perModel["opus-5-5"] = {
+      ...structuredClone(perModel.opus),
+      ...({ anchor: false } as object),
+      rate_source: "measured",
+      credits_per_token: { input: 0.533, output: 2.667 },
+      list_price_model: "claude-opus-5-5",
+    };
     return j;
   }
 
@@ -1324,5 +1333,15 @@ describe("the Opus 5.5 row", () => {
     expect(windowTokensValueFor(j, OPUS)).not.toBe(543066605);
     expect(windowTokensValueFor(NULL55, "claude-opus-5-5")).toBeNull();
     expect(render(j, "max20", "claude-opus-5-5", NOW)).toContain("Opus 5.5");
+  });
+
+  it("names the credit rate Opus 5.5, never Opus-5-5", () => {
+    const j = measured55();
+    expect(computeCredits(j, "max20", "claude-opus-5-5")!.creditsPerTokenIn).toBe(0.533);
+    const text = render(j, "max20", "claude-opus-5-5", NOW);
+    expect(text).toContain("Priced at the meter's measured Opus 5.5 rate");
+    expect(text).not.toMatch(/Opus-5-5/i);
+    // Opus 5 keeps its family name.
+    expect(render(j, "max20", OPUS, NOW)).not.toContain("measured Opus 5.5 rate");
   });
 });

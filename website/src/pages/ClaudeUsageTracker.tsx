@@ -776,6 +776,15 @@ function ContributorsChart({
 // The contributor chart starts on `initialContribMetric`. `now` fixes the clock the stale line
 // reads. The prerender leaves it unset, so its output never depends on when it ran; a test sets it
 // to render the stale line without mounting.
+// A credit family's name as the page writes it: the capitalised family ("Opus", "Sonnet"), except
+// where the family is one model version and so takes that model's own label ("Opus 5.5", never
+// "Opus-5-5"). Without a family, the selected model's label.
+const FAMILY_LABELS: Record<string, string> = { "opus-5-5": MODEL_LABELS["claude-opus-5-5"] };
+function familyLabel(family: string | null, model: string): string {
+  if (!family) return MODEL_LABELS[model] ?? model;
+  return FAMILY_LABELS[family] ?? family.charAt(0).toUpperCase() + family.slice(1);
+}
+
 export default function ClaudeUsageTracker({
   initial = initialData,
   initialPlan = "max20",
@@ -1066,7 +1075,7 @@ export default function ClaudeUsageTracker({
   const creditRateLine = (() => {
     if (!cr || cr.modelStatus || typeof cr.creditsPerTokenIn !== "number") return null;
     const rate = (n: number) => n.toFixed(3);
-    const family = cr.family ? cr.family.charAt(0).toUpperCase() + cr.family.slice(1) : MODEL_LABELS[model] ?? model;
+    const family = familyLabel(cr.family, model);
     const at = cr.familyAsOf ? `, as of ${fmtDate(cr.familyAsOf)}` : "";
     const lead =
       cr.rateSource === "measured"
@@ -1855,7 +1864,7 @@ export default function ClaudeUsageTracker({
             {cr &&
               (cr.modelStatus ? (
                 <p>
-                  {cr.family ? `${cr.family.charAt(0).toUpperCase()}${cr.family.slice(1)}` : MODEL_LABELS[model] ?? model} rate
+                  {familyLabel(cr.family, model)} rate
                   {cr.familyAsOf ? `, as of ${fmtDate(cr.familyAsOf)}` : ""}: {cr.modelStatus}.
                 </p>
               ) : (
