@@ -6,17 +6,17 @@
    "state": "fresh"
   },
   "a2": {
-   "feed_at": "2026-09-24T15:28:10+00:00",
-   "newest_stretch_end": "2026-09-24T14:22:32+00:00",
+   "feed_at": "2026-09-24T16:30:10+00:00",
+   "newest_stretch_end": "2026-09-24T15:54:27+00:00",
    "state": "fresh"
   },
   "a3": {
-   "feed_at": "2026-09-24T15:30:10+00:00",
+   "feed_at": "2026-09-24T16:29:10+00:00",
    "newest_stretch_end": "2026-09-21T15:05:39+00:00",
    "state": "idle"
   },
   "a4": {
-   "feed_at": "2026-09-24T15:30:10+00:00",
+   "feed_at": "2026-09-24T16:26:10+00:00",
    "newest_stretch_end": "2026-09-24T02:12:47+00:00",
    "state": "fresh"
   }
@@ -150,8 +150,8 @@
   "max20": {
    "contributors": 2,
    "evidence": {
-    "as_of": "2026-09-24T15:30:14+00:00",
-    "current_since": "2026-08-25T15:30:14+00:00",
+    "as_of": "2026-09-24T16:30:13+00:00",
+    "current_since": "2026-08-25T16:30:13+00:00",
     "freshest_sample_at": "2026-09-16T00:11:31+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -215,8 +215,8 @@
   "max5": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-24T15:30:14+00:00",
-    "current_since": "2026-08-25T15:30:14+00:00",
+    "as_of": "2026-09-24T16:30:13+00:00",
+    "current_since": "2026-08-25T16:30:13+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -248,8 +248,8 @@
   "pro": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-24T15:30:14+00:00",
-    "current_since": "2026-08-25T15:30:14+00:00",
+    "as_of": "2026-09-24T16:30:13+00:00",
+    "current_since": "2026-08-25T16:30:13+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -277,7 +277,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-09-24T15:30:14+00:00"
+  "updated_at": "2026-09-24T16:30:13+00:00"
  },
  "credits": {
   "announced_change": {
@@ -418,14 +418,14 @@
      },
      "at": "2026-09-22T17:03:48+00:00",
      "before_from": "2026-09-14T12:00:00+00:00",
-     "change_pct": 37.1,
+     "change_pct": 36.7,
      "family": "opus-5-5",
      "first_seen_account": "a1",
      "first_seen_stretch_end": "2026-09-23T08:26:32+00:00",
      "interval_excludes_no_change": true,
      "interval_pct": [
-      6.4,
-      76.7
+      6.9,
+      74.9
      ],
      "per_account": {
       "a1": {
@@ -441,22 +441,22 @@
        "n_before": 45,
        "n_before_reset_unverified": 45,
        "n_before_unpriced": 0,
-       "weight": 0.7593
+       "weight": 0.7162
       },
       "a2": {
-       "change_pct": 14.6,
+       "change_pct": 17.7,
        "combined": true,
        "interval_pct": [
-        -32.2,
-        93.7
+        -26.4,
+        88.2
        ],
-       "n_after": 4,
+       "n_after": 5,
        "n_after_reset_unverified": 2,
        "n_after_unpriced": 0,
        "n_before": 41,
        "n_before_reset_unverified": 16,
        "n_before_unpriced": 0,
-       "weight": 0.2407
+       "weight": 0.2838
       },
       "a3": {
        "change_pct": null,
@@ -492,9 +492,9 @@
    },
    "unit": "credits per 1% of the five-hour meter"
   },
-  "as_of": "2026-09-24T14:22:32+00:00",
+  "as_of": "2026-09-24T15:54:27+00:00",
   "as_of_source": {
-   "measured_rate_fits": "2026-09-24T14:22:32+00:00",
+   "measured_rate_fits": "2026-09-24T15:54:27+00:00",
    "rule": "the newest stretch end in the pure-family cluster behind window_credits and the newest stretch behind the pooled per-model fits, whichever is later; null where neither has a stretch to date",
    "window_cluster": "2026-09-21T15:05:39+00:00"
   },
@@ -967,14 +967,14 @@
      },
      "a2": {
       "output_3x": {
-       "median": 1.9838,
-       "n": 9,
-       "p25": 1.3646
+       "median": 1.8074,
+       "n": 10,
+       "p25": 1.1079
       },
       "output_5x": {
-       "median": 1.563,
-       "n": 9,
-       "p25": 1.1591
+       "median": 1.4112,
+       "n": 10,
+       "p25": 0.8544
       }
      },
      "a3": {
@@ -1031,12 +1031,12 @@
      "n_with_capture": 65
     },
     "a2": {
-     "after": 197332,
+     "after": 197651,
      "before": 192590,
-     "change_pct": 2.5,
-     "n_after": 29,
+     "change_pct": 2.6,
+     "n_after": 30,
      "n_before": 50,
-     "n_with_capture": 80
+     "n_with_capture": 81
     },
     "a3": {
      "after": 154798,
@@ -1771,7 +1771,7 @@
       "value": 135.77
      }
     },
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "as_of_source": "the newest stretch this row's figures rest on: the pure-family cluster behind the window, and the fits behind the rate where the rate is measured",
     "credits_per_token": {
      "input": 1.4006171118617001,
@@ -1912,7 +1912,7 @@
       "value": 142.62
      }
     },
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "as_of_source": "the newest stretch this row's figures rest on: the pure-family cluster behind the window, and the fits behind the rate where the rate is measured",
     "credits_per_token": {
      "input": 0.13333333333333333,
@@ -2167,7 +2167,7 @@
       "value": 130.64
      }
     },
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "as_of_source": "the newest stretch this row's figures rest on: the pure-family cluster behind the window, and the fits behind the rate where the rate is measured",
     "credits_per_token": {
      "input": 0.5822334873013093,
@@ -2248,7 +2248,7 @@
       "value": 105.61
      }
     },
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "as_of_source": "the newest stretch this row's figures rest on: the pure-family cluster behind the window, and the fits behind the rate where the rate is measured",
     "credits_per_token": {
      "input": 0.36011103017473434,
@@ -2408,14 +2408,14 @@
         },
         "a2": {
          "output_3x": {
-          "median": 1.9838,
-          "n": 9,
-          "p25": 1.3646
+          "median": 1.8074,
+          "n": 10,
+          "p25": 1.1079
          },
          "output_5x": {
-          "median": 1.563,
-          "n": 9,
-          "p25": 1.1591
+          "median": 1.4112,
+          "n": 10,
+          "p25": 0.8544
          }
         },
         "a3": {
@@ -2963,8 +2963,8 @@
     "weekly_cap_multiplier": 1.25,
     "windows_per_week_measured": 4.76,
     "windows_per_week_rounding_interval": [
-     4.4401,
-     5.1255
+     4.4384,
+     5.1205
     ]
    },
    "before": {
@@ -3322,8 +3322,8 @@
    "per_week": {
     "all": {
      "interval": [
-      782213565,
-      2730569778
+      781926552,
+      2728775364
      ],
      "status": null,
      "value": 2143911781
@@ -3332,8 +3332,8 @@
      "fable": {
       "all": {
        "interval": [
-        349869626,
-        1680039104
+        349741250,
+        1678935054
        ],
        "status": null,
        "value": 1020460559
@@ -3342,8 +3342,8 @@
      "haiku": {
       "all": {
        "interval": [
-        3911067827,
-        13652848888
+        3909632759,
+        13643876820
        ],
        "status": null,
        "value": 10719558903
@@ -3352,8 +3352,8 @@
      "opus": {
       "all": {
        "interval": [
-        782213565,
-        2730569778
+        781926552,
+        2728775364
        ],
        "status": null,
        "value": 2143911781
@@ -3362,8 +3362,8 @@
      "opus-5-5": {
       "all": {
        "interval": [
-        714821688,
-        4357939779
+        714559402,
+        4355075927
        ],
        "status": null,
        "value": 2454813320
@@ -3372,8 +3372,8 @@
      "sonnet": {
       "all": {
        "interval": [
-        1239817352,
-        6078445164
+        1239362432,
+        6074450670
        ],
        "status": null,
        "value": 3968982901
@@ -3383,8 +3383,8 @@
     "status": null,
     "windows_per_week": {
      "interval": [
-      4.6331,
-      5.1738
+      4.6314,
+      5.1704
      ],
      "source": "weekly_windows current, max20, newest regime",
      "value": 4.89
@@ -3453,7 +3453,7 @@
    "confirmation": {
     "at": "2026-09-16",
     "evidence_points": 248,
-    "seven_day_pct": 358.0
+    "seven_day_pct": 359.0
    },
    "date": "2026-09-11",
    "direction": "decreased",
@@ -3472,12 +3472,12 @@
       "n_with_capture": 65
      },
      "a2": {
-      "after": 197332,
+      "after": 197651,
       "before": 192590,
-      "change_pct": 2.5,
-      "n_after": 29,
+      "change_pct": 2.6,
+      "n_after": 30,
       "n_before": 50,
-      "n_with_capture": 80
+      "n_with_capture": 81
      },
      "a3": {
       "after": 154798,
@@ -3531,8 +3531,8 @@
    "percent": 26,
    "provisional": false,
    "rounding_interval_after": [
-    4.4401,
-    5.1255
+    4.4384,
+    5.1205
    ],
    "rounding_interval_before": [
     6.2351,
@@ -3559,27 +3559,27 @@
        -18.4
       ],
       "signed_pct": -29.6,
-      "weight": 0.6259,
+      "weight": 0.6233,
       "windows_per_week_pct": -23.5
      },
      "a2": {
-      "five_hour_window_pct": 2.5,
+      "five_hour_window_pct": 2.6,
       "signed_interval_pct": [
-       -41.1,
-       -14.3
+       -41.0,
+       -14.4
       ],
       "signed_pct": -29.1,
-      "weight": 0.3741,
-      "windows_per_week_pct": -30.8
+      "weight": 0.3767,
+      "windows_per_week_pct": -30.9
      }
     },
     "percent": 29,
     "signed_interval_pct": [
-     -39.8,
+     -39.7,
      -16.9
     ],
-    "signed_pct": -29.3,
-    "windows_per_week_pct": -26.3
+    "signed_pct": -29.4,
+    "windows_per_week_pct": -26.4
    },
    "windows_per_week_ratio": {
     "accounts": [
@@ -3591,27 +3591,27 @@
       "description": "the weekly cap falls by the whole measured amount, the five-hour window unchanged",
       "five_hour_window_change_pct": 0.0,
       "weekly_cap_change_interval_pct": [
-       -37.16,
-       -13.31
+       -37.18,
+       -13.39
       ],
-      "weekly_cap_change_pct": -26.33
+      "weekly_cap_change_pct": -26.38
      },
      {
       "description": "the five-hour window rises, the weekly cap unchanged",
       "five_hour_window_change_interval_pct": [
-       15.36,
-       59.13
+       15.46,
+       59.19
       ],
-      "five_hour_window_change_pct": 35.74,
+      "five_hour_window_change_pct": 35.83,
       "weekly_cap_change_pct": 0.0
      },
      {
       "description": "the announced 17% weekly cut, with the rest of the measured fall an implied five-hour change",
       "five_hour_window_change_interval_pct": [
-       -4.26,
-       32.08
+       -4.17,
+       32.13
       ],
-      "five_hour_window_change_pct": 12.66,
+      "five_hour_window_change_pct": 12.74,
       "weekly_cap_change_pct": -17.0
      }
     ],
@@ -3656,20 +3656,20 @@
        0.6628,
        0.8857
       ],
-      "weight": 0.6259
+      "weight": 0.6233
      },
      "a2": {
       "after": {
        "end": "2026-09-24T17:40:00.346880+00:00",
        "n_windows": 38,
-       "ratio": 4.4762,
+       "ratio": 4.4717,
        "rounding_interval": [
-        4.0139,
-        5.0324
+        4.0138,
+        5.0217
        ],
        "start": "2026-09-15T16:39:08+00:00",
-       "sum_five_hour_pct": 470.0,
-       "sum_seven_day_pct": 105.0
+       "sum_five_hour_pct": 474.0,
+       "sum_seven_day_pct": 106.0
       },
       "before": {
        "end": "2026-09-15T14:38:08+00:00",
@@ -3685,15 +3685,15 @@
       },
       "change_interval_pct": [
        -42.52,
-       -16.37
+       -16.54
       ],
-      "change_pct": -30.8,
-      "ratio_after_over_before": 0.692,
+      "change_pct": -30.87,
+      "ratio_after_over_before": 0.6913,
       "ratio_interval": [
        0.5748,
-       0.8363
+       0.8346
       ],
-      "weight": 0.3741
+      "weight": 0.3767
      }
     },
     "pooled_all_accounts": {
@@ -3706,14 +3706,14 @@
       ],
       "end": "2026-09-24T17:40:00.346880+00:00",
       "n_windows": 105,
-      "ratio": 4.8911,
+      "ratio": 4.8886,
       "rounding_interval": [
-       4.6331,
-       5.1738
+       4.6314,
+       5.1704
       ],
       "start": "2026-09-14T11:30:00.088328+00:00",
-      "sum_five_hour_pct": 1751.0,
-      "sum_seven_day_pct": 358.0
+      "sum_five_hour_pct": 1755.0,
+      "sum_seven_day_pct": 359.0
      },
      "before": {
       "accounts": [
@@ -3731,3207 +3731,3207 @@
       "sum_five_hour_pct": 3352.0,
       "sum_seven_day_pct": 518.0
      },
-     "ratio_fell_pct": 24.42,
+     "ratio_fell_pct": 24.45,
      "why_not_used": "pools every account's windows in each of the last two pooled regimes, so an account that only has readings after the change moves the after side through account mix; kept for the record"
     },
-    "ratio_after_over_before": 0.7367,
+    "ratio_after_over_before": 0.7362,
     "ratio_fell_interval_pct": [
-     13.31,
-     37.16
+     13.39,
+     37.18
     ],
-    "ratio_fell_pct": 26.33,
+    "ratio_fell_pct": 26.38,
     "ratio_interval": [
-     0.6284,
-     0.8669
+     0.6282,
+     0.8661
     ],
     "unit": "percent"
    }
   }
  ],
- "generated_at": "2026-09-24T15:30:56.715518+00:00",
+ "generated_at": "2026-09-24T16:30:48.265393+00:00",
  "history": {
   "claude-fable-5-1": [
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-25",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-26",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-27",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-28",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-29",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-30",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-08-31",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-01",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-02",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-03",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-04",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-05",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-06",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-07",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-08",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-09",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-10",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-11",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-12",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-13",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-14",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-15",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-16",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-17",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-18",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-19",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    },
    {
-    "api_list_value_per_window": 232.85,
-    "api_value_per_window": 232.85,
+    "api_list_value_per_window": 243.08,
+    "api_value_per_window": 243.08,
     "date": "2026-09-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 318065417
+    "tokens_per_window": 332030913
    }
   ],
   "claude-haiku-4-5": [
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-25",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-26",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-27",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-28",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-29",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-30",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-31",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-01",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-02",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-03",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-04",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-05",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-06",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-07",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-08",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-09",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-10",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-11",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-12",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-13",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-14",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-15",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-16",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-17",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-18",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-19",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 3180654167
+    "tokens_per_window": 3320309131
    }
   ],
   "claude-opus-4-7": [
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-25",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-26",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-27",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-28",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-29",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-30",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-31",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-01",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-02",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-03",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-04",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-05",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-06",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-07",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-08",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-09",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-10",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-11",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-12",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-13",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-14",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-15",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-16",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-17",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-18",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-19",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    }
   ],
   "claude-opus-4-8": [
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-25",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-26",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-27",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-28",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-29",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-30",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-31",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-01",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-02",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-03",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-04",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-05",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-06",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-07",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-08",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-09",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-10",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-11",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-12",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-13",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-14",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-15",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-16",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-17",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-18",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-19",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    }
   ],
   "claude-opus-5": [
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-25",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-26",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-27",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-28",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-29",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-30",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-31",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-01",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-02",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-03",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-04",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-05",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-06",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-07",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-08",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-09",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-10",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-11",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-12",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-13",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-14",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-15",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-16",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-17",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-18",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-19",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 636130833
+    "tokens_per_window": 664061826
    }
   ],
   "claude-opus-5-5": [
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-25",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-26",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-27",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-28",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-29",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-30",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-08-31",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-01",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-02",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-03",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-04",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-05",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-06",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-07",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-08",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-09",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-10",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-11",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-12",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-13",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-14",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-15",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-16",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-17",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-18",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-19",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    },
    {
-    "api_list_value_per_window": 310.09,
-    "api_value_per_window": 310.09,
+    "api_list_value_per_window": 323.7,
+    "api_value_per_window": 323.7,
     "date": "2026-09-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 795163542
+    "tokens_per_window": 830077283
    }
   ],
   "claude-sonnet-4-6": [
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-25",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-26",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-27",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-28",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-29",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-30",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-31",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-01",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-02",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-03",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-04",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-05",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-06",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-07",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-08",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-09",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-10",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-11",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-12",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-13",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-14",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-15",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-16",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-17",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-18",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-19",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1060218056
+    "tokens_per_window": 1106769710
    }
   ],
   "claude-sonnet-5": [
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-25",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-26",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-27",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-28",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-29",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-30",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-08-31",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-01",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-02",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-03",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-04",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "held",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-05",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-06",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-07",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-08",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-09",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-10",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-11",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-12",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-13",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-14",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-15",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "legacy_reset_unverified",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-16",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-17",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 1,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-18",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-19",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-20",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-21",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-22",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 0,
     "source": "derived",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-23",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    },
    {
-    "api_list_value_per_window": 464.56,
-    "api_value_per_window": 464.56,
+    "api_list_value_per_window": 484.95,
+    "api_value_per_window": 484.95,
     "date": "2026-09-24",
     "interpolated": false,
-    "meter_budget_per_window": 155.62,
+    "meter_budget_per_window": 162.45,
     "quality": "measured",
     "readings": 2,
     "source": "passive",
-    "tokens_per_window": 1590327083
+    "tokens_per_window": 1660154566
    }
   ]
  },
@@ -6949,7 +6949,7 @@
   "confirmation": {
    "at": "2026-09-16",
    "evidence_points": 248,
-   "seven_day_pct": 358.0
+   "seven_day_pct": 359.0
   },
   "date": "2026-09-11",
   "direction": "decreased",
@@ -6968,12 +6968,12 @@
      "n_with_capture": 65
     },
     "a2": {
-     "after": 197332,
+     "after": 197651,
      "before": 192590,
-     "change_pct": 2.5,
-     "n_after": 29,
+     "change_pct": 2.6,
+     "n_after": 30,
      "n_before": 50,
-     "n_with_capture": 80
+     "n_with_capture": 81
     },
     "a3": {
      "after": 154798,
@@ -7025,8 +7025,8 @@
   "percent": 26,
   "provisional": false,
   "rounding_interval_after": [
-   4.4401,
-   5.1255
+   4.4384,
+   5.1205
   ],
   "rounding_interval_before": [
    6.2351,
@@ -7053,27 +7053,27 @@
       -18.4
      ],
      "signed_pct": -29.6,
-     "weight": 0.6259,
+     "weight": 0.6233,
      "windows_per_week_pct": -23.5
     },
     "a2": {
-     "five_hour_window_pct": 2.5,
+     "five_hour_window_pct": 2.6,
      "signed_interval_pct": [
-      -41.1,
-      -14.3
+      -41.0,
+      -14.4
      ],
      "signed_pct": -29.1,
-     "weight": 0.3741,
-     "windows_per_week_pct": -30.8
+     "weight": 0.3767,
+     "windows_per_week_pct": -30.9
     }
    },
    "percent": 29,
    "signed_interval_pct": [
-    -39.8,
+    -39.7,
     -16.9
    ],
-   "signed_pct": -29.3,
-   "windows_per_week_pct": -26.3
+   "signed_pct": -29.4,
+   "windows_per_week_pct": -26.4
   },
   "windows_per_week_ratio": {
    "accounts": [
@@ -7085,27 +7085,27 @@
      "description": "the weekly cap falls by the whole measured amount, the five-hour window unchanged",
      "five_hour_window_change_pct": 0.0,
      "weekly_cap_change_interval_pct": [
-      -37.16,
-      -13.31
+      -37.18,
+      -13.39
      ],
-     "weekly_cap_change_pct": -26.33
+     "weekly_cap_change_pct": -26.38
     },
     {
      "description": "the five-hour window rises, the weekly cap unchanged",
      "five_hour_window_change_interval_pct": [
-      15.36,
-      59.13
+      15.46,
+      59.19
      ],
-     "five_hour_window_change_pct": 35.74,
+     "five_hour_window_change_pct": 35.83,
      "weekly_cap_change_pct": 0.0
     },
     {
      "description": "the announced 17% weekly cut, with the rest of the measured fall an implied five-hour change",
      "five_hour_window_change_interval_pct": [
-      -4.26,
-      32.08
+      -4.17,
+      32.13
      ],
-     "five_hour_window_change_pct": 12.66,
+     "five_hour_window_change_pct": 12.74,
      "weekly_cap_change_pct": -17.0
     }
    ],
@@ -7150,20 +7150,20 @@
       0.6628,
       0.8857
      ],
-     "weight": 0.6259
+     "weight": 0.6233
     },
     "a2": {
      "after": {
       "end": "2026-09-24T17:40:00.346880+00:00",
       "n_windows": 38,
-      "ratio": 4.4762,
+      "ratio": 4.4717,
       "rounding_interval": [
-       4.0139,
-       5.0324
+       4.0138,
+       5.0217
       ],
       "start": "2026-09-15T16:39:08+00:00",
-      "sum_five_hour_pct": 470.0,
-      "sum_seven_day_pct": 105.0
+      "sum_five_hour_pct": 474.0,
+      "sum_seven_day_pct": 106.0
      },
      "before": {
       "end": "2026-09-15T14:38:08+00:00",
@@ -7179,15 +7179,15 @@
      },
      "change_interval_pct": [
       -42.52,
-      -16.37
+      -16.54
      ],
-     "change_pct": -30.8,
-     "ratio_after_over_before": 0.692,
+     "change_pct": -30.87,
+     "ratio_after_over_before": 0.6913,
      "ratio_interval": [
       0.5748,
-      0.8363
+      0.8346
      ],
-     "weight": 0.3741
+     "weight": 0.3767
     }
    },
    "pooled_all_accounts": {
@@ -7200,14 +7200,14 @@
      ],
      "end": "2026-09-24T17:40:00.346880+00:00",
      "n_windows": 105,
-     "ratio": 4.8911,
+     "ratio": 4.8886,
      "rounding_interval": [
-      4.6331,
-      5.1738
+      4.6314,
+      5.1704
      ],
      "start": "2026-09-14T11:30:00.088328+00:00",
-     "sum_five_hour_pct": 1751.0,
-     "sum_seven_day_pct": 358.0
+     "sum_five_hour_pct": 1755.0,
+     "sum_seven_day_pct": 359.0
     },
     "before": {
      "accounts": [
@@ -7225,24 +7225,24 @@
      "sum_five_hour_pct": 3352.0,
      "sum_seven_day_pct": 518.0
     },
-    "ratio_fell_pct": 24.42,
+    "ratio_fell_pct": 24.45,
     "why_not_used": "pools every account's windows in each of the last two pooled regimes, so an account that only has readings after the change moves the after side through account mix; kept for the record"
    },
-   "ratio_after_over_before": 0.7367,
+   "ratio_after_over_before": 0.7362,
    "ratio_fell_interval_pct": [
-    13.31,
-    37.16
+    13.39,
+    37.18
    ],
-   "ratio_fell_pct": 26.33,
+   "ratio_fell_pct": 26.38,
    "ratio_interval": [
-    0.6284,
-    0.8669
+    0.6282,
+    0.8661
    ],
    "unit": "percent"
   }
  },
- "last_sample_at": "2026-09-24T14:22:32+00:00",
- "meter_read_at": "2026-09-24T15:30:10+00:00",
+ "last_sample_at": "2026-09-24T15:54:27+00:00",
+ "meter_read_at": "2026-09-24T16:30:10+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -7429,8 +7429,8 @@
  "rate_basis": "meter_budget",
  "rates": {
   "claude-fable-5-1": {
-   "api_list_value_per_window": 232.85,
-   "api_value_per_window": 232.85,
+   "api_list_value_per_window": 243.08,
+   "api_value_per_window": 243.08,
    "assumptions": {
     "cache_write_1h_meter_weight": "assumed equal to cache_write's",
     "cache_write_1h_price_default": "2x input when the price table has no cache_write_1h",
@@ -7452,12 +7452,12 @@
     "account_count": 3,
     "capture_diagnosed": 34,
     "credit_detection": {
-     "meter_pct": 864.0,
+     "meter_pct": 874.0,
      "min_meter_pct_per_side": 100.0,
-     "points": 83,
+     "points": 84,
      "rate_sources": {
       "anchor": 3,
-      "inferred_list_price": 12,
+      "inferred_list_price": 13,
       "measured": 50,
       "reference_table": 18
      },
@@ -7465,23 +7465,23 @@
      "testable_accounts": 2,
      "unpriced_models": []
     },
-    "meter_movement_pct": 833.0,
+    "meter_movement_pct": 843.0,
     "observed_from": "2026-09-17T23:32:08+00:00",
-    "observed_to": "2026-09-24T14:22:32+00:00",
+    "observed_to": "2026-09-24T15:54:27+00:00",
     "readings": 13,
     "reset_verified": true,
-    "rounding_relative": 0.1212,
+    "rounding_relative": 0.121,
     "source": "passive",
-    "stretches": 80,
-    "window_pieces": 101
+    "stretches": 81,
+    "window_pieces": 102
    },
    "freshness": {
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "stale": false,
-    "stale_after": "2026-10-04T14:22:32+00:00"
+    "stale_after": "2026-10-04T15:54:27+00:00"
    },
-   "measured_at": "2026-09-24T14:22:32+00:00",
-   "meter_budget_per_window": 155.62,
+   "measured_at": "2026-09-24T15:54:27+00:00",
+   "meter_budget_per_window": 162.45,
    "probe_effort": "low",
    "probed_at": "2026-09-09T00:14:11.932199+00:00",
    "quality": {
@@ -7506,11 +7506,11 @@
     "input": 3.5e-05,
     "output": 0.003485
    },
-   "tokens_per_window": 318065417
+   "tokens_per_window": 332030913
   },
   "claude-haiku-4-5": {
-   "api_list_value_per_window": 464.56,
-   "api_value_per_window": 464.56,
+   "api_list_value_per_window": 484.95,
+   "api_value_per_window": 484.95,
    "assumptions": {
     "cache_write_1h_meter_weight": "assumed equal to cache_write's",
     "cache_write_1h_price_default": "2x input when the price table has no cache_write_1h",
@@ -7532,12 +7532,12 @@
     "account_count": 3,
     "capture_diagnosed": 34,
     "credit_detection": {
-     "meter_pct": 864.0,
+     "meter_pct": 874.0,
      "min_meter_pct_per_side": 100.0,
-     "points": 83,
+     "points": 84,
      "rate_sources": {
       "anchor": 3,
-      "inferred_list_price": 12,
+      "inferred_list_price": 13,
       "measured": 50,
       "reference_table": 18
      },
@@ -7545,23 +7545,23 @@
      "testable_accounts": 2,
      "unpriced_models": []
     },
-    "meter_movement_pct": 833.0,
+    "meter_movement_pct": 843.0,
     "observed_from": "2026-09-17T23:32:08+00:00",
-    "observed_to": "2026-09-24T14:22:32+00:00",
+    "observed_to": "2026-09-24T15:54:27+00:00",
     "readings": 13,
     "reset_verified": true,
-    "rounding_relative": 0.1212,
+    "rounding_relative": 0.121,
     "source": "passive",
-    "stretches": 80,
-    "window_pieces": 101
+    "stretches": 81,
+    "window_pieces": 102
    },
    "freshness": {
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "stale": false,
-    "stale_after": "2026-10-04T14:22:32+00:00"
+    "stale_after": "2026-10-04T15:54:27+00:00"
    },
-   "measured_at": "2026-09-24T14:22:32+00:00",
-   "meter_budget_per_window": 155.62,
+   "measured_at": "2026-09-24T15:54:27+00:00",
+   "meter_budget_per_window": 162.45,
    "probe_effort": "low",
    "probed_at": null,
    "quality": {
@@ -7586,11 +7586,11 @@
     "input": 3.5e-05,
     "output": 0.003485
    },
-   "tokens_per_window": 3180654167
+   "tokens_per_window": 3320309131
   },
   "claude-opus-4-7": {
-   "api_list_value_per_window": 464.56,
-   "api_value_per_window": 464.56,
+   "api_list_value_per_window": 484.95,
+   "api_value_per_window": 484.95,
    "assumptions": {
     "cache_write_1h_meter_weight": "assumed equal to cache_write's",
     "cache_write_1h_price_default": "2x input when the price table has no cache_write_1h",
@@ -7612,12 +7612,12 @@
     "account_count": 3,
     "capture_diagnosed": 34,
     "credit_detection": {
-     "meter_pct": 864.0,
+     "meter_pct": 874.0,
      "min_meter_pct_per_side": 100.0,
-     "points": 83,
+     "points": 84,
      "rate_sources": {
       "anchor": 3,
-      "inferred_list_price": 12,
+      "inferred_list_price": 13,
       "measured": 50,
       "reference_table": 18
      },
@@ -7625,23 +7625,23 @@
      "testable_accounts": 2,
      "unpriced_models": []
     },
-    "meter_movement_pct": 833.0,
+    "meter_movement_pct": 843.0,
     "observed_from": "2026-09-17T23:32:08+00:00",
-    "observed_to": "2026-09-24T14:22:32+00:00",
+    "observed_to": "2026-09-24T15:54:27+00:00",
     "readings": 13,
     "reset_verified": true,
-    "rounding_relative": 0.1212,
+    "rounding_relative": 0.121,
     "source": "passive",
-    "stretches": 80,
-    "window_pieces": 101
+    "stretches": 81,
+    "window_pieces": 102
    },
    "freshness": {
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "stale": false,
-    "stale_after": "2026-10-04T14:22:32+00:00"
+    "stale_after": "2026-10-04T15:54:27+00:00"
    },
-   "measured_at": "2026-09-24T14:22:32+00:00",
-   "meter_budget_per_window": 155.62,
+   "measured_at": "2026-09-24T15:54:27+00:00",
+   "meter_budget_per_window": 162.45,
    "probe_effort": "low",
    "probed_at": null,
    "quality": {
@@ -7666,11 +7666,11 @@
     "input": 3.5e-05,
     "output": 0.003485
    },
-   "tokens_per_window": 636130833
+   "tokens_per_window": 664061826
   },
   "claude-opus-4-8": {
-   "api_list_value_per_window": 464.56,
-   "api_value_per_window": 464.56,
+   "api_list_value_per_window": 484.95,
+   "api_value_per_window": 484.95,
    "assumptions": {
     "cache_write_1h_meter_weight": "assumed equal to cache_write's",
     "cache_write_1h_price_default": "2x input when the price table has no cache_write_1h",
@@ -7692,12 +7692,12 @@
     "account_count": 3,
     "capture_diagnosed": 34,
     "credit_detection": {
-     "meter_pct": 864.0,
+     "meter_pct": 874.0,
      "min_meter_pct_per_side": 100.0,
-     "points": 83,
+     "points": 84,
      "rate_sources": {
       "anchor": 3,
-      "inferred_list_price": 12,
+      "inferred_list_price": 13,
       "measured": 50,
       "reference_table": 18
      },
@@ -7705,23 +7705,23 @@
      "testable_accounts": 2,
      "unpriced_models": []
     },
-    "meter_movement_pct": 833.0,
+    "meter_movement_pct": 843.0,
     "observed_from": "2026-09-17T23:32:08+00:00",
-    "observed_to": "2026-09-24T14:22:32+00:00",
+    "observed_to": "2026-09-24T15:54:27+00:00",
     "readings": 13,
     "reset_verified": true,
-    "rounding_relative": 0.1212,
+    "rounding_relative": 0.121,
     "source": "passive",
-    "stretches": 80,
-    "window_pieces": 101
+    "stretches": 81,
+    "window_pieces": 102
    },
    "freshness": {
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "stale": false,
-    "stale_after": "2026-10-04T14:22:32+00:00"
+    "stale_after": "2026-10-04T15:54:27+00:00"
    },
-   "measured_at": "2026-09-24T14:22:32+00:00",
-   "meter_budget_per_window": 155.62,
+   "measured_at": "2026-09-24T15:54:27+00:00",
+   "meter_budget_per_window": 162.45,
    "probe_effort": "low",
    "probed_at": null,
    "quality": {
@@ -7746,11 +7746,11 @@
     "input": 3.5e-05,
     "output": 0.003485
    },
-   "tokens_per_window": 636130833
+   "tokens_per_window": 664061826
   },
   "claude-opus-5": {
-   "api_list_value_per_window": 464.56,
-   "api_value_per_window": 464.56,
+   "api_list_value_per_window": 484.95,
+   "api_value_per_window": 484.95,
    "assumptions": {
     "cache_write_1h_meter_weight": "assumed equal to cache_write's",
     "cache_write_1h_price_default": "2x input when the price table has no cache_write_1h",
@@ -7772,12 +7772,12 @@
     "account_count": 3,
     "capture_diagnosed": 34,
     "credit_detection": {
-     "meter_pct": 864.0,
+     "meter_pct": 874.0,
      "min_meter_pct_per_side": 100.0,
-     "points": 83,
+     "points": 84,
      "rate_sources": {
       "anchor": 3,
-      "inferred_list_price": 12,
+      "inferred_list_price": 13,
       "measured": 50,
       "reference_table": 18
      },
@@ -7785,23 +7785,23 @@
      "testable_accounts": 2,
      "unpriced_models": []
     },
-    "meter_movement_pct": 833.0,
+    "meter_movement_pct": 843.0,
     "observed_from": "2026-09-17T23:32:08+00:00",
-    "observed_to": "2026-09-24T14:22:32+00:00",
+    "observed_to": "2026-09-24T15:54:27+00:00",
     "readings": 13,
     "reset_verified": true,
-    "rounding_relative": 0.1212,
+    "rounding_relative": 0.121,
     "source": "passive",
-    "stretches": 80,
-    "window_pieces": 101
+    "stretches": 81,
+    "window_pieces": 102
    },
    "freshness": {
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "stale": false,
-    "stale_after": "2026-10-04T14:22:32+00:00"
+    "stale_after": "2026-10-04T15:54:27+00:00"
    },
-   "measured_at": "2026-09-24T14:22:32+00:00",
-   "meter_budget_per_window": 155.62,
+   "measured_at": "2026-09-24T15:54:27+00:00",
+   "meter_budget_per_window": 162.45,
    "probe_effort": "low",
    "probed_at": "2026-09-08T12:32:29.571179+00:00",
    "quality": {
@@ -7826,11 +7826,11 @@
     "input": 3.5e-05,
     "output": 0.003485
    },
-   "tokens_per_window": 636130833
+   "tokens_per_window": 664061826
   },
   "claude-opus-5-5": {
-   "api_list_value_per_window": 310.09,
-   "api_value_per_window": 310.09,
+   "api_list_value_per_window": 323.7,
+   "api_value_per_window": 323.7,
    "assumptions": {
     "cache_write_1h_meter_weight": "assumed equal to cache_write's",
     "cache_write_1h_price_default": "2x input when the price table has no cache_write_1h",
@@ -7852,12 +7852,12 @@
     "account_count": 3,
     "capture_diagnosed": 34,
     "credit_detection": {
-     "meter_pct": 864.0,
+     "meter_pct": 874.0,
      "min_meter_pct_per_side": 100.0,
-     "points": 83,
+     "points": 84,
      "rate_sources": {
       "anchor": 3,
-      "inferred_list_price": 12,
+      "inferred_list_price": 13,
       "measured": 50,
       "reference_table": 18
      },
@@ -7865,23 +7865,23 @@
      "testable_accounts": 2,
      "unpriced_models": []
     },
-    "meter_movement_pct": 833.0,
+    "meter_movement_pct": 843.0,
     "observed_from": "2026-09-17T23:32:08+00:00",
-    "observed_to": "2026-09-24T14:22:32+00:00",
+    "observed_to": "2026-09-24T15:54:27+00:00",
     "readings": 13,
     "reset_verified": true,
-    "rounding_relative": 0.1212,
+    "rounding_relative": 0.121,
     "source": "passive",
-    "stretches": 80,
-    "window_pieces": 101
+    "stretches": 81,
+    "window_pieces": 102
    },
    "freshness": {
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "stale": false,
-    "stale_after": "2026-10-04T14:22:32+00:00"
+    "stale_after": "2026-10-04T15:54:27+00:00"
    },
-   "measured_at": "2026-09-24T14:22:32+00:00",
-   "meter_budget_per_window": 155.62,
+   "measured_at": "2026-09-24T15:54:27+00:00",
+   "meter_budget_per_window": 162.45,
    "probe_effort": "low",
    "probed_at": null,
    "quality": {
@@ -7906,11 +7906,11 @@
     "input": 3.5e-05,
     "output": 0.003485
    },
-   "tokens_per_window": 795163542
+   "tokens_per_window": 830077283
   },
   "claude-sonnet-4-6": {
-   "api_list_value_per_window": 464.56,
-   "api_value_per_window": 464.56,
+   "api_list_value_per_window": 484.95,
+   "api_value_per_window": 484.95,
    "assumptions": {
     "cache_write_1h_meter_weight": "assumed equal to cache_write's",
     "cache_write_1h_price_default": "2x input when the price table has no cache_write_1h",
@@ -7932,12 +7932,12 @@
     "account_count": 3,
     "capture_diagnosed": 34,
     "credit_detection": {
-     "meter_pct": 864.0,
+     "meter_pct": 874.0,
      "min_meter_pct_per_side": 100.0,
-     "points": 83,
+     "points": 84,
      "rate_sources": {
       "anchor": 3,
-      "inferred_list_price": 12,
+      "inferred_list_price": 13,
       "measured": 50,
       "reference_table": 18
      },
@@ -7945,23 +7945,23 @@
      "testable_accounts": 2,
      "unpriced_models": []
     },
-    "meter_movement_pct": 833.0,
+    "meter_movement_pct": 843.0,
     "observed_from": "2026-09-17T23:32:08+00:00",
-    "observed_to": "2026-09-24T14:22:32+00:00",
+    "observed_to": "2026-09-24T15:54:27+00:00",
     "readings": 13,
     "reset_verified": true,
-    "rounding_relative": 0.1212,
+    "rounding_relative": 0.121,
     "source": "passive",
-    "stretches": 80,
-    "window_pieces": 101
+    "stretches": 81,
+    "window_pieces": 102
    },
    "freshness": {
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "stale": false,
-    "stale_after": "2026-10-04T14:22:32+00:00"
+    "stale_after": "2026-10-04T15:54:27+00:00"
    },
-   "measured_at": "2026-09-24T14:22:32+00:00",
-   "meter_budget_per_window": 155.62,
+   "measured_at": "2026-09-24T15:54:27+00:00",
+   "meter_budget_per_window": 162.45,
    "probe_effort": "low",
    "probed_at": null,
    "quality": {
@@ -7986,11 +7986,11 @@
     "input": 3.5e-05,
     "output": 0.003485
    },
-   "tokens_per_window": 1060218056
+   "tokens_per_window": 1106769710
   },
   "claude-sonnet-5": {
-   "api_list_value_per_window": 464.56,
-   "api_value_per_window": 464.56,
+   "api_list_value_per_window": 484.95,
+   "api_value_per_window": 484.95,
    "assumptions": {
     "cache_write_1h_meter_weight": "assumed equal to cache_write's",
     "cache_write_1h_price_default": "2x input when the price table has no cache_write_1h",
@@ -8012,12 +8012,12 @@
     "account_count": 3,
     "capture_diagnosed": 34,
     "credit_detection": {
-     "meter_pct": 864.0,
+     "meter_pct": 874.0,
      "min_meter_pct_per_side": 100.0,
-     "points": 83,
+     "points": 84,
      "rate_sources": {
       "anchor": 3,
-      "inferred_list_price": 12,
+      "inferred_list_price": 13,
       "measured": 50,
       "reference_table": 18
      },
@@ -8025,23 +8025,23 @@
      "testable_accounts": 2,
      "unpriced_models": []
     },
-    "meter_movement_pct": 833.0,
+    "meter_movement_pct": 843.0,
     "observed_from": "2026-09-17T23:32:08+00:00",
-    "observed_to": "2026-09-24T14:22:32+00:00",
+    "observed_to": "2026-09-24T15:54:27+00:00",
     "readings": 13,
     "reset_verified": true,
-    "rounding_relative": 0.1212,
+    "rounding_relative": 0.121,
     "source": "passive",
-    "stretches": 80,
-    "window_pieces": 101
+    "stretches": 81,
+    "window_pieces": 102
    },
    "freshness": {
-    "as_of": "2026-09-24T14:22:32+00:00",
+    "as_of": "2026-09-24T15:54:27+00:00",
     "stale": false,
-    "stale_after": "2026-10-04T14:22:32+00:00"
+    "stale_after": "2026-10-04T15:54:27+00:00"
    },
-   "measured_at": "2026-09-24T14:22:32+00:00",
-   "meter_budget_per_window": 155.62,
+   "measured_at": "2026-09-24T15:54:27+00:00",
+   "meter_budget_per_window": 162.45,
    "probe_effort": "low",
    "probed_at": "2026-09-14T13:16:57.472646+00:00",
    "quality": {
@@ -8066,7 +8066,7 @@
     "input": 3.5e-05,
     "output": 0.003485
    },
-   "tokens_per_window": 1590327083
+   "tokens_per_window": 1660154566
   }
  },
  "reference": {
@@ -17158,16 +17158,16 @@
       {
        "day": "2026-09-24",
        "fast_session_requests": 0,
-       "n": 835,
+       "n": 913,
        "output_tokens_per_s": {
-        "median": 100.8,
-        "q1": 93.7,
-        "q3": 111.7
+        "median": 100.7,
+        "q1": 93.5,
+        "q3": 111.5
        },
        "time_to_first_block_s": {
-        "median": 3.79,
-        "q1": 2.55,
-        "q3": 5.99
+        "median": 3.82,
+        "q1": 2.59,
+        "q3": 6.0
        }
       }
      ],
@@ -17256,16 +17256,16 @@
       {
        "day": "2026-09-24",
        "fast_session_requests": 0,
-       "n": 835,
+       "n": 913,
        "output_tokens_per_s": {
-        "median": 100.8,
-        "q1": 93.7,
-        "q3": 111.7
+        "median": 100.7,
+        "q1": 93.5,
+        "q3": 111.5
        },
        "time_to_first_block_s": {
-        "median": 3.79,
-        "q1": 2.55,
-        "q3": 5.99
+        "median": 3.82,
+        "q1": 2.59,
+        "q3": 6.0
        }
       }
      ],
@@ -17337,16 +17337,16 @@
       {
        "day": "2026-09-24",
        "fast_session_requests": 0,
-       "n": 959,
+       "n": 1037,
        "output_tokens_per_s": {
         "median": 99.9,
         "q1": 92.1,
-        "q3": 110.1
+        "q3": 110.0
        },
        "time_to_first_block_s": {
-        "median": 3.81,
-        "q1": 2.6,
-        "q3": 5.75
+        "median": 3.83,
+        "q1": 2.62,
+        "q3": 5.78
        }
       }
      ]
@@ -17385,16 +17385,16 @@
      {
       "day": "2026-09-24",
       "fast_session_requests": 0,
-      "n": 974,
+      "n": 1052,
       "output_tokens_per_s": {
-       "median": 99.8,
+       "median": 99.9,
        "q1": 92.1,
-       "q3": 110.0
+       "q3": 109.9
       },
       "time_to_first_block_s": {
-       "median": 3.83,
-       "q1": 2.61,
-       "q3": 5.81
+       "median": 3.86,
+       "q1": 2.63,
+       "q3": 5.83
       }
      }
     ]
@@ -18278,16 +18278,16 @@
       {
        "day": "2026-09-24",
        "fast_session_requests": 0,
-       "n": 160,
+       "n": 203,
        "output_tokens_per_s": {
-        "median": 94.4,
-        "q1": 85.7,
-        "q3": 105.0
+        "median": 94.7,
+        "q1": 86.6,
+        "q3": 106.8
        },
        "time_to_first_block_s": {
-        "median": 4.08,
-        "q1": 2.08,
-        "q3": 6.83
+        "median": 4.09,
+        "q1": 2.38,
+        "q3": 7.12
        }
       }
      ],
@@ -19417,16 +19417,16 @@
       {
        "day": "2026-09-24",
        "fast_session_requests": 0,
-       "n": 136,
+       "n": 179,
        "output_tokens_per_s": {
-        "median": 96.6,
-        "q1": 87.3,
-        "q3": 108.1
+        "median": 97.1,
+        "q1": 87.8,
+        "q3": 108.9
        },
        "time_to_first_block_s": {
-        "median": 3.62,
-        "q1": 1.87,
-        "q3": 6.1
+        "median": 4.0,
+        "q1": 2.03,
+        "q3": 6.26
        }
       }
      ],
@@ -20556,16 +20556,16 @@
       {
        "day": "2026-09-24",
        "fast_session_requests": 0,
-       "n": 1386,
+       "n": 1429,
        "output_tokens_per_s": {
         "median": 101.0,
-        "q1": 93.4,
-        "q3": 114.3
+        "q1": 93.3,
+        "q3": 114.2
        },
        "time_to_first_block_s": {
-        "median": 3.98,
-        "q1": 2.32,
-        "q3": 7.97
+        "median": 4.0,
+        "q1": 2.34,
+        "q3": 7.95
        }
       }
      ],
@@ -21598,16 +21598,16 @@
      {
       "day": "2026-09-24",
       "fast_session_requests": 0,
-      "n": 1487,
+      "n": 1530,
       "output_tokens_per_s": {
        "median": 100.2,
-       "q1": 92.6,
+       "q1": 92.5,
        "q3": 113.5
       },
       "time_to_first_block_s": {
        "median": 4.12,
-       "q1": 2.4,
-       "q3": 8.2
+       "q1": 2.43,
+       "q3": 8.16
       }
      }
     ]
@@ -21691,7 +21691,7 @@
      }
     },
     "a2": {
-     "current": 4.48,
+     "current": 4.47,
      "n": 81,
      "regimes": [
       {
@@ -21716,17 +21716,17 @@
        "points": 38,
        "quality": "bounded",
        "rounding_interval": [
-        4.0139,
-        5.0324
+        4.0138,
+        5.0217
        ],
-       "seven_day_pct": 105.0,
+       "seven_day_pct": 106.0,
        "source": "passive_paired_deltas",
        "start": "2026-09-15T16:39:08+00:00",
-       "windows": 4.48
+       "windows": 4.47
       }
      ],
      "step": {
-      "after": 4.48,
+      "after": 4.47,
       "before": 6.47,
       "onset": "2026-09-15",
       "percent": -31
@@ -24991,33 +24991,33 @@
     },
     {
      "account": "a2",
-     "five_hour_pct": 17.0,
+     "five_hour_pct": 21.0,
      "pieces": 1,
      "reset_verified": true,
      "rounding_interval": [
-      2.7698,
-      7.644
+      2.957,
+      6.5814
      ],
-     "seven_day_pct": 4.0,
+     "seven_day_pct": 5.0,
      "window_ending": "2026-09-24T17:40:00.346880+00:00",
-     "windows": 4.25
+     "windows": 4.2
     }
    ],
    "current": 4.89,
    "current_estimate": {
     "as_of": "2026-09-24T17:40:00.346880+00:00",
     "assumed": false,
-    "five_hour_pct": 1751.0,
+    "five_hour_pct": 1755.0,
     "from": "2026-09-14T11:30:00.088328+00:00",
     "pieces": 109,
     "points": 105,
     "quality": "measured",
     "reasons": [],
     "rounding_interval": [
-     4.6331,
-     5.1738
+     4.6314,
+     5.1704
     ],
-    "seven_day_pct": 358.0,
+    "seven_day_pct": 359.0,
     "source": "passive_paired_deltas",
     "stale": false,
     "value": 4.89
@@ -25157,17 +25157,17 @@
       "a2": {
        "end": "2026-09-24T17:40:00.346880+00:00",
        "start": "2026-09-15T16:39:08+00:00",
-       "windows": 4.4762
+       "windows": 4.4717
       }
      },
      "pieces": 82,
      "points": 82,
      "quality": "bounded",
      "rounding_interval": [
-      4.4401,
-      5.1255
+      4.4384,
+      5.1205
      ],
-     "seven_day_pct": 240.0,
+     "seven_day_pct": 241.0,
      "source": "passive_paired_deltas_same_accounts",
      "start": "2026-09-11T11:30:00.288613+00:00",
      "windows": 4.76
@@ -25196,10 +25196,10 @@
      "points": 105,
      "quality": "bounded",
      "rounding_interval": [
-      4.6331,
-      5.1738
+      4.6314,
+      5.1704
      ],
-     "seven_day_pct": 358.0,
+     "seven_day_pct": 359.0,
      "source": "passive_paired_deltas",
      "start": "2026-09-14T11:30:00.088328+00:00",
      "windows": 4.89
@@ -25292,17 +25292,17 @@
     },
     {
      "assumed": false,
-     "five_hour_pct": 437.0,
+     "five_hour_pct": 441.0,
      "n": 36,
      "partial": true,
      "rounding_interval": [
-      4.149,
-      5.3804
+      4.1475,
+      5.364
      ],
-     "seven_day_pct": 93.0,
+     "seven_day_pct": 94.0,
      "source": "passive_paired_deltas",
      "week_ending": "2026-09-27",
-     "windows": 4.7
+     "windows": 4.69
     }
    ]
   },
