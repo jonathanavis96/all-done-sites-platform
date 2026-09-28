@@ -1169,102 +1169,50 @@ export function changeState(c: { state?: unknown } | null | undefined): ChangeSt
   return typeof s === "string" && (CHANGE_STATES as readonly string[]).includes(s) ? (s as ChangeState) : null;
 }
 
-// A published percent as the tracker's own label writes it: signed, as published.
-function signedPctText(n: number): string {
-  return `${n > 0 ? "+" : n < 0 ? "-" : ""}${Math.abs(n)}%`;
-}
-
-// The change a record states, one figure per limit it publishes, in plain words. Empty for a record
-// whose `metric` the page does not know; the caller then falls back to the tracker's own label.
-export function changeFigures(c: Partial<ChangeRecord>): { text: string; pct: number }[] {
-  const fin = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
-  const out: { text: string; pct: number }[] = [];
-  if (c.metric === "five_hour_limit") {
-    if (fin(c.change_pct)) out.push({ text: `five-hour limit ${signedPctText(c.change_pct)}`, pct: c.change_pct });
-    if (fin(c.weekly_limit_change_pct)) {
-      out.push({ text: `weekly limit ${signedPctText(c.weekly_limit_change_pct)}`, pct: c.weekly_limit_change_pct });
-    }
-  } else if (c.metric === "weekly_limit") {
-    const pct = fin(c.weekly_limit_change_pct) ? c.weekly_limit_change_pct : c.change_pct;
-    if (fin(pct)) out.push({ text: `weekly limit ${signedPctText(pct)}`, pct });
-  } else if (c.metric === "windows_per_week") {
-    const pct = fin(c.windows_per_week_change_pct) ? c.windows_per_week_change_pct : c.change_pct;
-    if (fin(pct)) out.push({ text: `windows per week ${signedPctText(pct)}`, pct });
-  }
-  return out;
-}
-
-// The tracker's label for the change `last_change` names: its own, or the matching event's.
-function changeLabelFor(j: UsageJson, c: ChangeRecord): string | null {
-  if (typeof c.label === "string" && c.label.trim()) return c.label.trim();
-  const ev = (j.events ?? []).find((e) => e.kind === "change" && e.date === c.date && typeof e.label === "string");
-  return ev?.label.trim() || null;
-}
-
-// A tracker PR #98 record: it publishes a state or one of the metrics that release introduced.
-function isStatedChange(c: Partial<ChangeRecord>): boolean {
-  return (
-    typeof c.state === "string" ||
-    c.metric === "five_hour_limit" ||
-    c.metric === "weekly_limit" ||
-    c.metric === "windows_per_week"
-  );
-}
-
-// The headline for a tracker PR #98 record: every limit change it publishes, and its state.
-function statedChangeHeadline(j: UsageJson, c: ChangeRecord): { text: string; tone: "up" | "down" } {
-  const date = fmtDate(c.onset?.from_windows?.earliest ?? c.date);
-  const state = changeState(c);
-  const suffix = state ? ` (${state})` : "";
-  const figures = changeFigures(c);
-  const first = figures[0]?.pct;
-  const tone = (first !== undefined ? first > 0 : c.direction === "increased") ? "up" : "down";
-  if (figures.length > 0) {
-    return { text: `Limits last changed on ${date}: ${figures.map((f) => f.text).join(", ")}${suffix}.`, tone };
-  }
-  // A metric the page does not know: the tracker's own label, which carries its own state.
-  const label = changeLabelFor(j, c);
-  if (label) return { text: `Limits last changed on ${date}: ${label}${/[.!?]$/.test(label) ? "" : "."}`, tone };
-  return { text: `Limits last changed on ${date}${suffix}.`, tone };
-}
-
-// The headline states the measured change only: its signed percent and the date the drawn step
-// lands on, never a figure or wording taken from an announcement (seat 123). No change published
-// means none measured since the first genuinely measured day.
+// Jonathan reversed audit finding 4 on 2026-09-16: the headline says Anthropic changed the
+// limit again, as it did at PR #74, rather than hedging to "observed ... ratio changed". The figure
+// is always the measured one, never an announced figure.
 export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "flat" } {
   const c = j.last_change;
-  if (c && isStatedChange(c)) return statedChangeHeadline(j, c);
   if (!c) {
     // "held" rows are backfilled with the first real reading, not measured on that day, so
-    // the "unchanged since" date must come from the first genuinely measured row.
+    // the "hasn't changed since" date must come from the first genuinely measured row.
     const rows = Object.values(j.history ?? {}).flat();
     const firstReal = rows.filter((h) => h.source !== "held").map((h) => h.date).sort()[0];
     const first = firstReal ?? rows.map((h) => h.date).sort()[0];
-    if (!first) return { text: "No change in limits measured yet.", tone: "flat" };
-    return { text: `Limits unchanged since ${fmtDate(first)} (measured).`, tone: "flat" };
+    if (!first) return { text: "Anthropic hasn't changed Claude's limits since we started measuring.", tone: "flat" };
+    return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
   }
+  // Tracker PR #98: a fitted change moves both limits and is published as the five-hour limit
+  // change, whose rounded size and direction are the record's own `percent` and `direction`, with
+  // the weekly one beside it. The headline keeps its "limits" sentence for it; `scope` there only
+  // describes which intervals exclude no change, so it never picks the weekly sentence. The state
+  // is not stated here: it goes on the chart markers.
+  const fitted = c.metric === "five_hour_limit" && typeof c.change_pct === "number" && Number.isFinite(c.change_pct);
   // A weekly change published with a tokens-per-week figure says that figure (tracker wf-61):
   // the sentence is about what a week buys, and windows per week is only one of the two things
   // that moved. `percent`/`direction` on the record itself stay the windows-per-week figure the
   // windows-per-week chart marks, and are what an older file -- or an unmeasured event -- falls
   // back to.
-  const tpw = c.scope === "weekly" ? c.tokens_per_week_change ?? null : null;
+  const tpw = !fitted && c.scope === "weekly" ? c.tokens_per_week_change ?? null : null;
   const percent = tpw ? tpw.percent : c.percent;
   const direction = tpw ? tpw.direction : c.direction;
-  // Whatever size the tracker publishes is stated as published; a record with no finite percent
-  // names only the date rather than printing a figure it does not have.
-  const measured = typeof percent === "number" && Number.isFinite(percent);
-  const up = direction === "increased" || (direction !== "decreased" && measured && percent > 0);
-  const tone = up ? "up" : "down";
-  const signed = measured ? ` by ${up ? "+" : "-"}${Math.abs(percent)}%` : "";
+  const tone = direction === "increased" ? "up" : "down";
+  // The #78 headline, restored (Jonathan's decision, 2026-09-20): "Anthropic last <direction>
+  // Claude's <weekly> limit by N% on <date>", the same sentence regardless of whether the
+  // credits block is published. The onset-bounded "fell by ... between ..." wording this
+  // replaced moved into "The five-hour window across the change" at the bottom.
+  //
   // The date: `c.date` is the earliest PER-ACCOUNT onset (one account can move days before the
   // rest), but the windows-per-week chart steps -- and marks its change marker -- on the pooled
   // Max 20x regime boundary, which can land later. Prefer the pooled step (`onset.from_windows`)
   // when it is published, so the headline and the chart's own marker never disagree; fall back to
   // `c.date` for older JSON that does not carry it.
   const date = c.onset?.from_windows?.earliest ?? c.date;
-  const what = c.scope === "weekly" ? "Weekly limit" : "Limits";
-  return { text: `${what} last changed${signed} on ${fmtDate(date)} (measured).`, tone };
+  if (!fitted && c.scope === "weekly") {
+    return { text: `Anthropic last ${direction} Claude's weekly limit by ${percent}% on ${fmtDate(date)}.`, tone };
+  }
+  return { text: `Anthropic last ${direction} Claude's limits by ${percent}% on ${fmtDate(date)}.`, tone };
 }
 
 export function fmtTokens(n: number): string {

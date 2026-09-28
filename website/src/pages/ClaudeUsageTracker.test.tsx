@@ -162,7 +162,7 @@ describe("the tracker page renders both schemas", () => {
     const text = render(LIVE);
     expect(text).not.toContain("Data temporarily unavailable");
     // Headline: Anthropic changed the limit, not an "observed ratio" on the account.
-    expect(text).toContain("Weekly limit last changed by -29% on 14 Sep 2026 (measured).");
+    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 29% on 14 Sep 2026.");
     expect(text).not.toContain("observed weekly-to-window ratio");
     // #74's single dollar figure, labelled "API value", sourced from the meter budget.
     expect(text).toContain("of API value per 5-hour window");
@@ -515,7 +515,7 @@ describe("the credits block on the page", () => {
     // The #78 headline (Jonathan's decision, 2026-09-20), not the "fell by ... between" wording.
     // Dated to the pooled regime step (14 Sep), not the earliest per-account onset (11 Sep): that
     // is the date the windows-per-week chart itself steps on and marks.
-    expect(hero).toContain("Weekly limit last changed by -24% on 14 Sep 2026 (measured).");
+    expect(hero).toContain("Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.");
     expect(hero).not.toContain("The number of five-hour windows in a week fell by");
     // Nothing sits between the h1 and the pill row (matches #78's hero exactly).
     expect(hero).not.toContain("Five-hour windows per week: 6.5");
@@ -736,7 +736,7 @@ describe("the credits block on the page", () => {
   it("renders a file with no credits block as it does today, bar the window it cannot state", () => {
     const text = render(WITHOUT, "max20", "claude-opus-5");
     // Pooled regime step (14 Sep), not the earliest per-account onset (11 Sep).
-    expect(text).toContain("Weekly limit last changed by -24% on 14 Sep 2026 (measured).");
+    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.");
     // The 589M the dollar route used to lead on is the list-price window, and no figure on this
     // page comes from it any more (wf-60).
     expect(text).toContain("tokens per 5-hour window: window tokens not yet published");
@@ -1245,7 +1245,7 @@ describe("the weekly change stated in tokens a week buys", () => {
 
   it("says the tokens-per-week figure in the headline", () => {
     expect(render(TPW, "max20", OPUS)).toContain(
-      "Weekly limit last changed by -15% on 14 Sep 2026 (measured).",
+      "Anthropic last decreased Claude's weekly limit by 15% on 14 Sep 2026.",
     );
   });
 
@@ -1298,7 +1298,7 @@ describe("the weekly change stated in tokens a week buys", () => {
 
   it("renders the old headline and the old levels for a file without the new fields", () => {
     const text = render(WITHOUT, "max20", OPUS);
-    expect(text).toContain("Weekly limit last changed by -22% on 14 Sep 2026 (measured).");
+    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 22% on 14 Sep 2026.");
     const svg = chart(WITHOUT, "Tokens per week");
     expect(svg).toContain("3253M");
     expect(svg).toContain("2545M");
@@ -2365,7 +2365,7 @@ describe("no announcement on the page (seat 123)", () => {
     const h1 = h.slice(h.indexOf("<h1"), h.indexOf("</h1>"));
     // The file's own measured percent (5), not the announced 987.6.
     expect(J.last_change!.percent).toBe(5);
-    expect(h1.replace(/<[^>]+>/g, "")).toBe("Limits last changed by +5% on 22 Sep 2026 (measured).");
+    expect(h1.replace(/<[^>]+>/g, "")).toBe("Anthropic last increased Claude's limits by 5% on 22 Sep 2026.");
   });
 });
 
@@ -2399,33 +2399,16 @@ describe("how settled a change is (tracker PR #98)", () => {
     return j;
   };
 
-  it("states both limits' changes and the state in the headline", () => {
-    expect(h1Of(html(PR98, "window"))).toBe(
-      "Limits last changed on 22 Sep 2026: five-hour limit +30.5%, weekly limit +27.9% (measured).",
-    );
-    expect(h1Of(html(inState("measuring"), "window"))).toBe(
-      "Limits last changed on 22 Sep 2026: five-hour limit +30.5%, weekly limit +27.9% (measuring).",
-    );
-  });
-
-  it("colours each limit's figure by its own sign", () => {
+  it("states a change to both limits in the pre-#113 limits sentence, with no state word", () => {
+    const BOTH = "Anthropic last increased Claude's limits by 30% on 22 Sep 2026.";
+    expect(h1Of(html(PR98, "window"))).toBe(BOTH);
+    for (const state of ["measuring", "provisional"]) expect(h1Of(html(inState(state), "window")), state).toBe(BOTH);
+    // The #78 colouring: the direction and the figure in the tone's colour, Claude in its own.
     const h = html(PR98, "window");
     const h1 = h.slice(h.indexOf("<h1"), h.indexOf("</h1>"));
-    expect(h1).toContain('<span class="up">+30.5%</span>');
-    expect(h1).toContain('<span class="up">+27.9%</span>');
-    const mixed = structuredClone(PR98);
-    mixed.last_change!.weekly_limit_change_pct = -3.1;
-    const m = html(mixed, "window");
-    expect(m.slice(m.indexOf("<h1"), m.indexOf("</h1>"))).toContain('<span class="down">-3.1%</span>');
-  });
-
-  it("escapes a fallback label before it reaches the headline's markup", () => {
-    const j = structuredClone(PR98);
-    Object.assign(j.last_change!, { metric: "something_new", label: "Limit <b>moved</b> +3% (measuring)" });
-    const h = html(j, "window");
-    const h1 = h.slice(h.indexOf("<h1"), h.indexOf("</h1>"));
-    expect(h1).not.toContain("<b>");
-    expect(h1).toContain("&lt;b&gt;moved&lt;/b&gt;");
+    expect(h1).toContain('<span class="up">increased</span>');
+    expect(h1).toContain('<span class="up">30%</span>');
+    expect(h1).toContain('<span class="claude">Claude</span>');
   });
 
   const MEASURED = {
@@ -2472,18 +2455,13 @@ describe("how settled a change is (tracker PR #98)", () => {
           expect(text, `${scope} ${metric} ${chart}`).not.toContain(raw);
         }
       }
-      // A metric the page does not know falls back to the tracker's own label for the change.
-      if (metric === "something_new") {
-        expect(h1Of(html(j, "window"))).toBe(
-          "Limits last changed on 22 Sep 2026: Five-hour limit +30.5%, weekly limit +27.9% (measured).",
-        );
-      }
+      expect(h1Of(html(j, "window")), `${scope} ${metric}`).toBe("Anthropic last increased Claude's limits by 30% on 22 Sep 2026.");
     }
   });
 
   it("renders today's live file as before: no state anywhere, the same headline and markers", () => {
     const live = live0928 as unknown as UsageJson;
-    expect(h1Of(html(live, "window"))).toBe("Limits last changed by +5% on 22 Sep 2026 (measured).");
+    expect(h1Of(html(live, "window"))).toBe("Anthropic last increased Claude's limits by 5% on 22 Sep 2026.");
     expect(markers(live, "window")).toEqual(["-4% on 14 Sep", "+5% on 22 Sep"]);
     expect(markers(live, "tokens")).toEqual(["-26% on 14 Sep"]);
     expect(markers(live, "windows")).toEqual(["-22% on 14 Sep", "-5% on 22 Sep"]);

@@ -1627,13 +1627,10 @@ export default function ClaudeUsageTracker({
           {!unavailable && h && (
             <h1
               dangerouslySetInnerHTML={{
-                // Each figure in its own sign's colour: a change can move both limits (tracker PR
-                // #98). The text is escaped first, since a fallback headline quotes the tracker's label.
                 __html: h.text
-                  .replace(/&/g, "&amp;")
-                  .replace(/</g, "&lt;")
-                  .replace(/>/g, "&gt;")
-                  .replace(/[-+]\d+(?:\.\d+)?%/g, (pct) => `<span class="${pct.startsWith("-") ? "down" : "up"}">${pct}</span>`),
+                  .replace(/(increased|decreased)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
+                  .replace(/(\d+%)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
+                  .replace(/Claude/, `<span class="claude">Claude</span>`),
               }}
             />
           )}
