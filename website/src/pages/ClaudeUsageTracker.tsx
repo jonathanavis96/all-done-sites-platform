@@ -1427,8 +1427,8 @@ export default function ClaudeUsageTracker({
   return (
     <PageShell>
       <Seo
-        title="Claude Usage Tracker: what a Max plan actually buys | All Done Sites"
-        description={`Measured daily from ${accountsWord ?? "a real account"}: how many tokens a Claude Max 20x plan buys per 5-hour window, and when that changes.`}
+        title="Claude Max Usage Tracker: Real Token Data | All Done Sites"
+        description={`Live daily data from ${accountsWord ?? "a real account"} on how many tokens a Claude Max 20x plan buys per 5-hour window, tracked over time.`}
         canonical={`${SITE}/claude-usage-tracker/`}
         image={`${SITE}/og1200x630_v2.jpg`}
       />

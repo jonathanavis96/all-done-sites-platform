@@ -206,6 +206,9 @@ export default function Index() {
         title: "Request sent",
         description: "Thanks! We'll reply within 1 business day.",
       });
+      if (typeof window !== "undefined" && window.gtag) {
+        window.gtag("event", "generate_lead", { form: "quote", plan: String(data.get("plan") || "") });
+      }
       form.reset();
     } catch {
       toast({
@@ -441,8 +444,8 @@ export default function Index() {
   return (
     <div className="adsx" ref={rootRef}>
       <Seo
-        title="Hassle-Free Website Subscription for SMEs | All Done Sites"
-        description="All Done Sites builds, hosts and maintains fast, custom-coded websites for South African small businesses, for one simple monthly fee with no big upfront cost. No WordPress, built to be found by Google and AI."
+        title="Website Subscription From R799/mo | All Done Sites"
+        description="Custom-coded websites for South African SMEs — design, hosting, security and updates for one monthly fee from R799/month. No WordPress, no upfront cost."
         jsonLd={[orgJsonLd, localBizJsonLd, faqJsonLd]}
       />
 
@@ -742,6 +745,13 @@ export default function Index() {
             ))}
           </div>
           <div className="faqmore">Still have a question? <a href="#getquote">Talk to us →</a></div>
+          <div className="faqmore">
+            Want to be found by ChatGPT and Google's AI Overviews too? Read our article on{" "}
+            <Link to="/articles/ai-search-optimisation-services-and-specialists/">
+              AI search optimisation services and specialists
+            </Link>
+            .
+          </div>
         </div>
       </section>
 
