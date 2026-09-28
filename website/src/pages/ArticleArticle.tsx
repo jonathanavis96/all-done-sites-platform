@@ -12,6 +12,21 @@ import "@/styles/home.css";
 const SITE = "https://alldonesites.com";
 const OG_IMAGE = `${SITE}/og1200x630_v2.jpg`;
 
+// `article.author.url` is authored content, not runtime user input, but it still ends up
+// in an `href` (the visible byline link) and inside a <script> JSON-LD block -- a
+// `javascript:` (or `data:`) scheme there would execute on click. Only an absolute
+// http(s) URL is accepted; anything else renders the name as plain text and the JSON-LD
+// omits `url`/`sameAs` rather than carrying an unsafe scheme through.
+function safeHttpUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function ArticleArticle() {
   const { slug } = useParams();
   const article = getArticle(slug);
@@ -35,6 +50,8 @@ export default function ArticleArticle() {
   const bodyImages = imageSrcs(article.blocks).map((s) => absoluteImage(s, SITE));
   const schemaImage = bodyImages.length > 0 ? bodyImages : OG_IMAGE;
 
+  const authorUrl = safeHttpUrl(article.author?.url);
+
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -43,7 +60,14 @@ export default function ArticleArticle() {
     inLanguage: "en-ZA",
     datePublished: article.publishedAt,
     dateModified: article.updatedAt,
-    author: { "@type": "Organization", name: "All Done Sites", url: SITE },
+    author: article.author
+      ? {
+          "@type": "Person",
+          name: article.author.name,
+          url: authorUrl,
+          sameAs: authorUrl ? [authorUrl] : undefined,
+        }
+      : { "@type": "Organization", name: "All Done Sites", url: SITE },
     publisher: {
       "@type": "Organization",
       name: "All Done Sites",
@@ -77,6 +101,21 @@ export default function ArticleArticle() {
           <span className="mono">{article.readMins} min read</span>
           <span aria-hidden="true"> · </span>
           <span className="mono">Updated {article.updatedAt}</span>
+          {article.author && (
+            <>
+              <span aria-hidden="true"> · </span>
+              <span className="mono">
+                By{" "}
+                {authorUrl ? (
+                  <a href={authorUrl} rel="author">
+                    {article.author.name}
+                  </a>
+                ) : (
+                  article.author.name
+                )}
+              </span>
+            </>
+          )}
         </span>
       }
     >

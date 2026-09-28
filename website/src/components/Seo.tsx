@@ -44,6 +44,21 @@ function normalizeCanonical(raw: string): string {
   }
 }
 
+/** `jsonLd` is engine-generated content, not raw user input, but it still lands inside a
+ * `<script>` tag react-helmet-async serialises as literal HTML (unescaped, the same way
+ * `dangerouslySetInnerHTML` would) -- a `</script>` (or a U+2028/U+2029 line separator,
+ * valid inside a JSON string but not inside a <script> body) in a headline or description
+ * would otherwise break out of the structured-data block. Same escaping Next.js's own
+ * JSON-LD helper and the OWASP XSS cheat sheet recommend. */
+function safeJsonLd(data: object): string {
+  return JSON.stringify(data)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
 export default function Seo({ title, description, canonical, jsonLd, image, noindex }: SeoProps) {
   // 1) Decide canonical: explicit prop wins; else compute from window.location
   let computedCanonical = canonical;
@@ -90,7 +105,7 @@ export default function Seo({ title, description, canonical, jsonLd, image, noin
       {computedImage && <meta name="twitter:image" content={computedImage} />}
 
       {/* Structured data */}
-      {jsonLd && <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>}
+      {jsonLd && <script type="application/ld+json">{safeJsonLd(jsonLd)}</script>}
     </Helmet>
   );
 }
