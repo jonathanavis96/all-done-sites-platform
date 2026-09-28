@@ -53,6 +53,7 @@ import {
   weeklySeriesFor,
   weeklyTokenRegimeLevelsFor,
   windowTokenRegimeLevelsFor,
+  windowChangePct,
   tokensPerWeekChangePct,
   type AccountLines,
   type ContribPoint,
@@ -750,23 +751,30 @@ const fmtValue2 = (v: number) => v.toFixed(2);
 // weekly figure by the seven-day one. There is no windows-per-week tab: a reading's week of
 // tokens over its window of tokens divides two different workloads, not paired meter movement
 // (audit finding 7), and schema 2 no longer publishes that quotient.
+//
+// No tab is per model: every dot is the contributor's own figure across whatever mix of models
+// they used. The token tabs' dashed line is the tracker's figure for the model picked in the hero,
+// so its label names that model.
 interface ContribTab {
   key: ContribMetric;
   label: string;
-  value: (p: ContribPoint, model: string) => number | null;
+  value: (p: ContribPoint) => number | null;
   fmt: (v: number) => string;
   // The tracker's own line on this chart. The token tabs take it from the measured window, the
   // same figure the hero states, and draw none where that figure is not published.
   reference: (wt: WindowTokensView | null, fleetUsd: number | null) => number | null;
-  refLabel: (v: number, fmt: (v: number) => string) => string;
+  refLabel: (v: number, fmt: (v: number) => string, modelName: string) => string;
   legend: string;
 }
+
+const CACHE_READ_NOTE =
+  "They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ";
 
 const CONTRIB_TABS: ContribTab[] = [
   {
     key: "usd",
     label: "Cost per 1%",
-    value: (p, model) => contribPointValue(p, "usd", model),
+    value: (p) => contribPointValue(p, "usd"),
     fmt: fmtUsd2,
     reference: (_wt, fleetUsd) => fleetUsd,
     refLabel: (v, fmt) => `tracker ${fmt(v)} per 1%`,
@@ -776,22 +784,24 @@ const CONTRIB_TABS: ContribTab[] = [
   {
     key: "window",
     label: "Effective window size",
-    value: (p, model) => contribPointValue(p, "window", model),
+    value: (p) => contribPointValue(p, "window"),
     fmt: fmtTokens,
     reference: (wt) => wt?.perWindowValue ?? null,
-    refLabel: (v, fmt) => `tracker ${fmt(v)}`,
+    refLabel: (v, fmt, modelName) => `tracker ${fmt(v)} \u00b7 ${modelName}`,
     legend:
-      "Tokens a full five-hour window buys, read off each contributor's own meter. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
+      "Tokens a full five-hour window buys, read off each contributor's own meter. Each dot is that contributor's own mix of models. Dashed line: the tracker's figure for the model picked at the top of the page. " +
+      CACHE_READ_NOTE,
   },
   {
     key: "weekly",
     label: "Tokens per week",
-    value: (p, model) => contribPointValue(p, "weekly", model),
+    value: (p) => contribPointValue(p, "weekly"),
     fmt: fmtTokens,
     reference: (wt) => wt?.perWeekValue ?? null,
-    refLabel: (v, fmt) => `tracker ${fmt(v)}`,
+    refLabel: (v, fmt, modelName) => `tracker ${fmt(v)} \u00b7 ${modelName}`,
     legend:
-      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Dashed line: the tracker's own figure. Both are the selected model. They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ",
+      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Each dot is that contributor's own mix of models. Dashed line: the tracker's figure for the model picked at the top of the page. " +
+      CACHE_READ_NOTE,
   },
 ];
 
@@ -822,23 +832,35 @@ export function planChartForKey(current: PlanChart, key: string): PlanChart | nu
   return at === null ? null : PLAN_CHARTS[at].key;
 }
 
+// Always drawn, even with nothing to plot: a plan with no readings on the open tab keeps the axes
+// and the tracker's line, with one quiet line in the middle of the plot saying so, rather than the
+// chart vanishing when the plan changes.
 function ContributorsChart({
   points,
   reference,
   tab,
-  model,
+  modelName,
+  planLabel,
 }: {
   points: ContribPoint[];
   reference: number | null;
   tab: ContribTab;
-  model: string;
+  modelName: string;
+  planLabel: string;
 }) {
   const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
-  const valueOf = (p: ContribPoint) => tab.value(p, model);
+  const valueOf = tab.value;
   const usable = points.filter((p) => typeof valueOf(p) === "number");
-  const groups = contribGroups(points);
-  const { t0, t1, frac } = contribXScale(points);
-  const yMax = contribYMax(points, reference, (p) => tab.value(p as ContribPoint, model));
+  const groups = contribGroups(usable);
+  const { t0, t1, frac } = contribXScale(usable);
+  // With no dots the scale comes from the tracker's line alone, which then sits two thirds up the
+  // plot, or a plain 0-to-1 axis where there is no line either.
+  const yMax =
+    usable.length > 0
+      ? contribYMax(usable, reference, (p) => valueOf(p as ContribPoint))
+      : typeof reference === "number" && reference > 0
+        ? reference * 1.5
+        : 1;
   const x = (t: string) => L + frac(t) * (R - L);
   const y = (v: number) => B - (v / yMax) * (B - T);
   const ticks = [0, 1, 2, 3].map((k) => (yMax * k) / 3);
@@ -868,9 +890,20 @@ function ContributorsChart({
           <g>
             <line x1={L} x2={R} y1={y(reference)} y2={y(reference)} stroke="var(--ads-ac)" strokeWidth="1.5" strokeDasharray="5 4" />
             <text x={R} y={y(reference) - 6} textAnchor="end" style={{ fill: "var(--ads-ac)", fontWeight: 500 }}>
-              {tab.refLabel(reference, tab.fmt)}
+              {tab.refLabel(reference, tab.fmt, modelName)}
             </text>
           </g>
+        )}
+        {usable.length === 0 && (
+          <text
+            className="contrib-empty"
+            x={(L + R) / 2}
+            y={(T + B) / 2 + (typeof reference === "number" ? 28 : 4)}
+            textAnchor="middle"
+            style={{ fill: "var(--ads-mut)" }}
+          >
+            {`No readings on ${planLabel} yet`}
+          </text>
         )}
         {groups.map((g) => {
           const drawable = (g.points as ContribPoint[]).filter((p) => typeof valueOf(p) === "number");
@@ -911,11 +944,7 @@ function ContributorsChart({
           })}
         </g>
       </svg>
-      <p className="sub contrib-chart-legend">
-        {usable.length === 0
-          ? "No contributed reading carries this figure yet \u2014 only the tracker's own line is drawn."
-          : tab.legend}
-      </p>
+      <p className="sub contrib-chart-legend">{tab.legend}</p>
     </>
   );
 }
@@ -1005,7 +1034,6 @@ export default function ClaudeUsageTracker({
     }
   };
   const contribTab = CONTRIB_TABS.find((t) => t.key === contribMetric) ?? CONTRIB_TABS[0];
-  const hasContribPoints = !!data?.contributed?.[plan]?.points?.length;
   const contributed = useMemo(
     () =>
       data
@@ -1075,6 +1103,7 @@ export default function ClaudeUsageTracker({
   // The signed tokens-per-week figure for the newest weekly change, when the publisher measured
   // one: what the tokens-per-week chart's marker states instead of the step it happens to draw.
   const tokensPerWeekPct = useMemo(() => (data ? tokensPerWeekChangePct(data) : null), [data]);
+  const windowPct = useMemo(() => (data ? windowChangePct(data) : null), [data]);
   const weeklyTokenLevels = useMemo(
     () =>
       data
@@ -1124,23 +1153,6 @@ export default function ClaudeUsageTracker({
   // window section, the per-week card and the per-week chart -- so they cannot state one quantity
   // at two scales. Null for a file published before the block, which the page says in words.
   const wt = useMemo(() => (data ? computeWindowTokens(data, plan, model) : null), [data, plan, model]);
-  // The models the contributors section can offer on the open tab: only those at least one of
-  // this plan's readings has a figure for. The cost tab's figure covers every model together, so
-  // it offers none. A model the readings lack would only draw an empty chart.
-  const contribModels = useMemo(() => {
-    if (!data || contribTab.key === "usd") return [];
-    const points = data.contributed?.[plan]?.points ?? [];
-    return modelsNewestFirst(pageModels(data, Object.keys(data.rates))).filter((m) =>
-      points.some((p) => typeof contribTab.value(p, m) === "number"),
-    );
-  }, [data, plan, contribTab]);
-  // The hero's model where the readings have it, otherwise the first they do have. The hero keeps
-  // its own choice; only this section's dots, line and select move to the stand-in.
-  const contribModel = contribModels.length === 0 || contribModels.includes(model) ? model : contribModels[0];
-  const contribWt = useMemo(
-    () => (contribModel === model ? wt : data ? computeWindowTokens(data, plan, contribModel) : null),
-    [contribModel, model, wt, data, plan],
-  );
   const changeSentences = useMemo(() => (data ? changeLines(data) : []), [data]);
   // How many accounts the passive readings rest on, in words. Null without the credits block, in
   // which case the page keeps saying "a real account" as it does today.
@@ -1714,13 +1726,15 @@ export default function ClaudeUsageTracker({
                         levelsByPlan={windowTokenLevels}
                         // Markers only where this chart's own levels step: no announced event, so a
                         // flat window (which meter moved is unresolved) draws no marker on a line that
-                        // never actually stepped.
+                        // never actually stepped. The newest step states the published five-hour
+                        // change where the block publishes its regimes (windowChangePct).
                         events={[]}
                         selectedPlan={plan}
                         fmtValue={fmtTokens}
                         plotRight={732}
                         title="Effective window size over time"
                         changeFromLevels
+                        changePct={windowPct}
                         accountLines={windowAccountLines}
                         missingFor={modelLabel(model)}
                         shown={planChart === "window"}
@@ -1933,65 +1947,50 @@ export default function ClaudeUsageTracker({
           </section>
         )}
 
-        {!unavailable && data && contributed && (
+        {!unavailable && data && data.contributed && (
           <section id="contributors">
-            {/* The same pickers as the hero, so a reader comparing their own plan does not have
-                to scroll back up. Plan picks whose readings are plotted. On the two token tabs,
-                model picks each reading's own figure for that model and the tracker's line for
-                it, and lists only the models the readings have figures for. The cost tab has no
-                model picker: its figure is the meter's dollars per 1% across every model. */}
+            {/* The hero's plan picker again, so a reader comparing their own plan does not have
+                to scroll back up. There is no model picker here: every dot is a contributor's own
+                figure across their own mix of models, and the token tabs' dashed line is the
+                tracker's figure for the model picked in the hero, named in its label. The tabs,
+                the picker and the chart stay on every plan, with or without readings. */}
             <h2>From contributors</h2>
-            <p className="sub">{contributed.intro}</p>
-            {hasContribPoints && (
-              <>
-                <div className="chart-tabs" role="tablist" aria-label="Contributor chart">
-                  {CONTRIB_TABS.map((t) => (
-                    <button
-                      key={t.key}
-                      type="button"
-                      role="tab"
-                      aria-selected={t.key === contribTab.key}
-                      className={t.key === contribTab.key ? "on" : undefined}
-                      onClick={() => setContribMetric(t.key)}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                  {/* Plan chooses whose readings are plotted, always. Model appears only on the
-                      token tabs, lists only models the readings cover, and puts the dots and the
-                      tracker's line on the same model; where the hero's model is not among them
-                      it shows the first that is, without changing the hero. No effort picker:
-                      nothing on these charts depends on effort, and a reading does not carry it. */}
-                  <div className="section-sel">
-                    <span className="sel">
-                      <select aria-label="Plan" value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
-                        {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => (
-                          <option key={p} value={p}>{PLAN_LABELS[p]}</option>
-                        ))}
-                      </select>
-                    </span>
-                    {contribModels.length > 0 && (
-                      <span className="sel">
-                        <select aria-label="Model" value={contribModel} onChange={(e) => setModel(e.target.value)}>
-                          {contribModels.map((m) => (
-                            <option key={m} value={m}>{modelLabel(m)}</option>
-                          ))}
-                        </select>
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <ContributorsChart
-                  points={data.contributed[plan]!.points!}
-                  tab={contribTab}
-                  reference={contribTab.reference(contribWt, fleetUsdPerPercent(data, plan))}
-                  model={contribModel}
-                />
-              </>
-            )}
+            {contributed && <p className="sub">{contributed.intro}</p>}
+            <div className="chart-tabs" role="tablist" aria-label="Contributor chart">
+              {CONTRIB_TABS.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={t.key === contribTab.key}
+                  className={t.key === contribTab.key ? "on" : undefined}
+                  onClick={() => setContribMetric(t.key)}
+                >
+                  {t.label}
+                </button>
+              ))}
+              {/* Plan chooses whose readings are plotted. No model or effort picker: a reading
+                  is its contributor's own mix of models, and does not carry effort. */}
+              <div className="section-sel">
+                <span className="sel">
+                  <select aria-label="Plan" value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
+                    {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => (
+                      <option key={p} value={p}>{PLAN_LABELS[p]}</option>
+                    ))}
+                  </select>
+                </span>
+              </div>
+            </div>
+            <ContributorsChart
+              points={data.contributed[plan]?.points ?? []}
+              tab={contribTab}
+              reference={contribTab.reference(wt, fleetUsdPerPercent(data, plan))}
+              modelName={modelLabel(model)}
+              planLabel={PLAN_LABELS[plan]}
+            />
             {/* The cost sentence belongs to the cost chart, so it follows its own tab rather than
                 sitting under whichever chart happens to be open. */}
-            {contributed.cost && (!hasContribPoints || contribTab.key === "usd") && (
+            {contributed?.cost && contribTab.key === "usd" && (
               <p className="sub">{contributed.cost}</p>
             )}
           </section>

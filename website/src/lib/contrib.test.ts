@@ -407,10 +407,9 @@ describe("contributorSentences", () => {
 describe("contrib chart helpers", () => {
   const P = (t: string, c: number, usd: number | null, coarse = false): ContribPoint => ({ t, c, usd_per_pct: usd, coarse });
 
-  it("draws a reading without a per-model figure as missing, never as its combined total (audit finding 8)", () => {
-    // The two max20 points in the published JSON at the audit. The second carries a combined
-    // weekly figure of 28,716,453 tokens per 1% and no per-model map: the chart used to draw
-    // 2,871,645,300 tokens under whichever model the reader picked.
+  it("plots each reading's own figure across its own mix of models: tokens per 1% times 100", () => {
+    // The two max20 points in the published JSON. The per-model maps are no longer read: the
+    // chart's dots are each contributor's own figure, whichever models it came from.
     const withMap: ContribPoint = {
       t: "2026-09-09T13:16:16Z", c: 0, coarse: false, usd_per_pct: 0.8977,
       tokens_per_pct: 2_866_282, tokens_per_pct_by_model: { "claude-fable-5-1": 2_948_230 },
@@ -419,17 +418,13 @@ describe("contrib chart helpers", () => {
     const combinedOnly: ContribPoint = {
       t: "2026-09-16T00:11:31Z", c: 1, coarse: true, usd_per_pct: 1.2843, tokens_per_pct: null, tokens_per_pct_week: 28_716_453,
     };
-    for (const model of ["claude-sonnet-5", "claude-opus-5", "claude-fable-5-1"]) {
-      expect(contribPointValue(combinedOnly, "weekly", model)).toBeNull();
-      expect(contribPointValue(combinedOnly, "window", model)).toBeNull();
-    }
-    // A map without the selected model is missing data for that model too.
-    expect(contribPointValue(withMap, "weekly", "claude-sonnet-5")).toBeNull();
-    expect(contribPointValue(withMap, "window", "claude-sonnet-5")).toBeNull();
-    expect(contribPointValue(withMap, "weekly", "claude-fable-5-1")).toBe(1_115_941_400);
-    expect(contribPointValue(withMap, "window", "claude-fable-5-1")).toBe(294_823_000);
-    // Dollars per 1% combine every model by design, and compare with a meter budget that does too.
-    expect(contribPointValue(combinedOnly, "usd", "claude-sonnet-5")).toBe(1.2843);
+    expect(contribPointValue(withMap, "window")).toBe(286_628_200);
+    expect(contribPointValue(withMap, "weekly")).toBe(1_332_383_300);
+    // A null figure is missing, not zero.
+    expect(contribPointValue(combinedOnly, "window")).toBeNull();
+    expect(contribPointValue(combinedOnly, "weekly")).toBe(2_871_645_300);
+    // Dollars per 1% are not scaled.
+    expect(contribPointValue(combinedOnly, "usd")).toBe(1.2843);
   });
 
   it("contribGroups groups by contributor, sorted by time within each group, groups sorted by c", () => {

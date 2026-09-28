@@ -22,6 +22,7 @@ import {
   weeklyRegimeLevelsFor,
   weeklyTokenRegimeLevelsFor,
   windowTokenRegimeLevelsFor,
+  windowChangePct,
   weeklyWindowRatio,
   modelPlanLimit,
   rateStaleAfter,
@@ -85,6 +86,9 @@ import schema3Measured from "./__fixtures__/claude-usage-schema3-measured-rates.
 import schema3Shortfall from "./__fixtures__/claude-usage-schema3-shortfall.json";
 // Tracker wf-59: the window measured in tokens, per class and per family.
 import schema3WindowTokens from "./__fixtures__/claude-usage-schema3-window-tokens.json";
+// A trimmed copy of the live file with three published five-hour regimes on window_tokens and
+// window_credits, the newest 38% above the one before it.
+import windowRegimes from "./__fixtures__/claude-usage-window-regimes.json";
 // Tracker wf-61: the same file with the weekly change also stated in tokens a week buys, and the
 // window figure split either side of the 14 September cut it was measured across.
 import schema3TokensPerWeek from "./__fixtures__/claude-usage-schema3-tokens-per-week.json";
@@ -2346,5 +2350,68 @@ describe("per-account lines on the plan charts", () => {
     expect(accountWindowLines(bare).lines).toEqual([]);
     expect(accountWindowTokenLines(bare, "claude-opus-5").lines).toEqual([]);
     expect(accountWeeklyTokenLines(bare, "claude-opus-5").lines).toEqual([]);
+  });
+});
+
+describe("windowTokenRegimeLevelsFor with published five-hour regimes", () => {
+  const J = windowRegimes as unknown as UsageJson;
+  const OPUS = "claude-opus-5";
+  const FABLE = "claude-fable-5-1";
+  const regimes = J.credits!.window_tokens!.regimes!;
+  const withoutRegimes = (): UsageJson => {
+    const j = structuredClone(J);
+    delete j.credits!.window_tokens!.regimes;
+    return j;
+  };
+
+  it("draws one level per regime on Max 20x, at the published values for the measured family", () => {
+    const levels = windowTokenRegimeLevelsFor(J, "max20", OPUS);
+    expect(levels).toHaveLength(3);
+    expect(levels.map((l) => l.tokens)).toEqual(regimes.map((r) => r.value));
+    // The first opens where the weekly levels do; the rest open and close on the published dates.
+    expect(levels[0].start).toBe(weeklyRegimeLevelsFor(J, "max20")[0].start);
+    expect(levels.map((l) => l.end).slice(0, 2)).toEqual(["2026-09-14T12:00:00+00:00", "2026-09-22T00:00:00+00:00"]);
+    expect(levels[2].start).toBe("2026-09-22T00:00:00+00:00");
+    expect(levels[2].end).toBe(weeklyRegimeLevelsFor(J, "max20").at(-1)!.end);
+    expect(levels.every((l) => !l.inferred)).toBe(true);
+    expect(levels[1].tokensInterval).toEqual(regimes[1].interval);
+    // The newest step is +38%.
+    expect(Math.round((levels[2].tokens / levels[1].tokens - 1) * 100)).toBe(38);
+  });
+
+  it("converts each regime to the selected model and plan", () => {
+    const perWindow = windowTokensValueFor(J, FABLE)!;
+    const raw = J.credits!.window_tokens!.value!;
+    const max20 = windowTokenRegimeLevelsFor(J, "max20", FABLE);
+    regimes.forEach((r, i) => expect(max20[i].tokens).toBeCloseTo((r.value * perWindow) / raw, 3));
+    const pro = windowTokenRegimeLevelsFor(J, "pro", OPUS);
+    expect(pro).toHaveLength(3);
+    regimes.forEach((r, i) => expect(pro[i].tokens).toBeCloseTo(r.value * 0.05, 3));
+    regimes.forEach((r, i) =>
+      expect(pro[i].tokensInterval).toEqual(r.interval!.map((n) => n! * 0.05)),
+    );
+    // Pro's levels are Max 20x's figure scaled, so they draw inferred.
+    expect(pro.every((l) => l.inferred)).toBe(true);
+  });
+
+  it("keeps the weekly levels and the cut when the file publishes no regimes", () => {
+    const j = withoutRegimes();
+    const levels = windowTokenRegimeLevelsFor(j, "max20", OPUS);
+    expect(levels.length).toBe(weeklyRegimeLevelsFor(j, "max20").length);
+    expect(levels.map((l) => l.start)).toEqual(weeklyRegimeLevelsFor(j, "max20").map((l) => l.start));
+    const tokens = new Set(levels.map((l) => l.tokens));
+    const wt = j.credits!.window_tokens!;
+    expect([...tokens].every((t) => t === wt.all.value || t === wt.before!.value)).toBe(true);
+  });
+
+  it("labels the newest step with last_change only for a five-hour change on a file with regimes", () => {
+    expect(windowChangePct(J)).toBe(38);
+    expect(windowChangePct(withoutRegimes())).toBeNull();
+    const weekly = structuredClone(J);
+    weekly.last_change!.scope = "weekly";
+    expect(windowChangePct(weekly)).toBeNull();
+    const down = structuredClone(J);
+    down.last_change!.direction = "decreased";
+    expect(windowChangePct(down)).toBe(-38);
   });
 });

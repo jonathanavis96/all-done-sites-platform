@@ -177,7 +177,8 @@ describe("the tracker page renders both schemas", () => {
     expect(text).toContain(`${r.planWindowsPerWeek!.toFixed(1)} five-hour windows per week`);
     // No token row: this file publishes no measured window, and the list-price route that used
     // to fill one is gone (wf-60).
-    expect(text).not.toContain("Tokens per week Pro");
+    // The contributors section's tab and plan picker read "Tokens per week Pro" too, so look above it.
+    expect(text.slice(0, text.indexOf("From contributors"))).not.toContain("Tokens per week Pro");
     expect(row(text, "API value per week")[2]).not.toBe("—");
   });
 
@@ -1940,55 +1941,79 @@ describe("plan chart toggle", () => {
   });
 });
 
-describe("the contributors model picker", () => {
+describe("the contributors section", () => {
   const SNAP = liveSnapshot as unknown as UsageJson;
   const NOW = Date.parse("2026-09-23T12:00:00Z");
-  // The frozen file's max20 readings carry Fable only. One reading also gets an Opus 5 window
-  // figure (and no weekly one), so the window tab has two models and the weekly tab one.
-  function withOpusWindow(): UsageJson {
-    const j = structuredClone(SNAP);
-    const p = j.contributed!.max20!.points![0];
-    p.tokens_per_pct_by_model = { ...p.tokens_per_pct_by_model, "claude-opus-5": 2_500_000 };
-    return j;
-  }
+  const TABS: ContribMetric[] = ["usd", "window", "weekly"];
   function contributors(html: string): string {
     const at = html.indexOf('<section id="contributors">');
     return html.slice(at, html.indexOf("</section>", at));
   }
-  function modelSelect(section: string): string | null {
-    const m = section.match(/<select aria-label="Model"[^>]*>(.*?)<\/select>/);
-    return m ? m[1] : null;
-  }
-  const options = (select: string) => [...select.matchAll(/<option value="([^"]+)"/g)].map((m) => m[1]);
-  const selected = (select: string) => select.match(/<option value="([^"]+)" selected="">/)?.[1];
+  const chartSvg = (section: string) => section.match(/<svg class="chart contrib-chart"[\s\S]*?<\/svg>/)?.[0] ?? null;
 
-  it("offers a plan picker and no model picker on the cost tab", () => {
-    const section = contributors(renderHtml(withOpusWindow(), "max20", "claude-fable-5-1", NOW, "usd"));
-    expect(section).toContain('aria-label="Plan"');
-    expect(modelSelect(section)).toBeNull();
+  it("has a plan picker and no model picker on any tab", () => {
+    for (const plan of ["max20", "pro"] as Plan[]) {
+      for (const tab of TABS) {
+        const section = contributors(renderHtml(SNAP, plan, "claude-fable-5-1", NOW, tab));
+        expect(section).toContain('aria-label="Plan"');
+        expect(section).not.toContain('aria-label="Model"');
+      }
+    }
   });
 
-  it("lists only the models the readings have figures for, per tab", () => {
-    const window = modelSelect(contributors(renderHtml(withOpusWindow(), "max20", "claude-fable-5-1", NOW, "window")));
-    expect(options(window!)).toEqual(["claude-fable-5-1", "claude-opus-5"]);
-    const weekly = modelSelect(contributors(renderHtml(withOpusWindow(), "max20", "claude-fable-5-1", NOW, "weekly")));
-    expect(options(weekly!)).toEqual(["claude-fable-5-1"]);
+  it("keeps the tabs, picker and chart on Pro with no readings, with one line saying so", () => {
+    expect(SNAP.contributed!.pro!.points ?? []).toHaveLength(0);
+    for (const tab of TABS) {
+      const section = contributors(renderHtml(SNAP, "pro", "claude-opus-5", NOW, tab));
+      expect(section).toContain('role="tablist"');
+      expect(section).toContain('aria-label="Plan"');
+      const svg = chartSvg(section);
+      expect(svg).not.toBeNull();
+      expect(svg).toContain("No readings on Pro yet");
+      expect(svg).not.toContain("<circle");
+    }
+    // The token tabs still draw the tracker's line for the hero's model.
+    const text = render(SNAP, "pro", "claude-opus-5", NOW, "window");
+    const wt = computeWindowTokens(SNAP, "pro", "claude-opus-5")!;
+    expect(text).toContain(`tracker ${fmtTokens(wt.perWindowValue!)} \u00b7 Opus 5`);
   });
 
-  it("shows the first listed model where the hero's is absent, and leaves the hero alone", () => {
-    const html = renderHtml(withOpusWindow(), "max20", "claude-sonnet-5", NOW, "window");
-    const window = modelSelect(contributors(html))!;
-    expect(selected(window)).toBe("claude-fable-5-1");
-    // The hero's picker comes first on the page and keeps Sonnet.
-    const hero = html.match(/<select aria-label="Model"[^>]*>(.*?)<\/select>/)![1];
-    expect(selected(hero)).toBe("claude-sonnet-5");
-    // The tracker's line is Fable's window, the same model as the dots, not Sonnet's.
-    const fable = computeWindowTokens(withOpusWindow(), "max20", "claude-fable-5-1")!;
-    const sonnet = computeWindowTokens(withOpusWindow(), "max20", "claude-sonnet-5")!;
-    expect(fable.perWindowValue).not.toBe(sonnet.perWindowValue);
-    const text = render(withOpusWindow(), "max20", "claude-sonnet-5", NOW, "window");
-    const sectionText = text.slice(text.indexOf("From contributors"), text.indexOf("Contribute your own meter"));
-    expect(sectionText).toContain(`tracker ${fmtTokens(fable.perWindowValue!)}`);
-    expect(sectionText).not.toContain(`tracker ${fmtTokens(sonnet.perWindowValue!)}`);
+  it("keeps the section on a plan whose block names no contributors", () => {
+    const j = structuredClone(SNAP);
+    j.contributed!.max5 = { ...j.contributed!.max5!, contributors: 0, points: [] };
+    const section = contributors(renderHtml(j, "max5", "claude-opus-5", NOW, "usd"));
+    expect(chartSvg(section)).toContain("No readings on Max 5x yet");
+  });
+
+  it("plots each reading's own tokens per 1% times 100 on the token tabs, not a per-model figure", () => {
+    // One reading, far above the tracker's line so it sets the scale: the dot then sits at
+    // 1/1.15 of the plot height (y = 200 - 180 / 1.15). Its per-model maps say something else.
+    const j = structuredClone(SNAP);
+    const p = j.contributed!.max20!.points![0];
+    j.contributed!.max20!.points = [
+      {
+        ...p,
+        tokens_per_pct: 50_000_000,
+        tokens_per_pct_week: 200_000_000,
+        tokens_per_pct_by_model: { "claude-opus-5": 1_000 },
+        tokens_per_pct_week_by_model: { "claude-opus-5": 1_000 },
+      },
+    ];
+    const cy = (200 - 180 / 1.15).toString();
+    for (const tab of ["window", "weekly"] as ContribMetric[]) {
+      const svg = chartSvg(contributors(renderHtml(j, "max20", "claude-opus-5", NOW, tab)))!;
+      expect(svg).toContain(`cy="${cy}"`);
+      expect(svg).toContain(fmtTokens((tab === "window" ? 50_000_000 : 200_000_000) * 100 * 1.15));
+    }
+  });
+
+  it("names the hero's model on the tracker's line and says what the dots are", () => {
+    const text = render(SNAP, "max20", "claude-sonnet-5", NOW, "window");
+    const section = text.slice(text.indexOf("From contributors"), text.indexOf("Contribute your own meter"));
+    const wt = computeWindowTokens(SNAP, "max20", "claude-sonnet-5")!;
+    expect(section).toContain(`tracker ${fmtTokens(wt.perWindowValue!)} \u00b7 Sonnet 5`);
+    expect(section).toContain("Each dot is that contributor's own mix of models.");
+    expect(section).toContain("the tracker's figure for the model picked at the top of the page");
+    expect(section).toContain("the plan meter does not count cache reads");
   });
 });
