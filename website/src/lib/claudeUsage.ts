@@ -859,15 +859,21 @@ export function accountWindowsPerWeek(j: UsageJson, plan: Plan): { account: stri
     .sort((a, b) => (a.account < b.account ? -1 : a.account > b.account ? 1 : 0));
 }
 
-// A plan's five-hour windows per week and whether it is inferred from another plan: the plan's own
-// `current` where it has one, else the newest level its weekly chart ends on (kept from PR #76, so
-// a plan is never dropped outright). One function, so the credits route and the dollar route
-// cannot put a different windows-per-week behind two figures of the same quantity.
+// A plan's five-hour windows per week and whether it is inferred from another plan: the newest
+// level its weekly chart ends on, else the plan's own `current` where it has no level. One
+// function, so the credits route and the dollar route cannot put a different windows-per-week
+// behind two figures of the same quantity.
+//
+// The level comes first so the headline states the figure the line ends on (seat 120). `current`
+// is the collector's paired estimate over everything since the weekly change (14 Sep onward),
+// while the newest level is the newest regime alone (since 22 Sep): on the 28 Sep 15:31 refresh
+// they were 4.86 and 4.79, so the headline read "4.9" beside a line ending "4.8".
 export function planWindowsPerWeek(j: UsageJson, plan: Plan): { value: number | null; inferred: boolean } {
   const current = weeklyCurrentFor(j, plan);
-  if (current !== null) return { value: current.value, inferred: current.inferred };
   const level = weeklyRegimeLevelsFor(j, plan).at(-1) ?? null;
-  return { value: level?.windows ?? null, inferred: false };
+  if (level && Number.isFinite(level.windows)) return { value: level.windows, inferred: current?.inferred ?? false };
+  if (current !== null) return { value: current.value, inferred: current.inferred };
+  return { value: null, inferred: false };
 }
 
 export const RANGE_DAYS = [30, 90, 180] as const;
