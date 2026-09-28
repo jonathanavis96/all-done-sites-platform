@@ -100,6 +100,11 @@ import windowRegimes from "./__fixtures__/claude-usage-window-regimes.json";
 // Tracker wf-61: the same file with the weekly change also stated in tokens a week buys, and the
 // window figure split either side of the 14 September cut it was measured across.
 import schema3TokensPerWeek from "./__fixtures__/claude-usage-schema3-tokens-per-week.json";
+// Tracker PR #98's offline rebuild (branch wf/122-five-hour-sides, --now 2026-09-28T17:00Z): each
+// change carries a state, and the 22 Sep change moves both limits.
+import changeStateJson from "./__fixtures__/claude-usage-pr98-change-state.json";
+import live0928Json from "./__fixtures__/claude-usage-live-2026-09-28.json";
+import { changeState, pendingChangeStates, type ChangeRecord } from "./claudeUsage";
 
 const J: UsageJson = {
   generated_at: "2026-09-05T20:15:00+00:00",
@@ -586,14 +591,14 @@ describe("headline", () => {
   // Anthropic changed the limit, and the headline says so directly (reverses finding 4,
   // Jonathan's decision, 2026-09-16).
   it("states the last change", () => {
-    expect(headline(J)).toEqual({ text: "Limits last changed by -14% on 2 Sep 2026 (measured).", tone: "down" });
+    expect(headline(J)).toEqual({ text: "Anthropic last decreased Claude's limits by 14% on 2 Sep 2026.", tone: "down" });
   });
   it("uses window wording when scope is absent (old JSON)", () => {
     const withoutScope: UsageJson = {
       ...J,
       last_change: { date: "2026-09-02", direction: "decreased", percent: 14, model: "claude-sonnet-5" },
     };
-    expect(headline(withoutScope).text).toBe("Limits last changed by -14% on 2 Sep 2026 (measured).");
+    expect(headline(withoutScope).text).toBe("Anthropic last decreased Claude's limits by 14% on 2 Sep 2026.");
   });
   it("states a weekly decrease", () => {
     const weekly: UsageJson = {
@@ -601,7 +606,7 @@ describe("headline", () => {
       last_change: { date: "2026-08-21", direction: "decreased", percent: 36, model: "all", scope: "weekly" },
     };
     expect(headline(weekly)).toEqual({
-      text: "Weekly limit last changed by -36% on 21 Aug 2026 (measured).",
+      text: "Anthropic last decreased Claude's weekly limit by 36% on 21 Aug 2026.",
       tone: "down",
     });
   });
@@ -611,7 +616,7 @@ describe("headline", () => {
       last_change: { date: "2026-08-21", direction: "increased", percent: 20, model: "all", scope: "weekly" },
     };
     expect(headline(weekly)).toEqual({
-      text: "Weekly limit last changed by +20% on 21 Aug 2026 (measured).",
+      text: "Anthropic last increased Claude's weekly limit by 20% on 21 Aug 2026.",
       tone: "up",
     });
   });
@@ -627,7 +632,7 @@ describe("headline", () => {
       },
     };
     const text = headline(certified).text;
-    expect(text).toBe("Weekly limit last changed by -31% on 14 Sep 2026 (measured).");
+    expect(text).toBe("Anthropic last decreased Claude's weekly limit by 31% on 14 Sep 2026.");
   });
   it("prefers the pooled regime step over the per-account onset date, so the headline matches the chart's own marker", () => {
     // `date` is the earliest PER-ACCOUNT onset (2026-09-11); the pooled Max 20x regime the
@@ -645,7 +650,7 @@ describe("headline", () => {
         evidence_quality: "certified", provisional: false, legacy_uncertain: false,
       },
     };
-    expect(headline(j).text).toBe("Weekly limit last changed by -24% on 14 Sep 2026 (measured).");
+    expect(headline(j).text).toBe("Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.");
   });
   it("falls back to the per-account onset date when the pooled step is not published", () => {
     const j: UsageJson = {
@@ -657,12 +662,12 @@ describe("headline", () => {
         evidence_quality: "certified", provisional: false, legacy_uncertain: false,
       },
     };
-    expect(headline(j).text).toBe("Weekly limit last changed by -24% on 11 Sep 2026 (measured).");
+    expect(headline(j).text).toBe("Anthropic last decreased Claude's weekly limit by 24% on 11 Sep 2026.");
   });
   it("states no change when none", () => {
     const h = headline({ ...J, last_change: null });
     expect(h.tone).toBe("flat");
-    expect(h.text).toBe("Limits unchanged since 1 May 2026 (measured).");
+    expect(h.text).toBe("Anthropic hasn't changed Claude's limits since 1 May 2026.");
   });
   it("skips held (backfilled) rows and uses the first genuinely measured date", () => {
     const withHeld: UsageJson = {
@@ -676,7 +681,7 @@ describe("headline", () => {
         ],
       },
     };
-    expect(headline(withHeld).text).toBe("Limits unchanged since 1 Aug 2026 (measured).");
+    expect(headline(withHeld).text).toBe("Anthropic hasn't changed Claude's limits since 1 Aug 2026.");
   });
   it("falls back to the earliest held date when every row is held (#74 behaviour)", () => {
     const allHeld: UsageJson = {
@@ -690,7 +695,7 @@ describe("headline", () => {
       },
     };
     expect(allHeld.history["claude-sonnet-5"] && headline(allHeld).text).toBe(
-      "Limits unchanged since 1 Jul 2026 (measured).",
+      "Anthropic hasn't changed Claude's limits since 1 Jul 2026.",
     );
   });
   it("takes the earliest non-held date across every model's history (#74 behaviour)", () => {
@@ -706,7 +711,7 @@ describe("headline", () => {
         [FABLE]: [{ date: "2026-01-15", tokens_per_window: null, source: "passive", interpolated: false }],
       },
     };
-    expect(headline(leading).text).toBe("Limits unchanged since 1 Jan 2026 (measured).");
+    expect(headline(leading).text).toBe("Anthropic hasn't changed Claude's limits since 1 Jan 2026.");
   });
 });
 describe("fmtTokens", () => {
@@ -1517,14 +1522,14 @@ describe("the credits block", () => {
   });
 
   it("says what the change was measured on, and says what it does not resolve", () => {
-    // The headline states the measured change only (seat 123): "Weekly limit last changed by
+    // The #78 headline, restored (Jonathan's decision, 2026-09-20): the plain "Anthropic last
     // -24% on <date> (measured)", not the onset-bounded ratio wording. `changeLines` still
     // carries the onset-bounded figures, moved to a details block rather than deleted.
     // The fixture's per-account onset (`date`) is 11 Sep; the pooled Max 20x regime step it
     // publishes under `onset.from_windows` -- the date the windows-per-week chart itself steps
     // on and marks -- is 14 Sep. The headline uses the pooled date so the two never disagree.
     expect(headline(CREDITS)).toEqual({
-      text: "Weekly limit last changed by -24% on 14 Sep 2026 (measured).",
+      text: "Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.",
       tone: "down",
     });
     expect(changeLines(CREDITS)).toEqual([
@@ -1541,7 +1546,7 @@ describe("the credits block", () => {
     expect(WITHOUT.last_change!.metric).toBe("weekly_to_five_hour_ratio");
     // Same pooled-step date as CREDITS above: WITHOUT is a clone with only the credits block removed.
     expect(headline(WITHOUT)).toEqual({
-      text: "Weekly limit last changed by -24% on 14 Sep 2026 (measured).",
+      text: "Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.",
       tone: "down",
     });
     expect(changeLines(WITHOUT)).toEqual([]);
@@ -1934,17 +1939,17 @@ describe("the weekly change measured in tokens a week buys", () => {
     expect(TPW.last_change!.percent).toBe(22);
     expect(TPW.last_change!.tokens_per_week_change!.percent).toBe(15);
     expect(headline(TPW)).toEqual({
-      text: "Weekly limit last changed by -15% on 14 Sep 2026 (measured).",
+      text: "Anthropic last decreased Claude's weekly limit by 15% on 14 Sep 2026.",
       tone: "down",
     });
   });
 
   it("falls back to the windows-per-week figure where the tokens figure is not published", () => {
-    expect(headline(WITHOUT).text).toBe("Weekly limit last changed by -22% on 14 Sep 2026 (measured).");
+    expect(headline(WITHOUT).text).toBe("Anthropic last decreased Claude's weekly limit by 22% on 14 Sep 2026.");
     // And a file with no weekly scope at all is untouched by any of this.
     const windowScope: UsageJson = structuredClone(TPW);
     windowScope.last_change!.scope = "window";
-    expect(headline(windowScope).text).toBe("Limits last changed by -22% on 14 Sep 2026 (measured).");
+    expect(headline(windowScope).text).toBe("Anthropic last decreased Claude's limits by 22% on 14 Sep 2026.");
   });
 
   it("reads the published change off the event or off last_change, signed for the chart marker", () => {
@@ -2511,5 +2516,69 @@ describe("the tracker's per-week and per-account regimes (seat 119)", () => {
     // The fallback is flat per side of the cut: at most two values per account.
     for (const l of window.lines) expect(new Set(l.levels.map((v) => v.value)).size).toBeLessThanOrEqual(2);
     expect(accountWindowLines(j).lines.find((l) => l.account === "a1")!.levels.map((l) => l.value)).toEqual([6.52, 5.01]);
+  });
+});
+
+describe("the change record with a state (tracker PR #98)", () => {
+  const PR98 = changeStateJson as unknown as UsageJson;
+  const base = PR98.last_change!;
+  const withChange = (patch: Partial<ChangeRecord>, events = PR98.events): UsageJson => ({
+    ...PR98,
+    last_change: { ...base, ...patch },
+    events,
+  });
+  const STATES = ["measuring", "provisional", "measured"] as const;
+
+  const BOTH = "Anthropic last increased Claude's limits by 30% on 22 Sep 2026.";
+
+  it("states a change to both limits in the pre-#113 limits sentence, with the five-hour figure", () => {
+    expect(base.metric).toBe("five_hour_limit");
+    expect(base.scope).toBe("undetermined");
+    expect(base.change_pct).toBe(30.5);
+    expect(headline(PR98)).toEqual({ text: BOTH, tone: "up" });
+  });
+
+  it("puts no state word in the headline", () => {
+    for (const state of STATES) expect(headline(withChange({ state })).text).toBe(BOTH);
+    expect(changeState({ state: "settling" })).toBeNull();
+    expect(headline(withChange({ state: "settling" })).text).toBe(BOTH);
+  });
+
+  it("keeps the limits sentence whatever scope a fitted change carries", () => {
+    for (const scope of ["five_hour", "weekly", "both", "undetermined", "sideways"]) {
+      expect(headline(withChange({ scope: scope as ChangeRecord["scope"] })).text, scope).toBe(BOTH);
+    }
+  });
+
+  it("states a fitted decrease by the record's own rounded percent", () => {
+    const down = withChange({ change_pct: -12.4, percent: 12, direction: "decreased", weekly_limit_change_pct: null });
+    expect(headline(down)).toEqual({ text: "Anthropic last decreased Claude's limits by 12% on 22 Sep 2026.", tone: "down" });
+  });
+
+  it("states a windows-per-week-only record in the same sentence, by its published percent", () => {
+    const j = withChange({ metric: "windows_per_week", change_pct: -2, percent: 2, direction: "decreased", weekly_limit_change_pct: null });
+    expect(headline(j)).toEqual({ text: "Anthropic last decreased Claude's limits by 2% on 22 Sep 2026.", tone: "down" });
+  });
+
+  it("names no scope or metric field for a metric it does not know", () => {
+    const unknown = withChange({ metric: "something_new", scope: "sideways" as ChangeRecord["scope"] });
+    expect(headline(unknown).text).toBe(BOTH);
+  });
+
+  it("lists the changes a chart marker should mark as not yet measured", () => {
+    expect(pendingChangeStates(PR98)).toEqual([]);
+    const measuring = withChange(
+      { state: "measuring" },
+      PR98.events!.map((e) => (e.date === "2026-09-22" ? { ...e, state: "measuring" } : e)),
+    );
+    expect(pendingChangeStates(measuring)).toEqual([{ date: "2026-09-22", state: "measuring" }]);
+    expect(pendingChangeStates(withChange({ state: "provisional" }))).toEqual([{ date: "2026-09-22", state: "provisional" }]);
+  });
+
+  it("leaves today's live file as it was", () => {
+    const live = live0928Json as unknown as UsageJson;
+    expect(live.last_change!.state).toBeUndefined();
+    expect(headline(live)).toEqual({ text: "Anthropic last increased Claude's limits by 5% on 22 Sep 2026.", tone: "up" });
+    expect(pendingChangeStates(live)).toEqual([]);
   });
 });

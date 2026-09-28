@@ -73,6 +73,9 @@ import regimeContract from "@/lib/__fixtures__/claude-usage-regime-contract.json
 import live0928 from "@/lib/__fixtures__/claude-usage-live-2026-09-28.json";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+// Tracker PR #98's offline rebuild: every change carries a state, and the 22 Sep change moves both
+// the five-hour and the weekly limit.
+import changeStateJson from "@/lib/__fixtures__/claude-usage-pr98-change-state.json";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
   return renderToString(
@@ -159,7 +162,7 @@ describe("the tracker page renders both schemas", () => {
     const text = render(LIVE);
     expect(text).not.toContain("Data temporarily unavailable");
     // Headline: Anthropic changed the limit, not an "observed ratio" on the account.
-    expect(text).toContain("Weekly limit last changed by -29% on 14 Sep 2026 (measured).");
+    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 29% on 14 Sep 2026.");
     expect(text).not.toContain("observed weekly-to-window ratio");
     // #74's single dollar figure, labelled "API value", sourced from the meter budget.
     expect(text).toContain("of API value per 5-hour window");
@@ -512,7 +515,7 @@ describe("the credits block on the page", () => {
     // The #78 headline (Jonathan's decision, 2026-09-20), not the "fell by ... between" wording.
     // Dated to the pooled regime step (14 Sep), not the earliest per-account onset (11 Sep): that
     // is the date the windows-per-week chart itself steps on and marks.
-    expect(hero).toContain("Weekly limit last changed by -24% on 14 Sep 2026 (measured).");
+    expect(hero).toContain("Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.");
     expect(hero).not.toContain("The number of five-hour windows in a week fell by");
     // Nothing sits between the h1 and the pill row (matches #78's hero exactly).
     expect(hero).not.toContain("Five-hour windows per week: 6.5");
@@ -733,7 +736,7 @@ describe("the credits block on the page", () => {
   it("renders a file with no credits block as it does today, bar the window it cannot state", () => {
     const text = render(WITHOUT, "max20", "claude-opus-5");
     // Pooled regime step (14 Sep), not the earliest per-account onset (11 Sep).
-    expect(text).toContain("Weekly limit last changed by -24% on 14 Sep 2026 (measured).");
+    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.");
     // The 589M the dollar route used to lead on is the list-price window, and no figure on this
     // page comes from it any more (wf-60).
     expect(text).toContain("tokens per 5-hour window: window tokens not yet published");
@@ -1242,7 +1245,7 @@ describe("the weekly change stated in tokens a week buys", () => {
 
   it("says the tokens-per-week figure in the headline", () => {
     expect(render(TPW, "max20", OPUS)).toContain(
-      "Weekly limit last changed by -15% on 14 Sep 2026 (measured).",
+      "Anthropic last decreased Claude's weekly limit by 15% on 14 Sep 2026.",
     );
   });
 
@@ -1295,7 +1298,7 @@ describe("the weekly change stated in tokens a week buys", () => {
 
   it("renders the old headline and the old levels for a file without the new fields", () => {
     const text = render(WITHOUT, "max20", OPUS);
-    expect(text).toContain("Weekly limit last changed by -22% on 14 Sep 2026 (measured).");
+    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 22% on 14 Sep 2026.");
     const svg = chart(WITHOUT, "Tokens per week");
     expect(svg).toContain("3253M");
     expect(svg).toContain("2545M");
@@ -2362,6 +2365,114 @@ describe("no announcement on the page (seat 123)", () => {
     const h1 = h.slice(h.indexOf("<h1"), h.indexOf("</h1>"));
     // The file's own measured percent (5), not the announced 987.6.
     expect(J.last_change!.percent).toBe(5);
-    expect(h1.replace(/<[^>]+>/g, "")).toBe("Limits last changed by +5% on 22 Sep 2026 (measured).");
+    expect(h1.replace(/<[^>]+>/g, "")).toBe("Anthropic last increased Claude's limits by 5% on 22 Sep 2026.");
+  });
+});
+
+describe("how settled a change is (tracker PR #98)", () => {
+  const PR98 = changeStateJson as unknown as UsageJson;
+  const TITLES = {
+    window: "Effective window size over time",
+    tokens: "Tokens per week over time",
+    windows: "Five-hour windows per week over time",
+  } as const;
+  const html = (j: UsageJson, chart: PlanChart) =>
+    renderToString(
+      <HelmetProvider context={{}}>
+        <MemoryRouter>
+          <ClaudeUsageTracker initial={j} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart={chart} />
+        </MemoryRouter>
+      </HelmetProvider>,
+    ).replace(/<!-- -->/g, "");
+  const h1Of = (h: string) => h.slice(h.indexOf("<h1"), h.indexOf("</h1>")).replace(/<[^>]+>/g, "");
+  // Every change marker label on one tab's chart.
+  const markers = (j: UsageJson, chart: PlanChart) => {
+    const h = html(j, chart);
+    const at = h.indexOf(`aria-label="${TITLES[chart]}`);
+    const svg = h.slice(h.lastIndexOf("<svg", at), h.indexOf("</svg>", at));
+    return [...svg.matchAll(/<text [^>]*style="fill:#[0-9A-F]{6};font-weight:600">([^<]*)<\/text>/g)].map((m) => m[1]);
+  };
+  const inState = (state: string): UsageJson => {
+    const j = structuredClone(PR98);
+    for (const e of j.events ?? []) if (e.date === "2026-09-22") e.state = state;
+    j.last_change!.state = state;
+    return j;
+  };
+
+  it("states a change to both limits in the pre-#113 limits sentence, with no state word", () => {
+    const BOTH = "Anthropic last increased Claude's limits by 30% on 22 Sep 2026.";
+    expect(h1Of(html(PR98, "window"))).toBe(BOTH);
+    for (const state of ["measuring", "provisional"]) expect(h1Of(html(inState(state), "window")), state).toBe(BOTH);
+    // The #78 colouring: the direction and the figure in the tone's colour, Claude in its own.
+    const h = html(PR98, "window");
+    const h1 = h.slice(h.indexOf("<h1"), h.indexOf("</h1>"));
+    expect(h1).toContain('<span class="up">increased</span>');
+    expect(h1).toContain('<span class="up">30%</span>');
+    expect(h1).toContain('<span class="claude">Claude</span>');
+  });
+
+  it("escapes the headline text before it becomes markup", () => {
+    const j = structuredClone(PR98);
+    Object.assign(j.last_change!, { percent: "<img src=x onerror=alert(1)>" });
+    const h = html(j, "window");
+    const h1 = h.slice(h.indexOf("<h1"), h.indexOf("</h1>"));
+    expect(h1).not.toContain("<img");
+    expect(h1).toContain("&lt;img");
+  });
+
+  const MEASURED = {
+    window: ["-4% on 14 Sep", "+30% on 22 Sep"],
+    tokens: ["-26% on 14 Sep", "+28% on 22 Sep"],
+    windows: ["-22% on 14 Sep", "-2% on 22 Sep"],
+  } as const;
+
+  it("gives each tab's marker its own percent, with no state once measured", () => {
+    for (const chart of ["window", "tokens", "windows"] as PlanChart[]) expect(markers(PR98, chart), chart).toEqual(MEASURED[chart]);
+  });
+
+  it("adds the state after the date while a change is measuring or provisional", () => {
+    for (const state of ["measuring", "provisional"]) {
+      for (const chart of ["window", "tokens", "windows"] as PlanChart[]) {
+        const [cut, change] = MEASURED[chart];
+        expect(markers(inState(state), chart), `${state} ${chart}`).toEqual([cut, `${change} (${state})`]);
+      }
+    }
+  });
+
+  it("keeps a marker that rounds to 0% hidden, whatever its state", () => {
+    // The five-hour step made flat: the window tab then has no 22 Sep marker to carry the state.
+    const j = inState("measuring");
+    const regimes = j.credits!.window_tokens!.regimes!;
+    const last = regimes.at(-1) as unknown as Record<string, unknown>, prev = regimes.at(-2) as unknown as Record<string, unknown>;
+    for (const k of Object.keys(last)) if (typeof last[k] === "number" && typeof prev[k] === "number") last[k] = prev[k];
+    expect(markers(j, "window").some((m) => m.includes("22 Sep"))).toBe(false);
+  });
+
+  it("names no raw scope, metric or state field, whatever scope and metric carry", () => {
+    for (const [scope, metric] of [
+      ["both", "five_hour_limit"],
+      ["undetermined", "windows_per_week"],
+      ["sideways", "something_new"],
+    ]) {
+      const j = inState("provisional");
+      Object.assign(j.last_change!, { scope, metric });
+      for (const e of j.events ?? []) if (e.date === "2026-09-22") Object.assign(e, { scope, metric });
+      for (const chart of ["window", "tokens", "windows"] as PlanChart[]) {
+        const h = html(j, chart);
+        const text = h.replace(/<[^>]+>/g, " ");
+        for (const raw of ["five_hour_limit", "windows_per_week", "something_new", "sideways", "undetermined"]) {
+          expect(text, `${scope} ${metric} ${chart}`).not.toContain(raw);
+        }
+      }
+      expect(h1Of(html(j, "window")), `${scope} ${metric}`).toBe("Anthropic last increased Claude's limits by 30% on 22 Sep 2026.");
+    }
+  });
+
+  it("renders today's live file as before: no state anywhere, the same headline and markers", () => {
+    const live = live0928 as unknown as UsageJson;
+    expect(h1Of(html(live, "window"))).toBe("Anthropic last increased Claude's limits by 5% on 22 Sep 2026.");
+    expect(markers(live, "window")).toEqual(["-4% on 14 Sep", "+5% on 22 Sep"]);
+    expect(markers(live, "tokens")).toEqual(["-26% on 14 Sep"]);
+    expect(markers(live, "windows")).toEqual(["-22% on 14 Sep", "-5% on 22 Sep"]);
   });
 });
