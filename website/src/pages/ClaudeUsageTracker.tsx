@@ -56,7 +56,9 @@ import {
   perWeekRegimesOf,
   windowChangePct,
   tokensPerWeekChangePct,
+  pendingChangeStates,
   type AccountLines,
+  type ChangeState,
   type ContribPoint,
   type CreditFigureText,
   type Effort,
@@ -385,6 +387,7 @@ function LevelChart({
   changeFromLevels,
   changePct,
   markEvents,
+  pendingStates,
   accountLines,
   missingFor,
   shown = true,
@@ -412,6 +415,9 @@ function LevelChart({
   // A change the drawn line already steps at within a few days is that step's marker; any other is
   // marked at its own date with this chart's own movement there, which is 0% and grey.
   markEvents?: UsageEvent[];
+  // Published changes not yet measured (tracker PR #98): a marker within a few days of one says
+  // its state after the date, e.g. "+30% on 22 Sep (measuring)".
+  pendingStates?: { date: string; state: ChangeState }[];
   // One line per watched Max 20x account, in the account colours the speed-by-account chart uses,
   // with the same legend and the same "No data for ..." note for an account that has nothing to
   // draw here.
@@ -535,6 +541,11 @@ function LevelChart({
     rawMarkers.push({ x: xDay(ev.date), date: ev.date, pct, text: `${markerPctText(pct)} on ${fmtDateShort(utcDay(ev.date))}` });
   }
   rawMarkers.sort((a, b) => a.x - b.x);
+  for (const m of rawMarkers) {
+    const at = day(utcDay(m.date));
+    const pending = (pendingStates ?? []).find((p) => Math.abs(day(p.date) - at) <= NEAR_MS);
+    if (pending) m.text = `${m.text} (${pending.state})`;
+  }
   // A change that moves this chart's own quantity by less than half a percent is not a change on
   // this tab: no line, no label, and no legend entry (seat 123: Tokens per week drew "0% on 22 Sep").
   const shownMarkers = rawMarkers.filter((m) => !markerRoundsToZero(m.pct));
@@ -1274,6 +1285,7 @@ export default function ClaudeUsageTracker({
         : [],
     [data, perWeekRegimes],
   );
+  const pendingStates = useMemo(() => (data ? pendingChangeStates(data) : []), [data]);
   const weeklyMeasuredEvents = useMemo(() => measuredEvents.filter((e) => e.scope === "weekly"), [measuredEvents]);
   const weeklyTokenLevels = useMemo(
     () =>
@@ -1615,7 +1627,13 @@ export default function ClaudeUsageTracker({
           {!unavailable && h && (
             <h1
               dangerouslySetInnerHTML={{
-                __html: h.text.replace(/([-+]\d+(?:\.\d+)?%)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`),
+                // Each figure in its own sign's colour: a change can move both limits (tracker PR
+                // #98). The text is escaped first, since a fallback headline quotes the tracker's label.
+                __html: h.text
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/[-+]\d+(?:\.\d+)?%/g, (pct) => `<span class="${pct.startsWith("-") ? "down" : "up"}">${pct}</span>`),
               }}
             />
           )}
@@ -1903,6 +1921,7 @@ export default function ClaudeUsageTracker({
                         changeFromLevels
                         changePct={windowPct}
                         markEvents={measuredEvents}
+                        pendingStates={pendingStates}
                         accountLines={windowAccountLines}
                         missingFor={modelLabel(model)}
                         shown={planChart === "window"}
@@ -1955,6 +1974,7 @@ export default function ClaudeUsageTracker({
                       title="Tokens per week over time"
                       changeFromLevels
                       markEvents={weeklyMeasuredEvents}
+                      pendingStates={pendingStates}
                       accountLines={weeklyTokenAccountLines}
                       missingFor={modelLabel(model)}
                       shown={planChart === "tokens"}
@@ -1992,6 +2012,7 @@ export default function ClaudeUsageTracker({
                       overlay={weeklyOverlay}
                       changeFromLevels
                       markEvents={measuredEvents}
+                      pendingStates={pendingStates}
                       accountLines={windowsAccountLines}
                       missingFor="five-hour windows per week"
                       shown={planChart === "windows"}

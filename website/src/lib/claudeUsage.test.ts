@@ -100,6 +100,11 @@ import windowRegimes from "./__fixtures__/claude-usage-window-regimes.json";
 // Tracker wf-61: the same file with the weekly change also stated in tokens a week buys, and the
 // window figure split either side of the 14 September cut it was measured across.
 import schema3TokensPerWeek from "./__fixtures__/claude-usage-schema3-tokens-per-week.json";
+// Tracker PR #98's offline rebuild (branch wf/122-five-hour-sides, --now 2026-09-28T17:00Z): each
+// change carries a state, and the 22 Sep change moves both limits.
+import changeStateJson from "./__fixtures__/claude-usage-pr98-change-state.json";
+import live0928Json from "./__fixtures__/claude-usage-live-2026-09-28.json";
+import { changeFigures, changeState, pendingChangeStates, type ChangeRecord } from "./claudeUsage";
 
 const J: UsageJson = {
   generated_at: "2026-09-05T20:15:00+00:00",
@@ -2511,5 +2516,116 @@ describe("the tracker's per-week and per-account regimes (seat 119)", () => {
     // The fallback is flat per side of the cut: at most two values per account.
     for (const l of window.lines) expect(new Set(l.levels.map((v) => v.value)).size).toBeLessThanOrEqual(2);
     expect(accountWindowLines(j).lines.find((l) => l.account === "a1")!.levels.map((l) => l.value)).toEqual([6.52, 5.01]);
+  });
+});
+
+describe("the change record with a state (tracker PR #98)", () => {
+  const PR98 = changeStateJson as unknown as UsageJson;
+  const base = PR98.last_change!;
+  const withChange = (patch: Partial<ChangeRecord>, events = PR98.events): UsageJson => ({
+    ...PR98,
+    last_change: { ...base, ...patch },
+    events,
+  });
+  const STATES = ["measuring", "provisional", "measured"] as const;
+
+  it("states both limits' changes and the state, from the rebuilt file", () => {
+    expect(base.metric).toBe("five_hour_limit");
+    expect(base.scope).toBe("undetermined");
+    expect(headline(PR98)).toEqual({
+      text: "Limits last changed on 22 Sep 2026: five-hour limit +30.5%, weekly limit +27.9% (measured).",
+      tone: "up",
+    });
+  });
+
+  it("states both limits in every state", () => {
+    for (const state of STATES) {
+      expect(headline(withChange({ state })).text).toBe(
+        `Limits last changed on 22 Sep 2026: five-hour limit +30.5%, weekly limit +27.9% (${state}).`,
+      );
+    }
+  });
+
+  it("states the five-hour limit alone where no weekly change is published", () => {
+    for (const state of STATES) {
+      const j = withChange({ state, scope: "five_hour", weekly_limit_change_pct: null, weekly_limit_change_interval_pct: null });
+      expect(headline(j).text).toBe(`Limits last changed on 22 Sep 2026: five-hour limit +30.5% (${state}).`);
+    }
+  });
+
+  it("states the weekly limit alone where only that is published", () => {
+    for (const state of STATES) {
+      const noFiveHour = withChange({ state, scope: "weekly", change_pct: null, weekly_limit_change_pct: -12.5 });
+      expect(headline(noFiveHour)).toEqual({
+        text: `Limits last changed on 22 Sep 2026: weekly limit -12.5% (${state}).`,
+        tone: "down",
+      });
+      const weeklyMetric = withChange({ state, scope: "weekly", metric: "weekly_limit", change_pct: -12.5, weekly_limit_change_pct: null });
+      expect(headline(weeklyMetric).text).toBe(`Limits last changed on 22 Sep 2026: weekly limit -12.5% (${state}).`);
+    }
+  });
+
+  it("states the windows-per-week change alone, without the tracker's explanation", () => {
+    for (const state of STATES) {
+      const j = withChange({
+        state,
+        metric: "windows_per_week",
+        change_pct: -2,
+        weekly_limit_change_pct: null,
+        label: "Windows per week -2% (measuring; the new model's rate and the limit change not yet separable)",
+      });
+      expect(headline(j)).toEqual({ text: `Limits last changed on 22 Sep 2026: windows per week -2% (${state}).`, tone: "down" });
+    }
+  });
+
+  it("leaves out a state word it does not know rather than printing it", () => {
+    expect(changeState({ state: "settling" })).toBeNull();
+    expect(headline(withChange({ state: "settling" })).text).toBe(
+      "Limits last changed on 22 Sep 2026: five-hour limit +30.5%, weekly limit +27.9%.",
+    );
+  });
+
+  it("names no scope or metric field, whatever values they carry", () => {
+    for (const scope of ["five_hour", "weekly", "both", "undetermined", "sideways"]) {
+      const text = headline(withChange({ scope: scope as ChangeRecord["scope"] })).text;
+      expect(text).toBe("Limits last changed on 22 Sep 2026: five-hour limit +30.5%, weekly limit +27.9% (measured).");
+    }
+    for (const metric of ["five_hour_limit", "weekly_limit", "windows_per_week"]) {
+      expect(headline(withChange({ metric })).text).not.toMatch(/_/);
+    }
+  });
+
+  it("falls back to the tracker's own label for a metric it does not know", () => {
+    const unknown = withChange({ metric: "something_new", scope: "sideways" as ChangeRecord["scope"] });
+    expect(changeFigures(unknown.last_change!)).toEqual([]);
+    // `last_change` carries no label in the rebuilt file, so the matching event's is used.
+    expect(base.label).toBeUndefined();
+    expect(headline(unknown).text).toBe(
+      "Limits last changed on 22 Sep 2026: Five-hour limit +30.5%, weekly limit +27.9% (measured).",
+    );
+    expect(headline(withChange({ metric: "something_new", label: "Something moved +3% (provisional)" })).text).toBe(
+      "Limits last changed on 22 Sep 2026: Something moved +3% (provisional).",
+    );
+    // With no label anywhere, the date and the state alone.
+    expect(headline(withChange({ metric: "something_new", state: "measuring" }, [])).text).toBe(
+      "Limits last changed on 22 Sep 2026 (measuring).",
+    );
+  });
+
+  it("lists the changes a chart marker should mark as not yet measured", () => {
+    expect(pendingChangeStates(PR98)).toEqual([]);
+    const measuring = withChange(
+      { state: "measuring" },
+      PR98.events!.map((e) => (e.date === "2026-09-22" ? { ...e, state: "measuring" } : e)),
+    );
+    expect(pendingChangeStates(measuring)).toEqual([{ date: "2026-09-22", state: "measuring" }]);
+    expect(pendingChangeStates(withChange({ state: "provisional" }))).toEqual([{ date: "2026-09-22", state: "provisional" }]);
+  });
+
+  it("leaves today's live file as it was", () => {
+    const live = live0928Json as unknown as UsageJson;
+    expect(live.last_change!.state).toBeUndefined();
+    expect(headline(live)).toEqual({ text: "Limits last changed by +5% on 22 Sep 2026 (measured).", tone: "up" });
+    expect(pendingChangeStates(live)).toEqual([]);
   });
 });
