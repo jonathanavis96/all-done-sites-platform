@@ -242,11 +242,12 @@ describe("compute", () => {
     expect(r.apiValueUsd).toBe(115.05);
     // Tasks divide meter dollars by meter dollars, never list value by meter cost.
     expect(r.tasksPerWindow).toBeCloseTo(115.05 / 0.057684, 6);
-    // Weekly figures scale by the plan's current estimate (6.13 here), not a theoretical 28.
-    expect(r.windowsPerWeek).toBe(6.13);
-    expect(r.tasksPerWeek).toBeCloseTo((115.05 / 0.057684) * 6.13, 6);
-    expect(r.tokensPerWindow! * r.windowsPerWeek!).toBeCloseTo(1_175_730_564 * 6.13, 0);
-    expect(r.apiValueUsdPerWeek).toBeCloseTo(115.05 * 6.13, 6);
+    // Weekly figures scale by the level the plan's weekly chart ends on (6.34 here), not a
+    // theoretical 28, and not the fresher `current` (6.13) the chart does not draw (seat 120).
+    expect(r.windowsPerWeek).toBe(6.34);
+    expect(r.tasksPerWeek).toBeCloseTo((115.05 / 0.057684) * 6.34, 6);
+    expect(r.tokensPerWindow! * r.windowsPerWeek!).toBeCloseTo(1_175_730_564 * 6.34, 0);
+    expect(r.apiValueUsdPerWeek).toBeCloseTo(115.05 * 6.34, 6);
     // The schema 1 fixture: the same token arithmetic, and no dollar figure it does not publish.
     const legacy = compute(J, "max20", SONNET, "high")!;
     expect(legacy.tokensPerWindow).toBe(42_000_000);
@@ -315,10 +316,10 @@ describe("model and plan eligibility (finding 2, kept)", () => {
     const r = compute(V2, "max20", FABLE, "high")!;
     expect(r.included).toBe(true);
     expect(r.weeklyFraction).toBe(0.5);
-    expect(r.planWindowsPerWeek).toBe(6.13);
-    expect(r.windowsPerWeek).toBeCloseTo(3.065, 10);
-    expect(r.tokensPerWindow! * r.windowsPerWeek!).toBeCloseTo(235_146_113 * 3.065, 0);
-    expect(r.apiValueUsdPerWeek).toBeCloseTo(115.05 * 3.065, 6);
+    expect(r.planWindowsPerWeek).toBe(6.34);
+    expect(r.windowsPerWeek).toBeCloseTo(3.17, 10);
+    expect(r.tokensPerWindow! * r.windowsPerWeek!).toBeCloseTo(235_146_113 * 3.17, 0);
+    expect(r.apiValueUsdPerWeek).toBeCloseTo(115.05 * 3.17, 6);
   });
   it("applies the published Fable rule to schema 1 JSON, which carries no model_plan_limits", () => {
     const legacy = structuredClone(J);
@@ -360,22 +361,23 @@ describe("weekly levels drawn across plans (kept from PR #76)", () => {
     },
   };
 
-  it("draws the fixture's own current figure in the hero and the table when it publishes one", () => {
+  it("states the level the weekly chart ends on in the hero and the table, not a fresher current", () => {
     const r = compute(LIVE, "max20", SONNET, "high")!;
     const chartEnd = weeklyRegimeLevelsFor(LIVE, "max20").at(-1)!.windows;
-    // LIVE's own current happens to equal its newest regime; V2's does not (it is a fresher
-    // current estimate than the pooled regime it sits inside), and #74 never required them to
-    // match: `current` wins in the hero and the table, the regimes are the chart's own history.
     expect(chartEnd).toBe(r.planWindowsPerWeek);
+    // V2's current (6.13) is a fresher estimate than the pooled regime it sits inside (6.34).
+    // Seat 120 reversed #74 here: the headline states the level the line ends on, so the two can
+    // no longer print different figures side by side.
     expect(weeklyRegimeLevelsFor(V2, "max20").at(-1)!.windows).toBe(6.34);
-    expect(compute(V2, "max20", SONNET, "high")!.planWindowsPerWeek).toBe(6.13);
+    expect(compute(V2, "max20", SONNET, "high")!.planWindowsPerWeek).toBe(6.34);
   });
   it("gives an unmeasured plan its weekly figure from another plan's level, scaled by the measured ratio", () => {
     for (const plan of ["max5", "pro"] as const) {
       expect(LIVE.weekly_windows![plan]!.current).not.toBeNull(); // this fixture's own current is a stale value, never used
       const r = compute(LIVE, plan, SONNET, "high")!;
-      // #74/#76 behaviour: the plan's own `current` still wins when present.
-      expect(r.planWindowsPerWeek).toBe(11.02);
+      // Seat 120: the level the plan's chart ends on wins over its own stale `current` (11.02).
+      expect(r.planWindowsPerWeek).toBe(weeklyRegimeLevelsFor(LIVE, plan).at(-1)!.windows);
+      expect(r.planWindowsPerWeek).not.toBe(11.02);
     }
     // Max 5x keeps its own history, then max20 scaled across: the level beside its own measured
     // one continues it (no step at the plan move), and the one after that is 4.61 x 1.668.
@@ -418,12 +420,12 @@ describe("weekly figures on the published files (PR #76 fallback kept)", () => {
   const PUBLISHED_FILE = schema2Published as unknown as UsageJson;
   const OPUS = "claude-opus-5";
 
-  it("gives Pro and Max 5x a weekly figure from their own current or, absent that, the level their chart ends on", () => {
+  it("gives Pro and Max 5x a weekly figure from the level their chart ends on or, absent that, their own current", () => {
     for (const j of [LIVE_FILE, PUBLISHED_FILE]) {
       for (const [plan, model] of [["pro", SONNET], ["max5", SONNET], ["pro", OPUS], ["max5", FABLE]] as const) {
         const current = j.weekly_windows?.[plan]?.current;
         const level = weeklyRegimeLevelsFor(j, plan).at(-1);
-        const expectedPlanWindows = typeof current === "number" ? current : (level?.windows ?? null);
+        const expectedPlanWindows = level ? level.windows : typeof current === "number" ? current : null;
         const r = compute(j, plan, model, "high")!;
         expect(r.planWindowsPerWeek).toBe(expectedPlanWindows);
         if (expectedPlanWindows !== null && r.included) {
@@ -1373,7 +1375,8 @@ describe("tracker wf-50 fields", () => {
         expect(cur.value).toBeCloseTo(max20.value * j.weekly_window_ratios![plan]!, 1);
         const r = compute(j, plan, "claude-sonnet-5", "high")!;
         expect(r.weeklyInferred).toBe(true);
-        expect(r.planWindowsPerWeek).toBe(cur.value);
+        // The figure is the level the chart ends on (seat 120); the marks still come off `current`.
+        expect(r.planWindowsPerWeek).toBe(weeklyRegimeLevelsFor(j, plan).at(-1)!.windows);
       }
       expect(compute(j, "max20", "claude-sonnet-5", "high")!.weeklyInferred).toBe(false);
     }
@@ -1715,7 +1718,8 @@ describe("one quantity, one figure", () => {
 
   it("has one windows-per-week helper behind both routes", () => {
     expect(planWindowsPerWeek(MEASURED, "max20")).toEqual({ value: 4.94, inferred: false });
-    expect(planWindowsPerWeek(MEASURED, "pro")).toEqual({ value: 5.93, inferred: true });
+    expect(planWindowsPerWeek(MEASURED, "pro").inferred).toBe(true);
+    expect(planWindowsPerWeek(MEASURED, "pro").value).toBeCloseTo(5.928, 10);
     for (const plan of PLANS) {
       expect(computeCredits(MEASURED, plan, "claude-sonnet-5")!.planWindowsPerWeek, plan).toBe(
         compute(MEASURED, plan, "claude-sonnet-5", "high")!.planWindowsPerWeek,

@@ -2,7 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider, type HelmetServerState } from "react-helmet-async";
-import ClaudeUsageTracker, { markerColour, markerPctText, planChartForKey, realSteps, type PlanChart } from "./ClaudeUsageTracker";
+import ClaudeUsageTracker, {
+  LABEL_ASCENT_PX,
+  LABEL_DESCENT_PX,
+  LABEL_LINE_PX,
+  accountChangePct,
+  accountLegendText,
+  layoutMarkerLabels,
+  markerColour,
+  markerPctText,
+  planChartForKey,
+  realSteps,
+  type PlanChart,
+} from "./ClaudeUsageTracker";
 import {
   accountLabel,
   compute,
@@ -17,6 +29,7 @@ import {
   weeklyEventsFor,
   weeklyTokenRegimeLevelsFor,
   weeklyRegimeLevelsFor,
+  planWindowsPerWeek,
   type Plan,
   type SpeedBlock,
   type UsageJson,
@@ -55,6 +68,9 @@ import liveSnapshot from "@/lib/__fixtures__/claude-usage-live-2026-09-23.json";
 import speedBlock from "@/lib/__fixtures__/claude-usage-speed-block.json";
 // The live file's shape with the tracker's seat-119 contract: per_week_regimes and account_regimes.
 import regimeContract from "@/lib/__fixtures__/claude-usage-regime-contract.json";
+// The live file as the 28 Sep 15:31 refresh published it: two changes (14 Sep and 22 Sep), and the
+// refresh whose windows-per-week headline read 4.9 beside a Max 20x line ending at 4.8.
+import live0928 from "@/lib/__fixtures__/claude-usage-live-2026-09-28.json";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -1447,13 +1463,13 @@ describe("a dashed change marker at every real step", () => {
     expect(new Set(labels(svg).map((l) => l.y)).size).toBe(1);
   });
 
-  it("drops the older label a line when the two would overlap", () => {
+  it("raises the older label a row, above the plot, when the two would overlap", () => {
     const svg = weeklyChart(renderHtml(twoSteps("2026-08-03"), "max20"));
     const ls = labels(svg);
     expect(ls.length).toBe(2);
     const older = ls.find((l) => l.text.includes("1 Aug"))!;
     const newer = ls.find((l) => l.text.includes("3 Aug"))!;
-    expect(older.y - newer.y).toBe(12);
+    expect(older.y - newer.y).toBe(-LABEL_LINE_PX);
   });
 
   it("marks one step per chart on the published file, and never the inferred seam", () => {
@@ -1916,8 +1932,12 @@ describe("plan chart toggle", () => {
       expect(g).toContain(`stroke="${colour}"`);
       for (const c of planColours) expect(g).not.toContain(c);
     }
-    // The legend states each account's own step where it has one.
-    expect(windows.replace(/<!-- -->/g, "")).toContain("Max account 1 (-21% across the change)");
+    // The legend names each change by its date, with the account's own step across it; an account
+    // with no level before the change gets its name alone.
+    const legend = windows.replace(/<!-- -->/g, "");
+    expect(legend).toContain("Max account 1 (-21% on 14 Sep)");
+    expect(legend).not.toContain("across the change");
+    expect(legend).toMatch(/<\/span>Max account 3<\/li>/);
   });
 
   it("names an account with nothing to draw instead of drawing it", () => {
@@ -2137,5 +2157,148 @@ describe("the speed section's info icons", () => {
     expect(perModel).toBeGreaterThan(-1);
     expect(byAccount).toBeGreaterThan(perModel);
     expect(html).not.toContain("speed-pair");
+  });
+});
+
+describe("chart labels (seat 120)", () => {
+  const J = live0928 as unknown as UsageJson;
+  const TITLES = {
+    window: "Effective window size over time",
+    tokens: "Tokens per week over time",
+    windows: "Five-hour windows per week over time",
+  } as const;
+  const html = (chart: PlanChart, plan: Plan = "max20", model = "claude-opus-5") =>
+    renderToString(
+      <HelmetProvider context={{}}>
+        <MemoryRouter>
+          <ClaudeUsageTracker initial={J} initialPlan={plan} initialModel={model} initialPlanChart={chart} />
+        </MemoryRouter>
+      </HelmetProvider>,
+    ).replace(/<!-- -->/g, "");
+  const panelOf = (h: string, key: PlanChart) => {
+    const at = h.indexOf(`<div role="tabpanel" id="plan-chart-${key}"`);
+    const next = h.indexOf('<div role="tabpanel"', at + 1);
+    return h.slice(at, next > 0 ? next : h.indexOf("</section>", at));
+  };
+  const svgOf = (h: string, key: PlanChart) => {
+    const at = h.indexOf(`aria-label="${TITLES[key]}`);
+    return h.slice(h.lastIndexOf("<svg", at), h.indexOf("</svg>", at));
+  };
+  // Every change marker's label, with the box its ink covers: 6.5px a character, anchored as drawn.
+  const markerLabels = (svg: string) =>
+    [...svg.matchAll(/<text x="([\d.]+)" y="([\d.]+)" text-anchor="(start|end)" style="fill:(#[0-9A-F]{6});font-weight:600">([^<]*)<\/text>/g)].map(
+      (m) => {
+        const x = Number(m[1]), y = Number(m[2]), w = m[5].length * 6.5;
+        return {
+          text: m[5],
+          left: m[3] === "end" ? x - w : x,
+          right: m[3] === "end" ? x : x + w,
+          top: y - LABEL_ASCENT_PX,
+          bottom: y + LABEL_DESCENT_PX,
+        };
+      },
+    );
+  // The top of the plot, where every dashed marker line starts.
+  const plotTop = (svg: string) =>
+    Math.min(...[...svg.matchAll(/<line x1="[\d.]+" x2="[\d.]+" y1="([\d.]+)" y2="[\d.]+" stroke="#[0-9A-F]{6}" stroke-width="1.5" stroke-dasharray="5 4"/g)].map((m) => Number(m[1])));
+  // The highest point of every drawn line: the plan lines and the accounts' lines.
+  const lineTop = (svg: string) =>
+    Math.min(
+      ...[...svg.matchAll(/<path d="([^"]+)" fill="none"/g)].flatMap((m) =>
+        [...m[1].matchAll(/[\d.]+,([\d.]+)/g)].map((p) => Number(p[1])),
+      ),
+    );
+  const overlap = (a: { left: number; right: number; top: number; bottom: number }, b: typeof a) =>
+    a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+  it("lays close markers out in rows above the plot, never overlapping each other", () => {
+    const { top, labels } = layoutMarkerLabels(
+      [
+        { x: 600, text: "-26% on 14 Sep" },
+        { x: 640, text: "+3% on 22 Sep" },
+        { x: 100, text: "-19% on 1 Aug" },
+      ],
+      732,
+    );
+    const rows = new Set(labels.map((l) => l.row));
+    expect(rows.size).toBe(2);
+    for (const l of labels) expect(l.ty + LABEL_DESCENT_PX).toBeLessThan(top);
+    for (const a of labels)
+      for (const b of labels)
+        if (a !== b) expect(a.lo < b.hi && b.lo < a.hi && Math.abs(a.ty - b.ty) < LABEL_ASCENT_PX + LABEL_DESCENT_PX).toBe(false);
+    // One row keeps the plot where it always started.
+    expect(layoutMarkerLabels([{ x: 100, text: "-19% on 1 Aug" }], 732).top).toBe(20);
+  });
+
+  for (const chart of ["window", "tokens", "windows"] as PlanChart[]) {
+    it(`keeps every marker label on the ${chart} tab off every drawn line and off each other`, () => {
+      for (const plan of ["max20", "max5", "pro"] as Plan[]) {
+        const svg = svgOf(html(chart, plan), chart);
+        const ls = markerLabels(svg);
+        expect(ls.map((l) => l.text).join(" | "), `${chart} ${plan}`).toMatch(/on 14 Sep.*on 22 Sep/);
+        const top = plotTop(svg);
+        expect(lineTop(svg)).toBeGreaterThanOrEqual(top);
+        for (const l of ls) expect(l.bottom, `${chart} ${plan} ${l.text}`).toBeLessThan(top);
+        for (const a of ls) for (const b of ls) if (a !== b) expect(overlap(a, b), `${a.text} / ${b.text}`).toBe(false);
+      }
+    });
+  }
+
+  // The selected plan's end label on a chart: "<value> – Max 20x".
+  const endLabel = (svg: string, planLabel: string) =>
+    svg.match(new RegExp(`font-weight:700">([^<]+)</tspan><tspan[^>]*> – ${planLabel}</tspan>`))?.[1];
+  // The panel's headline, the first figure in its .rate line.
+  const headline = (panel: string) => panel.match(/<div class="rate"><span>(?:[^<]*)<b>([^<]+)<\/b>/)?.[1];
+
+  it("states the newest regime's level in the headline on each tab, the value the line ends on", () => {
+    for (const chart of ["window", "tokens", "windows"] as PlanChart[]) {
+      const h = html(chart);
+      const end = endLabel(svgOf(h, chart), "Max 20x");
+      expect(end, chart).toBeDefined();
+      expect(headline(panelOf(h, chart)), chart).toBe(end);
+    }
+    // The figures behind them, on every plan: the headline's source is the level the line ends on.
+    for (const plan of ["max20", "max5", "pro"] as Plan[]) {
+      expect(planWindowsPerWeek(J, plan).value).toBe(weeklyRegimeLevelsFor(J, plan).at(-1)!.windows);
+      const wt = computeWindowTokens(J, plan, "claude-opus-5")!;
+      expect(wt.perWeekValue! / weeklyTokenRegimeLevelsFor(J, plan, "claude-opus-5").at(-1)!.tokens).toBeCloseTo(1, 6);
+      expect(wt.perWindowValue! / windowTokenRegimeLevelsFor(J, plan, "claude-opus-5").at(-1)!.tokens).toBeCloseTo(1, 6);
+    }
+    // The refresh that showed the mismatch: `current` 4.86 against a newest regime of 4.79.
+    expect(J.weekly_windows!.max20!.current).toBe(4.86);
+    expect(headline(panelOf(html("windows"), "windows"))).toBe("4.8");
+  });
+
+  it("names each change in the account legend by its date, and skips one the account has no level either side of", () => {
+    const legend = (panel: string) =>
+      [...panel.matchAll(/<li data-account="[^"]*"><span class="swatch"[^>]*><\/span>([^<]*)<\/li>/g)].map((m) => m[1]);
+    for (const chart of ["window", "tokens", "windows"] as PlanChart[]) {
+      const items = legend(panelOf(html(chart), chart));
+      // Max account 1 and 2 have a level either side of both changes.
+      expect(items.find((t) => t.startsWith("Max account 1")), chart).toMatch(/^Max account 1 \([-+]\d+% on 14 Sep, [-+]\d+% on 22 Sep\)$/);
+      expect(items.find((t) => t.startsWith("Max account 2")), chart).toMatch(/^Max account 2 \([-+]\d+% on 14 Sep, [-+]\d+% on 22 Sep\)$/);
+      // Max account 3 has no level before 14 Sep, so only 22 Sep is named.
+      expect(items.find((t) => t.startsWith("Max account 3")), chart).toMatch(/^Max account 3 \([-+]\d+% on 22 Sep\)$/);
+      // Max account 4 has a level only after 22 Sep: no change applies, so its name alone.
+      expect(items, chart).toContain("Max account 4");
+      expect(items.join(" "), chart).not.toContain("across the change");
+    }
+  });
+
+  it("reads an account's change off its own levels either side of the marker", () => {
+    const levels = [
+      { start: "2026-09-01T00:00:00Z", end: "2026-09-14T12:00:00Z", value: 100 },
+      { start: "2026-09-14T12:00:00Z", end: "2026-09-22T19:00:00Z", value: 94 },
+      { start: "2026-09-25T00:00:00Z", end: "2026-09-28T00:00:00Z", value: 90, gap: true },
+    ];
+    expect(accountChangePct(levels, "2026-09-14T12:00:00Z")).toBeCloseTo(-6, 10);
+    // The level after 22 Sep follows a gap: no level on the near side of that change.
+    expect(accountChangePct(levels, "2026-09-22T19:00:00Z")).toBeNull();
+    expect(accountLegendText("Max account 1", levels, [{ date: "2026-09-22T19:00:00Z" }, { date: "2026-09-14T12:00:00Z" }])).toBe(
+      "Max account 1 (-6% on 14 Sep)",
+    );
+    expect(accountLegendText("Max account 1", levels, [])).toBe("Max account 1");
+    // A level running straight through a change: a level either side, and no movement.
+    expect(accountChangePct(levels, "2026-09-05")).toBe(0);
   });
 });

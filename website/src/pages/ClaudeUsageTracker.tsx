@@ -221,8 +221,47 @@ export function markerColour(pct: number | null): string {
 
 // Rough width of an 11px chart label: enough to tell whether two labels would overlap.
 const LABEL_CHAR_PX = 6.5;
-// How far an older marker's label drops when a newer one would cover it: one line of 11px text.
-const LABEL_LINE_PX = 12;
+// One row of marker labels: 11px text and a little air, so stacked rows never touch.
+export const LABEL_LINE_PX = 13;
+// How far an 11px label's ink reaches above and below its baseline.
+export const LABEL_ASCENT_PX = 9;
+export const LABEL_DESCENT_PX = 3;
+// Room above the top row of marker labels, and between the bottom row and the plot.
+const LABEL_BAND_TOP_PX = 7;
+const LABEL_BAND_GAP_PX = 5;
+
+// Where each change marker's label goes: in a band reserved above the plot, never inside it, so no
+// label can sit on a drawn line (seat 120: "-26% on 14 Sep" sat on the Max 20x line once a second,
+// newer marker pushed it down a row into the plot). Each label sits beside its own marker line,
+// anchored off the plot's right edge so a label near the right margin is never clipped. Where a
+// newer label would cover an older one, the older goes up a row, newest placed first; the band
+// grows by a row for each, and `top` is where the plot then starts.
+export function layoutMarkerLabels<M extends { x: number; text: string }>(
+  markers: M[],
+  plotRight: number,
+): { top: number; labels: (M & { tx: number; ty: number; anchor: "start" | "end"; lo: number; hi: number; row: number })[] } {
+  const placed: { lo: number; hi: number; row: number }[] = [];
+  const rowed = markers
+    .map((m) => {
+      const end = m.x > plotRight - 130;
+      const w = m.text.length * LABEL_CHAR_PX;
+      const tx = end ? m.x - 6 : m.x + 6;
+      return { ...m, tx, anchor: end ? ("end" as const) : ("start" as const), lo: end ? tx - w : tx, hi: end ? tx : tx + w };
+    })
+    .reverse()
+    .map((m) => {
+      let row = 0;
+      while (placed.some((p) => p.row === row && m.lo < p.hi && p.lo < m.hi)) row++;
+      placed.push({ lo: m.lo, hi: m.hi, row });
+      return { ...m, row };
+    })
+    .reverse();
+  const rows = rowed.length > 0 ? Math.max(...rowed.map((m) => m.row)) + 1 : 1;
+  const top = LABEL_BAND_TOP_PX + rows * LABEL_LINE_PX;
+  // The bottom row's descenders stop the gap short of the plot; each older row sits one line higher.
+  const base = top - LABEL_BAND_GAP_PX - LABEL_DESCENT_PX;
+  return { top, labels: rowed.map((m) => ({ ...m, ty: base - m.row * LABEL_LINE_PX })) };
+}
 
 function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: number, gap = 16): Map<Plan, number> {
   const sorted = [...items].sort((a, b) => a.y - b.y);
@@ -235,6 +274,50 @@ function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: nu
   if (overflow > 0) for (const it of sorted) it.y -= overflow;
   for (const it of sorted) it.y = Math.max(it.y, top);
   return new Map(sorted.map((it) => [it.plan, it.y]));
+}
+
+// Two moments this close are one change: the chart's own NEAR_MS, so a marker drawn at the
+// announced date still finds the account's step a day or two either side of it.
+const CHANGE_NEAR_MS = 3 * 86400e3;
+
+// An account's own movement across one marked change, read off the account's drawn levels: the
+// level that ends at the account's step nearest the change and the one that starts there. Null
+// where the account has no level on one side (a gap, or no reading before or after). A level that
+// runs straight through the change is 0%: the account has a level either side, and it did not move.
+export function accountChangePct(
+  levels: { start: string; end: string; value: number; gap?: boolean }[],
+  date: string,
+): number | null {
+  const at = Date.parse(date.length === 10 ? `${date}T00:00:00Z` : date);
+  let best: { i: number; off: number } | null = null;
+  for (let i = 1; i < levels.length; i++) {
+    if (levels[i].gap) continue;
+    const off = Math.abs(Date.parse(levels[i].start) - at);
+    if (off <= CHANGE_NEAR_MS && (!best || off < best.off)) best = { i, off };
+  }
+  if (best) {
+    const before = levels[best.i - 1].value, after = levels[best.i].value;
+    return before ? ((after - before) / before) * 100 : null;
+  }
+  const through = levels.some((l) => Date.parse(l.start) < at && at < Date.parse(l.end));
+  return through ? 0 : null;
+}
+
+// "Max account 1 (-6% on 14 Sep, +8% on 22 Sep)": every change the chart marks, by date, where the
+// account has a level on both sides, oldest first. Just the name where no change applies. The
+// date is written the way the marker writes it, so the legend and the marker name the same day.
+export function accountLegendText(
+  name: string,
+  levels: { start: string; end: string; value: number; gap?: boolean }[],
+  markers: { date: string }[],
+): string {
+  const parts = [...markers]
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+    .flatMap((m) => {
+      const pct = accountChangePct(levels, m.date);
+      return pct === null ? [] : [`${markerPctText(pct)} on ${fmtDateShort(utcDay(m.date))}`];
+    });
+  return parts.length > 0 ? `${name} (${parts.join(", ")})` : name;
 }
 
 // One row of the plan-comparison table: its label, and the cell each plan renders.
@@ -352,24 +435,10 @@ function LevelChart({
   // the account's own line; any other reading keeps the plan's hue.
   const drawnAccounts = new Set(accounts.map((l) => l.account));
   const readingColor = (a: string | undefined) => (a && drawnAccounts.has(a) ? colorOf(a) : "var(--ads-ac)");
-  const accountLegend = accountLines && (accounts.length > 0 || accountLines.missing.length > 0) && (
-    <ul className="share-legend speed-legend level-accounts">
-      {accounts.map((l) => (
-        <li key={l.account} data-account={accountLabel(l.account)}>
-          <span className="swatch" style={{ background: colorOf(l.account) }} />
-          {accountLabel(l.account)}
-          {l.changePct !== null ? ` (${markerPctText(l.changePct)} across the change)` : ""}
-        </li>
-      ))}
-      {accountLines.missing.length > 0 && (
-        <li data-legend="no-data">
-          No data for {missingFor ?? "this chart"}: {accountLines.missing.map(accountLabel).join(", ")}
-        </li>
-      )}
-    </ul>
-  );
   if (plotted.length === 0) return <p className="sub">Not enough history yet.</p>;
-  const W = 840, H = 260, L = 44, R = plotRight, T = 20, B = 200;
+  // The plot's top (T), bottom (B) and the viewBox height (H) are set once the change markers'
+  // labels are laid out, below: the labels take a band above the plot, one row per stacked label.
+  const W = 840, L = 44, R = plotRight;
   const readings = overlay?.readings ?? [];
   // A partial (in-progress) week is dropped entirely -- not drawn, not in the y-axis range, not
   // in the x-axis span, not in the aria label -- so it neither hangs a huge whisker in the
@@ -461,25 +530,26 @@ function LevelChart({
     rawMarkers.push({ x: xDay(ev.date), date: ev.date, pct, text: `${markerPctText(pct)} on ${fmtDateShort(utcDay(ev.date))}` });
   }
   rawMarkers.sort((a, b) => a.x - b.x);
-  // Each label sits beside its own line, anchored off the plot's own right edge (not the wider
-  // viewBox) so a label near the right margin never runs past it and gets clipped. Where a newer
-  // label would cover an older one, the older drops a line, newest placed first.
-  const placed: { lo: number; hi: number; row: number }[] = [];
-  const changeMarkers = rawMarkers
-    .map((m) => {
-      const end = m.x > R - 130;
-      const w = m.text.length * LABEL_CHAR_PX;
-      const tx = end ? m.x - 6 : m.x + 6;
-      return { ...m, tx, anchor: end ? ("end" as const) : ("start" as const), lo: end ? tx - w : tx, hi: end ? tx : tx + w };
-    })
-    .reverse()
-    .map((m) => {
-      let row = 0;
-      while (placed.some((p) => p.row === row && m.lo < p.hi && p.lo < m.hi)) row++;
-      placed.push({ lo: m.lo, hi: m.hi, row });
-      return { ...m, ty: T - 3 + row * LABEL_LINE_PX };
-    })
-    .reverse();
+  const markerLayout = layoutMarkerLabels(rawMarkers, R);
+  const changeMarkers = markerLayout.labels;
+  const T = markerLayout.top, B = T + 180, H = B + 60;
+  // Each account's legend entry names every change this chart marks by its date, with the
+  // account's own movement across it on this chart's quantity (seat 120).
+  const accountLegend = accountLines && (accounts.length > 0 || accountLines.missing.length > 0) && (
+    <ul className="share-legend speed-legend level-accounts">
+      {accounts.map((l) => (
+        <li key={l.account} data-account={accountLabel(l.account)}>
+          <span className="swatch" style={{ background: colorOf(l.account) }} />
+          {accountLegendText(accountLabel(l.account), l.levels, changeMarkers)}
+        </li>
+      ))}
+      {accountLines.missing.length > 0 && (
+        <li data-legend="no-data">
+          No data for {missingFor ?? "this chart"}: {accountLines.missing.map(accountLabel).join(", ")}
+        </li>
+      )}
+    </ul>
+  );
   // Two lines per plan on the right edge — name above, current value below — so the
   // gap has to clear both, not one.
   const labelY = stackLabels(
