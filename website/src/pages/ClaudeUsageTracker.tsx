@@ -53,6 +53,7 @@ import {
   weeklySeriesFor,
   weeklyTokenRegimeLevelsFor,
   windowTokenRegimeLevelsFor,
+  perWeekRegimesOf,
   windowChangePct,
   tokensPerWeekChangePct,
   type AccountLines,
@@ -87,6 +88,12 @@ const SITE = "https://alldonesites.com";
 // trailing space on those dates. Stripping the year (and any space before it) is exact regardless
 // of digit count.
 const fmtDateShort = (iso: string) => fmtDate(iso).replace(/\s\d{4}$/, "");
+// The UTC day of a date or a full timestamp in any offset, so a boundary at 22 Sep 17:03Z reads
+// "22 Sep" wherever the publisher wrote it from.
+const utcDay = (iso: string) => {
+  const t = Date.parse(iso.length === 10 ? `${iso}T00:00:00Z` : iso);
+  return Number.isFinite(t) ? new Date(t).toISOString().slice(0, 10) : iso.slice(0, 10);
+};
 
 /**
  * Vertical positions for the right-margin plan labels. Each label wants to sit at its own
@@ -289,6 +296,7 @@ function LevelChart({
   overlay,
   changeFromLevels,
   changePct,
+  markEvents,
   accountLines,
   missingFor,
   shown = true,
@@ -311,6 +319,11 @@ function LevelChart({
   // from the drawn step, so the line and the label cannot name two different days. Earlier markers,
   // and every marker on a chart without one, read the percent off their own step.
   changePct?: number | null;
+  // Published changes this chart must mark even where its own line does not step there (tracker
+  // seat 119: a weekly change on every chart, a five-hour one on the window and windows charts).
+  // A change the drawn line already steps at within a few days is that step's marker; any other is
+  // marked at its own date with this chart's own movement there, which is 0% and grey.
+  markEvents?: UsageEvent[];
   // One line per watched Max 20x account, in the account colours the speed-by-account chart uses,
   // with the same legend and the same "No data for ..." note for an account that has nothing to
   // draw here.
@@ -382,7 +395,7 @@ function LevelChart({
     ...readings.map((r) => stamp(r.window_ending)),
     ...pooled.map((p) => stamp(p.week_ending)),
   ].filter(Number.isFinite);
-  const markerDays = events.map((ev) => day(ev.date));
+  const markerDays = [...events, ...(markEvents ?? [])].map((ev) => day(ev.date));
   const d0 = Math.min(...stamps, ...markerDays);
   const d1 = Math.max(...stamps, ...markerDays);
   const span = Math.max(1, d1 - d0);
@@ -411,7 +424,7 @@ function LevelChart({
             x: xAt(st.date),
             date: st.date,
             pct,
-            text: `${markerPctText(pct)} on ${fmtDateShort(st.date.slice(0, 10))}`,
+            text: `${markerPctText(pct)} on ${fmtDateShort(utcDay(st.date))}`,
           };
         })
       : // No real step anywhere in the fallback chain (should not happen while Max 20x has its
@@ -423,7 +436,7 @@ function LevelChart({
                   x: xDay(eventChange.date),
                   date: eventChange.date,
                   pct: changePct,
-                  text: `${markerPctText(changePct)} on ${fmtDateShort(eventChange.date.slice(0, 10))}`,
+                  text: `${markerPctText(changePct)} on ${fmtDateShort(utcDay(eventChange.date))}`,
                 }
               : {
                   x: xDay(eventChange.date),
@@ -434,6 +447,20 @@ function LevelChart({
                 },
           ]
         : [];
+  // A published change the line does not step at: marked at its own date with the line's own
+  // movement across it, read off the selected plan's levels either side of that day.
+  const NEAR_MS = 3 * 86400e3;
+  const selectedLevels = plotted.find(isSelectedPlan)?.levels ?? [];
+  const levelAt = (ms: number) =>
+    selectedLevels.find((l) => Date.parse(l.start) <= ms && ms < Date.parse(l.end))?.value ?? null;
+  for (const ev of markEvents ?? []) {
+    const at = day(ev.date);
+    if (rawMarkers.some((m) => Math.abs(day(utcDay(m.date)) - at) <= NEAR_MS)) continue;
+    const before = levelAt(at - NEAR_MS), after = levelAt(at + NEAR_MS);
+    const pct = before && after !== null ? ((after - before) / before) * 100 : 0;
+    rawMarkers.push({ x: xDay(ev.date), date: ev.date, pct, text: `${markerPctText(pct)} on ${fmtDateShort(utcDay(ev.date))}` });
+  }
+  rawMarkers.sort((a, b) => a.x - b.x);
   // Each label sits beside its own line, anchored off the plot's own right edge (not the wider
   // viewBox) so a label near the right margin never runs past it and gets clipped. Where a newer
   // label would cover an older one, the older drops a line, newest placed first.
@@ -591,13 +618,24 @@ function LevelChart({
           on top. Flat per regime, like the plans'. */}
       {accounts.map((a) => (
         <g key={a.account} data-account={accountLabel(a.account)}>
-          {stepRuns(
-            a.levels.map((l) => ({ ...l, inferred: false })),
-            xAt,
-            (l) => y(l.value),
-          ).map((run, i) => (
-            <path key={i} d={run.d} fill="none" stroke={colorOf(a.account)} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity=".9" />
-          ))}
+          {/* A level flagged `gap` starts a new run: the regime before it had no reading for
+              this account, so the line breaks there rather than bridging it. */}
+          {a.levels
+            .reduce<(typeof a.levels)[]>((runs, l) => {
+              if (l.gap || runs.length === 0) runs.push([l]);
+              else runs[runs.length - 1].push(l);
+              return runs;
+            }, [])
+            .flatMap((group) =>
+              stepRuns(
+                group.map((l) => ({ ...l, inferred: false })),
+                xAt,
+                (l) => y(l.value),
+              ),
+            )
+            .map((run, i) => (
+              <path key={i} d={run.d} fill="none" stroke={colorOf(a.account)} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity=".9" />
+            ))}
         </g>
       ))}
       {plotted.map((p) => {
@@ -663,6 +701,39 @@ function LevelChart({
     </>
   ) : (
     plot
+  );
+}
+
+// A small info icon beside a figure, carrying the sentence that explains it. The sentence is always
+// in the page as the button's description (role="tooltip", aria-describedby), and shows on hover,
+// on keyboard focus, and on a tap, which toggles it for touch screens that never hover.
+function InfoTip({ label, text }: { label: string; text: string }) {
+  const id = `tip-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="info-tip" data-open={open ? "true" : undefined}>
+      <button
+        type="button"
+        className="info-tip-btn"
+        aria-label={label}
+        aria-describedby={id}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setOpen(false);
+        }}
+      >
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+          <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.4" />
+          <circle cx="8" cy="4.7" r="1" fill="currentColor" />
+          <path d="M8 7.2v4.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      </button>
+      <span role="tooltip" id={id} className="info-tip-text">
+        {text}
+      </span>
+    </span>
   );
 }
 
@@ -1102,8 +1173,31 @@ export default function ClaudeUsageTracker({
   );
   // The signed tokens-per-week figure for the newest weekly change, when the publisher measured
   // one: what the tokens-per-week chart's marker states instead of the step it happens to draw.
-  const tokensPerWeekPct = useMemo(() => (data ? tokensPerWeekChangePct(data) : null), [data]);
-  const windowPct = useMemo(() => (data ? windowChangePct(data) : null), [data]);
+  //
+  // Once the lines step at every regime (the tracker's per-week regimes, or window regimes the page
+  // splits the weekly levels at), each marker states its own chart's step instead: the newest step
+  // is then a five-hour change, not the weekly one the published figure describes.
+  const perWeekRegimes = useMemo(() => (data ? perWeekRegimesOf(data) : null), [data]);
+  const windowRegimeCount = data ? (creditsOf(data)?.window_tokens?.regimes?.length ?? 0) : 0;
+  const tokensPerWeekPct = useMemo(
+    () => (data && !perWeekRegimes && windowRegimeCount < 2 ? tokensPerWeekChangePct(data) : null),
+    [data, perWeekRegimes, windowRegimeCount],
+  );
+  const windowPct = useMemo(() => (data && !perWeekRegimes ? windowChangePct(data) : null), [data, perWeekRegimes]);
+  // Every published change with a measured percent, marked on each chart whose quantity it moves:
+  // a weekly change on all three, a five-hour one on the window and windows charts (and on tokens
+  // per week only where that line steps, which its own step marker already covers). Only on files
+  // that publish the per-week regimes; an older file's charts mark their steps as they always did.
+  const measuredEvents = useMemo(
+    () =>
+      perWeekRegimes && data
+        ? (data.events ?? []).filter(
+            (e) => e.kind === "change" && typeof e.percent === "number" && Number.isFinite(e.percent),
+          )
+        : [],
+    [data, perWeekRegimes],
+  );
+  const weeklyMeasuredEvents = useMemo(() => measuredEvents.filter((e) => e.scope === "weekly"), [measuredEvents]);
   const weeklyTokenLevels = useMemo(
     () =>
       data
@@ -1735,6 +1829,7 @@ export default function ClaudeUsageTracker({
                         title="Effective window size over time"
                         changeFromLevels
                         changePct={windowPct}
+                        markEvents={measuredEvents}
                         accountLines={windowAccountLines}
                         missingFor={modelLabel(model)}
                         shown={planChart === "window"}
@@ -1786,6 +1881,7 @@ export default function ClaudeUsageTracker({
                       plotRight={732}
                       title="Tokens per week over time"
                       changeFromLevels
+                      markEvents={weeklyMeasuredEvents}
                       accountLines={weeklyTokenAccountLines}
                       missingFor={modelLabel(model)}
                       shown={planChart === "tokens"}
@@ -1822,6 +1918,7 @@ export default function ClaudeUsageTracker({
                       title="Five-hour windows per week over time"
                       overlay={weeklyOverlay}
                       changeFromLevels
+                      markEvents={measuredEvents}
                       accountLines={windowsAccountLines}
                       missingFor="five-hour windows per week"
                       shown={planChart === "windows"}
@@ -1856,18 +1953,28 @@ export default function ClaudeUsageTracker({
               Median output tokens per second, per UTC day, one line per model.
               {speedSelected ? ` The band is ${modelLabel(model)}'s interquartile range.` : ""}
             </p>
+            {/* The block's method and first-block caveat sit behind an info icon beside the figure
+                each one explains, rather than as paragraphs under the charts. */}
             {speedLatest ? (
-              <div className="rate">
+              <div className="rate speed-figs">
                 <span>
                   <b>{speedLatest.output_tokens_per_s.median.toFixed(1)}</b> output tokens per second
-                  {` (${speedLatest.output_tokens_per_s.q1.toFixed(1)} to ${speedLatest.output_tokens_per_s.q3.toFixed(1)})`}
+                  {" "}
+                  <span className="nowrap">
+                    {`(${speedLatest.output_tokens_per_s.q1.toFixed(1)} to ${speedLatest.output_tokens_per_s.q3.toFixed(1)})`}
+                    {speedMethod && <InfoTip label="How output speed is measured" text={speedMethod} />}
+                  </span>
                 </span>
                 {speedLatest.time_to_first_block_s && (
                   <>
                     <em className="brk">·</em>
                     <span>
                       <b>{speedLatest.time_to_first_block_s.median.toFixed(1)} s</b> to first block
-                      {` (${speedLatest.time_to_first_block_s.q1.toFixed(1)} to ${speedLatest.time_to_first_block_s.q3.toFixed(1)} s)`}
+                      {" "}
+                      <span className="nowrap">
+                        {`(${speedLatest.time_to_first_block_s.q1.toFixed(1)} to ${speedLatest.time_to_first_block_s.q3.toFixed(1)} s)`}
+                        {speedFirstBlock && <InfoTip label="What time to first block includes" text={speedFirstBlock} />}
+                      </span>
                     </span>
                   </>
                 )}
@@ -1881,21 +1988,27 @@ export default function ClaudeUsageTracker({
                 <span>No speed figures for {modelLabel(model)} yet.</span>
               </div>
             )}
+            {/* Without the method sentence to hang it on (no latest row for this model), it stays
+                a paragraph so it is never lost. */}
+            {!speedLatest && speedMethod && <p className="sub speed-note">{speedMethod}</p>}
+            {/* The selected model's by-account chart sits directly below the per-model chart, full
+                width on every screen, so the two read one above the other (Jonathan, 2026-09-28). */}
             <SpeedChart series={speed} selectedModel={model} />
-            {speedMethod && <p className="sub speed-note">{speedMethod}</p>}
-            {/* A count of 0 says nothing a reader needs, so the line shows only when there is one. */}
-            {speedFast && speedFast.count > 0 && (
-              <p className="sub speed-note">
-                Requests at about 2x usual speed: {speedFast.count.toLocaleString("en-GB")} on {fmtDate(speedFast.day)}.
-              </p>
-            )}
-            {speedFirstBlock && <p className="sub speed-note">{speedFirstBlock}</p>}
             {speedAccountList.length > 0 && (
               <>
                 <h3 className="speed-sub">{modelLabel(model)} by account</h3>
                 <p className="sub">Median output tokens per second, per UTC day, one line per account.</p>
                 <SpeedByAccountChart series={speedByAccount.series} missing={speedByAccount.missing} model={model} span={speedSpan} />
               </>
+            )}
+            {/* A count of 0 says nothing a reader needs, so the line shows only when there is one. */}
+            {speedFast && speedFast.count > 0 && (
+              <p className="sub speed-note">
+                Requests at about 2x usual speed: {speedFast.count.toLocaleString("en-GB")} on {fmtDate(speedFast.day)}.
+              </p>
+            )}
+            {speedLatest && !speedLatest.time_to_first_block_s && speedFirstBlock && (
+              <p className="sub speed-note">{speedFirstBlock}</p>
             )}
           </section>
         )}

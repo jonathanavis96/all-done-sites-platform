@@ -67,8 +67,16 @@ import {
   windowCreditAccountsWithoutStretch,
   cacheReadShareFor,
   effortRunCounts,
+  perWeekRegimesOf,
+  windowTokensValueFor as windowTokensValueOf,
+  weeklyRegimeLevelsFor as weeklyLevelsOf,
+  weeklyTokenRegimeLevelsFor as weeklyTokenLevelsOf,
   type CreditsFigure,
 } from "./claudeUsage";
+// A copy of the live file with the tracker's seat-119 contract: three five-hour regimes (the newest
+// from 22 Sep 17:03Z), three per-week regimes, and account_regimes for a1..a4 (a3 has nothing after
+// 22 Sep, a4 nothing before 14 Sep).
+import regimeContract from "./__fixtures__/claude-usage-regime-contract.json";
 import { withWf50 } from "./__fixtures__/wf50";
 import schema1 from "./__fixtures__/claude-usage-schema1.json";
 import schema2 from "./__fixtures__/claude-usage-schema2.json";
@@ -2413,5 +2421,90 @@ describe("windowTokenRegimeLevelsFor with published five-hour regimes", () => {
     const down = structuredClone(J);
     down.last_change!.direction = "decreased";
     expect(windowChangePct(down)).toBe(-38);
+  });
+});
+
+describe("the tracker's per-week and per-account regimes (seat 119)", () => {
+  const RC = regimeContract as unknown as UsageJson;
+  const OPUS = "claude-opus-5";
+  const wt = RC.credits!.window_tokens!;
+  // The block's current figure: `value` where published, else `all.value`, as the page reads it.
+  const raw = (wt.value ?? wt.all.value)!;
+  const without = (): UsageJson => {
+    const j = structuredClone(RC);
+    delete j.credits!.window_tokens!.per_week_regimes;
+    delete j.credits!.window_tokens!.account_regimes;
+    return j;
+  };
+
+  it("draws tokens per week from per_week_regimes: three levels, not all equal, converted to the model", () => {
+    const levels = weeklyTokenLevelsOf(RC, "max20", OPUS);
+    expect(levels).toHaveLength(3);
+    expect(new Set(levels.map((l) => Math.round(l.tokens))).size).toBe(3);
+    const conv = windowTokensValueOf(RC, OPUS)! / raw;
+    wt.per_week_regimes!.forEach((r, i) => expect(levels[i].tokens).toBeCloseTo(r.value! * conv, 0));
+    expect(levels[1].start).toBe("2026-09-14T12:00:00+00:00");
+    expect(levels[2].start).toBe("2026-09-22T17:03:00+00:00");
+    // Max 5x: the plan's window ratio times its windows-per-week ratio, drawn inferred.
+    const max5 = weeklyTokenLevelsOf(RC, "max5", OPUS);
+    expect(max5[0].tokens).toBeCloseTo(levels[0].tokens * RC.plan_ratios.max5 * RC.weekly_window_ratios!.max5!, 0);
+    expect(max5.every((l) => l.inferred)).toBe(true);
+  });
+
+  it("without per_week_regimes, prices each weekly regime at the window regime in force, split at every boundary", () => {
+    const j = without();
+    expect(perWeekRegimesOf(j)).toBeNull();
+    const levels = weeklyTokenLevelsOf(j, "max20", OPUS);
+    const conv = windowTokensValueOf(j, OPUS)! / raw;
+    // Split at 14 Sep and 22 Sep, each piece at its own window regime.
+    const at = (iso: string) => levels.find((l) => Date.parse(l.start) <= Date.parse(iso) && Date.parse(iso) < Date.parse(l.end))!;
+    const regimes = wt.regimes!;
+    expect(at("2026-09-20T00:00:00Z").tokens).toBeCloseTo(at("2026-09-20T00:00:00Z").windows * regimes[1].value * conv, 0);
+    expect(at("2026-09-25T00:00:00Z").tokens).toBeCloseTo(at("2026-09-25T00:00:00Z").windows * regimes[2].value * conv, 0);
+    expect(levels.some((l) => l.start === "2026-09-22T17:03:00+00:00")).toBe(true);
+    expect(levels.some((l) => l.start === "2026-09-14T12:00:00+00:00")).toBe(true);
+    // Never the current window across every regime.
+    expect(new Set(levels.filter((l) => !l.inferred).map((l) => Math.round(l.tokens))).size).toBeGreaterThan(2);
+  });
+
+  it("steps Max 20x's windows per week at the per-week regimes", () => {
+    const own = weeklyLevelsOf(RC, "max20").filter((l) => !l.inferred);
+    expect(own.map((l) => l.windows)).toEqual([6.49, 4.76, 3.6]);
+    // A file without them keeps the weekly detector's own regimes.
+    expect(weeklyLevelsOf(without(), "max20").filter((l) => !l.inferred).map((l) => l.windows)).toEqual(
+      RC.weekly_windows!.max20!.regimes!.map((r) => r.windows),
+    );
+  });
+
+  it("draws each account's lines per regime, with a gap where the figure is null", () => {
+    const conv = windowTokensValueOf(RC, OPUS)! / raw;
+    const window = accountWindowTokenLines(RC, OPUS);
+    const tokens = accountWeeklyTokenLines(RC, OPUS);
+    const windows = accountWindowLines(RC);
+    for (const lines of [window, tokens, windows]) {
+      expect(lines.lines.map((l) => l.account)).toEqual(["a1", "a2", "a3", "a4"]);
+      const byAcc = Object.fromEntries(lines.lines.map((l) => [l.account, l]));
+      expect(byAcc.a1.levels).toHaveLength(3);
+      expect(new Set(byAcc.a1.levels.map((l) => l.value)).size).toBe(3);
+      // a3: nothing after 22 Sep, so two levels ending on that boundary.
+      expect(byAcc.a3.levels).toHaveLength(2);
+      expect(byAcc.a3.levels.at(-1)!.end).toBe("2026-09-22T17:03:00+00:00");
+      // a4: nothing before 14 Sep, so it opens there, on a fresh run.
+      expect(byAcc.a4.levels[0].start).toBe("2026-09-14T12:00:00+00:00");
+      expect(byAcc.a4.levels[0].gap).toBe(true);
+      expect(byAcc.a4.levels[1].gap).toBeUndefined();
+    }
+    const a1 = wt.account_regimes!.a1;
+    window.lines[0].levels.forEach((l, i) => expect(l.value).toBeCloseTo(a1[i].window! * conv, 0));
+    tokens.lines[0].levels.forEach((l, i) => expect(l.value).toBeCloseTo(a1[i].per_week! * conv, 0));
+    windows.lines[0].levels.forEach((l, i) => expect(l.value).toBe(a1[i].windows_per_week));
+  });
+
+  it("keeps PR #106's per-account conversion when account_regimes is absent", () => {
+    const j = without();
+    const window = accountWindowTokenLines(j, OPUS);
+    // The fallback is flat per side of the cut: at most two values per account.
+    for (const l of window.lines) expect(new Set(l.levels.map((v) => v.value)).size).toBeLessThanOrEqual(2);
+    expect(accountWindowLines(j).lines.find((l) => l.account === "a1")!.levels.map((l) => l.value)).toEqual([6.52, 5.01]);
   });
 });
