@@ -2411,6 +2411,15 @@ describe("how settled a change is (tracker PR #98)", () => {
     expect(h1).toContain('<span class="claude">Claude</span>');
   });
 
+  it("escapes the headline text before it becomes markup", () => {
+    const j = structuredClone(PR98);
+    Object.assign(j.last_change!, { percent: "<img src=x onerror=alert(1)>" });
+    const h = html(j, "window");
+    const h1 = h.slice(h.indexOf("<h1"), h.indexOf("</h1>"));
+    expect(h1).not.toContain("<img");
+    expect(h1).toContain("&lt;img");
+  });
+
   const MEASURED = {
     window: ["-4% on 14 Sep", "+30% on 22 Sep"],
     tokens: ["-26% on 14 Sep", "+28% on 22 Sep"],

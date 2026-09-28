@@ -1627,7 +1627,11 @@ export default function ClaudeUsageTracker({
           {!unavailable && h && (
             <h1
               dangerouslySetInnerHTML={{
+                // Escaped first: the figure and direction come from the published JSON.
                 __html: h.text
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
                   .replace(/(increased|decreased)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
                   .replace(/(\d+%)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
                   .replace(/Claude/, `<span class="claude">Claude</span>`),
