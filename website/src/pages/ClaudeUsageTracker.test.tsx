@@ -159,7 +159,7 @@ describe("the tracker page renders both schemas", () => {
     const text = render(LIVE);
     expect(text).not.toContain("Data temporarily unavailable");
     // Headline: Anthropic changed the limit, not an "observed ratio" on the account.
-    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 29% on 14 Sep 2026.");
+    expect(text).toContain("Weekly limit last changed by -29% on 14 Sep 2026 (measured).");
     expect(text).not.toContain("observed weekly-to-window ratio");
     // #74's single dollar figure, labelled "API value", sourced from the meter budget.
     expect(text).toContain("of API value per 5-hour window");
@@ -512,7 +512,7 @@ describe("the credits block on the page", () => {
     // The #78 headline (Jonathan's decision, 2026-09-20), not the "fell by ... between" wording.
     // Dated to the pooled regime step (14 Sep), not the earliest per-account onset (11 Sep): that
     // is the date the windows-per-week chart itself steps on and marks.
-    expect(hero).toContain("Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.");
+    expect(hero).toContain("Weekly limit last changed by -24% on 14 Sep 2026 (measured).");
     expect(hero).not.toContain("The number of five-hour windows in a week fell by");
     // Nothing sits between the h1 and the pill row (matches #78's hero exactly).
     expect(hero).not.toContain("Five-hour windows per week: 6.5");
@@ -520,7 +520,7 @@ describe("the credits block on the page", () => {
     // The onset-bounded figures still render in full, inside "The five-hour window across the
     // change" -- moved, not deleted.
     expect(text).toContain("Five-hour windows per week: 6.5 (6.2 to 6.8) before, 5.0 (4.6 to 5.3) after.");
-    expect(text).toContain("Anthropic announced -17% on 14 Sep 2026: “Compared to today, this works out to a 17% reduction in weekly limits on Claude Code”.");
+    expect(text).not.toContain("Anthropic announced");
     expect(text).toContain("Which meter moved is unresolved.");
   });
 
@@ -652,8 +652,8 @@ describe("the credits block on the page", () => {
     expect(comparisonSection).not.toContain("weekly figures are measured from");
     // The one-line subtitle stays.
     expect(comparisonSection).toContain("Max 20x is measured; Pro and Max 5x are scaled from it by");
-    // Both moved paragraphs still render, inside "Cross-check against the announced caps".
-    const crossCheck = text.slice(text.indexOf("Cross-check against the announced caps"));
+    // Both moved paragraphs still render, inside "Cross-check against the published table".
+    const crossCheck = text.slice(text.indexOf("Cross-check against the published table"));
     expect(crossCheck).toContain("Basis: credits_table.");
     expect(crossCheck).toContain("Credits per five-hour window, Pro : Max 5x : Max 20x: 550,000 : 3,300,000 : 11,000,000.");
   });
@@ -710,19 +710,15 @@ describe("the credits block on the page", () => {
     expect(text).not.toContain("apart in credits per 1% of the meter; the cause is not identified");
   });
 
-  it("shows the announced-cap cross-check beside the measured window, with the reference dated", () => {
+  it("shows no announced cap, announced change or figure computed from one in the cross-check (seat 123)", () => {
     const text = render(CREDITS, "max20", "claude-opus-5");
-    expect(text).toContain("Cross-check against the announced caps");
-    expect(text).toContain("Before the change 83,333,300 × 1.5 = 124,999,950 ÷ 6.48 (6.2 to 6.8) windows 19,290,116");
-    expect(text).toContain("After the change 83,333,300 × 1.25 = 104,166,625 ÷ 4.96 (4.6 to 5.3) windows 21,001,336");
-    expect(text).toContain("Measured pure-opus stretches, n=11 19,543,887");
-    expect(text).toContain("Baseline 83,333,300 credits per week, as of 25 Jan 2026: she-llac.com/claude-limits");
-    expect(text).toContain("A reference, shown beside the measurement and never an input to it.");
-    expect(text).toContain("Shellac credits table, as of 25 Jan 2026. Announced changes since:");
-    expect(text).toContain("6 May 2026 · ×2 · five hour window — Claude Code five-hour limits permanently doubled");
-    // The +50% promotion carried a span rather than a date, and is dated as the JSON dates it.
-    expect(text).toContain("2026-05 to 2026-09-13 · ×1.5 · weekly");
-    expect(text).toContain("14 Sep 2026 · ×1.25 · weekly");
+    expect(text).toContain("Cross-check against the published table");
+    expect(text).not.toContain("Cross-check against the announced caps");
+    expect(text).not.toContain("124,999,950");
+    expect(text).not.toContain("104,166,625");
+    expect(text).not.toContain("Announced changes since");
+    expect(text).not.toContain("permanently doubled");
+    expect(text).not.toContain("×1.25");
   });
 
   it("counts the excluded harness runs and carries Fable's status into the caveats", () => {
@@ -737,7 +733,7 @@ describe("the credits block on the page", () => {
   it("renders a file with no credits block as it does today, bar the window it cannot state", () => {
     const text = render(WITHOUT, "max20", "claude-opus-5");
     // Pooled regime step (14 Sep), not the earliest per-account onset (11 Sep).
-    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 24% on 14 Sep 2026.");
+    expect(text).toContain("Weekly limit last changed by -24% on 14 Sep 2026 (measured).");
     // The 589M the dollar route used to lead on is the list-price window, and no figure on this
     // page comes from it any more (wf-60).
     expect(text).toContain("tokens per 5-hour window: window tokens not yet published");
@@ -889,8 +885,6 @@ describe("the page states one figure per quantity", () => {
     expect(text).not.toContain("undated");
     expect(text).toContain("Source, as of 25 Jan 2026: she-llac.com/claude-limits");
     expect(text).toContain("she-llac.com/claude-limits, as of 25 Jan 2026");
-    expect(text).toContain("Baseline 83,333,300 credits per week, as of 25 Jan 2026");
-    expect(text).toContain("Shellac credits table, as of 25 Jan 2026. Announced changes since:");
     // The windows-per-week chart carries no documented reference any more; the same date reaches
     // the reader through the caveat that scales Pro and Max 5x from the credits table.
     expect(text).toContain("she-llac.com/claude-limits, as of 25 Jan 2026)");
@@ -1003,16 +997,19 @@ describe("the dated blocks and the shortfall table on the page", () => {
     expect(text).toContain(
       "Measured against the reference table: this tracker's measured five-hour windows per week against the reference table's, per plan, for the last regime that ended before the 14 September weekly change. Cut at 14 Sep 2026.",
     );
-    expect(text).toContain("Measured Documented Measured ÷ documented Expected Measured ÷ expected Regime");
-    expect(text).toContain("Max 20x 6.48 7.58 0.85 5.68 1.14 15 Aug 2026 to 14 Sep 2026");
-    expect(text).toContain("Max 5x 10.86 12.63 0.86 9.47 1.15 13 Jun 2026 to 14 Aug 2026");
+    // Measured beside documented only: the "expected" columns apply announced multipliers and are
+    // not shown (seat 123).
+    expect(text).toContain("Measured Documented Measured ÷ documented Regime");
+    expect(text).toContain("Max 20x 6.48 7.58 0.85 15 Aug 2026 to 14 Sep 2026");
+    expect(text).toContain("Max 5x 10.86 12.63 0.86 13 Jun 2026 to 14 Aug 2026");
     // Pro has no measured regime, so the row is the publisher's sentence and carries no figure.
     expect(text).toContain(
       "Pro no measured weekly-window regime for pro ending before the cut; its published windows per week are inferred from max20, never measured",
     );
-    expect(text).toContain("Multipliers applied to the table's figures: five-hour window ×2, weekly ×1.5.");
-    expect(text).toContain("the reference table predates the 6 May five-hour doubling");
-    expect(text).toContain("Status: explained (docs/findings-2026-09-20-reconciliation.md).");
+    expect(text).not.toContain("Expected");
+    expect(text).not.toContain("Multipliers applied");
+    expect(text).not.toContain("the reference table predates the 6 May five-hour doubling");
+    expect(text).not.toContain("Status: explained");
     // A file published before the block draws no such table.
     expect(render(MEASURED, "max20", "claude-sonnet-5")).not.toContain("Measured against the reference table");
   });
@@ -1021,10 +1018,10 @@ describe("the dated blocks and the shortfall table on the page", () => {
     const text = render(WITHOUT, "max20", "claude-sonnet-5");
     // reference.shortfall is not part of the credits block, so it survives its absence.
     expect(text).toContain("Measured against the reference table");
-    expect(text).toContain("Max 20x 6.48 7.58 0.85 5.68 1.14");
+    expect(text).toContain("Max 20x 6.48 7.58 0.85 15 Aug 2026");
     // Everything the credits block carried is gone with it.
     expect(text).not.toContain("credits per 5-hour window");
-    expect(text).not.toContain("Cross-check against the announced caps A cross-check");
+    expect(text).not.toContain("Announced cap");
     expect(text).toMatch(/at low medium high xhigh max effort, you get/);
     expect(text).toContain("the output rate fitted from 60 measured stretches of real work");
   });
@@ -1245,7 +1242,7 @@ describe("the weekly change stated in tokens a week buys", () => {
 
   it("says the tokens-per-week figure in the headline", () => {
     expect(render(TPW, "max20", OPUS)).toContain(
-      "Anthropic last decreased Claude's weekly limit by 15% on 14 Sep 2026.",
+      "Weekly limit last changed by -15% on 14 Sep 2026 (measured).",
     );
   });
 
@@ -1298,7 +1295,7 @@ describe("the weekly change stated in tokens a week buys", () => {
 
   it("renders the old headline and the old levels for a file without the new fields", () => {
     const text = render(WITHOUT, "max20", OPUS);
-    expect(text).toContain("Anthropic last decreased Claude's weekly limit by 22% on 14 Sep 2026.");
+    expect(text).toContain("Weekly limit last changed by -22% on 14 Sep 2026 (measured).");
     const svg = chart(WITHOUT, "Tokens per week");
     expect(svg).toContain("3253M");
     expect(svg).toContain("2545M");
@@ -2084,15 +2081,16 @@ describe("the tracker's regime contract on the three plan charts", () => {
     ]);
   });
 
-  it("marks a published change the tab's line does not step at, grey at 0%", () => {
+  it("draws no marker for a change that rounds to 0% on the tab, and still draws it where it does not (seat 123)", () => {
     const j = structuredClone(RC);
-    // Windows per week unchanged across the five-hour change: the windows tab still marks it.
+    // Windows per week unchanged across the five-hour change: nothing to mark on the windows tab.
     j.credits!.window_tokens!.per_week_regimes![2].windows_per_week = 4.76;
-    const svg = chartSvg(htmlFor("windows", j), "Five-hour windows per week");
-    expect(marks(svg)).toEqual([
-      { colour: RED, text: "-27% on 14 Sep" },
-      { colour: "#94A3B8", text: "0% on 22 Sep" },
-    ]);
+    const html = htmlFor("windows", j);
+    const svg = chartSvg(html, "Five-hour windows per week");
+    expect(marks(svg)).toEqual([{ colour: RED, text: "-27% on 14 Sep" }]);
+    expect(svg).not.toContain("0% on 22 Sep");
+    // The same change still marks the window-size tab, where it moved the line.
+    expect(marks(chartSvg(html, "Effective window size"))).toContainEqual({ colour: GREEN, text: "+41% on 22 Sep" });
   });
 
   it("draws each account's line per regime on every tab, broken where it has no figure", () => {
@@ -2235,7 +2233,9 @@ describe("chart labels (seat 120)", () => {
       for (const plan of ["max20", "max5", "pro"] as Plan[]) {
         const svg = svgOf(html(chart, plan), chart);
         const ls = markerLabels(svg);
-        expect(ls.map((l) => l.text).join(" | "), `${chart} ${plan}`).toMatch(/on 14 Sep.*on 22 Sep/);
+        // Tokens per week does not move at 22 Sep in this file (it rounds to 0%), so that tab marks
+        // 14 Sep alone (seat 123).
+        expect(ls.map((l) => l.text).join(" | "), `${chart} ${plan}`).toMatch(chart === "tokens" ? /^[-+]\d+% on 14 Sep$/ : /on 14 Sep.*on 22 Sep/);
         const top = plotTop(svg);
         expect(lineTop(svg)).toBeGreaterThanOrEqual(top);
         for (const l of ls) expect(l.bottom, `${chart} ${plan} ${l.text}`).toBeLessThan(top);
@@ -2272,7 +2272,7 @@ describe("chart labels (seat 120)", () => {
   it("names each change in the account legend by its date, and skips one the account has no level either side of", () => {
     const legend = (panel: string) =>
       [...panel.matchAll(/<li data-account="[^"]*"><span class="swatch"[^>]*><\/span>([^<]*)<\/li>/g)].map((m) => m[1]);
-    for (const chart of ["window", "tokens", "windows"] as PlanChart[]) {
+    for (const chart of ["window", "windows"] as PlanChart[]) {
       const items = legend(panelOf(html(chart), chart));
       // Max account 1 and 2 have a level either side of both changes.
       expect(items.find((t) => t.startsWith("Max account 1")), chart).toMatch(/^Max account 1 \([-+]\d+% on 14 Sep, [-+]\d+% on 22 Sep\)$/);
@@ -2283,6 +2283,11 @@ describe("chart labels (seat 120)", () => {
       expect(items, chart).toContain("Max account 4");
       expect(items.join(" "), chart).not.toContain("across the change");
     }
+    // Tokens per week draws no 22 Sep marker (it rounds to 0% there), so no legend entry names it.
+    const tokens = legend(panelOf(html("tokens"), "tokens"));
+    expect(tokens.find((t) => t.startsWith("Max account 1"))).toMatch(/^Max account 1 \([-+]\d+% on 14 Sep\)$/);
+    expect(tokens.join(" ")).not.toContain("22 Sep");
+    expect(tokens.join(" ")).not.toMatch(/(^|[^\d])0% on/);
   });
 
   it("reads an account's change off its own levels either side of the marker", () => {
@@ -2298,7 +2303,65 @@ describe("chart labels (seat 120)", () => {
       "Max account 1 (-6% on 14 Sep)",
     );
     expect(accountLegendText("Max account 1", levels, [])).toBe("Max account 1");
+    // An account whose own step at a marked change rounds to 0% gets no entry for it (seat 123).
+    const flat = [
+      { start: "2026-09-01T00:00:00Z", end: "2026-09-14T12:00:00Z", value: 100 },
+      { start: "2026-09-14T12:00:00Z", end: "2026-09-22T19:00:00Z", value: 94 },
+      { start: "2026-09-22T19:00:00Z", end: "2026-09-28T00:00:00Z", value: 94.3 },
+    ];
+    expect(accountLegendText("Max account 1", flat, [{ date: "2026-09-14T12:00:00Z" }, { date: "2026-09-22T19:00:00Z" }])).toBe(
+      "Max account 1 (-6% on 14 Sep)",
+    );
+    expect(accountLegendText("Max account 1", levels, [{ date: "2026-09-05" }])).toBe("Max account 1");
     // A level running straight through a change: a level either side, and no movement.
     expect(accountChangePct(levels, "2026-09-05")).toBe(0);
+  });
+});
+
+describe("no announcement on the page (seat 123)", () => {
+  // The frozen 28 Sep file, with an `announcement` block on every event and on the last change
+  // beside the `announced` block the tracker already publishes. Nothing from either may render.
+  const J = (() => {
+    const j = structuredClone(live0928) as unknown as UsageJson;
+    const block = {
+      date: "2026-09-22",
+      announced_change_pct: 987.6,
+      quote: "ANNOUNCEMENT QUOTE MARKER",
+      also_quoted: "ANNOUNCEMENT ALSO QUOTED MARKER",
+      scope: "five_hour",
+      source: "ANNOUNCEMENT SOURCE MARKER",
+    };
+    for (const ev of j.events ?? []) Object.assign(ev, { announcement: block, announced: block });
+    Object.assign(j.last_change!, { announcement: block, announced: block });
+    return j;
+  })();
+  const html = (chart: PlanChart) =>
+    renderToString(
+      <HelmetProvider context={{}}>
+        <MemoryRouter>
+          <ClaudeUsageTracker initial={J} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart={chart} />
+        </MemoryRouter>
+      </HelmetProvider>,
+    ).replace(/<!-- -->/g, "");
+
+  it("renders no announcement figure, quote, source or wording on any tab", () => {
+    for (const chart of ["window", "tokens", "windows"] as PlanChart[]) {
+      const h = html(chart);
+      expect(h, chart).not.toMatch(/MARKER/);
+      expect(h, chart).not.toMatch(/[Aa]nnounce/);
+      expect(h, chart).not.toContain("987.6");
+      // The live file's own announcement text, too.
+      expect(h, chart).not.toContain("raising Pro and Max users");
+      expect(h, chart).not.toContain("MacRumors");
+      expect(h, chart).not.toContain("permanently doubled");
+    }
+  });
+
+  it("states the measured change in the headline, and only that", () => {
+    const h = html("window");
+    const h1 = h.slice(h.indexOf("<h1"), h.indexOf("</h1>"));
+    // The file's own measured percent (5), not the announced 987.6.
+    expect(J.last_change!.percent).toBe(5);
+    expect(h1.replace(/<[^>]+>/g, "")).toBe("Limits last changed by +5% on 22 Sep 2026 (measured).");
   });
 });
