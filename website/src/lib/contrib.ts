@@ -10,7 +10,6 @@
 import {
   CLASSES,
   PLAN_LABELS,
-  contributorModelValue,
   meterBudgetPerWindow,
   modelPlanLimit,
   type ApiPrice,
@@ -481,12 +480,13 @@ export type ContribMetric = "usd" | "window" | "weekly";
 /**
  * The figure one contributed reading carries for a chart tab. Dollars per 1% combine every
  * model and so compare with the tracker's meter budget per 1%. Tokens for a full window or week
- * are the selected model's own figure, or null: a reading without a per-model figure for that
- * model is missing data, never its combined total drawn under the model's name (audit finding 8).
+ * are the reading's own figure across its own mix of models: tokens per 1% of the meter, times
+ * 100. Null where the reading carries none.
  */
-export function contribPointValue(p: ContribPointLike, metric: ContribMetric, model: string): number | null {
-  if (metric === "usd") return p.usd_per_pct ?? null;
-  return contributorModelValue(metric === "window" ? p.tokens_per_pct_by_model : p.tokens_per_pct_week_by_model, model, 100);
+export function contribPointValue(p: ContribPointLike, metric: ContribMetric): number | null {
+  const v = metric === "usd" ? p.usd_per_pct : metric === "window" ? p.tokens_per_pct : p.tokens_per_pct_week;
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  return metric === "usd" ? v : v * 100;
 }
 
 /** Group readings by contributor, each group's own readings sorted oldest to newest. Groups

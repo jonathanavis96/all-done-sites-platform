@@ -98,8 +98,9 @@ export interface ContributedBlock {
 }
 export type EventKind = "plan" | "change";
 // Absent scope means "window" (the 5-hour rolling limit); "weekly" events carry a week-ending
-// date instead of a day the limit itself moved.
-export type EventScope = "window" | "weekly";
+// date instead of a day the limit itself moved. The tracker writes "five_hour" on `last_change` for
+// the same 5-hour limit.
+export type EventScope = "window" | "weekly" | "five_hour";
 
 // A weekly-scope change stated in tokens a week buys. `percent` is the unsigned figure the
 // headline says, `direction` which way it went; `signed_pct` is the same figure signed, and the
@@ -880,17 +881,6 @@ export const PLAN_LABELS: Record<Plan, string> = { pro: "Pro", max5: "Max 5x", m
 export const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh", "max"];
 export const CLASSES: TokenClass[] = ["input", "output", "cache_read", "cache_write"];
 
-// A contributed reading's figure for the selected model: its own entry in the per-model map, or
-// null. Never the reading's combined figure, which mixes every model it used (finding 8).
-export function contributorModelValue(
-  byModel: Record<string, number> | undefined,
-  model: string,
-  scale = 1,
-): number | null {
-  const value = byModel?.[model];
-  return typeof value === "number" ? value * scale : null;
-}
-
 export function compute(j: UsageJson, plan: Plan, model: string, effort: Effort) {
   const rate = j.rates[model];
   if (!rate) return null; // no probe data for this model yet: the page shows its unavailable state
@@ -1382,6 +1372,8 @@ export function windowTokenRegimeLevelsFor(
   const perWindow = windowTokensValueFor(j, model);
   if (perWindow === null) return [];
   const scale = j.plan_ratios[plan];
+  const published = windowTokenRegimes(j, plan, model, perWindow, scale);
+  if (published) return published;
   // One flat level per regime still, but at two levels once the block splits its own figure at
   // the cut (tracker wf-61): the before-cut window up to `cut_at`, the current one after it. A
   // file that publishes no split holds the one figure across every regime, as it did before.
@@ -1395,6 +1387,55 @@ export function windowTokenRegimeLevelsFor(
       tokensInterval: w.interval ? w.interval.map((n) => (n === null ? null : n * scale)) : null,
     };
   });
+}
+
+// The levels straight from `credits.window_tokens.regimes`, where the tracker publishes two or
+// more: one level per five-hour regime, so the chart steps wherever the window itself was measured
+// to change rather than only at the weekly regimes and the one cut. Each regime is in the block's
+// own unit, so it takes the same conversion the current figure does (this model's window over the
+// block's value) and then the plan's ratio. The first regime opens where the chart's weekly
+// levels do, and the current one runs to where they end. Max 20x is the plan the window was
+// measured on; every other plan's levels are that figure scaled, so they are drawn inferred and
+// their markers read off Max 20x's steps. Null where the block publishes fewer than two regimes,
+// or no value to convert from, in which case the caller keeps the weekly levels and the cut.
+function windowTokenRegimes(
+  j: UsageJson,
+  plan: Plan,
+  model: string,
+  perWindow: number,
+  scale: number,
+): (RegimeLevel & { tokens: number; tokensInterval: (number | null)[] | null })[] | null {
+  const wt = creditsOf(j)?.window_tokens;
+  const regimes = (wt?.regimes ?? []).filter((r) => typeof r?.value === "number" && Number.isFinite(r.value));
+  if (regimes.length < 2) return null;
+  const raw = typeof wt?.value === "number" ? wt.value : wt?.all?.value;
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw === 0) return null;
+  const factor = (perWindow / raw) * scale;
+  const weekly = weeklyRegimeLevelsFor(j, plan);
+  const t = (iso: string) => Date.parse(iso);
+  const froms = regimes.flatMap((r) => (r.from ? [r.from] : []));
+  const untils = regimes.flatMap((r) => (r.until ? [r.until] : []));
+  const chartStart = weekly[0]?.start ?? froms[0] ?? untils[0];
+  const lastFrom = froms[froms.length - 1];
+  const weeklyEnd = weekly[weekly.length - 1]?.end;
+  const chartEnd =
+    weeklyEnd && (!lastFrom || t(weeklyEnd) > t(lastFrom))
+      ? weeklyEnd
+      : (j.last_sample_at ?? j.generated_at ?? new Date().toISOString());
+  const interval = windowTokensIntervalFor(j, model);
+  return regimes.map((r) => ({
+    start: r.from ?? chartStart,
+    end: r.until ?? chartEnd,
+    // A five-hour regime has no windows-per-week figure behind it; only `tokens` is drawn.
+    windows: Number.NaN,
+    inferred: plan !== "max20",
+    plan: "max20" as Plan,
+    tokens: r.value * factor,
+    // An inferred family's figure carries no interval (windowTokensIntervalFor), and neither does
+    // any of its regimes.
+    tokensInterval:
+      interval && Array.isArray(r.interval) ? r.interval.map((n) => (typeof n === "number" ? n * factor : null)) : null,
+  }));
 }
 
 export interface AccountOnset {
@@ -1451,6 +1492,17 @@ export function tokensPerWeekChangePct(j: UsageJson): number | null {
   const t = tokensPerWeekChangeFor(j);
   if (!t || typeof t.percent !== "number" || !Number.isFinite(t.percent)) return null;
   return t.direction === "decreased" ? -t.percent : t.percent;
+}
+
+// The signed percent the window chart's newest step states: the published `last_change`, but only
+// where it is a five-hour change and the block publishes the regimes that step comes from. A weekly
+// change describes another quantity, and without regimes the chart's newest step is the cut, not
+// the change `last_change` names, so both read the percent off the drawn step instead.
+export function windowChangePct(j: UsageJson): number | null {
+  const c = j.last_change;
+  if (!c || c.scope !== "five_hour" || typeof c.percent !== "number" || !Number.isFinite(c.percent)) return null;
+  if ((creditsOf(j)?.window_tokens?.regimes?.length ?? 0) < 2) return null;
+  return c.direction === "decreased" ? -c.percent : c.percent;
 }
 
 // ---------------------------------------------------------------------------
@@ -1669,8 +1721,21 @@ export interface WindowCreditsAccount extends CreditsFigure {
   n: number;
 }
 
+// One published five-hour regime: the measured window between two detected steps, oldest first
+// and contiguous. `from` is null on the first and `until` null on the current one, whose value is
+// the block's own current figure. The same unit as the block's value (reference-mix tokens, or
+// credits, per window).
+export interface WindowRegime {
+  from: string | null;
+  until: string | null;
+  value: number;
+  interval: (number | null)[] | null;
+  source?: string;
+}
+
 export interface WindowCredits extends CreditsFigure {
   n?: number;
+  regimes?: WindowRegime[] | null;
   // The model family every token in the cluster was priced at, so the figure carries no fitted
   // rate: "opus" today.
   pure_family?: string;
@@ -1835,6 +1900,9 @@ export interface WindowTokensPerWeek {
 
 export interface WindowTokens extends CutSplit {
   derivation?: string;
+  // The block's current figure, where the publisher states it beside `all`; `regimes` ends on it.
+  value?: number | null;
+  regimes?: WindowRegime[] | null;
   as_of?: string | null;
   method?: string;
   selection?: string;
