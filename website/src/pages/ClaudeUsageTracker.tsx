@@ -205,6 +205,10 @@ function levelStepsFor(
 // A change marker's percent as its label prints it: whole percent, signed.
 export const markerPctText = (pct: number) => `${Math.round(pct) > 0 ? "+" : ""}${Math.round(pct)}%`;
 
+// A marker whose own percent prints as 0% says nothing moved, so it is not drawn. A label with no
+// percent at all (null) is not a zero and still draws.
+export const markerRoundsToZero = (pct: number | null) => pct !== null && Math.round(pct) === 0;
+
 // The signed percent inside a label such as "weekly ratio -4%", or null when it names none.
 function labelPct(text: string): number | null {
   const m = text.match(/([-+\u2212])(\d+(?:\.\d+)?)%/);
@@ -304,7 +308,8 @@ export function accountChangePct(
 }
 
 // "Max account 1 (-6% on 14 Sep, +8% on 22 Sep)": every change the chart marks, by date, where the
-// account has a level on both sides, oldest first. Just the name where no change applies. The
+// account has a level on both sides and its own step there does not round to 0%, oldest first.
+// Just the name where no change applies. The
 // date is written the way the marker writes it, so the legend and the marker name the same day.
 export function accountLegendText(
   name: string,
@@ -315,7 +320,7 @@ export function accountLegendText(
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
     .flatMap((m) => {
       const pct = accountChangePct(levels, m.date);
-      return pct === null ? [] : [`${markerPctText(pct)} on ${fmtDateShort(utcDay(m.date))}`];
+      return pct === null || markerRoundsToZero(pct) ? [] : [`${markerPctText(pct)} on ${fmtDateShort(utcDay(m.date))}`];
     });
   return parts.length > 0 ? `${name} (${parts.join(", ")})` : name;
 }
@@ -530,7 +535,10 @@ function LevelChart({
     rawMarkers.push({ x: xDay(ev.date), date: ev.date, pct, text: `${markerPctText(pct)} on ${fmtDateShort(utcDay(ev.date))}` });
   }
   rawMarkers.sort((a, b) => a.x - b.x);
-  const markerLayout = layoutMarkerLabels(rawMarkers, R);
+  // A change that moves this chart's own quantity by less than half a percent is not a change on
+  // this tab: no line, no label, and no legend entry (seat 123: Tokens per week drew "0% on 22 Sep").
+  const shownMarkers = rawMarkers.filter((m) => !markerRoundsToZero(m.pct));
+  const markerLayout = layoutMarkerLabels(shownMarkers, R);
   const changeMarkers = markerLayout.labels;
   const T = markerLayout.top, B = T + 180, H = B + 60;
   // Each account's legend entry names every change this chart marks by its date, with the
@@ -1205,7 +1213,6 @@ export default function ClaudeUsageTracker({
       urlText: url ? url.replace(/^https?:\/\//, "") : null,
     };
   }, [data]);
-  const referenceChanges = data?.reference?.changes_since ?? [];
   const weeklySeries = useMemo(() => (data ? weeklySeriesFor(data) : []), [data]);
   const weeklyEvents = useMemo(() => (data ? weeklyEventsFor(data) : []), [data]);
   // Levels for every plan, not just the selected one: the chart draws all three, the selected
@@ -1490,8 +1497,8 @@ export default function ClaudeUsageTracker({
     .map(([label]) => label);
   const captureNote = captureEmptyNote(acrossCut?.method);
   const fromWeekly = credits?.window_credits_from_weekly ?? null;
-  // How far the windows-per-week ratio moved across the change, from the same measured windows
-  // the cross-check table below states. A stable account-specific scale cancels in this
+  // How far the windows-per-week ratio moved across the change, from the measured windows per
+  // week either side (the announced caps in the same block are never read). A stable account-specific scale cancels in this
   // within-account before/after ratio, which is why it is safe to publish where the raw spread
   // between accounts is not (audit finding, 2026-09-20).
   const weeklyRatioFellPct = (() => {
@@ -1514,8 +1521,8 @@ export default function ClaudeUsageTracker({
     if (lo <= 0) return null;
     return ((hi - lo) / lo) * 100;
   })();
-  // Goal 7: the measured windows per week against the reference table's own, per plan, with the
-  // announced changes since that table applied. A comparison, never an input to a figure here.
+  // Goal 7: the measured windows per week against the reference table's own, per plan. A
+  // comparison, never an input to a figure here.
   const shortfall = data?.reference?.shortfall ?? null;
   const shortfallPlans = data ? shortfallRows(data) : [];
   const perWeekFmt = (v: number | null | undefined) => (typeof v === "number" ? v.toFixed(2) : "\u2014");
@@ -1608,18 +1615,14 @@ export default function ClaudeUsageTracker({
           {!unavailable && h && (
             <h1
               dangerouslySetInnerHTML={{
-                __html: h.text
-                  .replace(/(increased|decreased)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
-                  .replace(/(\d+%)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
-                  .replace(/Claude/, `<span class="claude">Claude</span>`),
+                __html: h.text.replace(/([-+]\d+(?:\.\d+)?%)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`),
               }}
             />
           )}
           {/* The #78 hero has nothing between the h1 and the pill row (Jonathan's decision,
-              2026-09-20). What the headline figure was measured either side of, Anthropic's own
-              figure for the same change, and -- where the stretches cannot separate the two
-              meters -- that they cannot: moved into "The five-hour window across the change" at
-              the bottom, where it still renders in full. */}
+              2026-09-20). What the headline figure was measured either side of, and -- where the
+              stretches cannot separate the two meters -- that they cannot: moved into "The
+              five-hour window across the change" at the bottom. */}
           {!unavailable && data && (
             <div className="pillrow">
               {localTime && (
@@ -2486,7 +2489,7 @@ export default function ClaudeUsageTracker({
           </details>
         )}
 
-        {/* 6. Each watched account's own meter either side of the announced change. What the
+        {/* 6. Each watched account's own meter either side of the change. What the
             block can say without reasoning from the raw spread between accounts (a stable
             account-specific scale cancels in each account's own before/after ratio, so a
             cross-account spread proves nothing about which meter moved): the windows-per-week
@@ -2495,9 +2498,9 @@ export default function ClaudeUsageTracker({
         {!unavailable && (acrossCut || changeSentences.length > 0) && (
           <details>
             <summary>The five-hour window across the change</summary>
-            {/* What the headline figure was measured either side of, Anthropic's own figure for
-                the same change, and -- where the stretches cannot separate the two meters --
-                that they cannot: moved out of the hero (Jonathan's decision, 2026-09-20). */}
+            {/* What the headline figure was measured either side of, and -- where the stretches
+                cannot separate the two meters -- that they cannot: moved out of the hero
+                (Jonathan's decision, 2026-09-20). */}
             {changeSentences.length > 0 && (
               <p className="sub">
                 {changeSentences.map((line) => (
@@ -2564,13 +2567,13 @@ export default function ClaudeUsageTracker({
           </details>
         )}
 
-        {/* 7. The same window anchored the other way. It shares no input with the measured
-            cluster, which is the only reason it is worth putting beside it. Every number in the
-            arithmetic below is published: the page states the composition, it does not compute
-            the result, and the undated baseline is never an input to a figure of our own. */}
-        {!unavailable && (fromWeekly || shortfall || data?.weekly_windows || (credits && ratioBasis)) && (
+        {/* 7. The measured levels beside the published plan basis and reference table. Measured
+            figures and published documentation only: the announced weekly caps, the announced
+            changes since the reference table and anything computed from them are not shown
+            (seat 123). */}
+        {!unavailable && (shortfall || data?.weekly_windows || (credits && ratioBasis)) && (
           <details>
-            <summary>Cross-check against the announced caps</summary>
+            <summary>Cross-check against the published table</summary>
             {data?.weekly_windows && (
               <p className="quiet">
                 {inferredPlans.includes("max5")
@@ -2588,83 +2591,7 @@ export default function ClaudeUsageTracker({
                 <a href={ratioBasis.url}>{ratioBasis.urlText}</a>.
               </p>
             )}
-            {fromWeekly && (
-              <>
-            <p className="sub">
-              {fromWeekly.kind === "cross_check"
-                ? "A cross-check, not a second measurement: the announced weekly cap over this tracker's own measured windows per week."
-                : "The announced weekly cap over this tracker's own measured windows per week."}
-            </p>
-            <table>
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Announced cap ÷ windows per week</th>
-                  <th>Credits per 5-hour window</th>
-                </tr>
-              </thead>
-              <tbody>
-                {([["Before the change", fromWeekly.before], ["After the change", fromWeekly.after]] as const).map(
-                  ([label, side]) => (
-                    <tr key={label}>
-                      <td>{label}</td>
-                      <td>
-                        {fmtCredits(fromWeekly.weekly_cap_baseline_credits)} × {side.weekly_cap_multiplier} ={" "}
-                        {fmtCredits(side.announced_weekly_cap_credits)} ÷ {side.windows_per_week_measured.toFixed(2)}
-                        {fmtInterval(side.windows_per_week_rounding_interval) ? ` (${fmtInterval(side.windows_per_week_rounding_interval)})` : ""} windows
-                      </td>
-                      <td>{typeof side.value === "number" ? fmtCredits(side.value) : "—"}</td>
-                    </tr>
-                  ),
-                )}
-                {credits && (
-                  <tr>
-                    <td className="hl">Measured</td>
-                    <td>
-                      pure-{credits.window_credits.pure_family} stretches, n={credits.window_credits.n}
-                    </td>
-                    <td className="hl">
-                      {typeof credits.window_credits.value === "number"
-                        ? fmtCredits(credits.window_credits.value)
-                        : credits.window_credits.status ?? "—"}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-            <div className="quiet">
-              Baseline {fmtCredits(fromWeekly.weekly_cap_baseline_credits)} credits per week, as of{" "}
-              {fmtDate(fromWeekly.weekly_cap_baseline_source.as_of)}:{" "}
-              <a href={fromWeekly.weekly_cap_baseline_source.url}>
-                {fromWeekly.weekly_cap_baseline_source.url.replace(/^https?:\/\//, "")}
-              </a>
-              . A reference, shown beside the measurement and never an input to it.
-            </div>
-            {referenceChanges.length > 0 && (
-              <>
-                <div className="quiet">
-                  {data?.reference?.name ?? "Reference table"}
-                  {data?.reference?.as_of ? `, as of ${fmtDate(data.reference.as_of)}` : ""}. Announced changes since:
-                </div>
-                {referenceChanges.map((c, i) => (
-                  <div className="quiet" key={`${c.date ?? c.from ?? i}-${c.scope ?? ""}`}>
-                    {c.date_known && c.date
-                      ? fmtDate(c.date)
-                      : [c.from, c.until].filter(Boolean).join(" to ") || "date not given"}
-                    {typeof c.multiplier === "number" ? ` · ×${c.multiplier}` : ""}
-                    {c.scope ? ` · ${c.scope.replace(/_/g, " ")}` : ""}
-                    {c.summary ? ` — ${c.summary}` : ""}
-                    {c.quote ? ` \u201c${c.quote}\u201d` : ""}
-                    {c.source ? ` (${c.source})` : ""}
-                  </div>
-                ))}
-              </>
-            )}
-              </>
-            )}
-            {/* Goal 7. The measured levels against the reference table's own, per plan. The table
-                predates three announced changes, so what it predicts today is its own figure with
-                those multipliers applied, and the publisher says whether that closes the gap. */}
+            {/* Goal 7. The measured levels against the reference table's own, per plan. */}
             {shortfall && shortfallPlans.length > 0 && (
               <>
                 <p className="sub">
@@ -2678,8 +2605,6 @@ export default function ClaudeUsageTracker({
                       <th>Measured</th>
                       <th>Documented</th>
                       <th>Measured ÷ documented</th>
-                      <th>Expected</th>
-                      <th>Measured ÷ expected</th>
                       <th>Regime</th>
                     </tr>
                   </thead>
@@ -2688,14 +2613,12 @@ export default function ClaudeUsageTracker({
                       <tr key={p}>
                         <td className={p === plan ? "hl" : ""}>{PLAN_LABELS[p]}</td>
                         {row.status ? (
-                          <td colSpan={6}>{row.status}</td>
+                          <td colSpan={4}>{row.status}</td>
                         ) : (
                           <>
                             <td className={p === plan ? "hl" : ""}>{perWeekFmt(row.measured_windows_per_week)}</td>
                             <td>{perWeekFmt(row.documented_windows_per_week)}</td>
                             <td>{perWeekFmt(row.ratio)}</td>
-                            <td>{perWeekFmt(row.expected_windows_per_week)}</td>
-                            <td>{perWeekFmt(row.ratio_to_expected)}</td>
                             <td>
                               {row.from && row.to
                                 ? `${fmtDate(row.from.slice(0, 10))} to ${fmtDate(row.to.slice(0, 10))}`
@@ -2707,30 +2630,6 @@ export default function ClaudeUsageTracker({
                     ))}
                   </tbody>
                 </table>
-                {(typeof shortfall.multipliers_applied?.five_hour_window === "number" ||
-                  typeof shortfall.multipliers_applied?.weekly === "number") && (
-                  <div className="quiet">
-                    Multipliers applied to the table's figures:{" "}
-                    {[
-                      typeof shortfall.multipliers_applied?.five_hour_window === "number"
-                        ? `five-hour window ×${shortfall.multipliers_applied.five_hour_window}`
-                        : null,
-                      typeof shortfall.multipliers_applied?.weekly === "number"
-                        ? `weekly ×${shortfall.multipliers_applied.weekly}`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(", ")}
-                    .
-                  </div>
-                )}
-                {shortfall.explanation && <div className="quiet">{shortfall.explanation}</div>}
-                {shortfall.status && (
-                  <div className="quiet">
-                    Status: {shortfall.status}
-                    {shortfall.source ? ` (${shortfall.source})` : ""}.
-                  </div>
-                )}
               </>
             )}
           </details>
