@@ -211,3 +211,17 @@
 .cut h3.speed-sub { font-family: var(--ads-disp); font-size: 16px; margin: 28px 0 4px; }
 .cut .speed-by-account { margin-top: 12px; }
 .cut .speed-legend svg { display: inline-block; }
+
+/* An info icon beside a figure. Its sentence spans the figure row beneath it, so it never runs off
+   a phone's edge; it shows on hover, on keyboard focus, and on a tap (data-open). */
+.cut .rate.speed-figs { position: relative; }
+.cut .info-tip { display: inline; }
+/* Only the row's own figures stack on a phone; the interval and its icon stay inline with them. */
+.cut .rate span span { display: inline; }
+.cut .rate .nowrap { white-space: nowrap; }
+.cut .info-tip-text { white-space: normal; }
+.cut .info-tip-btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin: 0 0 0 4px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ads-mut); cursor: help; vertical-align: -5px; }
+.cut .info-tip-btn:hover, .cut .info-tip-btn:focus-visible, .cut .info-tip[data-open] .info-tip-btn { color: var(--ads-acd); }
+.cut .info-tip-btn:focus-visible { outline: 2px solid var(--ads-acd); outline-offset: 1px; }
+.cut .info-tip-text { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 5; max-width: 560px; padding: 10px 12px; border: 1px solid var(--ads-line); border-radius: 8px; background: var(--ads-surface); color: var(--ads-bd); font-size: 13.5px; font-weight: 400; line-height: 1.5; box-shadow: 0 6px 20px rgba(15, 23, 42, .12); visibility: hidden; opacity: 0; transition: opacity .12s; }
+.cut .info-tip:hover .info-tip-text, .cut .info-tip:focus-within .info-tip-text, .cut .info-tip[data-open] .info-tip-text { visibility: visible; opacity: 1; }

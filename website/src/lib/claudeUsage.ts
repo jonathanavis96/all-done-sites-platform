@@ -659,7 +659,7 @@ export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
   const own = ratioOf(plan);
   const out: RegimeLevel[] = [];
   for (const source of Object.keys(PLAN_LABELS) as Plan[]) {
-    const regimes = j.weekly_windows?.[source]?.regimes;
+    const regimes = source === "max20" ? max20WindowRegimes(j) : j.weekly_windows?.[source]?.regimes;
     if (!regimes || regimes.length === 0) continue;
     const isOwn = source === plan;
     // Pro borrows Max 5x's measured regimes wholesale, exactly as it borrows its weekly rows,
@@ -716,6 +716,45 @@ export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
     if (anchors[i]) return r;
     const anchor = anchors[i + 1] ? sorted[i + 1] : anchors[i - 1] ? sorted[i - 1] : null;
     return anchor ? { ...r, windows: anchor.windows, continued: true } : r;
+  });
+}
+
+// The tracker's per-week regimes, where it publishes two or more (tracker seat 119): Max 20x's
+// windows per week and tokens per week over every five-hour regime, so a five-hour change steps
+// both lines rather than only the window's. Null on files published before them.
+export function perWeekRegimesOf(j: UsageJson): PerWeekRegime[] | null {
+  const pw = creditsOf(j)?.window_tokens?.per_week_regimes;
+  return Array.isArray(pw) && pw.length >= 2 ? pw : null;
+}
+
+// Where the open (current) regime ends on the chart: the newest Max 20x weekly regime's own end or
+// the newest sample, whichever is later.
+function openRegimeEnd(j: UsageJson): string {
+  const own = j.weekly_windows?.max20?.regimes ?? [];
+  const ends = [own[own.length - 1]?.end, j.last_sample_at ?? undefined].filter((e): e is string => typeof e === "string");
+  if (ends.length === 0) return j.generated_at ?? new Date().toISOString();
+  return ends.reduce((a, b) => (Date.parse(b) > Date.parse(a) ? b : a));
+}
+
+// Where a regime published with `from: null` opens on the chart: where Max 20x's own weekly
+// regimes begin, so the months before the account moved onto the plan keep Max 5x's scaled level.
+function firstRegimeStart(j: UsageJson): string | null {
+  return j.weekly_windows?.max20?.regimes?.[0]?.start ?? null;
+}
+
+// Max 20x's windows-per-week regimes: `window_tokens.per_week_regimes` where the tracker publishes
+// them, the weekly detector's own `weekly_windows.max20.regimes` otherwise.
+function max20WindowRegimes(j: UsageJson): { start: string; end: string; windows: number }[] | undefined {
+  const own = j.weekly_windows?.max20?.regimes;
+  const pw = perWeekRegimesOf(j);
+  if (!pw) return own;
+  const first = firstRegimeStart(j);
+  const end = openRegimeEnd(j);
+  return pw.flatMap((r) => {
+    const start = r.from ?? first;
+    return start && typeof r.windows_per_week === "number" && Number.isFinite(r.windows_per_week)
+      ? [{ start, end: r.until ?? end, windows: r.windows_per_week }]
+      : [];
   });
 }
 
@@ -1336,13 +1375,17 @@ export function weeklyTokenRegimeLevelsFor(
   const perWindow = windowTokensValueFor(j, model);
   if (perWindow === null) return [];
   const scale = j.plan_ratios[plan] * limit.weekly_fraction;
+  const published = perWeekTokenRegimes(j, plan, model, perWindow, scale);
+  if (published) return published;
+  const interval = windowTokensIntervalFor(j, model);
+  const split = weeklyLevelsAtWindowRegimes(j, plan, model, perWindow, scale, interval);
+  if (split) return split;
   // Each regime is priced at the window figure that was current while it ran (tracker wf-61).
   // Drawing every regime at today's window made the 14 September step read as the whole fall in
   // windows per week (-22%), which is not what a week buys: the window itself grew across the
   // same cut, so the step the chart draws is the -15% the headline says. A file that publishes
   // no split prices every regime at the one current figure, exactly as before.
   const cut = windowTokensCutFor(j, model);
-  const interval = windowTokensIntervalFor(j, model);
   return weeklyRegimeLevelsFor(j, plan).map((r) => {
     const w = windowTokensAt(r.end, perWindow, interval, cut);
     const factor = r.windows * scale;
@@ -1352,6 +1395,108 @@ export function weeklyTokenRegimeLevelsFor(
       tokensInterval: w.interval ? w.interval.map((n) => (n === null ? null : n * factor)) : null,
     };
   });
+}
+
+// The block's raw current window, the figure every regime is converted to a model from.
+function windowTokensRaw(j: UsageJson): number | null {
+  const wt = creditsOf(j)?.window_tokens;
+  const raw = typeof wt?.value === "number" ? wt.value : wt?.all?.value;
+  return typeof raw === "number" && Number.isFinite(raw) && raw !== 0 ? raw : null;
+}
+
+// Tokens per week straight from `window_tokens.per_week_regimes`: one level per regime, in the
+// block's own unit, so it takes the conversion the window's regimes take (this model's window over
+// the block's value) and then the plan's share of Max 20x's week -- its window ratio times its
+// windows-per-week ratio. Laid out on the chart exactly as the window chart's regimes are. Null
+// where the tracker publishes fewer than two, or the plan has no windows-per-week ratio to scale by.
+function perWeekTokenRegimes(
+  j: UsageJson,
+  plan: Plan,
+  model: string,
+  perWindow: number,
+  scale: number,
+): (RegimeLevel & { tokens: number; tokensInterval: (number | null)[] | null })[] | null {
+  const pw = perWeekRegimesOf(j)?.filter((r) => typeof r.value === "number" && Number.isFinite(r.value));
+  const raw = windowTokensRaw(j);
+  const weekRatio = weeklyWindowRatio(j, plan);
+  if (!pw || pw.length < 2 || raw === null || weekRatio === null) return null;
+  const factor = (perWindow / raw) * scale * weekRatio;
+  const { chartStart, chartEnd } = regimeChartSpan(j, plan, pw);
+  const interval = windowTokensIntervalFor(j, model);
+  return pw.map((r) => ({
+    start: r.from ?? chartStart,
+    end: r.until ?? chartEnd,
+    windows: typeof r.windows_per_week === "number" ? r.windows_per_week * weekRatio : Number.NaN,
+    inferred: plan !== "max20",
+    plan: "max20" as Plan,
+    tokens: (r.value as number) * factor,
+    tokensInterval:
+      interval && Array.isArray(r.interval) ? r.interval.map((n) => (typeof n === "number" ? n * factor : null)) : null,
+  }));
+}
+
+// Without the per-week regimes, the same levels computed here: every weekly regime split at every
+// five-hour regime boundary that falls inside it, each piece its windows per week times the window
+// regime in force over it. Never the current window across every regime: that drew Max 20x's line
+// flat through a 41% larger window. Null where the block publishes fewer than two window regimes;
+// the caller then keeps the one cut.
+function weeklyLevelsAtWindowRegimes(
+  j: UsageJson,
+  plan: Plan,
+  model: string,
+  perWindow: number,
+  scale: number,
+  interval: (number | null)[] | null,
+): (RegimeLevel & { tokens: number; tokensInterval: (number | null)[] | null })[] | null {
+  const regimes = (creditsOf(j)?.window_tokens?.regimes ?? []).filter(
+    (r) => typeof r?.value === "number" && Number.isFinite(r.value),
+  );
+  const raw = windowTokensRaw(j);
+  if (regimes.length < 2 || raw === null) return null;
+  const conv = perWindow / raw;
+  const t = (iso: string) => Date.parse(iso);
+  const bounds = regimes.flatMap((r) => (r.from ? [r.from] : []));
+  const inForce = (mid: number) =>
+    regimes.find((r) => (r.from === null || t(r.from) <= mid) && (r.until === null || mid < t(r.until))) ??
+    regimes[mid < t(bounds[0]) ? 0 : regimes.length - 1];
+  return weeklyRegimeLevelsFor(j, plan).flatMap((r) => {
+    const cuts = bounds.filter((b) => t(b) > t(r.start) && t(b) < t(r.end));
+    const edges = [r.start, ...cuts, r.end];
+    return edges.slice(1).map((end, i) => {
+      const start = edges[i];
+      const w = inForce((t(start) + t(end)) / 2);
+      const factor = r.windows * scale * conv;
+      return {
+        ...r,
+        start,
+        end,
+        tokens: w.value * factor,
+        tokensInterval:
+          interval && Array.isArray(w.interval) ? w.interval.map((n) => (typeof n === "number" ? n * factor : null)) : null,
+      };
+    });
+  });
+}
+
+// Where a published regime list opens and closes on a plan's chart: the first regime opens where
+// the chart's weekly levels do, and the open one runs to where they end (or the newest sample).
+function regimeChartSpan(
+  j: UsageJson,
+  plan: Plan,
+  regimes: { from: string | null; until: string | null }[],
+): { chartStart: string; chartEnd: string } {
+  const weekly = weeklyRegimeLevelsFor(j, plan);
+  const t = (iso: string) => Date.parse(iso);
+  const froms = regimes.flatMap((r) => (r.from ? [r.from] : []));
+  const untils = regimes.flatMap((r) => (r.until ? [r.until] : []));
+  const chartStart = weekly[0]?.start ?? froms[0] ?? untils[0];
+  const lastFrom = froms[froms.length - 1];
+  const weeklyEnd = weekly[weekly.length - 1]?.end;
+  const chartEnd =
+    weeklyEnd && (!lastFrom || t(weeklyEnd) > t(lastFrom))
+      ? weeklyEnd
+      : (j.last_sample_at ?? j.generated_at ?? new Date().toISOString());
+  return { chartStart, chartEnd };
 }
 
 // The window itself, held flat at the measured `credits.window_tokens` figure across the same
@@ -1405,23 +1550,14 @@ function windowTokenRegimes(
   perWindow: number,
   scale: number,
 ): (RegimeLevel & { tokens: number; tokensInterval: (number | null)[] | null })[] | null {
-  const wt = creditsOf(j)?.window_tokens;
-  const regimes = (wt?.regimes ?? []).filter((r) => typeof r?.value === "number" && Number.isFinite(r.value));
+  const regimes = (creditsOf(j)?.window_tokens?.regimes ?? []).filter(
+    (r) => typeof r?.value === "number" && Number.isFinite(r.value),
+  );
   if (regimes.length < 2) return null;
-  const raw = typeof wt?.value === "number" ? wt.value : wt?.all?.value;
-  if (typeof raw !== "number" || !Number.isFinite(raw) || raw === 0) return null;
+  const raw = windowTokensRaw(j);
+  if (raw === null) return null;
   const factor = (perWindow / raw) * scale;
-  const weekly = weeklyRegimeLevelsFor(j, plan);
-  const t = (iso: string) => Date.parse(iso);
-  const froms = regimes.flatMap((r) => (r.from ? [r.from] : []));
-  const untils = regimes.flatMap((r) => (r.until ? [r.until] : []));
-  const chartStart = weekly[0]?.start ?? froms[0] ?? untils[0];
-  const lastFrom = froms[froms.length - 1];
-  const weeklyEnd = weekly[weekly.length - 1]?.end;
-  const chartEnd =
-    weeklyEnd && (!lastFrom || t(weeklyEnd) > t(lastFrom))
-      ? weeklyEnd
-      : (j.last_sample_at ?? j.generated_at ?? new Date().toISOString());
+  const { chartStart, chartEnd } = regimeChartSpan(j, plan, regimes);
   const interval = windowTokensIntervalFor(j, model);
   return regimes.map((r) => ({
     start: r.from ?? chartStart,
@@ -1516,7 +1652,9 @@ export function windowChangePct(j: UsageJson): number | null {
 
 export interface AccountLine {
   account: string;
-  levels: { start: string; end: string; value: number }[];
+  // `gap` marks a level that does not join the one before it: the regime between them had no
+  // reading for this account, so the line breaks there rather than bridging it.
+  levels: { start: string; end: string; value: number; gap?: boolean }[];
   // The account's own change across the cut, where the file publishes one for this chart's own
   // quantity. Null where it does not; the page then states none.
   changePct: number | null;
@@ -1535,6 +1673,7 @@ export function chartAccounts(j: UsageJson): string[] {
     ...Object.keys(j.weekly_windows?.max20?.by_account ?? {}),
     ...Object.keys(credits?.window_tokens?.accounts ?? {}),
     ...Object.keys(credits?.five_hour_window_across_cut?.per_account ?? {}),
+    ...Object.keys(credits?.window_tokens?.account_regimes ?? {}),
   ]);
   return [...set].sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
 }
@@ -1573,16 +1712,64 @@ function linesFor(accounts: string[], lineOf: (a: string) => AccountLine | null)
   return { lines, missing };
 }
 
+// Tracker seat 119: each account's own window, windows per week and tokens per week over the same
+// regime boundaries as the plan line, under `window_tokens.account_regimes`. Null on files
+// published before it, where each chart keeps building the account's line itself (PR #106).
+function publishedAccountRegimes(j: UsageJson): Record<string, AccountRegime[]> | null {
+  const ar = creditsOf(j)?.window_tokens?.account_regimes;
+  return ar && typeof ar === "object" && Object.keys(ar).length > 0 ? ar : null;
+}
+
+// One account's line from its published regimes: one level per regime at `pick`'s figure times
+// `scale`, and a gap wherever that figure is null. A regime published `from: null` opens where Max
+// 20x's own weekly regimes do, and the open one runs to the newest reading.
+function accountRegimeLevels(
+  j: UsageJson,
+  regimes: AccountRegime[] | undefined,
+  pick: (r: AccountRegime) => number | null | undefined,
+  scale: number,
+): AccountLine["levels"] {
+  const first = firstRegimeStart(j);
+  const end = openRegimeEnd(j);
+  const out: AccountLine["levels"] = [];
+  let joined = false;
+  for (const r of regimes ?? []) {
+    const v = pick(r);
+    const start = r.from ?? first;
+    if (!finite(v) || !start) {
+      joined = false;
+      continue;
+    }
+    out.push({ start, end: r.until ?? end, value: v * scale, ...(joined ? {} : { gap: true }) });
+    joined = true;
+  }
+  return out;
+}
+
+// The factor that puts a published account regime's window (reference-mix tokens) into the selected
+// model's tokens on Max 20x: the same conversion the plan line's regimes take. Null where the model
+// is not on Max 20x or the block has no figure to convert from.
+function accountRegimeScale(j: UsageJson, model: string): number | null {
+  if (!modelPlanLimit(j, model, "max20").included) return null;
+  const perWindow = windowTokensValueFor(j, model);
+  const raw = windowTokensRaw(j);
+  if (perWindow === null || raw === null) return null;
+  return (perWindow / raw) * (j.plan_ratios?.max20 ?? 1);
+}
+
 // Windows per week: each account's own regimes. The change is PR #90's paired per-account figure
 // where the file carries it, else the account's own detected step.
 export function accountWindowLines(j: UsageJson): AccountLines {
   const paired = newestWeeklyChange(j)?.windows_per_week_ratio?.per_account;
+  const published = publishedAccountRegimes(j);
   return linesFor(chartAccounts(j), (a) => {
     const pairedPct = paired?.[a]?.change_pct;
     const stepPct = j.weekly_windows?.max20?.by_account?.[a]?.step?.percent;
     return {
       account: a,
-      levels: accountRegimes(j, a).map((r) => ({ start: r.start, end: r.end, value: r.windows })),
+      levels: published
+        ? accountRegimeLevels(j, published[a], (r) => r.windows_per_week, 1)
+        : accountRegimes(j, a).map((r) => ({ start: r.start, end: r.end, value: r.windows })),
       changePct: finite(pairedPct) ? pairedPct : finite(stepPct) ? stepPct : null,
     };
   });
@@ -1636,6 +1823,15 @@ function accountWindowAt(w: AccountWindowSides, r: { start: string; end: string 
 // account's own five-hour change across the cut, the same credits figures' own percent.
 export function accountWindowTokenLines(j: UsageJson, model: string): AccountLines {
   const across = creditsOf(j)?.five_hour_window_across_cut?.per_account;
+  const published = publishedAccountRegimes(j);
+  if (published) {
+    const scale = accountRegimeScale(j, model);
+    return linesFor(chartAccounts(j), (a) => {
+      if (scale === null) return null;
+      const pct = across?.[a]?.change_pct;
+      return { account: a, levels: accountRegimeLevels(j, published[a], (r) => r.window, scale), changePct: finite(pct) ? pct : null };
+    });
+  }
   return linesFor(chartAccounts(j), (a) => {
     const w = accountWindowTokens(j, a, model);
     if (w === null) return null;
@@ -1658,6 +1854,19 @@ export function accountWindowTokenLines(j: UsageJson, model: string): AccountLin
 export function accountWeeklyTokenLines(j: UsageJson, model: string): AccountLines {
   const paired = newestWeeklyChange(j)?.tokens_per_week_change?.per_account;
   const fraction = modelPlanLimit(j, model, "max20").weekly_fraction;
+  const published = publishedAccountRegimes(j);
+  if (published) {
+    const scale = accountRegimeScale(j, model);
+    return linesFor(chartAccounts(j), (a) => {
+      if (scale === null) return null;
+      const pct = paired?.[a]?.signed_pct;
+      return {
+        account: a,
+        levels: accountRegimeLevels(j, published[a], (r) => r.per_week, scale * fraction),
+        changePct: finite(pct) ? pct : null,
+      };
+    });
+  }
   return linesFor(chartAccounts(j), (a) => {
     const w = accountWindowTokens(j, a, model);
     if (w === null) return null;
@@ -1731,6 +1940,30 @@ export interface WindowRegime {
   value: number;
   interval: (number | null)[] | null;
   source?: string;
+}
+
+// Tracker seat 119: Max 20x's tokens per week over the same five-hour regimes, oldest first and
+// contiguous, the last one open (`until: null`). `value` is reference-mix tokens per week, the
+// block's own unit, and `window` times `windows_per_week` is what it was assembled from.
+export interface PerWeekRegime {
+  from: string | null;
+  until: string | null;
+  value: number | null;
+  interval?: (number | null)[] | null;
+  window?: number | null;
+  windows_per_week?: number | null;
+}
+
+// One watched account's own figures over the same regime boundaries. Any factor is null where the
+// account had no readings in that regime; the page then draws a gap there, never a guess.
+export interface AccountRegime {
+  from: string | null;
+  until: string | null;
+  window?: number | null;
+  windows_per_week?: number | null;
+  per_week?: number | null;
+  n_window?: number | null;
+  n_wpw?: number | null;
 }
 
 export interface WindowCredits extends CreditsFigure {
@@ -1903,6 +2136,8 @@ export interface WindowTokens extends CutSplit {
   // The block's current figure, where the publisher states it beside `all`; `regimes` ends on it.
   value?: number | null;
   regimes?: WindowRegime[] | null;
+  per_week_regimes?: PerWeekRegime[] | null;
+  account_regimes?: Record<string, AccountRegime[]> | null;
   as_of?: string | null;
   method?: string;
   selection?: string;

@@ -53,6 +53,10 @@ import liveJson from "../../public/data/claude-usage.json";
 import liveSnapshot from "@/lib/__fixtures__/claude-usage-live-2026-09-23.json";
 // The speed block as tracker/speed.py speed_block built it on 2026-09-23, splits trimmed.
 import speedBlock from "@/lib/__fixtures__/claude-usage-speed-block.json";
+// The live file's shape with the tracker's seat-119 contract: per_week_regimes and account_regimes.
+import regimeContract from "@/lib/__fixtures__/claude-usage-regime-contract.json";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
   return renderToString(
@@ -2015,5 +2019,123 @@ describe("the contributors section", () => {
     expect(section).toContain("Each dot is that contributor's own mix of models.");
     expect(section).toContain("the tracker's figure for the model picked at the top of the page");
     expect(section).toContain("the plan meter does not count cache reads");
+  });
+});
+
+// Jonathan, 2026-09-28: every chart steps at every measured change, the per-account lines follow
+// the regimes, and each tab marks each change with its own step. Built against the tracker's seat
+// 119 contract: per_week_regimes and account_regimes beside the five-hour regimes.
+describe("the tracker's regime contract on the three plan charts", () => {
+  const RC = regimeContract as unknown as UsageJson;
+  const htmlFor = (chart: PlanChart, j: UsageJson = RC) =>
+    renderToString(
+      <HelmetProvider context={{}}>
+        <MemoryRouter>
+          <ClaudeUsageTracker initial={j} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart={chart} />
+        </MemoryRouter>
+      </HelmetProvider>,
+    );
+  const chartSvg = (html: string, title: string) => {
+    const at = html.indexOf(`aria-label="${title} over time`);
+    expect(at, title).toBeGreaterThan(-1);
+    return html.slice(html.lastIndexOf("<svg", at), html.indexOf("</svg>", at));
+  };
+  const marks = (svg: string) =>
+    [
+      ...svg.matchAll(/<g><line [^>]*stroke="(#[0-9A-F]{6})"[^>]*stroke-dasharray="5 4"[^>]*><\/line><text [^>]*style="fill:(#[0-9A-F]{6})[^"]*"[^>]*>([^<]*)<\/text><\/g>/g),
+    ].map((m) => ({ colour: m[1], text: m[3].replace(/<!-- -->/g, "") }));
+  const GREEN = "#059669", RED = "#B42318";
+
+  it("marks both changes on every tab, each with the tab's own step", () => {
+    const html = htmlFor("tokens");
+    expect(marks(chartSvg(html, "Effective window size"))).toEqual([
+      { colour: RED, text: "-5% on 14 Sep" },
+      { colour: GREEN, text: "+41% on 22 Sep" },
+    ]);
+    // Tokens per week: 450.6M x 6.49, then 429.0M x 4.76, then 604.4M x 3.6.
+    expect(marks(chartSvg(html, "Tokens per week"))).toEqual([
+      { colour: RED, text: "-30% on 14 Sep" },
+      { colour: GREEN, text: "+7% on 22 Sep" },
+    ]);
+    // Windows per week states its own fall at the five-hour change.
+    expect(marks(chartSvg(html, "Five-hour windows per week"))).toEqual([
+      { colour: RED, text: "-27% on 14 Sep" },
+      { colour: RED, text: "-24% on 22 Sep" },
+    ]);
+  });
+
+  it("marks a published change the tab's line does not step at, grey at 0%", () => {
+    const j = structuredClone(RC);
+    // Windows per week unchanged across the five-hour change: the windows tab still marks it.
+    j.credits!.window_tokens!.per_week_regimes![2].windows_per_week = 4.76;
+    const svg = chartSvg(htmlFor("windows", j), "Five-hour windows per week");
+    expect(marks(svg)).toEqual([
+      { colour: RED, text: "-27% on 14 Sep" },
+      { colour: "#94A3B8", text: "0% on 22 Sep" },
+    ]);
+  });
+
+  it("draws each account's line per regime on every tab, broken where it has no figure", () => {
+    const html = htmlFor("window");
+    for (const title of ["Effective window size", "Tokens per week", "Five-hour windows per week"]) {
+      const svg = chartSvg(html, title);
+      const group = (n: number) => {
+        const at = svg.indexOf(`<g data-account="Max account ${n}"`);
+        expect(at, `${title} ${n}`).toBeGreaterThan(-1);
+        return svg.slice(at, svg.indexOf("</g>", at));
+      };
+      // a1 steps twice in one run: three horizontal runs joined by verticals.
+      expect((group(1).match(/<path /g) ?? []).length, title).toBe(3);
+      // a3 stops at 22 Sep; a4 opens at 14 Sep; both drawn.
+      expect((group(3).match(/<path /g) ?? []).length, title).toBe(2);
+      expect((group(4).match(/<path /g) ?? []).length, title).toBe(2);
+      // The label lists each account's levels, a1 with three.
+      const label = svg.match(/aria-label="([^"]*)"/)![1];
+      expect(label.split("Max account 1: ")[1].split(". ")[0].split(", ")).toHaveLength(3);
+    }
+  });
+
+  it("renders a file without the new fields as before", () => {
+    const j = structuredClone(RC);
+    delete j.credits!.window_tokens!.per_week_regimes;
+    delete j.credits!.window_tokens!.account_regimes;
+    const html = htmlFor("windows", j);
+    // The windows tab keeps the weekly detector's own step and no event-only marker.
+    const windows = marks(chartSvg(html, "Five-hour windows per week"));
+    expect(windows).toHaveLength(1);
+    expect(windows[0].colour).toBe(RED);
+  });
+});
+
+describe("the speed section's info icons", () => {
+  const withSpeed = { ...(liveJson as unknown as UsageJson), speed: speedBlock as unknown as SpeedBlock };
+  it("puts each explanation behind an icon, described by a tooltip, focusable", () => {
+    const html = renderHtml(withSpeed, "max20", "claude-opus-5");
+    const tips = [...html.matchAll(/<button type="button" class="info-tip-btn" aria-label="([^"]*)" aria-describedby="([^"]*)"[^>]*>/g)];
+    expect(tips.map((t) => t[1])).toEqual(["How output speed is measured", "What time to first block includes"]);
+    for (const [, , id] of tips) {
+      const tip = html.match(new RegExp(`<span role="tooltip" id="${id}" class="info-tip-text">([^<]*)</span>`));
+      expect(tip, id).not.toBeNull();
+    }
+    const text = (id: string) => html.match(new RegExp(`id="${id}" class="info-tip-text">([^<]*)<`))![1].replace(/&#x27;/g, "'");
+    expect(text(tips[0][2])).toMatch(/^Output speed is the response's output tokens over that time/);
+    expect(text(tips[1][2])).toMatch(/^Time to first block includes writing the whole first block/);
+    // No longer paragraphs under the charts.
+    expect(html).not.toMatch(/<p class="sub speed-note">Output speed/);
+    expect(html).not.toMatch(/<p class="sub speed-note">Time to first block/);
+    // Shown on hover, focus and tap, not hover alone.
+    const css = readFileSync(resolve(__dirname, "../styles/claude-usage.css"), "utf8");
+    expect(css).toContain(".info-tip:focus-within .info-tip-text");
+    expect(css).toContain(".info-tip[data-open] .info-tip-text");
+  });
+
+  it("keeps the by-account chart directly below the per-model chart, full width", () => {
+    const html = renderHtml({ ...(liveJson as unknown as UsageJson) }, "max20", "claude-opus-5");
+    const speed = html.slice(html.indexOf('id="speed"'));
+    const perModel = speed.indexOf('aria-label="Median output tokens per second by day');
+    const byAccount = speed.indexOf(" by account</h3>");
+    expect(perModel).toBeGreaterThan(-1);
+    expect(byAccount).toBeGreaterThan(perModel);
+    expect(html).not.toContain("speed-pair");
   });
 });
