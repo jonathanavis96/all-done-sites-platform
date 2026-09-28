@@ -43,7 +43,14 @@ export default function ArticleArticle() {
     inLanguage: "en-ZA",
     datePublished: article.publishedAt,
     dateModified: article.updatedAt,
-    author: { "@type": "Organization", name: "All Done Sites", url: SITE },
+    author: article.author
+      ? {
+          "@type": "Person",
+          name: article.author.name,
+          url: article.author.url,
+          sameAs: article.author.url ? [article.author.url] : undefined,
+        }
+      : { "@type": "Organization", name: "All Done Sites", url: SITE },
     publisher: {
       "@type": "Organization",
       name: "All Done Sites",
@@ -77,6 +84,21 @@ export default function ArticleArticle() {
           <span className="mono">{article.readMins} min read</span>
           <span aria-hidden="true"> · </span>
           <span className="mono">Updated {article.updatedAt}</span>
+          {article.author && (
+            <>
+              <span aria-hidden="true"> · </span>
+              <span className="mono">
+                By{" "}
+                {article.author.url ? (
+                  <a href={article.author.url} rel="author">
+                    {article.author.name}
+                  </a>
+                ) : (
+                  article.author.name
+                )}
+              </span>
+            </>
+          )}
         </span>
       }
     >

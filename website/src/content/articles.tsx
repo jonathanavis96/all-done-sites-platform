@@ -29,6 +29,13 @@ export interface Article {
   publishedAt: string;
   /** ISO date (YYYY-MM-DD) of the last content review; Article dateModified. */
   updatedAt: string;
+  /**
+   * Optional byline. Omitted entirely (the default) renders no byline anywhere and the
+   * Article JSON-LD keeps attributing authorship to the All Done Sites Organization, same
+   * as before this field existed. `url` (optional even when `name` is set) becomes the
+   * byline's link target and the JSON-LD Person's `url`/`sameAs`.
+   */
+  author?: { name: string; url?: string };
   blocks: ArticleBlock[];
   faqs: ArticleFaq[];
 }
@@ -48,6 +55,7 @@ export const articles: Article[] = [
       "Search is not just Google anymore. Customers now ask ChatGPT, Perplexity or an AI Overview for a recommendation before they ever open a search results page. Getting mentioned in that answer takes a different kind of work to ranking a webpage. This article is for a small-business owner working out whether an AI search optimisation provider is worth paying for. It also covers what kind of provider to look for, and how providers charge. Below: agencies, solo specialists and startups, pricing shapes, hiring across cities from Boston to Mumbai, and the questions worth asking a consultant.",
     publishedAt: "2026-08-27",
     updatedAt: "2026-08-27",
+    author: { name: "Jonathan Avis", url: "https://www.linkedin.com/in/jonathan-avis-0503a6201/" },
     blocks: [
       { h2: "The short answer: what an AI search optimisation service actually does" },
       { p: "An AI search optimisation service gets your business found when people ask ChatGPT, Google's AI Overviews or Perplexity a question. That is different work to ranking when someone types a keyword into a search box. It covers technical setup, content structure and the off-site signals these tools read to decide who to mention by name." },
