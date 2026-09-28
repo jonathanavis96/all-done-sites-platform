@@ -120,11 +120,11 @@ export default function GuideArticle() {
               fee, with no big upfront cost. Plans start at R799 a month.
             </p>
             <div className="guide-cta-actions">
-              <Link to="/pricing/" className="btn-ghost">
-                See pricing
-              </Link>
-              <Link to="/contact/" className="btn">
+              <Link to="/#getquote" className="btn">
                 Get a quote
+              </Link>
+              <Link to="/#pricing" className="btn-ghost">
+                See pricing
               </Link>
             </div>
           </aside>
