@@ -20,6 +20,12 @@
 /contact         /   301
 /contact/        /   301
 
+# Guide URL without the trailing slash — Search Console was splitting
+# impressions between this and the canonical trailing-slash form. Pages'
+# implicit directory redirect covers this too, but an explicit rule here is
+# the host's real, guaranteed 301 rather than relying on default behavior.
+/guides/how-much-does-a-website-cost-in-south-africa   /guides/how-much-does-a-website-cost-in-south-africa/   301
+
 # Retired redesign-preview path
 /new/*           /   301
 

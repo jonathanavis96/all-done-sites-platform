@@ -47,6 +47,14 @@ export default function GuidesIndex() {
           </Link>
         ))}
       </div>
+
+      <p className="guide-back">
+        Also read our article on{" "}
+        <Link to="/articles/ai-search-optimisation-services-and-specialists/">
+          AI search optimisation services and specialists
+        </Link>
+        .
+      </p>
     </PageShell>
   );
 }

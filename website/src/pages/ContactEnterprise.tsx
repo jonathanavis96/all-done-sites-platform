@@ -4,6 +4,12 @@ import { useToast } from "@/hooks/use-toast";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import { WHATSAPP, WHATSAPP_DISPLAY, PHONE_TEL, PHONE_DISPLAY } from "@/lib/site";
 
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void;
+  }
+}
+
 /** Enterprise contact page. Tailored for large or custom projects. */
 export default function ContactEnterprise() {
   const { toast } = useToast();
@@ -12,6 +18,16 @@ export default function ContactEnterprise() {
   const formEndpoint = "https://formspree.io/f/xblaryol";
   const selectedPlan = "enterprise";
   const computedSubject = "All Done Sites — Enterprise plan enquiry";
+
+  // GA4: fires once per page view so the enterprise contact page shows up as
+  // its own funnel step, separate from the generic contact-form view.
+  React.useEffect(() => {
+    if (window.gtag) {
+      window.gtag("event", "contact_enterprise_view", {
+        page_path: "/contact-enterprise/",
+      });
+    }
+  }, []);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -35,6 +51,9 @@ export default function ContactEnterprise() {
       });
       if (res.ok) {
         toast({ title: "Thanks!", description: "We'll get back to you within one business day." });
+        if (window.gtag) {
+          window.gtag("event", "generate_lead", { form: "contact-enterprise", plan: selectedPlan });
+        }
         form.reset();
       } else {
         toast({ title: "Error", description: "Something went wrong. Please try again." });
