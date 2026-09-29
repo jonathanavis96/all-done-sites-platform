@@ -922,9 +922,10 @@ export function modelLabel(id: string): string {
   return `${family.charAt(0).toUpperCase()}${family.slice(1)} ${major}${minor !== undefined ? `.${minor}` : ""}`;
 }
 
-// The order a model picker lists its options in: newest first. A model not named here goes directly
-// before its predecessor when that one is named, otherwise after every named one, keeping the order
-// it arrived in.
+// The order a model picker lists its options in: newest first. A model whose family the block dates
+// by first use goes first, newest date first. Any other model follows in this list's order; one not
+// named here goes directly before its predecessor when that one is named, otherwise after every
+// named one, keeping the order it arrived in.
 const MODEL_PICKER_ORDER = [
   "claude-fable-5-1",
   "claude-opus-5-5",
@@ -935,14 +936,36 @@ const MODEL_PICKER_ORDER = [
   "claude-sonnet-4-6",
   "claude-haiku-4-5",
 ];
-export function modelsNewestFirst(models: string[]): string[] {
+export function modelsNewestFirst(models: string[], j?: UsageJson): string[] {
   const rank = (m: string) => {
     const i = MODEL_PICKER_ORDER.indexOf(m);
     if (i !== -1) return i;
     const before = MODEL_PICKER_ORDER.indexOf(predecessorOf(m) ?? "");
     return before === -1 ? MODEL_PICKER_ORDER.length : before - 0.5;
   };
-  return models.map((m, i) => ({ m, i })).sort((a, b) => rank(a.m) - rank(b.m) || a.i - b.i).map(({ m }) => m);
+  const dated = (m: string) => (j ? modelFirstUse(j, m) : null) ?? -Infinity;
+  return models
+    .map((m, i) => ({ m, i }))
+    .sort((a, b) => dated(b.m) - dated(a.m) || rank(a.m) - rank(b.m) || a.i - b.i)
+    .map(({ m }) => m);
+}
+
+// The newest Opus model a picker shows, which the page selects by default. Null when it shows none.
+export function defaultModel(j: UsageJson): string | null {
+  return modelsNewestFirst(pageModels(j, Object.keys(j.rates)), j).find((m) => m.startsWith("claude-opus-")) ?? null;
+}
+
+// When the block first saw a model's family in use, as epoch ms: the family keyed by the model's
+// own id (sonnet-5-5 for claude-sonnet-5-5), else the family the page files it under. Null for the
+// family already in use when tracking began: that date is the start of the record, not the
+// family's arrival.
+function modelFirstUse(j: UsageJson, model: string): number | null {
+  const own = model.replace(/^claude-/, "").replace(/-\d{8}$/, "");
+  const all = creditsOf(j)?.announced_change?.candidates ?? [];
+  const c = all.find((x) => x.family === own) ?? all.find((x) => x.family === modelFamily(model, j));
+  if (!c?.at || !c.before_from) return null;
+  const t = Date.parse(c.at);
+  return Number.isNaN(t) ? null : t;
 }
 export const PLAN_LABELS: Record<Plan, string> = { pro: "Pro", max5: "Max 5x", max20: "Max 20x" };
 export const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh", "max"];
@@ -2221,7 +2244,15 @@ export interface CreditsBlock {
   five_hour_window_across_cut?: AcrossCut;
   fable_interval?: FableInterval;
   harness_runs_excluded?: HarnessRunExcluded[];
+  // Each model family's first use across every account. `before_from` is the previous boundary,
+  // null for the family already in use when tracking began.
+  announced_change?: { candidates?: FamilyFirstUse[] };
   derivation?: string;
+}
+export interface FamilyFirstUse {
+  family: string;
+  at?: string | null;
+  before_from?: string | null;
 }
 
 // One announced change since the reference table was written, each with the sentence it was read

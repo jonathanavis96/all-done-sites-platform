@@ -10,6 +10,7 @@ import {
   MODEL_LABELS,
   modelLabel,
   modelsNewestFirst,
+  defaultModel,
   pageModels,
   accountLabel,
   accountWeeklyTokenLines,
@@ -1111,8 +1112,9 @@ function ContributorsChart({
 
 // `initial` is the prerendered snapshot, and the selectors start on `initialPlan` and
 // `initialModel`; tests render the page with either schema and any selection through them. The
-// model selector starts on Opus: every clean stretch the window was measured on is pure Opus, so
-// it is the one family whose figure is the measurement rather than a conversion of it (wf-60).
+// model selector starts on the newest Opus the picker shows: every clean stretch the window was
+// measured on is pure Opus, so it is the one family whose figure is the measurement rather than a
+// conversion of it (wf-60). A given `initialModel` wins over that default.
 // The contributor chart starts on `initialContribMetric`. `now` fixes the clock the stale line
 // reads. The prerender leaves it unset, so its output never depends on when it ran; a test sets it
 // to render the stale line without mounting.
@@ -1128,7 +1130,7 @@ function familyLabel(family: string | null, model: string): string {
 export default function ClaudeUsageTracker({
   initial = initialData,
   initialPlan = "max20",
-  initialModel = "claude-opus-5",
+  initialModel,
   initialContribMetric = "usd",
   initialPlanChart = "tokens",
   now,
@@ -1143,7 +1145,8 @@ export default function ClaudeUsageTracker({
   const [data, setData] = useState<UsageJson | null>(initial);
   const [failed, setFailed] = useState(false);
   const [plan, setPlan] = useState<Plan>(initialPlan);
-  const [model, setModel] = useState(initialModel);
+  const startModel = initialModel ?? (initial && defaultModel(initial)) ?? "claude-opus-5";
+  const [model, setModel] = useState(startModel);
   const [effort, setEffort] = useState<Effort>("high");
 
   useEffect(() => {
@@ -1151,7 +1154,9 @@ export default function ClaudeUsageTracker({
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((j: UsageJson) => {
         setData(j);
-        if (!j.rates[model]) {
+        const fallback = initialModel === undefined ? defaultModel(j) : null;
+        if (fallback) setModel(fallback);
+        else if (!j.rates[model]) {
           const first = Object.keys(j.rates)[0];
           if (first) setModel(first);
         }
@@ -1561,7 +1566,7 @@ export default function ClaudeUsageTracker({
   // in the prerender. Whether it shows and the date it gives both follow the selected figure's own
   // evidence, not when the file was built or another model's reading (finding 16).
   const [staleAt, setStaleAt] = useState<string | null>(() =>
-    now !== undefined && initial ? staleEvidenceAt(initial, initialModel, now) : null,
+    now !== undefined && initial ? staleEvidenceAt(initial, startModel, now) : null,
   );
   useEffect(() => {
     setStaleAt(data ? staleEvidenceAt(data, model, now ?? Date.now()) : null);
@@ -1668,7 +1673,7 @@ export default function ClaudeUsageTracker({
                 , running{" "}
                 <span className="sel">
                   <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
-                    {modelsNewestFirst(pageModels(data, Object.keys(data.rates))).map((m) => (
+                    {modelsNewestFirst(pageModels(data, Object.keys(data.rates)), data).map((m) => (
                       <option key={m} value={m}>{modelLabel(m)}</option>
                     ))}
                   </select>
@@ -2037,7 +2042,7 @@ export default function ClaudeUsageTracker({
               <div className="section-sel">
                 <span className="sel">
                   <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
-                    {modelsNewestFirst(pageModels(data, Object.keys(data.rates))).map((m) => (
+                    {modelsNewestFirst(pageModels(data, Object.keys(data.rates)), data).map((m) => (
                       <option key={m} value={m}>{modelLabel(m)}</option>
                     ))}
                   </select>

@@ -48,6 +48,7 @@ import {
   tokensPerWeekChangePct,
   modelLabel,
   modelsNewestFirst,
+  defaultModel,
   type UsageJson,
 } from "./claudeUsage";
 import {
@@ -2086,6 +2087,76 @@ describe("modelsNewestFirst", () => {
       "claude-new-9",
       "claude-other-1",
     ]);
+  });
+});
+
+describe("picker order by first use, and the default model", () => {
+  // The 28 Sep live file (candidates haiku, fable, opus-5-5) plus Sonnet 5.5 as the 29 Sep refresh
+  // published it: rates for claude-sonnet-5-5 and a sonnet-5-5 candidate, no per_model row.
+  const dated = (): UsageJson => {
+    const j = structuredClone(live0928Json) as unknown as UsageJson;
+    j.rates["claude-sonnet-5-5"] = structuredClone(j.rates["claude-sonnet-5"]);
+    j.credits!.announced_change!.candidates!.push({
+      family: "sonnet-5-5",
+      at: "2026-09-29T18:25:18.212000+00:00",
+      before_from: "2026-09-22T19:41:49.479000+00:00",
+    });
+    return j;
+  };
+  const picker = (j: UsageJson) => modelsNewestFirst(pageModels(j, Object.keys(j.rates)), j);
+
+  it("lists dated families newest first, then the rest in the fixed order", () => {
+    expect(picker(dated())).toEqual([
+      "claude-sonnet-5-5",
+      "claude-opus-5-5",
+      "claude-fable-5-1",
+      "claude-opus-5",
+      "claude-sonnet-5",
+      "claude-opus-4-8",
+      "claude-opus-4-7",
+      "claude-sonnet-4-6",
+      "claude-haiku-4-5",
+    ]);
+  });
+
+  it("does not date the family already in use when tracking began", () => {
+    const j = dated();
+    const haiku = j.credits!.announced_change!.candidates!.find((c) => c.family === "haiku")!;
+    expect(haiku.before_from).toBeNull();
+    expect(picker(j).at(-1)).toBe("claude-haiku-4-5");
+  });
+
+  it("falls back to the fixed order when the block dates nothing", () => {
+    const j = dated();
+    delete j.credits!.announced_change;
+    const models = pageModels(j, Object.keys(j.rates));
+    expect(picker(j)).toEqual(modelsNewestFirst(models));
+    expect(picker(j)).toEqual([
+      "claude-fable-5-1",
+      "claude-opus-5-5",
+      "claude-opus-5",
+      "claude-sonnet-5-5",
+      "claude-sonnet-5",
+      "claude-opus-4-8",
+      "claude-opus-4-7",
+      "claude-sonnet-4-6",
+      "claude-haiku-4-5",
+    ]);
+  });
+
+  it("defaults to the newest Opus the picker shows", () => {
+    expect(defaultModel(dated())).toBe("claude-opus-5-5");
+    const later = dated();
+    later.rates["claude-opus-6"] = structuredClone(later.rates["claude-opus-5"]);
+    later.credits!.announced_change!.candidates!.push({
+      family: "opus-6",
+      at: "2026-10-20T00:00:00+00:00",
+      before_from: "2026-09-29T18:25:18.212000+00:00",
+    });
+    expect(defaultModel(later)).toBe("claude-opus-6");
+    const undated = dated();
+    delete undated.credits!.announced_change;
+    expect(defaultModel(undated)).toBe("claude-opus-5-5");
   });
 });
 

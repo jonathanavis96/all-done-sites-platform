@@ -1068,6 +1068,41 @@ describe("the measured window in tokens", () => {
     expect(html.match(/<option value="claude-opus-5" selected="">/g)).toHaveLength(1);
   });
 
+  it("lists the picker newest first by first use and starts on the newest Opus", () => {
+    // The 28 Sep live file plus Sonnet 5.5 as the 29 Sep refresh published it.
+    const j = structuredClone(live0928) as unknown as UsageJson;
+    j.rates["claude-sonnet-5-5"] = structuredClone(j.rates["claude-sonnet-5"]);
+    j.credits!.announced_change!.candidates!.push({
+      family: "sonnet-5-5",
+      at: "2026-09-29T18:25:18.212000+00:00",
+      before_from: "2026-09-22T19:41:49.479000+00:00",
+    });
+    const html = renderToString(
+      <HelmetProvider context={{}}>
+        <MemoryRouter>
+          <ClaudeUsageTracker initial={j} />
+        </MemoryRouter>
+      </HelmetProvider>,
+    );
+    const picker = /<select aria-label="Model"[^>]*>(.*?)<\/select>/.exec(html)![1];
+    expect([...picker.matchAll(/<option value="([^"]+)"/g)].map((o) => o[1])).toEqual([
+      "claude-sonnet-5-5",
+      "claude-opus-5-5",
+      "claude-fable-5-1",
+      "claude-opus-5",
+      "claude-sonnet-5",
+      "claude-opus-4-8",
+      "claude-opus-4-7",
+      "claude-sonnet-4-6",
+      "claude-haiku-4-5",
+    ]);
+    expect(picker).toContain('<option value="claude-opus-5-5" selected="">');
+    // A given selection still wins over the default.
+    const chosen = renderHtml(j, "max20", "claude-sonnet-5");
+    expect(chosen).toContain('<option value="claude-sonnet-5" selected="">');
+    expect(chosen).not.toContain('<option value="claude-opus-5-5" selected="">');
+  });
+
   it("leads on the measured window, with its interval and its classes", () => {
     const text = render(WT, "max20", "claude-opus-5");
     expect(WINDOW.per_family!.opus.all.value).toBe(473_774_890);
