@@ -6,17 +6,17 @@
    "state": "fresh"
   },
   "a2": {
-   "feed_at": "2026-09-28T23:28:35+00:00",
+   "feed_at": "2026-09-28T23:58:10+00:00",
    "newest_stretch_end": "2026-09-28T19:25:05+00:00",
    "state": "fresh"
   },
   "a3": {
-   "feed_at": "2026-09-28T23:28:35+00:00",
+   "feed_at": "2026-09-28T23:58:10+00:00",
    "newest_stretch_end": "2026-09-28T20:22:30+00:00",
    "state": "fresh"
   },
   "a4": {
-   "feed_at": "2026-09-28T23:28:35+00:00",
+   "feed_at": "2026-09-28T23:58:10+00:00",
    "newest_stretch_end": "2026-09-28T21:10:05+00:00",
    "state": "fresh"
   }
@@ -150,8 +150,8 @@
   "max20": {
    "contributors": 2,
    "evidence": {
-    "as_of": "2026-09-28T23:30:11+00:00",
-    "current_since": "2026-08-29T23:30:11+00:00",
+    "as_of": "2026-09-29T00:00:12+00:00",
+    "current_since": "2026-08-30T00:00:12+00:00",
     "freshest_sample_at": "2026-09-16T00:11:31+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -215,8 +215,8 @@
   "max5": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-28T23:30:11+00:00",
-    "current_since": "2026-08-29T23:30:11+00:00",
+    "as_of": "2026-09-29T00:00:12+00:00",
+    "current_since": "2026-08-30T00:00:12+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -248,8 +248,8 @@
   "pro": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-09-28T23:30:11+00:00",
-    "current_since": "2026-08-29T23:30:11+00:00",
+    "as_of": "2026-09-29T00:00:12+00:00",
+    "current_since": "2026-08-30T00:00:12+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -277,7 +277,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-09-28T23:30:11+00:00"
+  "updated_at": "2026-09-29T00:00:12+00:00"
  },
  "credits": {
   "announced_change": {
@@ -415,13 +415,13 @@
         "combined": false,
         "n_after": 37,
         "n_before": 0,
-        "new_family_share_median": 0.602
+        "new_family_share_median": 0.606
        },
        "a2": {
         "combined": false,
         "n_after": 78,
         "n_before": 0,
-        "new_family_share_median": 0.095
+        "new_family_share_median": 0.097
        },
        "a3": {
         "combined": false,
@@ -534,14 +534,14 @@
      "at": "2026-09-22T19:41:49.479000+00:00",
      "at_source": "first_turn",
      "before_from": "2026-09-14T12:00:00+00:00",
-     "change_pct": 16.2,
+     "change_pct": 8.7,
      "family": "opus-5-5",
      "first_seen_account": "a1",
      "first_seen_stretch_end": "2026-09-23T08:26:32+00:00",
-     "interval_excludes_no_change": true,
+     "interval_excludes_no_change": false,
      "interval_pct": [
-      0.6,
-      34.1
+      -6.5,
+      26.4
      ],
      "joint_fit": {
       "accounts_combined": [
@@ -553,59 +553,59 @@
       "bootstrap": 200,
       "family": "opus-5-5",
       "five_hour_limit_change_interval_pct": [
-       -10.9,
-       38.1
+       -17.6,
+       32.3
       ],
-      "five_hour_limit_change_pct": 14.4,
-      "log_residual_sd": 0.242,
+      "five_hour_limit_change_pct": 6.7,
+      "log_residual_sd": 0.2429,
       "per_account": {
        "a1": {
         "combined": true,
-        "five_hour_limit_change_pct": 23.8,
+        "five_hour_limit_change_pct": 17.3,
         "n_after": 10,
         "n_before": 45,
-        "new_family_share_median": 0.667
+        "new_family_share_median": 0.683
        },
        "a2": {
         "combined": true,
-        "five_hour_limit_change_pct": 18.6,
+        "five_hour_limit_change_pct": 9.7,
         "n_after": 15,
         "n_before": 41,
-        "new_family_share_median": 0.898
+        "new_family_share_median": 0.918
        },
        "a3": {
         "combined": true,
-        "five_hour_limit_change_pct": -12.1,
+        "five_hour_limit_change_pct": -18.4,
         "n_after": 5,
         "n_before": 52,
-        "new_family_share_median": 0.703
+        "new_family_share_median": 0.753
        },
        "a4": {
         "combined": false,
         "n_after": 13,
         "n_before": 0,
-        "new_family_share_median": 0.173
+        "new_family_share_median": 0.209
        }
       },
       "rate_relative_interval": [
-       0.4132,
-       0.9291
+       0.37,
+       0.8424
       ],
-      "rate_relative_to_base": 0.6277,
+      "rate_relative_to_base": 0.5756,
       "reason": null,
       "rounding_sd": 0.0506,
-      "scatter_sd": 0.3791,
+      "scatter_sd": 0.3984,
       "separable": true,
       "state": "measured",
-      "times_opus": 0.6277,
+      "times_opus": 0.5756,
       "times_opus_interval": [
-       0.4132,
-       0.9291
+       0.37,
+       0.8424
       ],
       "unclaimed_share": {
        "a2": {
         "interval": [
-         0.96,
+         0.92,
          1.0
         ],
         "n": 56,
@@ -625,11 +625,11 @@
      },
      "per_account": {
       "a1": {
-       "change_pct": 24.0,
+       "change_pct": 17.4,
        "combined": true,
        "interval_pct": [
-        -0.3,
-        54.2
+        -6.4,
+        47.3
        ],
        "n_after": 10,
        "n_after_reset_unverified": 10,
@@ -637,14 +637,14 @@
        "n_before": 45,
        "n_before_reset_unverified": 45,
        "n_before_unpriced": 0,
-       "weight": 0.4465
+       "weight": 0.4545
       },
       "a2": {
-       "change_pct": 17.1,
+       "change_pct": 8.5,
        "combined": true,
        "interval_pct": [
-        -6.1,
-        45.9
+        -14.1,
+        37.2
        ],
        "n_after": 15,
        "n_after_reset_unverified": 8,
@@ -652,14 +652,14 @@
        "n_before": 41,
        "n_before_reset_unverified": 16,
        "n_before_unpriced": 0,
-       "weight": 0.4363
+       "weight": 0.4271
       },
       "a3": {
-       "change_pct": -12.0,
+       "change_pct": -18.4,
        "combined": true,
        "interval_pct": [
-        -42.5,
-        34.6
+        -47.7,
+        27.3
        ],
        "n_after": 5,
        "n_after_reset_unverified": 0,
@@ -667,7 +667,7 @@
        "n_before": 52,
        "n_before_reset_unverified": 6,
        "n_before_unpriced": 0,
-       "weight": 0.1171
+       "weight": 0.1184
       },
       "a4": {
        "change_pct": null,
@@ -685,7 +685,7 @@
      "unclaimed_share": {
       "a2": {
        "interval": [
-        0.9,
+        0.88,
         1.0
        ],
        "n": 56,
@@ -823,20 +823,20 @@
      "derivation": "credits",
      "median_credits": {
       "interval": [
-       24825,
-       46245
+       25217,
+       47860
       ],
       "status": null,
-      "value": 43523
+      "value": 44696
      },
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
-       0.08,
-       0.57
+       0.09,
+       0.65
       ],
       "status": null,
-      "value": 0.18
+      "value": 0.2
      },
      "rate_source": "measured",
      "runs": 7
@@ -845,20 +845,20 @@
      "derivation": "credits",
      "median_credits": {
       "interval": [
-       8693,
-       16191
+       8830,
+       16757
       ],
       "status": null,
-      "value": 15239
+      "value": 15649
      },
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
        0.03,
-       0.2
+       0.23
       ],
       "status": null,
-      "value": 0.06
+      "value": 0.07
      },
      "rate_source": "measured",
      "runs": 7
@@ -867,20 +867,20 @@
      "derivation": "credits",
      "median_credits": {
       "interval": [
-       126560,
-       220079
+       128560,
+       227763
       ],
       "status": null,
-      "value": 207126
+      "value": 212708
      },
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
-       0.41,
-       2.7
+       0.45,
+       3.07
       ],
       "status": null,
-      "value": 0.87
+      "value": 0.98
      },
      "rate_source": "measured",
      "runs": 6
@@ -889,20 +889,20 @@
      "derivation": "credits",
      "median_credits": {
       "interval": [
-       12730,
-       23712
+       12931,
+       24540
       ],
       "status": null,
-      "value": 22317
+      "value": 22918
      },
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
        0.04,
-       0.29
+       0.33
       ],
       "status": null,
-      "value": 0.09
+      "value": 0.11
      },
      "rate_source": "measured",
      "runs": 7
@@ -911,20 +911,20 @@
      "derivation": "credits",
      "median_credits": {
       "interval": [
-       71332,
-       132884
+       72459,
+       137524
       ],
       "status": null,
-      "value": 125063
+      "value": 128434
      },
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
-       0.23,
-       1.63
+       0.25,
+       1.86
       ],
       "status": null,
-      "value": 0.53
+      "value": 0.59
      },
      "rate_source": "measured",
      "runs": 7
@@ -944,11 +944,11 @@
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
-       0.09,
-       0.35
+       0.1,
+       0.39
       ],
       "status": null,
-      "value": 0.12
+      "value": 0.13
      },
      "rate_source": "reference",
      "runs": 7
@@ -966,11 +966,11 @@
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
-       0.03,
-       0.13
+       0.04,
+       0.14
       ],
       "status": null,
-      "value": 0.04
+      "value": 0.05
      },
      "rate_source": "reference",
      "runs": 7
@@ -988,11 +988,11 @@
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
-       0.21,
-       0.77
+       0.22,
+       0.85
       ],
       "status": null,
-      "value": 0.26
+      "value": 0.29
      },
      "rate_source": "reference",
      "runs": 7
@@ -1011,10 +1011,10 @@
      "percent_of_window": {
       "interval": [
        0.05,
-       0.18
+       0.19
       ],
       "status": null,
-      "value": 0.06
+      "value": 0.07
      },
      "rate_source": "reference",
      "runs": 7
@@ -1032,11 +1032,11 @@
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
-       0.14,
-       0.52
+       0.15,
+       0.57
       ],
       "status": null,
-      "value": 0.18
+      "value": 0.2
      },
      "rate_source": "reference",
      "runs": 7
@@ -1047,17 +1047,17 @@
      "derivation": "credits",
      "median_credits": {
       "interval": [
-       8544,
-       11664
+       6566,
+       9015
       ],
       "status": null,
-      "value": 10106
+      "value": 7811
      },
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
-       0.03,
-       0.14
+       0.02,
+       0.12
       ],
       "status": null,
       "value": 0.04
@@ -1069,11 +1069,11 @@
      "derivation": "credits",
      "median_credits": {
       "interval": [
-       2548,
-       3479
+       1958,
+       2689
       ],
       "status": null,
-      "value": 3014
+      "value": 2330
      },
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
@@ -1091,20 +1091,20 @@
      "derivation": "credits",
      "median_credits": {
       "interval": [
-       40305,
-       55026
+       30974,
+       42527
       ],
       "status": null,
-      "value": 47672
+      "value": 36849
      },
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
-       0.13,
-       0.67
+       0.11,
+       0.57
       ],
       "status": null,
-      "value": 0.2
+      "value": 0.17
      },
      "rate_source": "measured",
      "runs": 7
@@ -1113,17 +1113,17 @@
      "derivation": "credits",
      "median_credits": {
       "interval": [
-       3997,
-       5456
+       3071,
+       4217
       ],
       "status": null,
-      "value": 4727
+      "value": 3654
      },
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
        0.01,
-       0.07
+       0.06
       ],
       "status": null,
       "value": 0.02
@@ -1135,17 +1135,17 @@
      "derivation": "credits",
      "median_credits": {
       "interval": [
-       11043,
-       15076
+       8486,
+       11651
       ],
       "status": null,
-      "value": 13061
+      "value": 10096
      },
      "note": "the cell's own runs priced at the family's measured credit rate, cache writes at the input rate and cache reads at the published weight; percent_of_window is that median over the measured five-hour window",
      "percent_of_window": {
       "interval": [
-       0.04,
-       0.18
+       0.03,
+       0.16
       ],
       "status": null,
       "value": 0.05
@@ -1156,17 +1156,17 @@
    }
   },
   "fable_interval": {
-   "input": 1.4016,
-   "input_high": 1.4893,
-   "input_low": 1.3324,
+   "input": 1.4394,
+   "input_high": 1.5413,
+   "input_low": 1.3534,
    "method": "one set of per-token rates shared by every account and side of 14 September, with one credits-per-1% scale per account and side, fitted over the clean stretches (history/model-rates.json measured_rates.pooled_fit); the interval is its 80% bootstrap interval, resampling stretches within each group.",
    "output_ratio": [
     5
    ],
    "solved": {
     "fable_heavy_share": 0.5,
-    "input_high": 2.5972,
-    "input_low": 0.2152,
+    "input_high": 2.3772,
+    "input_low": 0.172,
     "method": "solved per Fable-heavy stretch (Fable over 50% of the tokens the meter charges for) against the measured window; the interval runs from the lowest per-account p25 at output 5x input to the highest per-account p25 at output 3x. Both edges are a p25 because the solve is inflated wherever the meter counts machines the transcripts never saw.",
     "output_ratio": [
      3,
@@ -1175,65 +1175,65 @@
     "per_account": {
      "a1": {
       "output_3x": {
-       "median": 2.8305,
+       "median": 2.5672,
        "n": 18,
-       "p25": 2.5972
+       "p25": 2.3772
       },
       "output_5x": {
-       "median": 2.1736,
+       "median": 1.9774,
        "n": 18,
-       "p25": 1.9436
+       "p25": 1.7789
       }
      },
      "a2": {
       "output_3x": {
-       "median": 0.7453,
+       "median": 0.6722,
        "n": 15,
-       "p25": 0.5629
+       "p25": 0.5113
       },
       "output_5x": {
-       "median": 0.565,
+       "median": 0.5096,
        "n": 15,
-       "p25": 0.4734
+       "p25": 0.434
       }
      },
      "a3": {
       "output_3x": {
-       "median": 1.2463,
+       "median": 1.1324,
        "n": 3,
-       "p25": 1.0493
+       "p25": 0.9282
       },
       "output_5x": {
-       "median": 1.0093,
+       "median": 0.917,
        "n": 3,
-       "p25": 0.8282
+       "p25": 0.7326
       }
      },
      "a4": {
       "output_3x": {
-       "median": 0.377,
+       "median": 0.3255,
        "n": 3,
-       "p25": 0.2776
+       "p25": 0.222
       },
       "output_5x": {
-       "median": 0.3401,
+       "median": 0.2937,
        "n": 3,
-       "p25": 0.2152
+       "p25": 0.172
       }
      }
     },
     "status": "interval, not yet separable",
     "times_opus": [
-     0.32,
-     3.9
+     0.26,
+     3.57
     ],
     "unresolved": null,
-    "window_credits_per_pct": 237891
+    "window_credits_per_pct": 218126
    },
    "status": "measured by one fit pooled across every account",
    "times_opus": [
-    2.0,
-    2.23
+    2.03,
+    2.31
    ],
    "unresolved": null
   },
@@ -1458,13 +1458,13 @@
         "combined": false,
         "n_after": 37,
         "n_before": 0,
-        "new_family_share_median": 0.602
+        "new_family_share_median": 0.606
        },
        "a2": {
         "combined": false,
         "n_after": 78,
         "n_before": 0,
-        "new_family_share_median": 0.095
+        "new_family_share_median": 0.097
        },
        "a3": {
         "combined": false,
@@ -1648,14 +1648,14 @@
      "at": "2026-09-22T19:41:49.479000+00:00",
      "at_source": "first_turn",
      "before_from": "2026-09-14T12:00:00+00:00",
-     "change_pct": 14.4,
+     "change_pct": 6.7,
      "family": "opus-5-5",
      "first_seen_account": "a1",
      "first_seen_stretch_end": "2026-09-23T08:26:32+00:00",
      "interval_excludes_no_change": false,
      "interval_pct": [
-      -10.9,
-      38.1
+      -17.6,
+      32.3
      ],
      "joint_fit": {
       "accounts_combined": [
@@ -1667,59 +1667,59 @@
       "bootstrap": 200,
       "family": "opus-5-5",
       "five_hour_limit_change_interval_pct": [
-       -10.9,
-       38.1
+       -17.6,
+       32.3
       ],
-      "five_hour_limit_change_pct": 14.4,
-      "log_residual_sd": 0.242,
+      "five_hour_limit_change_pct": 6.7,
+      "log_residual_sd": 0.2429,
       "per_account": {
        "a1": {
         "combined": true,
-        "five_hour_limit_change_pct": 23.8,
+        "five_hour_limit_change_pct": 17.3,
         "n_after": 10,
         "n_before": 45,
-        "new_family_share_median": 0.667
+        "new_family_share_median": 0.683
        },
        "a2": {
         "combined": true,
-        "five_hour_limit_change_pct": 18.6,
+        "five_hour_limit_change_pct": 9.7,
         "n_after": 15,
         "n_before": 41,
-        "new_family_share_median": 0.898
+        "new_family_share_median": 0.918
        },
        "a3": {
         "combined": true,
-        "five_hour_limit_change_pct": -12.1,
+        "five_hour_limit_change_pct": -18.4,
         "n_after": 5,
         "n_before": 52,
-        "new_family_share_median": 0.703
+        "new_family_share_median": 0.753
        },
        "a4": {
         "combined": false,
         "n_after": 13,
         "n_before": 0,
-        "new_family_share_median": 0.173
+        "new_family_share_median": 0.209
        }
       },
       "rate_relative_interval": [
-       0.4132,
-       0.9291
+       0.37,
+       0.8424
       ],
-      "rate_relative_to_base": 0.6277,
+      "rate_relative_to_base": 0.5756,
       "reason": null,
       "rounding_sd": 0.0506,
-      "scatter_sd": 0.3791,
+      "scatter_sd": 0.3984,
       "separable": true,
       "state": "measured",
-      "times_opus": 0.6277,
+      "times_opus": 0.5756,
       "times_opus_interval": [
-       0.4132,
-       0.9291
+       0.37,
+       0.8424
       ],
       "unclaimed_share": {
        "a2": {
         "interval": [
-         0.96,
+         0.92,
          1.0
         ],
         "n": 56,
@@ -1769,7 +1769,7 @@
          "weekly_cap_change_pct": -4.6
         }
        },
-       "weight": 0.4278,
+       "weight": 0.4276,
        "windows_per_week_after": 4.7368,
        "windows_per_week_before": 4.9643,
        "windows_per_week_change_interval_pct": [
@@ -1808,7 +1808,7 @@
          "weekly_cap_change_pct": -6.1
         }
        },
-       "weight": 0.3956,
+       "weight": 0.3953,
        "windows_per_week_after": 4.2973,
        "windows_per_week_before": 4.5789,
        "windows_per_week_change_interval_pct": [
@@ -1824,37 +1824,37 @@
        "n_after": 5,
        "n_before": 15,
        "n_straddling": 0,
-       "ratio_after_over_before": 1.2525,
+       "ratio_after_over_before": 1.2727,
        "ratio_interval": [
-        0.7621,
-        2.4994
+        0.7752,
+        2.5373
        ],
        "readings": {
         "five_hour_scope": {
          "five_hour_window_change_interval_pct": [
-          -60.0,
-          31.2
+          -60.6,
+          29.0
          ],
-         "five_hour_window_change_pct": -20.2,
+         "five_hour_window_change_pct": -21.4,
          "weekly_cap_change_pct": 0.0
         },
         "weekly_scope": {
          "five_hour_window_change_pct": 0.0,
          "weekly_cap_change_interval_pct": [
-          -23.8,
-          149.9
+          -22.5,
+          153.7
          ],
-         "weekly_cap_change_pct": 25.3
+         "weekly_cap_change_pct": 27.3
         }
        },
-       "weight": 0.1766,
-       "windows_per_week_after": 6.8889,
+       "weight": 0.1771,
+       "windows_per_week_after": 7.0,
        "windows_per_week_before": 5.5,
        "windows_per_week_change_interval_pct": [
-        -23.8,
-        149.9
+        -22.5,
+        153.7
        ],
-       "windows_per_week_change_pct": 25.3
+       "windows_per_week_change_pct": 27.3
       },
       "a4": {
        "after_until": null,
@@ -1874,52 +1874,52 @@
      "readings": {
       "five_hour_scope": {
        "five_hour_window_change_interval_pct": [
-        -36.5,
-        48.5
+        -36.7,
+        48.1
        ],
-       "five_hour_window_change_pct": 0.5,
+       "five_hour_window_change_pct": 0.2,
        "weekly_cap_change_pct": 0.0
       },
       "weekly_scope": {
        "five_hour_window_change_pct": 0.0,
        "weekly_cap_change_interval_pct": [
-        -32.7,
-        57.5
+        -32.5,
+        58.0
        ],
-       "weekly_cap_change_pct": -0.5
+       "weekly_cap_change_pct": -0.2
       }
      },
      "scope": {
       "five_hour_limit_change_interval_pct": [
-       -10.9,
-       38.1
+       -17.6,
+       32.3
       ],
-      "five_hour_limit_change_pct": 14.4,
+      "five_hour_limit_change_pct": 6.7,
       "joint_fit_state": "measured",
       "reason": "neither limit's change excludes no change yet",
       "separable": true,
       "state": "undetermined",
       "weekly_limit_change_interval_pct": [
-       -12.7,
-       48.3
+       -19.4,
+       40.6
       ],
-      "weekly_limit_change_pct": 13.8
+      "weekly_limit_change_pct": 6.4
      },
      "state": "measured",
      "windows_per_week_change_excludes_no_change": false,
      "windows_per_week_change_interval_pct": [
-      -32.7,
-      57.5
+      -32.5,
+      58.0
      ],
-     "windows_per_week_change_pct": -0.5,
-     "windows_per_week_ratio": 0.9946,
+     "windows_per_week_change_pct": -0.2,
+     "windows_per_week_ratio": 0.9976,
      "windows_per_week_ratio_bootstrap_interval": [
-      0.8708,
-      1.1734
+      0.877,
+      1.1768
      ],
      "windows_per_week_ratio_interval": [
-      0.6732,
-      1.5754
+      0.6753,
+      1.5801
      ]
     }
    ],
@@ -1937,23 +1937,23 @@
    "method": "median credits per 1% over the stretches the rate fits run over (capture test on every account, the personal account from 6 September, no stretch that spans the cut), split on the announced change, every stretch priced at the pooled fit's rates so the two medians are comparable to each other. An account whose n_with_capture is 0 has no usable capture column, so its meter movement includes work this host never saw and its level reads low.",
    "per_account": {
     "a1": {
-     "after": 155810,
-     "before": 166168,
-     "change_pct": -6.2,
+     "after": 155986,
+     "before": 164026,
+     "change_pct": -4.9,
      "n_after": 28,
      "n_before": 34,
      "n_with_capture": 69
     },
     "a2": {
-     "after": 233170,
-     "before": 195878,
-     "change_pct": 19.0,
+     "after": 224018,
+     "before": 196401,
+     "change_pct": 14.1,
      "n_after": 41,
      "n_before": 54,
      "n_with_capture": 96
     },
     "a3": {
-     "after": 153960,
+     "after": 146534,
      "before": null,
      "change_pct": null,
      "n_after": 32,
@@ -1961,7 +1961,7 @@
      "n_with_capture": 33
     },
     "a4": {
-     "after": 332862,
+     "after": 289470,
      "before": null,
      "change_pct": null,
      "n_after": 9,
@@ -1970,15 +1970,15 @@
     }
    },
    "rates_used": {
-    "cache_read_weight": 0.002174,
+    "cache_read_weight": 0.003173,
     "output_multiplier": 5.0,
     "source": "pooled_fit",
     "times_opus": {
-     "fable": 2.1024,
-     "haiku": 0.803,
+     "fable": 2.1591,
+     "haiku": 0.4976,
      "opus": 1.0,
-     "opus-5-5": 0.7764,
-     "sonnet": 0.5256
+     "opus-5-5": 0.6873,
+     "sonnet": 0.4062
     },
     "why": "every family at the pooled fit's own rate, Opus the unit, and every cache read at its fitted weight: the same rates on both sides of the cut, measured on the same stretches. The fit separates Fable's rate either side of the cut and finds no change in it."
    },
@@ -2151,20 +2151,20 @@
     "output": 3.333333333333333
    },
    "cache_read_weight": {
-    "fit_point": 0.0021744302695022467,
+    "fit_point": 0.003172735863982905,
     "interval": [
-     2.360781833111396e-16,
-     0.005068990611591999
+     0.0007317548418319966,
+     0.006048629094312771
     ],
     "measurable": false,
     "per_fit": {
      "a1/post": {
       "interval": [
        0.0,
-       0.02090984287952085
+       0.0001345993640519622
       ],
-      "n": 31,
-      "weight": 0.005958772934293226
+      "n": 34,
+      "weight": 0.0
      },
      "a1/pre": {
       "interval": [
@@ -2176,27 +2176,27 @@
      },
      "a2/post": {
       "interval": [
-       0.0077215737616156506,
-       0.024627575139048428
+       0.006404122577129823,
+       0.021531586703698962
       ],
-      "n": 35,
-      "weight": 0.012480571002719853
+      "n": 41,
+      "weight": 0.011407181708918749
      },
      "a2/pre": {
       "interval": [
-       0.00895164960017355,
-       0.017246218205420043
+       0.00853330891371403,
+       0.014305623135731083
       ],
-      "n": 51,
-      "weight": 0.011365456153596899
+      "n": 55,
+      "weight": 0.010922530669542727
      },
      "a3/post": {
       "interval": [
        0.0,
-       0.0005713841593902418
+       0.004224417297559637
       ],
-      "n": 32,
-      "weight": 0.0
+      "n": 33,
+      "weight": 0.000714837504476604
      }
     },
     "reference": 0.0,
@@ -2207,7 +2207,7 @@
     "used_in_pricing": false,
     "used_in_pricing_note": "the stretches are still priced with cache reads at data/prices.json's cache_read_weight, which is 0; this is the weight the same fit puts on them, published beside it rather than folded into the window",
     "value": null,
-    "why": "the pooled fit puts a cache read at 0.0022 of the Opus input rate, 80% interval [0.0000, 0.0051], which reaches zero or is too wide to publish as a value; the point estimate is used only inside the before-and-after comparison, with the rest of the fit."
+    "why": "the pooled fit puts a cache read at 0.0032 of the Opus input rate, 80% interval [0.0007, 0.0060], which reaches zero or is too wide to publish as a value; the point estimate is used only inside the before-and-after comparison, with the rest of the fit."
    },
    "derivation": "credits",
    "fits_pooled": [
@@ -2225,10 +2225,10 @@
     "fable": {
      "agree": null,
      "anchor": false,
-     "input": 1.4016295485770691,
+     "input": 1.4394035456334295,
      "interval": [
-      1.3323892361341074,
-      1.4892831077683601
+      1.3534369143887794,
+      1.541282405704233
      ],
      "max_share_of_a_clean_stretch": 1.0,
      "n_fits": 5,
@@ -2237,13 +2237,13 @@
       "a1/post": {
        "dominant_n": 2,
        "interval": [
-        1.1369567968014016,
-        1.682693402446038
+        1.1830916213464888,
+        1.616991166287447
        ],
-       "n": 31,
-       "qualification": "2 of its 31 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
+       "n": 34,
+       "qualification": "2 of its 34 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
        "qualified": false,
-       "rate": 1.3617631201588758
+       "rate": 1.4074603263480447
       },
       "a1/pre": {
        "dominant_n": 9,
@@ -2257,69 +2257,69 @@
        "rate": 1.3251620103129738
       },
       "a2/post": {
-       "dominant_n": 3,
+       "dominant_n": 2,
        "interval": [
-        1.6565460594183163,
-        2.5213488318474986
+        1.9214792342885025,
+        2.8792120680128708
        ],
-       "n": 35,
-       "qualification": "3 of its 35 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
-       "qualified": true,
-       "rate": 1.9149365570148353
+       "n": 41,
+       "qualification": "2 of its 41 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
+       "qualified": false,
+       "rate": 2.339718932558478
       },
       "a2/pre": {
        "dominant_n": 2,
        "interval": [
-        1.3125214727461838,
-        1.524154675871765
+        1.3307546572485296,
+        1.5701170366508512
        ],
-       "n": 51,
-       "qualification": "2 of its 51 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
+       "n": 55,
+       "qualification": "2 of its 55 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
        "qualified": false,
-       "rate": 1.4013724486986614
+       "rate": 1.4390192590258537
       },
       "a3/post": {
        "dominant_n": 0,
        "interval": [
-        0.8379407957760466,
-        1.377555732629149
+        0.6670480378788919,
+        1.4022095731339492
        ],
-       "n": 32,
-       "qualification": "0 of its 32 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
+       "n": 33,
+       "qualification": "0 of its 33 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
        "qualified": false,
-       "rate": 1.0588382957329858
+       "rate": 1.0622320916821006
       }
      },
      "provisional": false,
      "rate_source": "measured",
      "reference_input": null,
      "status": null,
-     "times_opus": 2.102444322865604,
+     "times_opus": 2.1591053184501443,
      "times_opus_interval": [
-      1.9985838542011611,
-      2.2339246616525403
+      2.0301553715831693,
+      2.3119236085563495
      ],
-     "why": "one fit pooled over a4/post, a3/post, a2/post, a2/pre, a1/post, a1/pre: rates shared by every group, one credits-per-1% scale per group. Fable 2.102x Opus, 80% bootstrap interval [1.999, 2.234] from 600 resamples stratified by group; 149 of the fit's 190 stretches carry its tokens. The per-group fits are on this record as diagnostics and enter no rate."
+     "why": "one fit pooled over a4/post, a3/post, a2/post, a2/pre, a1/post, a1/pre: rates shared by every group, one credits-per-1% scale per group. Fable 2.159x Opus, 80% bootstrap interval [2.030, 2.312] from 600 resamples stratified by group; 151 of the fit's 208 stretches carry its tokens. The per-group fits are on this record as diagnostics and enter no rate."
     },
     "haiku": {
      "agree": null,
      "anchor": false,
      "input": null,
      "interval": null,
-     "max_share_of_a_clean_stretch": 0.2567715124076586,
+     "max_share_of_a_clean_stretch": 0.6621482897010258,
      "n_fits": 6,
      "output_multiplier": 5,
      "per_fit": {
       "a1/post": {
        "dominant_n": 0,
        "interval": [
-        0.0,
-        1.8131015737610463
+        0.7648644656203892,
+        4.170125019998506
        ],
-       "n": 31,
-       "qualification": "0 of its 31 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
+       "n": 34,
+       "qualification": "0 of its 34 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
        "qualified": false,
-       "rate": 1.2372798974564414
+       "rate": 1.847880004181883
       },
       "a1/pre": {
        "dominant_n": 0,
@@ -2335,33 +2335,44 @@
       "a2/post": {
        "dominant_n": 0,
        "interval": [
-        0.8841813447564061,
-        11.207644082539943
+        0.1231234207563455,
+        14.490458846969034
        ],
-       "n": 35,
-       "qualification": "0 of its 35 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
+       "n": 41,
+       "qualification": "0 of its 41 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
        "qualified": false,
-       "rate": 2.9621436255120845
+       "rate": 0.971785139331013
       },
       "a2/pre": {
        "dominant_n": 0,
        "interval": [
         0.0,
-        4.367204783144122
+        3.7947029625732243
        ],
-       "n": 51,
-       "qualification": "0 of its 51 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
+       "n": 55,
+       "qualification": "0 of its 55 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
        "qualified": false,
-       "rate": 1.2123591486909937
+       "rate": 0.5990946345369575
+      },
+      "a3/post": {
+       "dominant_n": 1,
+       "interval": [
+        0.170056693467663,
+        0.4866014465112144
+       ],
+       "n": 33,
+       "qualification": "1 of its 33 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
+       "qualified": false,
+       "rate": 0.24263326886217704
       }
      },
      "provisional": false,
      "rate_source": "measured",
      "reference_input": 0.13333333333333333,
-     "status": "not measurable, the pooled fit cannot pin Haiku down: its 80% interval is 16.99x wide end to end, and a published rate needs under 1.5x",
+     "status": "not measurable, the pooled fit cannot pin Haiku down: its 80% interval is 3.17x wide end to end, and a published rate needs under 1.5x",
      "times_opus": null,
      "times_opus_interval": null,
-     "why": "the highest Haiku share of any clean stretch on a fitted account is 0.257. The pooled fit carries it and puts it at 0.803x Opus, but its 80% interval runs [0.155x, 2.629x], so the data do not pin it down, and neither the value nor the interval is published: an interval is priced at its midpoint where a family has no value (tracker/gs_passive.py), and this one's midpoint is not a rate anything measured. The fit's point estimate still prices this family's tokens inside the before-and-after comparison (pooled_fit), where the fit's own model is used whole. The reference figure stands beside this row, untested by our data and used in no arithmetic the page states."
+     "why": "the highest Haiku share of any clean stretch on a fitted account is 0.662. The pooled fit carries it and puts it at 0.498x Opus, but its 80% interval runs [0.360x, 1.143x], so the data do not pin it down, and neither the value nor the interval is published: an interval is priced at its midpoint where a family has no value (tracker/gs_passive.py), and this one's midpoint is not a rate anything measured. The fit's point estimate still prices this family's tokens inside the before-and-after comparison (pooled_fit), where the fit's own model is used whole. The reference figure stands beside this row, untested by our data and used in no arithmetic the page states."
     },
     "opus": {
      "agree": null,
@@ -2378,7 +2389,7 @@
         0.6666666666666666,
         0.6666666666666666
        ],
-       "n": 31,
+       "n": 34,
        "qualification": "the anchor is exempt from the dominance rule",
        "qualified": true,
        "rate": 0.6666666666666666
@@ -2395,12 +2406,12 @@
        "rate": 0.6666666666666666
       },
       "a2/post": {
-       "dominant_n": 10,
+       "dominant_n": 12,
        "interval": [
         0.6666666666666666,
         0.6666666666666666
        ],
-       "n": 35,
+       "n": 41,
        "qualification": "the anchor is exempt from the dominance rule",
        "qualified": true,
        "rate": 0.6666666666666666
@@ -2411,18 +2422,18 @@
         0.6666666666666666,
         0.6666666666666666
        ],
-       "n": 51,
+       "n": 55,
        "qualification": "the anchor is exempt from the dominance rule",
        "qualified": true,
        "rate": 0.6666666666666666
       },
       "a3/post": {
-       "dominant_n": 13,
+       "dominant_n": 5,
        "interval": [
         0.6666666666666666,
         0.6666666666666666
        ],
-       "n": 32,
+       "n": 33,
        "qualification": "the anchor is exempt from the dominance rule",
        "qualified": true,
        "rate": 0.6666666666666666
@@ -2438,43 +2449,43 @@
     },
     "opus-5-5": {
      "anchor": false,
-     "input": 0.41846666666666665,
+     "input": 0.3837333333333333,
      "interval": [
-      0.27546666666666664,
-      0.6194
+      0.24666666666666665,
+      0.5616
      ],
      "output_multiplier": 5.000000000000001,
      "provisional": false,
      "rate_source": "joint_fit_at_first_use",
      "status": null,
-     "times_opus": 0.6277,
+     "times_opus": 0.5756,
      "times_opus_interval": [
-      0.4132,
-      0.9291
+      0.37,
+      0.8424
      ]
     },
     "sonnet": {
      "agree": null,
      "anchor": false,
-     "input": 0.35037528421401476,
+     "input": 0.27082572073271544,
      "interval": [
-      0.29622837439320593,
-      0.4044242970585228
+      0.22765075959133513,
+      0.31256195315212987
      ],
-     "max_share_of_a_clean_stretch": 0.9756112220172182,
+     "max_share_of_a_clean_stretch": 0.9757085087506521,
      "n_fits": 6,
      "output_multiplier": 5,
      "per_fit": {
       "a1/post": {
        "dominant_n": 2,
        "interval": [
-        0.0,
-        0.35059023279834134
+        0.25461900311456026,
+        0.42521558990962394
        ],
-       "n": 31,
-       "qualification": "2 of its 31 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
+       "n": 34,
+       "qualification": "2 of its 34 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
        "qualified": false,
-       "rate": 0.24733395608913894
+       "rate": 0.34581353119202946
       },
       "a1/pre": {
        "dominant_n": 0,
@@ -2490,80 +2501,80 @@
       "a2/post": {
        "dominant_n": 1,
        "interval": [
-        0.17371260889594398,
-        0.5823187652324534
+        0.30905661486066377,
+        0.6307491671924514
        ],
-       "n": 35,
-       "qualification": "1 of its 35 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
+       "n": 41,
+       "qualification": "1 of its 41 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
        "qualified": false,
-       "rate": 0.3182994228129671
+       "rate": 0.47219358626027264
       },
       "a2/pre": {
-       "dominant_n": 1,
+       "dominant_n": 2,
        "interval": [
-        0.33940526941432503,
-        0.6054870710084457
+        0.3032683419184018,
+        0.45711589880851955
        ],
-       "n": 51,
-       "qualification": "1 of its 51 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
+       "n": 55,
+       "qualification": "2 of its 55 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
        "qualified": false,
-       "rate": 0.540413109951884
+       "rate": 0.402349394035133
       },
       "a3/post": {
-       "dominant_n": 9,
+       "dominant_n": 18,
        "interval": [
-        0.3233089420952604,
-        0.44772065357855506
+        0.14424597470772327,
+        0.25590861445049695
        ],
-       "n": 32,
-       "qualification": "9 of its 32 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
+       "n": 33,
+       "qualification": "18 of its 33 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
        "qualified": true,
-       "rate": 0.3966937181038821
+       "rate": 0.20622705562641744
       }
      },
      "provisional": false,
      "rate_source": "measured",
      "reference_input": 0.4,
      "status": null,
-     "times_opus": 0.5255629263210222,
+     "times_opus": 0.4062385810990732,
      "times_opus_interval": [
-      0.44434256158980895,
-      0.6066364455877842
+      0.3414761393870027,
+      0.4688429297281948
      ],
-     "why": "one fit pooled over a4/post, a3/post, a2/post, a2/pre, a1/post, a1/pre: rates shared by every group, one credits-per-1% scale per group. Sonnet 0.526x Opus, 80% bootstrap interval [0.444, 0.607] from 600 resamples stratified by group; 159 of the fit's 190 stretches carry its tokens. The per-group fits are on this record as diagnostics and enter no rate."
+     "why": "one fit pooled over a4/post, a3/post, a2/post, a2/pre, a1/post, a1/pre: rates shared by every group, one credits-per-1% scale per group. Sonnet 0.406x Opus, 80% bootstrap interval [0.341, 0.469] from 600 resamples stratified by group; 175 of the fit's 208 stretches carry its tokens. The per-group fits are on this record as diagnostics and enter no rate."
     }
    },
    "pooled_fit": {
-    "cache_read_weight": 0.0021744302695022467,
+    "cache_read_weight": 0.003172735863982905,
     "cache_read_weight_interval": [
-     2.360781833111396e-16,
-     0.005068990611591999
+     0.0007317548418319966,
+     0.006048629094312771
     ],
     "credits_per_pct": {
-     "a1/post": 154495.52313312684,
-     "a1/pre": 161077.3900720522,
-     "a2/post": 185668.81533325283,
-     "a2/pre": 191199.76639330183,
-     "a3/post": 147926.03460437505,
-     "a4/post": 271210.8685887004
+     "a1/post": 155513.8307006891,
+     "a1/pre": 162972.2212355776,
+     "a2/post": 219756.48768230982,
+     "a2/pre": 193840.23628143396,
+     "a3/post": 141777.11488591495,
+     "a4/post": 287228.7982168809
     },
     "fable_by_era": {
-     "post": 2.079686322901707,
+     "post": 2.2354451901544734,
      "post_interval": [
-      1.8777376868571267,
-      2.34800311379387
+      1.9938946528016175,
+      2.547298685540563
      ],
-     "post_over_pre": 0.9815617689773618,
+     "post_over_pre": 1.0613307422443128,
      "post_over_pre_interval": [
-      0.890494607432181,
-      1.1086361714587876
+      0.9427832488838574,
+      1.2021079857476702
      ],
-     "pre": 2.118752368552846,
+     "pre": 2.1062663137669535,
      "pre_interval": [
-      2.0109403931180223,
-      2.2223807482497846
+      1.9883953069676323,
+      2.2340015585035577
      ],
-     "sse": 3.7840122303220385
+     "sse": 5.0392401547607495
     },
     "groups": [
      "a4/post",
@@ -2577,78 +2588,78 @@
     "held_rate": {},
     "interval": {
      "fable": [
-      1.9985838542011611,
-      2.2339246616525403
+      2.0301553715831693,
+      2.3119236085563495
      ],
      "haiku": [
-      0.1547820639232877,
-      2.629082005151248
+      0.36020183155821967,
+      1.1434802890194262
      ],
      "opus-5-5": [
-      0.7076432021274194,
-      0.8571294242938579
+      0.6299247120785261,
+      0.7642021843293673
      ],
      "sonnet": [
-      0.44434256158980895,
-      0.6066364455877842
+      0.3414761393870027,
+      0.4688429297281948
      ]
     },
     "leave_one_out": {
      "a1": {
-      "cache_read_weight": 0.0027241915647229246,
-      "n": 124,
+      "cache_read_weight": 0.0038472706971035553,
+      "n": 139,
       "times_opus": {
-       "fable": 2.055597015923825,
-       "haiku": 0.7182800387416055,
+       "fable": 2.1641483148064196,
+       "haiku": 0.49208575313038727,
        "opus": 1.0,
-       "opus-5-5": 0.7921880430787047,
-       "sonnet": 0.5487219762042429
+       "opus-5-5": 0.7124200013282687,
+       "sonnet": 0.3979690999925443
       }
      },
      "a2": {
-      "cache_read_weight": 5.4953476080462335e-17,
-      "n": 104,
+      "cache_read_weight": 1.3412738537848807e-16,
+      "n": 112,
       "times_opus": {
-       "fable": 1.9705706197274797,
-       "haiku": 0.47267293401317706,
+       "fable": 1.9224326362417505,
+       "haiku": 0.3940548141306282,
        "opus": 1.0,
-       "opus-5-5": 0.6447792896983173,
-       "sonnet": 0.48512845619761774
+       "opus-5-5": 0.6240266265645863,
+       "sonnet": 0.3663786876755781
       }
      },
      "a3": {
-      "cache_read_weight": 0.00831614203852804,
-      "n": 158,
+      "cache_read_weight": 0.007243343833038975,
+      "n": 175,
       "times_opus": {
-       "fable": 2.302710229613439,
-       "haiku": 3.4097765232249384,
+       "fable": 2.400588198065961,
+       "haiku": 2.666532199285737,
        "opus": 1.0,
-       "opus-5-5": 0.7743757925992072,
-       "sonnet": 0.4652831327326602
+       "opus-5-5": 0.7004935503938919,
+       "sonnet": 0.5032734250641855
       }
      },
      "a4": {
-      "cache_read_weight": 0.001925259015280474,
-      "n": 184,
+      "cache_read_weight": 0.0029791718630184554,
+      "n": 198,
       "times_opus": {
-       "fable": 2.099384368539613,
-       "haiku": 0.7274873801052849,
+       "fable": 2.1557211779607224,
+       "haiku": 0.4890265265496801,
        "opus": 1.0,
-       "opus-5-5": 0.7696978751927709,
-       "sonnet": 0.5446300260638786
+       "opus-5-5": 0.6861453829137399,
+       "sonnet": 0.41410410402137754
       }
      }
     },
-    "n": 190,
+    "n": 208,
     "output_multiplier": 5,
     "resamples": 600,
-    "sse": 3.7849969979989866,
+    "sse": 5.048810147936859,
     "times_opus": {
-     "fable": 2.102444322865604,
-     "haiku": 0.8029736213653665,
+     "fable": 2.1591053184501443,
+     "haiku": 0.4976379897987262,
      "opus": 1.0,
-     "opus-5-5": 0.7764197426466644,
-     "sonnet": 0.5255629263210222
+     "opus-5-5": 0.6873344266467811,
+     "sonnet": 0.4062385810990732
     }
    },
    "provisional_max_interval_ratio": 3.0,
@@ -2664,35 +2675,35 @@
     "api_value_per_window_usd": {
      "input": {
       "interval": [
-       54.75,
-       229.6
+       48.09,
+       212.88
       ],
       "status": null,
-      "value": 169.72
+      "value": 151.54
      },
      "output": {
       "interval": [
-       54.75,
-       382.67
+       48.09,
+       354.79
       ],
       "status": null,
-      "value": 169.72
+      "value": 151.54
      }
     },
     "as_of": "2026-09-28T21:10:05+00:00",
     "as_of_source": "the newest stretch this row's figures rest on: the pure-family cluster behind the window, and the fits behind the rate where the rate is measured",
     "credits_per_token": {
-     "input": 1.4016295485770691,
-     "output": 7.008147742885345
+     "input": 1.4394035456334295,
+     "output": 7.197017728167148
     },
     "credits_per_token_interval": {
      "input": [
-      1.3323892361341074,
-      1.4892831077683601
+      1.3534369143887794,
+      1.541282405704233
      ],
      "output": [
-      3.9971677084023223,
-      7.4464155388418005
+      4.0603107431663386,
+      7.706412028521164
      ]
     },
     "derivation": "credits",
@@ -2713,13 +2724,13 @@
       "a1/post": {
        "dominant_n": 2,
        "interval": [
-        1.1369567968014016,
-        1.682693402446038
+        1.1830916213464888,
+        1.616991166287447
        ],
-       "n": 31,
-       "qualification": "2 of its 31 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
+       "n": 34,
+       "qualification": "2 of its 34 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
        "qualified": false,
-       "rate": 1.3617631201588758
+       "rate": 1.4074603263480447
       },
       "a1/pre": {
        "dominant_n": 9,
@@ -2733,46 +2744,46 @@
        "rate": 1.3251620103129738
       },
       "a2/post": {
-       "dominant_n": 3,
+       "dominant_n": 2,
        "interval": [
-        1.6565460594183163,
-        2.5213488318474986
+        1.9214792342885025,
+        2.8792120680128708
        ],
-       "n": 35,
-       "qualification": "3 of its 35 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
-       "qualified": true,
-       "rate": 1.9149365570148353
+       "n": 41,
+       "qualification": "2 of its 41 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
+       "qualified": false,
+       "rate": 2.339718932558478
       },
       "a2/pre": {
        "dominant_n": 2,
        "interval": [
-        1.3125214727461838,
-        1.524154675871765
+        1.3307546572485296,
+        1.5701170366508512
        ],
-       "n": 51,
-       "qualification": "2 of its 51 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
+       "n": 55,
+       "qualification": "2 of its 55 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
        "qualified": false,
-       "rate": 1.4013724486986614
+       "rate": 1.4390192590258537
       },
       "a3/post": {
        "dominant_n": 0,
        "interval": [
-        0.8379407957760466,
-        1.377555732629149
+        0.6670480378788919,
+        1.4022095731339492
        ],
-       "n": 32,
-       "qualification": "0 of its 32 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
+       "n": 33,
+       "qualification": "0 of its 33 stretches carry 60% or more of their raw tokens on Fable; pooling needs 3",
        "qualified": false,
-       "rate": 1.0588382957329858
+       "rate": 1.0622320916821006
       }
      },
      "provisional": false,
-     "times_opus": 2.102444322865604,
+     "times_opus": 2.1591053184501443,
      "times_opus_interval": [
-      1.9985838542011611,
-      2.2339246616525403
+      2.0301553715831693,
+      2.3119236085563495
      ],
-     "why": "one fit pooled over a4/post, a3/post, a2/post, a2/pre, a1/post, a1/pre: rates shared by every group, one credits-per-1% scale per group. Fable 2.102x Opus, 80% bootstrap interval [1.999, 2.234] from 600 resamples stratified by group; 149 of the fit's 190 stretches carry its tokens. The per-group fits are on this record as diagnostics and enter no rate."
+     "why": "one fit pooled over a4/post, a3/post, a2/post, a2/pre, a1/post, a1/pre: rates shared by every group, one credits-per-1% scale per group. Fable 2.159x Opus, 80% bootstrap interval [2.030, 2.312] from 600 resamples stratified by group; 151 of the fit's 208 stretches carry its tokens. The per-group fits are on this record as diagnostics and enter no rate."
     },
     "rate_source": "measured",
     "reference_rate": {
@@ -2784,19 +2795,19 @@
     "tokens_per_window": {
      "input": {
       "interval": [
-       5474658,
-       22960351
+       4809408,
+       21287656
       ],
       "status": null,
-      "value": 16972482
+      "value": 15153902
      },
      "output": {
       "interval": [
-       1094932,
-       7653450
+       961882,
+       7095885
       ],
       "status": null,
-      "value": 3394496
+      "value": 3030780
      }
     }
    },
@@ -2805,19 +2816,19 @@
     "api_value_per_window_usd": {
      "input": {
       "interval": [
-       61.15,
-       229.44
+       55.59,
+       216.09
       ],
       "status": null,
-      "value": 178.42
+      "value": 163.59
      },
      "output": {
       "interval": [
-       61.15,
-       229.44
+       55.59,
+       216.09
       ],
       "status": null,
-      "value": 178.42
+      "value": 163.59
      }
     },
     "as_of": "2026-09-28T21:10:05+00:00",
@@ -2835,21 +2846,21 @@
     "measured_rate": {
      "inferred_basis": "data/prices.json `_credits` reference table: Haiku at 0.1333 credits per input token",
      "inferred_from": "reference_table",
-     "max_share_of_a_clean_stretch": 0.2567715124076586,
-     "measured_status": "not measurable, the pooled fit cannot pin Haiku down: its 80% interval is 16.99x wide end to end, and a published rate needs under 1.5x",
+     "max_share_of_a_clean_stretch": 0.6621482897010258,
+     "measured_status": "not measurable, the pooled fit cannot pin Haiku down: its 80% interval is 3.17x wide end to end, and a published rate needs under 1.5x",
      "n_fits": 6,
      "output_multiplier": 5,
      "per_fit": {
       "a1/post": {
        "dominant_n": 0,
        "interval": [
-        0.0,
-        1.8131015737610463
+        0.7648644656203892,
+        4.170125019998506
        ],
-       "n": 31,
-       "qualification": "0 of its 31 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
+       "n": 34,
+       "qualification": "0 of its 34 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
        "qualified": false,
-       "rate": 1.2372798974564414
+       "rate": 1.847880004181883
       },
       "a1/pre": {
        "dominant_n": 0,
@@ -2865,24 +2876,35 @@
       "a2/post": {
        "dominant_n": 0,
        "interval": [
-        0.8841813447564061,
-        11.207644082539943
+        0.1231234207563455,
+        14.490458846969034
        ],
-       "n": 35,
-       "qualification": "0 of its 35 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
+       "n": 41,
+       "qualification": "0 of its 41 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
        "qualified": false,
-       "rate": 2.9621436255120845
+       "rate": 0.971785139331013
       },
       "a2/pre": {
        "dominant_n": 0,
        "interval": [
         0.0,
-        4.367204783144122
+        3.7947029625732243
        ],
-       "n": 51,
-       "qualification": "0 of its 51 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
+       "n": 55,
+       "qualification": "0 of its 55 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
        "qualified": false,
-       "rate": 1.2123591486909937
+       "rate": 0.5990946345369575
+      },
+      "a3/post": {
+       "dominant_n": 1,
+       "interval": [
+        0.170056693467663,
+        0.4866014465112144
+       ],
+       "n": 33,
+       "qualification": "1 of its 33 stretches carry 60% or more of their raw tokens on Haiku; pooling needs 3",
+       "qualified": false,
+       "rate": 0.24263326886217704
       }
      },
      "pooled": {
@@ -2895,14 +2917,14 @@
        "a1/pre"
       ],
       "interval": [
-       0.1547820639232877,
-       2.629082005151248
+       0.36020183155821967,
+       1.1434802890194262
       ],
-      "n_stretches_carrying": 47,
-      "times_opus": 0.8029736213653665
+      "n_stretches_carrying": 56,
+      "times_opus": 0.4976379897987262
      },
      "times_opus": 0.2,
-     "why": "the highest Haiku share of any clean stretch on a fitted account is 0.257. The pooled fit carries it and puts it at 0.803x Opus, but its 80% interval runs [0.155x, 2.629x], so the data do not pin it down, and neither the value nor the interval is published: an interval is priced at its midpoint where a family has no value (tracker/gs_passive.py), and this one's midpoint is not a rate anything measured. The fit's point estimate still prices this family's tokens inside the before-and-after comparison (pooled_fit), where the fit's own model is used whole. The reference figure stands beside this row, untested by our data and used in no arithmetic the page states."
+     "why": "the highest Haiku share of any clean stretch on a fitted account is 0.662. The pooled fit carries it and puts it at 0.498x Opus, but its 80% interval runs [0.360x, 1.143x], so the data do not pin it down, and neither the value nor the interval is published: an interval is priced at its midpoint where a family has no value (tracker/gs_passive.py), and this one's midpoint is not a rate anything measured. The fit's point estimate still prices this family's tokens inside the before-and-after comparison (pooled_fit), where the fit's own model is used whole. The reference figure stands beside this row, untested by our data and used in no arithmetic the page states."
     },
     "rate_source": "inferred",
     "reference_rate": {
@@ -2914,19 +2936,19 @@
     "tokens_per_window": {
      "input": {
       "interval": [
-       61149870,
-       229440930
+       55594920,
+       216086242
       ],
       "status": null,
-      "value": 178418490
+      "value": 163594350
      },
      "output": {
       "interval": [
-       12229974,
-       45888186
+       11118984,
+       43217248
       ],
       "status": null,
-      "value": 35683698
+      "value": 32718870
      }
     }
    },
@@ -2935,19 +2957,19 @@
     "api_value_per_window_usd": {
      "input": {
       "interval": [
-       61.15,
-       229.44
+       55.59,
+       216.09
       ],
       "status": null,
-      "value": 178.42
+      "value": 163.59
      },
      "output": {
       "interval": [
-       61.15,
-       229.44
+       55.59,
+       216.09
       ],
       "status": null,
-      "value": 178.42
+      "value": 163.59
      }
     },
     "as_of": "2026-09-21T15:05:39+00:00",
@@ -2974,7 +2996,7 @@
         0.6666666666666666,
         0.6666666666666666
        ],
-       "n": 31,
+       "n": 34,
        "qualification": "the anchor is exempt from the dominance rule",
        "qualified": true,
        "rate": 0.6666666666666666
@@ -2991,12 +3013,12 @@
        "rate": 0.6666666666666666
       },
       "a2/post": {
-       "dominant_n": 10,
+       "dominant_n": 12,
        "interval": [
         0.6666666666666666,
         0.6666666666666666
        ],
-       "n": 35,
+       "n": 41,
        "qualification": "the anchor is exempt from the dominance rule",
        "qualified": true,
        "rate": 0.6666666666666666
@@ -3007,18 +3029,18 @@
         0.6666666666666666,
         0.6666666666666666
        ],
-       "n": 51,
+       "n": 55,
        "qualification": "the anchor is exempt from the dominance rule",
        "qualified": true,
        "rate": 0.6666666666666666
       },
       "a3/post": {
-       "dominant_n": 13,
+       "dominant_n": 5,
        "interval": [
         0.6666666666666666,
         0.6666666666666666
        ],
-       "n": 32,
+       "n": 33,
        "qualification": "the anchor is exempt from the dominance rule",
        "qualified": true,
        "rate": 0.6666666666666666
@@ -3039,19 +3061,19 @@
     "tokens_per_window": {
      "input": {
       "interval": [
-       12229974,
-       45888186
+       11118984,
+       43217248
       ],
       "status": null,
-      "value": 35683698
+      "value": 32718870
      },
      "output": {
       "interval": [
-       2445995,
-       9177637
+       2223797,
+       8643450
       ],
       "status": null,
-      "value": 7136740
+      "value": 6543774
      }
     }
    },
@@ -3060,35 +3082,35 @@
     "api_value_per_window_usd": {
      "input": {
       "interval": [
-       52.65,
-       444.22
+       52.8,
+       467.21
       ],
       "status": null,
-      "value": 227.39
+      "value": 227.37
      },
      "output": {
       "interval": [
-       52.65,
-       444.22
+       52.8,
+       467.21
       ],
       "status": null,
-      "value": 227.39
+      "value": 227.37
      }
     },
     "as_of": "2026-09-28T21:10:05+00:00",
     "as_of_source": "the newest stretch this row's figures rest on: the pure-family cluster behind the window, and the fits behind the rate where the rate is measured",
     "credits_per_token": {
-     "input": 0.41846666666666665,
-     "output": 2.092333333333334
+     "input": 0.3837333333333333,
+     "output": 1.918666666666667
     },
     "credits_per_token_interval": {
      "input": [
-      0.27546666666666664,
-      0.6194
+      0.24666666666666665,
+      0.5616
      ],
      "output": [
-      1.3773333333333335,
-      3.0970000000000004
+      1.2333333333333334,
+      2.8080000000000003
      ]
     },
     "derivation": "credits",
@@ -3099,10 +3121,10 @@
     "measured_rate": {
      "output_multiplier": 5.000000000000001,
      "provisional": false,
-     "times_opus": 0.6277,
+     "times_opus": 0.5756,
      "times_opus_interval": [
-      0.4132,
-      0.9291
+      0.37,
+      0.8424
      ]
     },
     "rate_source": "joint_fit_at_first_use",
@@ -3115,19 +3137,19 @@
     "tokens_per_window": {
      "input": {
       "interval": [
-       13163248,
-       111055629
+       13199174,
+       116803374
       ],
       "status": null,
-      "value": 56848332
+      "value": 56843068
      },
      "output": {
       "interval": [
-       2632650,
-       22211126
+       2639835,
+       23360675
       ],
       "status": null,
-      "value": 11369666
+      "value": 11368614
      }
     }
    },
@@ -3136,35 +3158,35 @@
     "api_value_per_window_usd": {
      "input": {
       "interval": [
-       40.32,
-       206.54
+       47.43,
+       253.12
       ],
       "status": null,
-      "value": 135.79
+      "value": 161.08
      },
      "output": {
       "interval": [
-       40.32,
-       206.54
+       47.43,
+       253.12
       ],
       "status": null,
-      "value": 135.79
+      "value": 161.08
      }
     },
     "as_of": "2026-09-28T21:10:05+00:00",
     "as_of_source": "the newest stretch this row's figures rest on: the pure-family cluster behind the window, and the fits behind the rate where the rate is measured",
     "credits_per_token": {
-     "input": 0.35037528421401476,
-     "output": 1.7518764210700737
+     "input": 0.27082572073271544,
+     "output": 1.3541286036635771
     },
     "credits_per_token_interval": {
      "input": [
-      0.29622837439320593,
-      0.4044242970585228
+      0.22765075959133513,
+      0.31256195315212987
      ],
      "output": [
-      1.4811418719660296,
-      2.022121485292614
+      1.1382537979566756,
+      1.5628097657606492
      ]
     },
     "derivation": "credits",
@@ -3174,20 +3196,20 @@
     "list_price_model": "claude-sonnet-5",
     "measured_rate": {
      "agree": null,
-     "max_share_of_a_clean_stretch": 0.9756112220172182,
+     "max_share_of_a_clean_stretch": 0.9757085087506521,
      "n_fits": 6,
      "output_multiplier": 5,
      "per_fit": {
       "a1/post": {
        "dominant_n": 2,
        "interval": [
-        0.0,
-        0.35059023279834134
+        0.25461900311456026,
+        0.42521558990962394
        ],
-       "n": 31,
-       "qualification": "2 of its 31 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
+       "n": 34,
+       "qualification": "2 of its 34 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
        "qualified": false,
-       "rate": 0.24733395608913894
+       "rate": 0.34581353119202946
       },
       "a1/pre": {
        "dominant_n": 0,
@@ -3203,44 +3225,44 @@
       "a2/post": {
        "dominant_n": 1,
        "interval": [
-        0.17371260889594398,
-        0.5823187652324534
+        0.30905661486066377,
+        0.6307491671924514
        ],
-       "n": 35,
-       "qualification": "1 of its 35 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
+       "n": 41,
+       "qualification": "1 of its 41 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
        "qualified": false,
-       "rate": 0.3182994228129671
+       "rate": 0.47219358626027264
       },
       "a2/pre": {
-       "dominant_n": 1,
+       "dominant_n": 2,
        "interval": [
-        0.33940526941432503,
-        0.6054870710084457
+        0.3032683419184018,
+        0.45711589880851955
        ],
-       "n": 51,
-       "qualification": "1 of its 51 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
+       "n": 55,
+       "qualification": "2 of its 55 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
        "qualified": false,
-       "rate": 0.540413109951884
+       "rate": 0.402349394035133
       },
       "a3/post": {
-       "dominant_n": 9,
+       "dominant_n": 18,
        "interval": [
-        0.3233089420952604,
-        0.44772065357855506
+        0.14424597470772327,
+        0.25590861445049695
        ],
-       "n": 32,
-       "qualification": "9 of its 32 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
+       "n": 33,
+       "qualification": "18 of its 33 stretches carry 60% or more of their raw tokens on Sonnet; pooling needs 3",
        "qualified": true,
-       "rate": 0.3966937181038821
+       "rate": 0.20622705562641744
       }
      },
      "provisional": false,
-     "times_opus": 0.5255629263210222,
+     "times_opus": 0.4062385810990732,
      "times_opus_interval": [
-      0.44434256158980895,
-      0.6066364455877842
+      0.3414761393870027,
+      0.4688429297281948
      ],
-     "why": "one fit pooled over a4/post, a3/post, a2/post, a2/pre, a1/post, a1/pre: rates shared by every group, one credits-per-1% scale per group. Sonnet 0.526x Opus, 80% bootstrap interval [0.444, 0.607] from 600 resamples stratified by group; 159 of the fit's 190 stretches carry its tokens. The per-group fits are on this record as diagnostics and enter no rate."
+     "why": "one fit pooled over a4/post, a3/post, a2/post, a2/pre, a1/post, a1/pre: rates shared by every group, one credits-per-1% scale per group. Sonnet 0.406x Opus, 80% bootstrap interval [0.341, 0.469] from 600 resamples stratified by group; 175 of the fit's 208 stretches carry its tokens. The per-group fits are on this record as diagnostics and enter no rate."
     },
     "rate_source": "measured",
     "reference_rate": {
@@ -3252,19 +3274,19 @@
     "tokens_per_window": {
      "input": {
       "interval": [
-       20160302,
-       103272092
+       23715798,
+       126560083
       ],
       "status": null,
-      "value": 67896148
+      "value": 80541021
      },
      "output": {
       "interval": [
-       4032060,
-       20654418
+       4743160,
+       25312017
       ],
       "status": null,
-      "value": 13579230
+      "value": 16108204
      }
     }
    }
@@ -3280,17 +3302,17 @@
     "fable": {
      "input": null,
      "interval": {
-      "input": 1.4016,
-      "input_high": 1.4893,
-      "input_low": 1.3324,
+      "input": 1.4394,
+      "input_high": 1.5413,
+      "input_low": 1.3534,
       "method": "one set of per-token rates shared by every account and side of 14 September, with one credits-per-1% scale per account and side, fitted over the clean stretches (history/model-rates.json measured_rates.pooled_fit); the interval is its 80% bootstrap interval, resampling stretches within each group.",
       "output_ratio": [
        5
       ],
       "solved": {
        "fable_heavy_share": 0.5,
-       "input_high": 2.5972,
-       "input_low": 0.2152,
+       "input_high": 2.3772,
+       "input_low": 0.172,
        "method": "solved per Fable-heavy stretch (Fable over 50% of the tokens the meter charges for) against the measured window; the interval runs from the lowest per-account p25 at output 5x input to the highest per-account p25 at output 3x. Both edges are a p25 because the solve is inflated wherever the meter counts machines the transcripts never saw.",
        "output_ratio": [
         3,
@@ -3299,65 +3321,65 @@
        "per_account": {
         "a1": {
          "output_3x": {
-          "median": 2.8305,
+          "median": 2.5672,
           "n": 18,
-          "p25": 2.5972
+          "p25": 2.3772
          },
          "output_5x": {
-          "median": 2.1736,
+          "median": 1.9774,
           "n": 18,
-          "p25": 1.9436
+          "p25": 1.7789
          }
         },
         "a2": {
          "output_3x": {
-          "median": 0.7453,
+          "median": 0.6722,
           "n": 15,
-          "p25": 0.5629
+          "p25": 0.5113
          },
          "output_5x": {
-          "median": 0.565,
+          "median": 0.5096,
           "n": 15,
-          "p25": 0.4734
+          "p25": 0.434
          }
         },
         "a3": {
          "output_3x": {
-          "median": 1.2463,
+          "median": 1.1324,
           "n": 3,
-          "p25": 1.0493
+          "p25": 0.9282
          },
          "output_5x": {
-          "median": 1.0093,
+          "median": 0.917,
           "n": 3,
-          "p25": 0.8282
+          "p25": 0.7326
          }
         },
         "a4": {
          "output_3x": {
-          "median": 0.377,
+          "median": 0.3255,
           "n": 3,
-          "p25": 0.2776
+          "p25": 0.222
          },
          "output_5x": {
-          "median": 0.3401,
+          "median": 0.2937,
           "n": 3,
-          "p25": 0.2152
+          "p25": 0.172
          }
         }
        },
        "status": "interval, not yet separable",
        "times_opus": [
-        0.32,
-        3.9
+        0.26,
+        3.57
        ],
        "unresolved": null,
-       "window_credits_per_pct": 237891
+       "window_credits_per_pct": 218126
       },
       "status": "measured by one fit pooled across every account",
       "times_opus": [
-       2.0,
-       2.23
+       2.03,
+       2.31
       ],
       "unresolved": null
      },
@@ -3449,28 +3471,28 @@
   "sessions": {
    "claude-fable-5-1": {
     "cache_normalised": true,
-    "credits_per_token_at_split": 0.05928893,
+    "credits_per_token_at_split": 0.06088677,
     "credits_per_token_at_split_interval": [
-     0.04703334,
-     0.06299668
+     0.04777632,
+     0.06519625
     ],
     "derivation": "credits",
     "median_session_tokens": 6729076,
     "per_week": {
      "interval": [
-      94.4,
-      474.6
+      83.0,
+      440.0
      ],
      "status": null,
-     "value": 292.8
+     "value": 261.4
     },
     "per_window": {
      "interval": [
-      19.2,
-      96.7
+      16.9,
+      89.6
      ],
      "status": null,
-     "value": 59.6
+     "value": 53.2
     },
     "rate_source": "measured",
     "split": {
@@ -3483,11 +3505,11 @@
     "status": null,
     "tokens_per_window_at_split": {
      "interval": [
-      129424544,
-      650434861
+      113697590,
+      603049736
      ],
      "status": null,
-     "value": 401240704
+     "value": 358248270
     },
     "windows_per_week": 4.91
    },
@@ -3499,19 +3521,19 @@
     "median_session_tokens": 188484,
     "per_week": {
      "interval": [
-      37658.4,
-      141298.5
+      34237.5,
+      133074.2
      ],
      "status": null,
-     "value": 109876.9
+     "value": 100747.7
     },
     "per_window": {
      "interval": [
-      7669.7,
-      28777.7
+      6973.0,
+      27102.7
      ],
      "status": null,
-     "value": 22378.2
+     "value": 20518.9
     },
     "rate_source": "inferred",
     "split": {
@@ -3524,11 +3546,11 @@
     "status": null,
     "tokens_per_window_at_split": {
      "interval": [
-      1445623404,
-      5424135461
+      1314300709,
+      5108421809
      ],
      "status": null,
-     "value": 4217931206
+     "value": 3867478723
     },
     "windows_per_week": 4.91
    },
@@ -3540,19 +3562,19 @@
     "median_session_tokens": 128394,
     "per_week": {
      "interval": [
-      11056.6,
-      41485.6
+      10052.2,
+      39070.9
      ],
      "status": null,
-     "value": 32260.1
+     "value": 29579.8
     },
     "per_window": {
      "interval": [
-      2251.9,
-      8449.2
+      2047.3,
+      7957.4
      ],
      "status": null,
-     "value": 6570.3
+     "value": 6024.4
     },
     "rate_source": "reference",
     "split": {
@@ -3565,11 +3587,11 @@
     "status": null,
     "tokens_per_window_at_split": {
      "interval": [
-      289124681,
-      1084827092
+      262860142,
+      1021684362
      ],
      "status": null,
-     "value": 843586241
+     "value": 773495745
     },
     "windows_per_week": 4.91
    },
@@ -3581,19 +3603,19 @@
     "median_session_tokens": 9529314,
     "per_week": {
      "interval": [
-      149.0,
-      559.0
+      135.4,
+      526.4
      ],
      "status": null,
-     "value": 434.7
+     "value": 398.5
     },
     "per_window": {
      "interval": [
-      30.3,
-      113.8
+      27.6,
+      107.2
      ],
      "status": null,
-     "value": 88.5
+     "value": 81.2
     },
     "rate_source": "reference",
     "split": {
@@ -3606,11 +3628,11 @@
     "status": null,
     "tokens_per_window_at_split": {
      "interval": [
-      289124681,
-      1084827092
+      262860142,
+      1021684362
      ],
      "status": null,
-     "value": 843586241
+     "value": 773495745
     },
     "windows_per_week": 4.91
    },
@@ -3622,19 +3644,19 @@
     "median_session_tokens": 1669074,
     "per_week": {
      "interval": [
-      850.5,
-      3191.3
+      773.3,
+      3005.5
      ],
      "status": null,
-     "value": 2481.6
+     "value": 2275.4
     },
     "per_window": {
      "interval": [
-      173.2,
-      650.0
+      157.5,
+      612.1
      ],
      "status": null,
-     "value": 505.4
+     "value": 463.4
     },
     "rate_source": "reference",
     "split": {
@@ -3647,35 +3669,35 @@
     "status": null,
     "tokens_per_window_at_split": {
      "interval": [
-      289124681,
-      1084827092
+      262860142,
+      1021684362
      ],
      "status": null,
-     "value": 843586241
+     "value": 773495745
     },
     "windows_per_week": 4.91
    },
    "claude-opus-5-5": {
     "cache_normalised": true,
-    "credits_per_token_at_split": 0.01770114,
+    "credits_per_token_at_split": 0.01623192,
     "credits_per_token_at_split_interval": [
-     0.01165224,
-     0.02620062
+     0.010434,
+     0.02375568
     ],
     "derivation": "credits",
     "median_session_tokens": 4793904,
     "per_week": {
      "interval": [
-      318.7,
-      2689.0
+      319.6,
+      2828.2
      ],
      "status": null,
-     "value": 1376.5
+     "value": 1376.4
     },
     "per_window": {
      "interval": [
-      64.9,
-      547.7
+      65.1,
+      576.0
      ],
      "status": null,
      "value": 280.3
@@ -3691,38 +3713,38 @@
     "status": null,
     "tokens_per_window_at_split": {
      "interval": [
-      311187903,
-      2625428587
+      312037205,
+      2761309086
      ],
      "status": null,
-     "value": 1343932199
+     "value": 1343807757
     },
     "windows_per_week": 4.91
    },
    "claude-sonnet-4-6": {
     "cache_normalised": true,
-    "credits_per_token_at_split": 0.01482087,
+    "credits_per_token_at_split": 0.01145593,
     "credits_per_token_at_split_interval": [
-     0.01253046,
-     0.01710715
+     0.00962963,
+     0.01322137
     ],
     "derivation": "credits",
     "median_session_tokens": 255187,
     "per_week": {
      "interval": [
-      9170.2,
-      46974.9
+      10787.5,
+      57567.8
      ],
      "status": null,
-     "value": 30883.6
+     "value": 36635.3
     },
     "per_window": {
      "interval": [
-      1867.7,
-      9567.2
+      2197.0,
+      11724.6
      ],
      "status": null,
-     "value": 6289.9
+     "value": 7461.4
     },
     "rate_source": "measured",
     "split": {
@@ -3735,38 +3757,38 @@
     "status": null,
     "tokens_per_window_at_split": {
      "interval": [
-      476602886,
-      2441420620
+      560657152,
+      2991964134
      ],
      "status": null,
-     "value": 1605109872
+     "value": 1904043044
     },
     "windows_per_week": 4.91
    },
    "claude-sonnet-5": {
     "cache_normalised": true,
-    "credits_per_token_at_split": 0.01482087,
+    "credits_per_token_at_split": 0.01145593,
     "credits_per_token_at_split_interval": [
-     0.01253046,
-     0.01710715
+     0.00962963,
+     0.01322137
     ],
     "derivation": "credits",
     "median_session_tokens": 636738,
     "per_week": {
      "interval": [
-      3675.2,
-      18826.2
+      4323.3,
+      23071.6
      ],
      "status": null,
-     "value": 12377.3
+     "value": 14682.4
     },
     "per_window": {
      "interval": [
-      748.5,
-      3834.3
+      880.5,
+      4698.9
      ],
      "status": null,
-     "value": 2520.8
+     "value": 2990.3
     },
     "rate_source": "measured",
     "split": {
@@ -3779,11 +3801,11 @@
     "status": null,
     "tokens_per_window_at_split": {
      "interval": [
-      476602886,
-      2441420620
+      560657152,
+      2991964134
      ],
      "status": null,
-     "value": 1605109872
+     "value": 1904043044
     },
     "windows_per_week": 4.91
    }
@@ -3841,15 +3863,15 @@
     0,
     0.015
    ],
-   "credits_per_pct": 237891,
-   "current_method": "the pure-family cluster is split on cut_at by each stretch's own start. The after cluster states the current window once it holds 5 readings; below that the before cluster states it, scaled by the median five-hour window change across the cut over the accounts whose capture column can carry one. `current_source` names which of the two the published value and interval came from; `n` counts the whole cluster, and each side carries its own count. After that, every change measured on the two meters (`five_hour_on_meters`, the windows-per-week ratio across a change candidate; state measured, dated after cut_at) opens a new regime in `regimes`, from the candidate's own instant. A regime's own cluster (stretches starting in it) states it once it holds 5 readings; below that it is the previous regime's value times the change's five-hour limit ratio g (the joint fit's point estimate, whatever its interval), the interval's low edge times g's low edge and its high edge times g's high edge. Where the joint fit cannot yet separate the new family's rate from g, the regime carries the previous regime's value (`previous_regime_carried_fit_not_separable`). The window interval is a spread of readings, not a standard error, so the edges are multiplied rather than standard errors combined. The published value and interval are the newest regime's. Known-date changes applied: from 2026-09-22T19:41:49.479000+00:00 (opus-5-5 first turn), +14.4%.",
+   "credits_per_pct": 218126,
+   "current_method": "the pure-family cluster is split on cut_at by each stretch's own start. The after cluster states the current window once it holds 5 readings; below that the before cluster states it, scaled by the median five-hour window change across the cut over the accounts whose capture column can carry one. `current_source` names which of the two the published value and interval came from; `n` counts the whole cluster, and each side carries its own count. After that, every change measured on the two meters (`five_hour_on_meters`, the windows-per-week ratio across a change candidate; state measured, dated after cut_at) opens a new regime in `regimes`, from the candidate's own instant. A regime's own cluster (stretches starting in it) states it once it holds 5 readings; below that it is the previous regime's value times the change's five-hour limit ratio g (the joint fit's point estimate, whatever its interval), the interval's low edge times g's low edge and its high edge times g's high edge. Where the joint fit cannot yet separate the new family's rate from g, the regime carries the previous regime's value (`previous_regime_carried_fit_not_separable`). The window interval is a spread of readings, not a standard error, so the edges are multiplied rather than standard errors combined. The published value and interval are the newest regime's. Known-date changes applied: from 2026-09-22T19:41:49.479000+00:00 (opus-5-5 first turn), +6.7%.",
    "current_source": "previous_regime_scaled_by_known_date_change",
    "cut_at": "2026-09-14T12:00:00+00:00",
    "derivation": "credits",
-   "five_hour_window_pct": 6.4,
+   "five_hour_window_pct": 4.6,
    "interval": [
-    8153316,
-    30592124
+    7412656,
+    28811499
    ],
    "method": "median credits per 1% of the five-hour meter over the current side of the pure-opus cluster taken from every watched account's passive stretch file, times 100 (`current_method` for which side that is). A stretch counts when it moved the meter at least 3%, carries tokens, does not overlap one of the tracker's own runs on its own account (a probe row or the effort-matrix run), and reads capture_status 'accepted'. Every token in a pure-opus stretch is priced at a rate data/prices.json publishes, so the figure carries no fitted parameter. Cache writes at the input rate, cache reads at 0 of it.",
    "n": 13,
@@ -3868,32 +3890,32 @@
     {
      "from": "2026-09-14T12:00:00+00:00",
      "interval": [
-      9150748,
-      22152154
+      8995942,
+      21777399
      ],
      "source": "before_cluster_scaled_by_five_hour_change",
      "until": "2026-09-22T19:41:49.479000+00:00",
-     "value": 20794695
+     "value": 20442905
     },
     {
      "from": "2026-09-22T19:41:49.479000+00:00",
      "interval": [
-      8153316,
-      30592124
+      7412656,
+      28811499
      ],
      "source": "previous_regime_scaled_by_known_date_change",
      "until": null,
-     "value": 23789132
+     "value": 21812580
     }
    ],
    "status": null,
-   "value": 23789132
+   "value": 21812580
   },
   "window_credits_from_weekly": {
    "after": {
     "announced_weekly_cap_credits": 104166625,
     "from": "2026-09-11T11:30:00.288613+00:00",
-    "to": "2026-09-28T23:28:35+00:00",
+    "to": "2026-09-28T23:58:10+00:00",
     "value": 21883745,
     "weekly_cap_multiplier": 1.25,
     "windows_per_week_measured": 4.76,
@@ -3931,27 +3953,27 @@
       "from": null,
       "n_window": 34,
       "n_wpw": 101,
-      "per_week": 2497337671,
+      "per_week": 2465143584,
       "until": "2026-09-14T12:00:00+00:00",
-      "window": 383109513,
+      "window": 378170709,
       "windows_per_week": 6.5186
      },
      {
       "from": "2026-09-14T12:00:00+00:00",
       "n_window": 25,
       "n_wpw": 39,
-      "per_week": 1774772353,
+      "per_week": 1806099170,
       "until": "2026-09-22T19:41:49.479000+00:00",
-      "window": 353244766,
+      "window": 359479951,
       "windows_per_week": 5.0242
      },
      {
       "from": "2026-09-22T19:41:49.479000+00:00",
       "n_window": 3,
       "n_wpw": 9,
-      "per_week": 1967752896,
+      "per_week": 1846952304,
       "until": null,
-      "window": 409948520,
+      "window": 384781730,
       "windows_per_week": 4.8
      }
     ],
@@ -3960,27 +3982,27 @@
       "from": null,
       "n_window": 54,
       "n_wpw": 35,
-      "per_week": 2894253821,
+      "per_week": 2901982513,
       "until": "2026-09-14T12:00:00+00:00",
-      "window": 451606201,
+      "window": 452812151,
       "windows_per_week": 6.4088
      },
      {
       "from": "2026-09-14T12:00:00+00:00",
       "n_window": 29,
       "n_wpw": 36,
-      "per_week": 2379158270,
+      "per_week": 2365099207,
       "until": "2026-09-22T19:41:49.479000+00:00",
-      "window": 519591664,
+      "window": 516521262,
       "windows_per_week": 4.5789
      },
      {
       "from": "2026-09-22T19:41:49.479000+00:00",
       "n_window": 11,
       "n_wpw": 25,
-      "per_week": 2382286107,
+      "per_week": 2173313833,
       "until": null,
-      "window": 550906761,
+      "window": 502581651,
       "windows_per_week": 4.3243
      }
     ],
@@ -3998,19 +4020,19 @@
       "from": "2026-09-14T12:00:00+00:00",
       "n_window": 27,
       "n_wpw": 15,
-      "per_week": 1943711226,
+      "per_week": 1863458751,
       "until": "2026-09-22T19:41:49.479000+00:00",
-      "window": 353402041,
+      "window": 338810682,
       "windows_per_week": 5.5
      },
      {
       "from": "2026-09-22T19:41:49.479000+00:00",
       "n_window": 5,
       "n_wpw": 5,
-      "per_week": 2456046335,
+      "per_week": 2151057594,
       "until": null,
-      "window": 356522280,
-      "windows_per_week": 6.8889
+      "window": 307293942,
+      "windows_per_week": 7.0
      }
     ],
     "a4": [
@@ -4036,9 +4058,9 @@
       "from": "2026-09-22T19:41:49.479000+00:00",
       "n_window": 9,
       "n_wpw": 10,
-      "per_week": 3069716976,
+      "per_week": 2669552972,
       "until": null,
-      "window": 767429244,
+      "window": 667388243,
       "windows_per_week": 4.0
      }
     ]
@@ -4187,11 +4209,11 @@
    },
    "all": {
     "interval": [
-     164497825,
-     797014291
+     149554583,
+     750623801
     ],
     "status": null,
-    "value": 548469983
+    "value": 502899630
    },
    "as_of": "2026-09-21T15:05:39+00:00",
    "before": {
@@ -4209,11 +4231,11 @@
     ],
     "value": 0.9611
    },
-   "current_method": "the pure-family cluster is split on cut_at by each stretch's own start. The after cluster states the current window once it holds 5 readings; below that the before cluster states it, scaled by the median five-hour window change across the cut over the accounts whose capture column can carry one. `current_source` names which of the two the published value and interval came from; `n` counts the whole cluster, and each side carries its own count. After that, every change measured on the two meters (`five_hour_on_meters`, the windows-per-week ratio across a change candidate; state measured, dated after cut_at) opens a new regime in `regimes`, from the candidate's own instant. A regime's own cluster (stretches starting in it) states it once it holds 5 readings; below that it is the previous regime's value times the change's five-hour limit ratio g (the joint fit's point estimate, whatever its interval), the interval's low edge times g's low edge and its high edge times g's high edge. Where the joint fit cannot yet separate the new family's rate from g, the regime carries the previous regime's value (`previous_regime_carried_fit_not_separable`). The window interval is a spread of readings, not a standard error, so the edges are multiplied rather than standard errors combined. The published value and interval are the newest regime's. Known-date changes applied: from 2026-09-22T19:41:49.479000+00:00 (opus-5-5 first turn), +14.4%.",
+   "current_method": "the pure-family cluster is split on cut_at by each stretch's own start. The after cluster states the current window once it holds 5 readings; below that the before cluster states it, scaled by the median five-hour window change across the cut over the accounts whose capture column can carry one. `current_source` names which of the two the published value and interval came from; `n` counts the whole cluster, and each side carries its own count. After that, every change measured on the two meters (`five_hour_on_meters`, the windows-per-week ratio across a change candidate; state measured, dated after cut_at) opens a new regime in `regimes`, from the candidate's own instant. A regime's own cluster (stretches starting in it) states it once it holds 5 readings; below that it is the previous regime's value times the change's five-hour limit ratio g (the joint fit's point estimate, whatever its interval), the interval's low edge times g's low edge and its high edge times g's high edge. Where the joint fit cannot yet separate the new family's rate from g, the regime carries the previous regime's value (`previous_regime_carried_fit_not_separable`). The window interval is a spread of readings, not a standard error, so the edges are multiplied rather than standard errors combined. The published value and interval are the newest regime's. Known-date changes applied: from 2026-09-22T19:41:49.479000+00:00 (opus-5-5 first turn), +6.7%.",
    "current_source": "previous_regime_scaled_by_known_date_change",
    "cut_at": "2026-09-14T12:00:00+00:00",
    "derivation": "credits",
-   "five_hour_window_pct": 6.4,
+   "five_hour_window_pct": 4.6,
    "method": "median over the pure-opus clean stretches of the tokens the stretch carried per 1% of the five-hour meter, times 100, taken per token class and over all four classes together -- `all` over the current side of the cut alone (`current_method`), `per_class` over the whole cluster, and both sides published beside each. The interval is the spread of the readings themselves -- per account its own lowest and highest per-stretch value, pooled the union of the account intervals -- and not a confidence interval. No credit rate and no class weight enters the pure-opus figure: it is the stretch's own token counts over its own meter movement. Every other family is a conversion of it at the two families' rates (`conversion`), and a family whose rate is a status sentence publishes no number.",
    "n": 13,
    "per_class": {
@@ -4314,11 +4336,11 @@
     "fable": {
      "all": {
       "interval": [
-       73636246,
-       493907397
+       64688376,
+       457925524
       ],
       "status": null,
-      "value": 260872536
+      "value": 232920379
      },
      "conversion": "the Opus window tokens times the Opus input rate over the measured Fable input rate, at the same token-class mix (`per_class` above, cache reads at the published cache-read weight); the interval combines the window interval with the rate interval.",
      "rate_source": "measured"
@@ -4326,11 +4348,11 @@
     "haiku": {
      "all": {
       "interval": [
-       822489125,
-       3985071455
+       747772915,
+       3753119005
       ],
       "status": null,
-      "value": 2742349915
+      "value": 2514498150
      },
      "conversion": "the Opus window tokens times the Opus input rate over the inferred Haiku input rate, at the same token-class mix (`per_class` above, cache reads at the published cache-read weight); the interval combines the window interval with the rate interval.",
      "rate_source": "inferred"
@@ -4338,11 +4360,11 @@
     "opus": {
      "all": {
       "interval": [
-       164497825,
-       797014291
+       149554583,
+       750623801
       ],
       "status": null,
-      "value": 548469983
+      "value": 502899630
      },
      "conversion": null,
      "rate_source": "anchor"
@@ -4350,11 +4372,11 @@
     "opus-5-5": {
      "all": {
       "interval": [
-       177050721,
-       1928882602
+       177533930,
+       2028712976
       ],
       "status": null,
-      "value": 873777255
+      "value": 873696369
      },
      "conversion": "the Opus window tokens times the Opus input rate over the measured Opus-5-5 input rate, at the same token-class mix (`per_class` above, cache reads at the published cache-read weight); the interval combines the window interval with the rate interval.",
      "rate_source": "measured"
@@ -4362,11 +4384,11 @@
     "sonnet": {
      "all": {
       "interval": [
-       271163769,
-       1793693335
+       318986538,
+       2198173502
       ],
       "status": null,
-      "value": 1043585754
+      "value": 1237941578
      },
      "conversion": "the Opus window tokens times the Opus input rate over the measured Sonnet input rate, at the same token-class mix (`per_class` above, cache reads at the published cache-read weight); the interval combines the window interval with the rate interval.",
      "rate_source": "measured"
@@ -4376,72 +4398,72 @@
    "per_week": {
     "all": {
      "interval": [
-      1000401318,
-      3502935004
+      920032670,
+      3221521783
      ],
      "status": null,
-     "value": 2746525390
+     "value": 2525879404
     },
     "per_family": {
      "fable": {
       "all": {
        "interval": [
-        447822320,
-        2170758453
+        397951157,
+        1965321441
        ],
        "status": null,
-       "value": 1306348690
+       "value": 1169873177
       }
      },
      "haiku": {
       "all": {
        "interval": [
-        5002006590,
-        17514675020
+        4600163350,
+        16107608915
        ],
        "status": null,
-       "value": 13732626950
+       "value": 12629397020
       }
      },
      "opus": {
       "all": {
        "interval": [
-        1000401318,
-        3502935004
+        920032670,
+        3221521783
        ],
        "status": null,
-       "value": 2746525390
+       "value": 2525879404
       }
      },
      "opus-5-5": {
       "all": {
        "interval": [
-        1076742350,
-        8477577456
+        1092156538,
+        8706815631
        ],
        "status": null,
-       "value": 4375538298
+       "value": 4388254698
       }
      },
      "sonnet": {
       "all": {
        "interval": [
-        1649095311,
-        7883410926
+        1962347327,
+        9434105087
        ],
        "status": null,
-       "value": 5225873537
+       "value": 6217724072
       }
      }
     },
     "status": null,
     "windows_per_week": {
      "interval": [
-      3.206,
-      8.404
+      3.216,
+      8.429
      ],
      "source": "per_week_regimes, newest regime (previous_regime_times_paired_ratio)",
-     "value": 5.0077
+     "value": 5.0228
     }
    },
    "per_week_regimes": [
@@ -4472,15 +4494,15 @@
     {
      "from": "2026-09-14T12:00:00+00:00",
      "interval": [
-      879241798,
-      3078691338
+      864367409,
+      3026608214
      ],
      "n_windows_per_week": 90,
      "per_week_factor": null,
      "per_week_source": null,
      "until": "2026-09-22T19:41:49.479000+00:00",
-     "value": 2413891185,
-     "window": 479431803,
+     "value": 2373054682,
+     "window": 471321115,
      "windows_per_week": 5.0349,
      "windows_per_week_interval": [
       4.7624,
@@ -4496,24 +4518,24 @@
     {
      "from": "2026-09-22T19:41:49.479000+00:00",
      "interval": [
-      1000401318,
-      3502935004
+      920032670,
+      3221521783
      ],
      "n_windows_per_week": 49,
-     "per_week_factor": 1.1378,
+     "per_week_factor": 1.0644,
      "per_week_source": "previous_regime_times_per_week_factor",
      "until": null,
-     "value": 2746525390,
-     "window": 548469983,
-     "windows_per_week": 5.0077,
+     "value": 2525879404,
+     "window": 502899630,
+     "windows_per_week": 5.0228,
      "windows_per_week_interval": [
-      3.206,
-      8.404
+      3.216,
+      8.429
      ],
-     "windows_per_week_pooled": 4.5455,
+     "windows_per_week_pooled": 4.5556,
      "windows_per_week_pooled_interval": [
-      3.9477,
-      5.3075
+      3.9567,
+      5.319
      ],
      "windows_per_week_source": "previous_regime_times_paired_ratio"
     }
@@ -4532,22 +4554,22 @@
     {
      "from": "2026-09-14T12:00:00+00:00",
      "interval": [
-      184621577,
-      577128379
+      181498280,
+      567364929
      ],
      "source": "before_cluster_scaled_by_five_hour_change",
      "until": "2026-09-22T19:41:49.479000+00:00",
-     "value": 479431803
+     "value": 471321115
     },
     {
      "from": "2026-09-22T19:41:49.479000+00:00",
      "interval": [
-      164497825,
-      797014291
+      149554583,
+      750623801
      ],
      "source": "previous_regime_scaled_by_known_date_change",
      "until": null,
-     "value": 548469983
+     "value": 502899630
     }
    ],
    "selection": "A stretch counts when it moved the meter at least 3%, carries tokens, does not overlap one of the tracker's own runs on its own account (a probe row or the effort-matrix run), and reads capture_status 'accepted'."
@@ -4624,23 +4646,23 @@
     "method": "median credits per 1% over the stretches the rate fits run over (capture test on every account, the personal account from 6 September, no stretch that spans the cut), split on the announced change, every stretch priced at the pooled fit's rates so the two medians are comparable to each other. An account whose n_with_capture is 0 has no usable capture column, so its meter movement includes work this host never saw and its level reads low.",
     "per_account": {
      "a1": {
-      "after": 155810,
-      "before": 166168,
-      "change_pct": -6.2,
+      "after": 155986,
+      "before": 164026,
+      "change_pct": -4.9,
       "n_after": 28,
       "n_before": 34,
       "n_with_capture": 69
      },
      "a2": {
-      "after": 233170,
-      "before": 195878,
-      "change_pct": 19.0,
+      "after": 224018,
+      "before": 196401,
+      "change_pct": 14.1,
       "n_after": 41,
       "n_before": 54,
       "n_with_capture": 96
      },
      "a3": {
-      "after": 153960,
+      "after": 146534,
       "before": null,
       "change_pct": null,
       "n_after": 32,
@@ -4648,7 +4670,7 @@
       "n_with_capture": 33
      },
      "a4": {
-      "after": 332862,
+      "after": 289470,
       "before": null,
       "change_pct": null,
       "n_after": 9,
@@ -4657,15 +4679,15 @@
      }
     },
     "rates_used": {
-     "cache_read_weight": 0.002174,
+     "cache_read_weight": 0.003173,
      "output_multiplier": 5.0,
      "source": "pooled_fit",
      "times_opus": {
-      "fable": 2.1024,
-      "haiku": 0.803,
+      "fable": 2.1591,
+      "haiku": 0.4976,
       "opus": 1.0,
-      "opus-5-5": 0.7764,
-      "sonnet": 0.5256
+      "opus-5-5": 0.6873,
+      "sonnet": 0.4062
      },
      "why": "every family at the pooled fit's own rate, Opus the unit, and every cache read at its fitted weight: the same rates on both sides of the cut, measured on the same stretches. The fit separates Fable's rate either side of the cut and finds no change in it."
     },
@@ -4709,36 +4731,36 @@
      "a1",
      "a2"
     ],
-    "five_hour_window_pct": 2.6,
+    "five_hour_window_pct": 1.8,
     "method": "each account against itself: its own before-to-after ratio of windows per week times its own measured five-hour window ratio across the same cut (a week holds fewer windows, each of a different size), only for accounts with both; combined as a weighted mean of the accounts' log changes, weighted by their windows-per-week rounding intervals. (1 + windows_per_week_pct / 100) x (1 + five_hour_window_pct / 100) - 1 reproduces signed_pct. The interval is the windows-per-week rounding interval; the five-hour medians carry none.",
     "per_account": {
      "a1": {
-      "five_hour_window_pct": -6.2,
+      "five_hour_window_pct": -4.9,
       "signed_interval_pct": [
-       -37.6,
-       -17.0
+       -36.8,
+       -15.8
       ],
-      "signed_pct": -28.1,
+      "signed_pct": -27.2,
       "weight": 0.6237,
       "windows_per_week_pct": -23.4
      },
      "a2": {
-      "five_hour_window_pct": 19.0,
+      "five_hour_window_pct": 14.1,
       "signed_interval_pct": [
-       -30.2,
-       0.9
+       -33.1,
+       -3.3
       ],
-      "signed_pct": -16.3,
+      "signed_pct": -19.8,
       "weight": 0.3763,
       "windows_per_week_pct": -29.7
      }
     },
     "percent": 24,
     "signed_interval_pct": [
-     -34.9,
-     -10.6
+     -35.4,
+     -11.3
     ],
-    "signed_pct": -23.9,
+    "signed_pct": -24.5,
     "windows_per_week_pct": -25.8
    },
    "windows_per_week_ratio": {
@@ -4811,7 +4833,7 @@
      },
      "a2": {
       "after": {
-       "end": "2026-09-28T23:28:35+00:00",
+       "end": "2026-09-28T23:58:10+00:00",
        "n_windows": 61,
        "ratio": 4.5076,
        "rounding_interval": [
@@ -4857,13 +4879,13 @@
       ],
       "end": "2026-09-29T00:50:00.138659+00:00",
       "n_windows": 132,
-      "ratio": 4.896,
+      "ratio": 4.8985,
       "rounding_interval": [
-       4.6359,
-       5.1814
+       4.6382,
+       5.184
       ],
       "start": "2026-09-14T11:30:00.088328+00:00",
-      "sum_five_hour_pct": 1978.0,
+      "sum_five_hour_pct": 1979.0,
       "sum_seven_day_pct": 404.0
      },
      "before": {
@@ -4882,7 +4904,7 @@
       "sum_five_hour_pct": 3352.0,
       "sum_seven_day_pct": 518.0
      },
-     "ratio_fell_pct": 24.34,
+     "ratio_fell_pct": 24.3,
      "why_not_used": "pools every account's windows in each of the last two pooled regimes, so an account that only has readings after the change moves the after side through account mix; kept for the record"
     },
     "ratio_after_over_before": 0.7418,
@@ -4909,7 +4931,7 @@
    },
    "at": "2026-09-22T19:41:49.479000+00:00",
    "attribution": "windows_per_week_ratio_scope_undetermined",
-   "change_pct": 14.4,
+   "change_pct": 6.7,
    "confirmation": {
     "at": null,
     "evidence_points": 37,
@@ -4921,12 +4943,12 @@
    "family": "opus-5-5",
    "interval_excludes_no_change": false,
    "interval_pct": [
-    -10.9,
-    38.1
+    -17.6,
+    32.3
    ],
    "kind": "change",
    "known_date_test": true,
-   "label": "Five-hour limit +14.4%, weekly limit +13.8% (measured)",
+   "label": "Five-hour limit +6.7%, weekly limit +6.4% (measured)",
    "legacy_uncertain": false,
    "method": "windows_per_week_ratio",
    "metric": "five_hour_limit",
@@ -4936,24 +4958,24 @@
     "earliest": "2026-09-22",
     "latest": "2026-09-22"
    },
-   "percent": 14,
+   "percent": 7,
    "provisional": false,
    "readings": {
     "five_hour_scope": {
      "five_hour_window_change_interval_pct": [
-      -36.5,
-      48.5
+      -36.7,
+      48.1
      ],
-     "five_hour_window_change_pct": 0.5,
+     "five_hour_window_change_pct": 0.2,
      "weekly_cap_change_pct": 0.0
     },
     "weekly_scope": {
      "five_hour_window_change_pct": 0.0,
      "weekly_cap_change_interval_pct": [
-      -32.7,
-      57.5
+      -32.5,
+      58.0
      ],
-     "weekly_cap_change_pct": -0.5
+     "weekly_cap_change_pct": -0.2
     }
    },
    "rounding_interval_after": null,
@@ -4961,39 +4983,39 @@
    "scope": "undetermined",
    "scope_test": {
     "five_hour_limit_change_interval_pct": [
-     -10.9,
-     38.1
+     -17.6,
+     32.3
     ],
-    "five_hour_limit_change_pct": 14.4,
+    "five_hour_limit_change_pct": 6.7,
     "joint_fit_state": "measured",
     "reason": "neither limit's change excludes no change yet",
     "separable": true,
     "state": "undetermined",
     "weekly_limit_change_interval_pct": [
-     -12.7,
-     48.3
+     -19.4,
+     40.6
     ],
-    "weekly_limit_change_pct": 13.8
+    "weekly_limit_change_pct": 6.4
    },
    "state": "measured",
    "weekly_limit_change_interval_pct": [
-    -12.7,
-    48.3
+    -19.4,
+    40.6
    ],
-   "weekly_limit_change_pct": 13.8,
+   "weekly_limit_change_pct": 6.4,
    "windows_per_week_change_interval_pct": [
-    -32.7,
-    57.5
+    -32.5,
+    58.0
    ],
-   "windows_per_week_change_pct": -0.5,
-   "windows_per_week_ratio": 0.9946,
+   "windows_per_week_change_pct": -0.2,
+   "windows_per_week_ratio": 0.9976,
    "windows_per_week_ratio_interval": [
-    0.6732,
-    1.5754
+    0.6753,
+    1.5801
    ]
   }
  ],
- "generated_at": "2026-09-28T23:30:55.272239+00:00",
+ "generated_at": "2026-09-29T00:01:39.757820+00:00",
  "history": {
   "claude-fable-5-1": [
    {
@@ -5434,6 +5456,17 @@
     "quality": "measured",
     "readings": 1,
     "source": "passive",
+    "tokens_per_window": 362578323
+   },
+   {
+    "api_list_value_per_window": 265.44,
+    "api_value_per_window": 265.44,
+    "date": "2026-09-29",
+    "interpolated": false,
+    "meter_budget_per_window": 177.4,
+    "quality": "measured",
+    "readings": 0,
+    "source": "derived",
     "tokens_per_window": 362578323
    }
   ],
@@ -5877,6 +5910,17 @@
     "readings": 1,
     "source": "passive",
     "tokens_per_window": 3625783233
+   },
+   {
+    "api_list_value_per_window": 529.57,
+    "api_value_per_window": 529.57,
+    "date": "2026-09-29",
+    "interpolated": false,
+    "meter_budget_per_window": 177.4,
+    "quality": "measured",
+    "readings": 0,
+    "source": "derived",
+    "tokens_per_window": 3625783233
    }
   ],
   "claude-opus-4-7": [
@@ -6318,6 +6362,17 @@
     "quality": "measured",
     "readings": 1,
     "source": "passive",
+    "tokens_per_window": 725156647
+   },
+   {
+    "api_list_value_per_window": 529.57,
+    "api_value_per_window": 529.57,
+    "date": "2026-09-29",
+    "interpolated": false,
+    "meter_budget_per_window": 177.4,
+    "quality": "measured",
+    "readings": 0,
+    "source": "derived",
     "tokens_per_window": 725156647
    }
   ],
@@ -6761,6 +6816,17 @@
     "readings": 1,
     "source": "passive",
     "tokens_per_window": 725156647
+   },
+   {
+    "api_list_value_per_window": 529.57,
+    "api_value_per_window": 529.57,
+    "date": "2026-09-29",
+    "interpolated": false,
+    "meter_budget_per_window": 177.4,
+    "quality": "measured",
+    "readings": 0,
+    "source": "derived",
+    "tokens_per_window": 725156647
    }
   ],
   "claude-opus-5": [
@@ -7202,6 +7268,17 @@
     "quality": "measured",
     "readings": 1,
     "source": "passive",
+    "tokens_per_window": 725156647
+   },
+   {
+    "api_list_value_per_window": 529.57,
+    "api_value_per_window": 529.57,
+    "date": "2026-09-29",
+    "interpolated": false,
+    "meter_budget_per_window": 177.4,
+    "quality": "measured",
+    "readings": 0,
+    "source": "derived",
     "tokens_per_window": 725156647
    }
   ],
@@ -7645,6 +7722,17 @@
     "readings": 1,
     "source": "passive",
     "tokens_per_window": 906445808
+   },
+   {
+    "api_list_value_per_window": 353.48,
+    "api_value_per_window": 353.48,
+    "date": "2026-09-29",
+    "interpolated": false,
+    "meter_budget_per_window": 177.4,
+    "quality": "measured",
+    "readings": 0,
+    "source": "derived",
+    "tokens_per_window": 906445808
    }
   ],
   "claude-sonnet-4-6": [
@@ -8086,6 +8174,17 @@
     "quality": "measured",
     "readings": 1,
     "source": "passive",
+    "tokens_per_window": 1208594411
+   },
+   {
+    "api_list_value_per_window": 529.57,
+    "api_value_per_window": 529.57,
+    "date": "2026-09-29",
+    "interpolated": false,
+    "meter_budget_per_window": 177.4,
+    "quality": "measured",
+    "readings": 0,
+    "source": "derived",
     "tokens_per_window": 1208594411
    }
   ],
@@ -8529,6 +8628,17 @@
     "readings": 1,
     "source": "passive",
     "tokens_per_window": 1812891617
+   },
+   {
+    "api_list_value_per_window": 529.57,
+    "api_value_per_window": 529.57,
+    "date": "2026-09-29",
+    "interpolated": false,
+    "meter_budget_per_window": 177.4,
+    "quality": "measured",
+    "readings": 0,
+    "source": "derived",
+    "tokens_per_window": 1812891617
    }
   ]
  },
@@ -8544,7 +8654,7 @@
   },
   "at": "2026-09-22T19:41:49.479000+00:00",
   "attribution": "windows_per_week_ratio_scope_undetermined",
-  "change_pct": 14.4,
+  "change_pct": 6.7,
   "confirmation": {
    "at": null,
    "evidence_points": 37,
@@ -8556,8 +8666,8 @@
   "family": "opus-5-5",
   "interval_excludes_no_change": false,
   "interval_pct": [
-   -10.9,
-   38.1
+   -17.6,
+   32.3
   ],
   "known_date_test": true,
   "legacy_uncertain": false,
@@ -8569,24 +8679,24 @@
    "earliest": "2026-09-22",
    "latest": "2026-09-22"
   },
-  "percent": 14,
+  "percent": 7,
   "provisional": false,
   "readings": {
    "five_hour_scope": {
     "five_hour_window_change_interval_pct": [
-     -36.5,
-     48.5
+     -36.7,
+     48.1
     ],
-    "five_hour_window_change_pct": 0.5,
+    "five_hour_window_change_pct": 0.2,
     "weekly_cap_change_pct": 0.0
    },
    "weekly_scope": {
     "five_hour_window_change_pct": 0.0,
     "weekly_cap_change_interval_pct": [
-     -32.7,
-     57.5
+     -32.5,
+     58.0
     ],
-    "weekly_cap_change_pct": -0.5
+    "weekly_cap_change_pct": -0.2
    }
   },
   "rounding_interval_after": null,
@@ -8594,39 +8704,39 @@
   "scope": "undetermined",
   "scope_test": {
    "five_hour_limit_change_interval_pct": [
-    -10.9,
-    38.1
+    -17.6,
+    32.3
    ],
-   "five_hour_limit_change_pct": 14.4,
+   "five_hour_limit_change_pct": 6.7,
    "joint_fit_state": "measured",
    "reason": "neither limit's change excludes no change yet",
    "separable": true,
    "state": "undetermined",
    "weekly_limit_change_interval_pct": [
-    -12.7,
-    48.3
+    -19.4,
+    40.6
    ],
-   "weekly_limit_change_pct": 13.8
+   "weekly_limit_change_pct": 6.4
   },
   "state": "measured",
   "weekly_limit_change_interval_pct": [
-   -12.7,
-   48.3
+   -19.4,
+   40.6
   ],
-  "weekly_limit_change_pct": 13.8,
+  "weekly_limit_change_pct": 6.4,
   "windows_per_week_change_interval_pct": [
-   -32.7,
-   57.5
+   -32.5,
+   58.0
   ],
-  "windows_per_week_change_pct": -0.5,
-  "windows_per_week_ratio": 0.9946,
+  "windows_per_week_change_pct": -0.2,
+  "windows_per_week_ratio": 0.9976,
   "windows_per_week_ratio_interval": [
-   0.6732,
-   1.5754
+   0.6753,
+   1.5801
   ]
  },
  "last_sample_at": "2026-09-28T20:22:30+00:00",
- "meter_read_at": "2026-09-28T23:28:35+00:00",
+ "meter_read_at": "2026-09-28T23:58:10+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -9570,7 +9680,7 @@
    },
    "a2": {
     "first_day": "2026-08-23",
-    "last_day": "2026-09-28"
+    "last_day": "2026-09-29"
    },
    "a3": {
     "first_day": "2026-08-30",
@@ -18699,7 +18809,7 @@
       {
        "day": "2026-09-28",
        "fast_session_requests": 0,
-       "n": 374,
+       "n": 378,
        "output_tokens_per_s": {
         "median": 96.3,
         "q1": 89.1,
@@ -18707,8 +18817,8 @@
        },
        "time_to_first_block_s": {
         "median": 4.16,
-        "q1": 2.64,
-        "q3": 6.42
+        "q1": 2.63,
+        "q3": 6.4
        }
       }
      ],
@@ -18949,7 +19059,7 @@
       {
        "day": "2026-09-28",
        "fast_session_requests": 0,
-       "n": 374,
+       "n": 378,
        "output_tokens_per_s": {
         "median": 96.3,
         "q1": 89.1,
@@ -18957,8 +19067,8 @@
        },
        "time_to_first_block_s": {
         "median": 4.16,
-        "q1": 2.64,
-        "q3": 6.42
+        "q1": 2.63,
+        "q3": 6.4
        }
       }
      ],
@@ -19154,7 +19264,7 @@
       {
        "day": "2026-09-28",
        "fast_session_requests": 0,
-       "n": 1998,
+       "n": 2002,
        "output_tokens_per_s": {
         "median": 96.6,
         "q1": 88.2,
@@ -19162,8 +19272,8 @@
        },
        "time_to_first_block_s": {
         "median": 3.84,
-        "q1": 2.52,
-        "q3": 6.47
+        "q1": 2.51,
+        "q3": 6.46
        }
       }
      ],
@@ -19294,7 +19404,7 @@
      {
       "day": "2026-09-28",
       "fast_session_requests": 0,
-      "n": 2844,
+      "n": 2848,
       "output_tokens_per_s": {
        "median": 97.3,
        "q1": 88.7,
@@ -20277,16 +20387,16 @@
       {
        "day": "2026-09-28",
        "fast_session_requests": 0,
-       "n": 48,
+       "n": 53,
        "output_tokens_per_s": {
-        "median": 96.3,
-        "q1": 90.9,
-        "q3": 103.4
+        "median": 94.9,
+        "q1": 89.1,
+        "q3": 102.7
        },
        "time_to_first_block_s": {
-        "median": 5.67,
-        "q1": 4.0,
-        "q3": 9.56
+        "median": 5.69,
+        "q1": 4.47,
+        "q3": 9.54
        }
       }
      ],
@@ -20549,16 +20659,16 @@
       {
        "day": "2026-09-28",
        "fast_session_requests": 0,
-       "n": 831,
+       "n": 866,
        "output_tokens_per_s": {
-        "median": 96.7,
-        "q1": 86.1,
-        "q3": 109.7
+        "median": 96.4,
+        "q1": 85.6,
+        "q3": 109.2
        },
        "time_to_first_block_s": {
-        "median": 3.93,
-        "q1": 2.45,
-        "q3": 6.93
+        "median": 4.0,
+        "q1": 2.49,
+        "q3": 7.01
        }
       }
      ],
@@ -21778,16 +21888,16 @@
       {
        "day": "2026-09-28",
        "fast_session_requests": 0,
-       "n": 48,
+       "n": 53,
        "output_tokens_per_s": {
-        "median": 96.3,
-        "q1": 90.9,
-        "q3": 103.4
+        "median": 94.9,
+        "q1": 89.1,
+        "q3": 102.7
        },
        "time_to_first_block_s": {
-        "median": 5.67,
-        "q1": 4.0,
-        "q3": 9.56
+        "median": 5.69,
+        "q1": 4.47,
+        "q3": 9.54
        }
       }
      ],
@@ -22172,16 +22282,16 @@
       {
        "day": "2026-09-28",
        "fast_session_requests": 0,
-       "n": 831,
+       "n": 866,
        "output_tokens_per_s": {
-        "median": 96.7,
-        "q1": 86.1,
-        "q3": 109.7
+        "median": 96.4,
+        "q1": 85.6,
+        "q3": 109.2
        },
        "time_to_first_block_s": {
-        "median": 3.93,
-        "q1": 2.45,
-        "q3": 6.93
+        "median": 4.0,
+        "q1": 2.49,
+        "q3": 7.01
        }
       }
      ],
@@ -23247,16 +23357,16 @@
       {
        "day": "2026-09-28",
        "fast_session_requests": 0,
-       "n": 879,
+       "n": 919,
        "output_tokens_per_s": {
-        "median": 96.7,
-        "q1": 86.5,
-        "q3": 109.3
+        "median": 96.3,
+        "q1": 85.8,
+        "q3": 108.8
        },
        "time_to_first_block_s": {
-        "median": 4.09,
-        "q1": 2.53,
-        "q3": 7.05
+        "median": 4.17,
+        "q1": 2.56,
+        "q3": 7.12
        }
       }
      ],
@@ -23897,16 +24007,16 @@
      {
       "day": "2026-09-28",
       "fast_session_requests": 0,
-      "n": 1249,
+      "n": 1289,
       "output_tokens_per_s": {
-       "median": 96.0,
-       "q1": 86.5,
-       "q3": 109.3
+       "median": 95.8,
+       "q1": 86.1,
+       "q3": 108.9
       },
       "time_to_first_block_s": {
-       "median": 3.91,
-       "q1": 2.28,
-       "q3": 7.17
+       "median": 3.97,
+       "q1": 2.31,
+       "q3": 7.22
       }
      }
     ]
@@ -24010,7 +24120,7 @@
       },
       {
        "assumed": false,
-       "end": "2026-09-28T23:28:35+00:00",
+       "end": "2026-09-28T23:58:10+00:00",
        "pieces": 64,
        "points": 61,
        "quality": "bounded",
@@ -24032,7 +24142,7 @@
      }
     },
     "a3": {
-     "current": 5.62,
+     "current": 5.63,
      "n": 20,
      "regimes": [
       {
@@ -24042,13 +24152,13 @@
        "points": 20,
        "quality": "bounded",
        "rounding_interval": [
-        5.1944,
-        6.1061
+        5.2034,
+        6.1164
        ],
        "seven_day_pct": 105.0,
        "source": "passive_paired_deltas",
        "start": "2026-09-18T04:06:38+00:00",
-       "windows": 5.62
+       "windows": 5.63
       }
      ],
      "step": null
@@ -27623,21 +27733,21 @@
       null
      ],
      "seven_day_pct": 0.0,
-     "window_ending": "2026-09-28T23:28:35+00:00",
+     "window_ending": "2026-09-28T23:58:10+00:00",
      "windows": null
     },
     {
      "account": "a3",
-     "five_hour_pct": 11.0,
+     "five_hour_pct": 12.0,
      "pieces": 2,
      "reset_verified": true,
      "rounding_interval": [
-      2.0798,
+      2.3167,
       null
      ],
      "seven_day_pct": 2.0,
      "window_ending": "2026-09-29T00:09:59.974694+00:00",
-     "windows": 5.5
+     "windows": 6.0
     },
     {
      "account": "a4",
@@ -27657,15 +27767,15 @@
    "current_estimate": {
     "as_of": "2026-09-29T00:50:00.138659+00:00",
     "assumed": false,
-    "five_hour_pct": 1909.0,
+    "five_hour_pct": 1910.0,
     "from": "2026-09-15T02:30:00.500994+00:00",
     "pieces": 135,
     "points": 126,
     "quality": "measured",
     "reasons": [],
     "rounding_interval": [
-     4.6427,
-     5.1982
+     4.6452,
+     5.2009
     ],
     "seven_day_pct": 389.0,
     "source": "passive_paired_deltas",
@@ -27797,7 +27907,7 @@
       "a2"
      ],
      "assumed": false,
-     "end": "2026-09-28T23:28:35+00:00",
+     "end": "2026-09-28T23:58:10+00:00",
      "per_account": {
       "a1": {
        "end": "2026-09-28T19:10:00.301608+00:00",
@@ -27805,7 +27915,7 @@
        "windows": 4.9931
       },
       "a2": {
-       "end": "2026-09-28T23:28:35+00:00",
+       "end": "2026-09-28T23:58:10+00:00",
        "start": "2026-09-14T13:05:31+00:00",
        "windows": 4.5076
       }
@@ -27846,8 +27956,8 @@
      "points": 132,
      "quality": "bounded",
      "rounding_interval": [
-      4.6359,
-      5.1814
+      4.6382,
+      5.184
      ],
      "seven_day_pct": 404.0,
      "source": "passive_paired_deltas",
@@ -27956,17 +28066,17 @@
     },
     {
      "assumed": false,
-     "five_hour_pct": 117.0,
+     "five_hour_pct": 118.0,
      "n": 12,
      "partial": true,
      "rounding_interval": [
-      4.2944,
-      8.7001
+      4.333,
+      8.771
      ],
      "seven_day_pct": 20.0,
      "source": "passive_paired_deltas",
      "week_ending": "2026-10-04",
-     "windows": 5.85
+     "windows": 5.9
     }
    ]
   },
