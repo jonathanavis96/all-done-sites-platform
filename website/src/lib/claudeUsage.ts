@@ -922,8 +922,9 @@ export function modelLabel(id: string): string {
   return `${family.charAt(0).toUpperCase()}${family.slice(1)} ${major}${minor !== undefined ? `.${minor}` : ""}`;
 }
 
-// The order a model picker lists its options in: newest first. A model not named here goes after
-// every named one, keeping the order it arrived in.
+// The order a model picker lists its options in: newest first. A model not named here goes directly
+// before its predecessor when that one is named, otherwise after every named one, keeping the order
+// it arrived in.
 const MODEL_PICKER_ORDER = [
   "claude-fable-5-1",
   "claude-opus-5-5",
@@ -937,7 +938,9 @@ const MODEL_PICKER_ORDER = [
 export function modelsNewestFirst(models: string[]): string[] {
   const rank = (m: string) => {
     const i = MODEL_PICKER_ORDER.indexOf(m);
-    return i === -1 ? MODEL_PICKER_ORDER.length : i;
+    if (i !== -1) return i;
+    const before = MODEL_PICKER_ORDER.indexOf(predecessorOf(m) ?? "");
+    return before === -1 ? MODEL_PICKER_ORDER.length : before - 0.5;
   };
   return models.map((m, i) => ({ m, i })).sort((a, b) => rank(a.m) - rank(b.m) || a.i - b.i).map(({ m }) => m);
 }
@@ -2293,8 +2296,24 @@ export function shortfallRows(j: UsageJson): { plan: Plan; row: ShortfallPlan }[
 // the block does not price is skipped rather than mispriced.
 // Mirrors tracker/credits.py family(), which takes the longest `matches` that fits the model id:
 // claude-opus-5-5 is its own family, and claude-opus-5, -4-8 and -4-7 stay "opus".
-export function modelFamily(model: string): string | null {
+// Given the published block, a model id that has its own `per_model` row, keyed by the id without
+// "claude-" and any date suffix, is that family: tracker/credits.py auto_family() files a model no
+// family lists under exactly that key, so claude-sonnet-5-5 is "sonnet-5-5" once the block has it.
+export function modelFamily(model: string, j?: UsageJson): string | null {
+  const own = model.replace(/^claude-/, "").replace(/-\d{8}$/, "");
+  if (j && own !== model && creditsOf(j)?.per_model?.[own]) return own;
   return /^claude-(opus-5-5|opus|sonnet|haiku|fable)\b/.exec(model)?.[1] ?? null;
+}
+
+// The families that take every version of their model. Any other family is keyed by one versioned
+// id (opus-5-5, sonnet-5-5) and is new to the page until the block measures it.
+const BASE_FAMILIES = ["opus", "sonnet", "haiku", "fable"];
+
+// The model a versioned id follows in its own line: claude-sonnet-5-5 after claude-sonnet-5.
+// Null for an id with no minor version.
+function predecessorOf(model: string): string | null {
+  const m = /^(claude-[a-z]+-\d+)-\d+$/.exec(model.replace(/-\d{8}$/, ""));
+  return m ? m[1] : null;
 }
 
 // The published JSON names watched accounts only by anonymous labels, a1 to a4, all of them Max
@@ -2325,24 +2344,28 @@ export function inferredRateNote(j: UsageJson, family: string | null): string | 
 }
 
 // Families the page leaves out entirely until the block has figures for them, measured or
-// inferred: no option, no column, no sentence. Haiku is not here; it keeps the status the page
-// already gives it until then.
-const HIDDEN_UNTIL_MEASURED = ["opus-5-5"];
-// Where a model sits among the others wherever the page lists them: directly after the one named.
-const MODEL_PLACED_AFTER: Record<string, string> = { "claude-opus-5-5": "claude-opus-5" };
+// inferred: no option, no column, no sentence. That is every family keyed by a versioned id, not
+// one of BASE_FAMILIES. Haiku is a base family; it keeps the status the page already gives it until then.
+function hiddenUntilMeasured(family: string | null): boolean {
+  return family !== null && !BASE_FAMILIES.includes(family);
+}
+// Where a model sits among the others wherever the page lists them: a model of such a family goes
+// directly after its predecessor (claude-opus-5-5 after claude-opus-5).
+function placedAfter(j: UsageJson, model: string): string | null {
+  return hiddenUntilMeasured(modelFamily(model, j)) ? predecessorOf(model) : null;
+}
 
 // The models a list on the page shows, in the order it shows them: the given keys less any model
 // whose family is hidden until measured and has no window figure yet, each placed model moved to
 // directly after its anchor when that anchor is in the list.
 export function pageModels(j: UsageJson, models: string[]): string[] {
   const shown = models.filter((m) => {
-    const family = modelFamily(m);
-    return !(family && HIDDEN_UNTIL_MEASURED.includes(family) && windowTokensValueFor(j, m) === null);
+    return !(hiddenUntilMeasured(modelFamily(m, j)) && windowTokensValueFor(j, m) === null);
   });
-  const placed = shown.filter((m) => shown.includes(MODEL_PLACED_AFTER[m] ?? ""));
+  const placed = shown.filter((m) => shown.includes(placedAfter(j, m) ?? ""));
   return shown
     .filter((m) => !placed.includes(m))
-    .flatMap((m) => [m, ...placed.filter((p) => MODEL_PLACED_AFTER[p] === m)]);
+    .flatMap((m) => [m, ...placed.filter((p) => placedAfter(j, p) === m)]);
 }
 
 export function fmtCredits(n: number): string {
@@ -2447,7 +2470,7 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
   const limit = modelPlanLimit(j, model, plan);
   const ratio = j.plan_ratios[plan];
   const scale = limit.included ? ratio : 0;
-  const family = modelFamily(model);
+  const family = modelFamily(model, j);
   const per = family ? credits.per_model?.[family] ?? null : null;
   const session = credits.sessions?.[model] ?? null;
   const wc = credits.window_credits;
@@ -2536,7 +2559,7 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
 // to no family the block prices, or where that family's value is a status rather than a number --
 // in which case the caller drops the series rather than falling back to a rate or a history row.
 export function windowTokensValueFor(j: UsageJson, model: string): number | null {
-  const family = modelFamily(model);
+  const family = modelFamily(model, j);
   const value = family ? creditsOf(j)?.window_tokens?.per_family?.[family]?.all?.value : null;
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -2570,7 +2593,7 @@ export function windowTokensCutFor(j: UsageJson, model: string): WindowTokensCut
     cutAt,
     value: before.value * conversion,
     interval:
-      Array.isArray(iv) && !familyRateInferred(j, modelFamily(model))
+      Array.isArray(iv) && !familyRateInferred(j, modelFamily(model, j))
         ? iv.map((n) => (typeof n === "number" && Number.isFinite(n) ? n * conversion : null))
         : null,
   };
@@ -2592,7 +2615,7 @@ function windowTokensAt(
 // The published spread of the current window figure for one model, as the levels' own range.
 // An inferred family's figure has none: the page never draws an interval around an inferred rate.
 function windowTokensIntervalFor(j: UsageJson, model: string): (number | null)[] | null {
-  const family = modelFamily(model);
+  const family = modelFamily(model, j);
   if (familyRateInferred(j, family)) return null;
   const iv = family ? creditsOf(j)?.window_tokens?.per_family?.[family]?.all?.interval : null;
   return Array.isArray(iv) ? iv : null;
@@ -2639,7 +2662,7 @@ export function computeWindowTokens(j: UsageJson, plan: Plan, model: string): Wi
   const limit = modelPlanLimit(j, model, plan);
   const ratio = j.plan_ratios[plan];
   const scale = limit.included ? ratio : 0;
-  const family = modelFamily(model);
+  const family = modelFamily(model, j);
   const fam = family ? wt.per_family?.[family] ?? null : null;
   // A published sentence stands in the number's place and is the whole figure: no interval is
   // drawn beside it, so an unmeasured family is never quoted as a range the page did not measure.

@@ -1118,11 +1118,11 @@ function ContributorsChart({
 // to render the stale line without mounting.
 // A credit family's name as the page writes it: the capitalised family ("Opus", "Sonnet"), except
 // where the family is one model version and so takes that model's own label ("Opus 5.5", never
-// "Opus-5-5"). Without a family, the selected model's label.
-const FAMILY_LABELS: Record<string, string> = { "opus-5-5": MODEL_LABELS["claude-opus-5-5"] };
+// "Opus-5-5", and likewise "Sonnet 5.5" for sonnet-5-5). Without a family, the selected model's label.
 function familyLabel(family: string | null, model: string): string {
   if (!family) return modelLabel(model);
-  return FAMILY_LABELS[family] ?? family.charAt(0).toUpperCase() + family.slice(1);
+  if (family.includes("-")) return modelLabel(`claude-${family}`);
+  return family.charAt(0).toUpperCase() + family.slice(1);
 }
 
 export default function ClaudeUsageTracker({

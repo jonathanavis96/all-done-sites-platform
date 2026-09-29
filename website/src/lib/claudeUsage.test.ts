@@ -63,6 +63,8 @@ import {
   fmtShare,
   fmtCredits,
   modelFamily,
+  pageModels,
+  inferredRateNote,
   windowCreditAccounts,
   windowCreditAccountsWithoutStretch,
   cacheReadShareFor,
@@ -78,6 +80,9 @@ import {
 // 22 Sep, a4 nothing before 14 Sep).
 import regimeContract from "./__fixtures__/claude-usage-regime-contract.json";
 import { withWf50 } from "./__fixtures__/wf50";
+// The file published at 2026-09-23T15:30Z, with Opus 5.5 and Haiku at inferred rates.
+import inferredRates from "./__fixtures__/claude-usage-inferred-rates.json";
+import { withSonnet55 } from "./__fixtures__/sonnet55";
 import schema1 from "./__fixtures__/claude-usage-schema1.json";
 import schema2 from "./__fixtures__/claude-usage-schema2.json";
 import schema2Published from "./__fixtures__/claude-usage-schema2-published.json";
@@ -2580,5 +2585,51 @@ describe("the change record with a state (tracker PR #98)", () => {
     expect(live.last_change!.state).toBeUndefined();
     expect(headline(live)).toEqual({ text: "Anthropic last increased Claude's limits by 5% on 22 Sep 2026.", tone: "up" });
     expect(pendingChangeStates(live)).toEqual([]);
+  });
+});
+
+// tracker/credits.py auto_family(): a model id no family lists is its own family, keyed by the id
+// without "claude-" and any date suffix, inferred from list price until it is measured.
+describe("a new model id's own family", () => {
+  const INFERRED = inferredRates as unknown as UsageJson;
+  const SONNET55 = "claude-sonnet-5-5";
+  const HIDDEN = withSonnet55(INFERRED, { windowFigure: false });
+  const SHOWN = withSonnet55(INFERRED, { windowFigure: true });
+
+  it("maps to its own per_model key, not the base family's", () => {
+    expect(modelFamily(SONNET55, SHOWN)).toBe("sonnet-5-5");
+    expect(modelFamily(`${SONNET55}-20260929`, SHOWN)).toBe("sonnet-5-5");
+    expect(modelFamily(SONNET55, INFERRED)).toBe("sonnet");
+    expect(modelFamily("claude-sonnet-5", SHOWN)).toBe("sonnet");
+    expect(modelFamily("claude-opus-5-5", SHOWN)).toBe("opus-5-5");
+    expect(modelFamily("claude-opus-5-5")).toBe("opus-5-5");
+  });
+
+  it("is hidden until the block has a window figure for it, and shown with one", () => {
+    const models = Object.keys(SHOWN.rates);
+    expect(pageModels(HIDDEN, models)).not.toContain(SONNET55);
+    expect(pageModels(SHOWN, models)).toContain(SONNET55);
+    expect(windowTokensValueFor(HIDDEN, SONNET55)).toBeNull();
+    expect(windowTokensValueFor(SHOWN, SONNET55)).toBe(SHOWN.credits!.window_tokens!.per_family!["sonnet-5-5"]!.all!.value);
+  });
+
+  it("sits directly after Sonnet 5 in the table, and directly before it in the newest-first pickers", () => {
+    const shown = pageModels(SHOWN, Object.keys(SHOWN.rates));
+    expect(shown.indexOf(SONNET55)).toBe(shown.indexOf("claude-sonnet-5") + 1);
+    expect(shown.indexOf("claude-opus-5-5")).toBe(shown.indexOf("claude-opus-5") + 1);
+    expect(shown.length).toBe(Object.keys(SHOWN.rates).length);
+    const picker = modelsNewestFirst(shown);
+    expect(picker.indexOf(SONNET55)).toBe(picker.indexOf("claude-sonnet-5") - 1);
+    expect(picker.length).toBe(shown.length);
+  });
+
+  it("carries the list-price note while inferred, and none once measured", () => {
+    expect(inferredRateNote(SHOWN, modelFamily(SONNET55, SHOWN))).toBe("Inferred from Anthropic's list price, not yet measured.");
+    expect(computeCredits(SHOWN, "max20", SONNET55)!.inferredNote).toBe("Inferred from Anthropic's list price, not yet measured.");
+    expect(computeCredits(SHOWN, "max20", "claude-sonnet-5")!.inferredNote).toBeNull();
+    const measured = structuredClone(SHOWN);
+    measured.credits!.per_model!["sonnet-5-5"]!.rate_source = "measured";
+    measured.credits!.window_tokens!.per_family!["sonnet-5-5"]!.rate_source = "measured";
+    expect(computeCredits(measured, "max20", SONNET55)!.inferredNote).toBeNull();
   });
 });
