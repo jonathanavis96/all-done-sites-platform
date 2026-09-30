@@ -60,6 +60,7 @@ import opus55 from "@/lib/__fixtures__/claude-usage-opus-5-5.json";
 // (the January 2026 credit table), each row's figures scaled from Opus's.
 import inferredRates from "@/lib/__fixtures__/claude-usage-inferred-rates.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
+import { withSonnet55 } from "@/lib/__fixtures__/sonnet55";
 import liveJson from "../../public/data/claude-usage.json";
 // The published file frozen as it stood at 2026-09-23 (commit 4577da8), for tests that need the
 // real file's shape but must not move when the data refreshes.
@@ -1067,6 +1068,41 @@ describe("the measured window in tokens", () => {
     expect(html.match(/<option value="claude-opus-5" selected="">/g)).toHaveLength(1);
   });
 
+  it("lists the picker newest first by first use and starts on the newest Opus", () => {
+    // The 28 Sep live file plus Sonnet 5.5 as the 29 Sep refresh published it.
+    const j = structuredClone(live0928) as unknown as UsageJson;
+    j.rates["claude-sonnet-5-5"] = structuredClone(j.rates["claude-sonnet-5"]);
+    j.credits!.announced_change!.candidates!.push({
+      family: "sonnet-5-5",
+      at: "2026-09-29T18:25:18.212000+00:00",
+      before_from: "2026-09-22T19:41:49.479000+00:00",
+    });
+    const html = renderToString(
+      <HelmetProvider context={{}}>
+        <MemoryRouter>
+          <ClaudeUsageTracker initial={j} />
+        </MemoryRouter>
+      </HelmetProvider>,
+    );
+    const picker = /<select aria-label="Model"[^>]*>(.*?)<\/select>/.exec(html)![1];
+    expect([...picker.matchAll(/<option value="([^"]+)"/g)].map((o) => o[1])).toEqual([
+      "claude-sonnet-5-5",
+      "claude-opus-5-5",
+      "claude-fable-5-1",
+      "claude-opus-5",
+      "claude-sonnet-5",
+      "claude-opus-4-8",
+      "claude-opus-4-7",
+      "claude-sonnet-4-6",
+      "claude-haiku-4-5",
+    ]);
+    expect(picker).toContain('<option value="claude-opus-5-5" selected="">');
+    // A given selection still wins over the default.
+    const chosen = renderHtml(j, "max20", "claude-sonnet-5");
+    expect(chosen).toContain('<option value="claude-sonnet-5" selected="">');
+    expect(chosen).not.toContain('<option value="claude-opus-5-5" selected="">');
+  });
+
   it("leads on the measured window, with its interval and its classes", () => {
     const text = render(WT, "max20", "claude-opus-5");
     expect(WINDOW.per_family!.opus.all.value).toBe(473_774_890);
@@ -1577,6 +1613,37 @@ describe("account labels", () => {
     const text = render(liveJson as unknown as UsageJson, "max20", "claude-opus-5");
     expect(text).toContain("Max account 1");
     expect(text).toMatch(/Max account \d \d+\.\d{2} \(\d+ readings\)/);
+  });
+});
+
+// tracker/credits.py auto_family(): Sonnet 5.5 is its own family, "sonnet-5-5", inferred from list
+// price until measured, and off the page until the block has a window figure for it.
+describe("a new model id's own family on the page", () => {
+  const INFERRED = inferredRates as unknown as UsageJson;
+  const SONNET55 = "claude-sonnet-5-5";
+  const options = (html: string) =>
+    [...html.matchAll(/<select aria-label="Model"[^>]*>(.*?)<\/select>/g)].map((m) =>
+      [...m[1].matchAll(/<option value="([^"]+)"[^>]*>([^<]*)<\/option>/g)].map((o) => [o[1], o[2]]),
+    );
+
+  it("leaves Sonnet 5.5 off the page while it has no window figure", () => {
+    const html = renderHtml(withSonnet55(INFERRED, { windowFigure: false }), "max20", "claude-sonnet-5");
+    expect(html).not.toMatch(/sonnet-5-5|Sonnet 5\.5/);
+  });
+
+  it("lists Sonnet 5.5 just before Sonnet 5 in the pickers once it has one, at its own inferred rate", () => {
+    const j = withSonnet55(INFERRED, { windowFigure: true });
+    const lists = options(renderHtml(j, "max20", "claude-sonnet-5"));
+    expect(lists.length).toBeGreaterThan(0);
+    for (const list of lists) {
+      const at = list.findIndex(([v]) => v === "claude-sonnet-5");
+      expect(list[at - 1]).toEqual([SONNET55, "Sonnet 5.5"]);
+    }
+    const text = render(j, "max20", SONNET55);
+    expect(text).toContain("tokens per 5-hour window Inferred from Anthropic's list price, not yet measured.");
+    expect(text).toContain("Priced at an inferred Sonnet 5.5 rate");
+    expect(text).not.toMatch(/Sonnet-5-5/i);
+    expect(render(j, "max20", "claude-sonnet-5")).not.toMatch(/Sonnet 5\.5 rate|not yet measured/);
   });
 });
 
