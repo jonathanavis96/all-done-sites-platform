@@ -12,6 +12,7 @@ export default function Hero() {
         loop
         playsInline
         preload="metadata"
+        // @ts-expect-error React 18 types lack fetchpriority on video elements; React still renders it.
         fetchpriority="high"
       />
     </header>
