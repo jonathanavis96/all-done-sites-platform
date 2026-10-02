@@ -928,9 +928,9 @@ describe("the page states one figure per quantity", () => {
       );
       return context.helmet!.meta.toString();
     };
-    expect(describedAs(MEASURED)).toContain("Measured daily from 3 accounts");
+    expect(describedAs(MEASURED)).toContain("Live daily data from 3 accounts");
     // Without the block the page has no account count to read, and says what it has always said.
-    expect(describedAs(WITHOUT)).toContain("Measured daily from a real account");
+    expect(describedAs(WITHOUT)).toContain("Live daily data from a real account");
   });
 
   it("renders no null, NaN or undefined for any model on either credits file", () => {
@@ -1651,7 +1651,9 @@ describe("a new model id's own family on the page", () => {
 // at an inferred rate, `rate_source: "inferred"` and `inferred_from` naming the basis.
 describe("inferred Opus 5.5 and Haiku rows", () => {
   const INFERRED = inferredRates as unknown as UsageJson;
-  const LIVE_NOW = liveJson as unknown as UsageJson;
+  // Pinned to the 2026-09-23 snapshot, when both rows were inferred. The live file changes with
+  // every hourly data refresh (Opus 5.5 is measured now), so it cannot hold this test still.
+  const LIVE_0923 = liveSnapshot as unknown as UsageJson;
   const OPUS55 = "claude-opus-5-5";
   const HAIKU = "claude-haiku-4-5";
   const options = (html: string) =>
@@ -1709,19 +1711,19 @@ describe("inferred Opus 5.5 and Haiku rows", () => {
     }
   });
 
-  // The live snapshot as of the 2026-09-23 data refresh: both rows now carry inferred figures.
-  it("renders today's live file with Opus 5.5 and Haiku both inferred", () => {
+  // The live snapshot as of the 2026-09-23 data refresh: both rows carry inferred figures.
+  it("renders the 2026-09-23 live snapshot with Opus 5.5 and Haiku both inferred", () => {
     // A measured model's page carries none of the inferred wording.
-    const html = renderHtml(LIVE_NOW, "max20", "claude-opus-5");
+    const html = renderHtml(LIVE_0923, "max20", "claude-opus-5");
     expect(html).not.toMatch(/not yet measured|inferred (Opus|Haiku)/);
     for (const list of options(html)) {
       expect(list).toContain(OPUS55);
       expect(list).toContain(HAIKU);
     }
-    const opus55 = render(LIVE_NOW, "max20", OPUS55);
+    const opus55 = render(LIVE_0923, "max20", OPUS55);
     expect(opus55).toContain("tokens per 5-hour window Inferred from Anthropic's list price, not yet measured.");
     expect(opus55).toContain("Priced at an inferred Opus 5.5 rate");
-    const haiku = render(LIVE_NOW, "max20", HAIKU);
+    const haiku = render(LIVE_0923, "max20", HAIKU);
     expect(haiku).toContain("Inferred from the January 2026 credit table, not yet measured.");
     expect(haiku).toContain("Priced at an inferred Haiku rate");
     expect(haiku).not.toContain("not measurable");

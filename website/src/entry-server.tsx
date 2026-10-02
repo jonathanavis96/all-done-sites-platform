@@ -1,7 +1,7 @@
 // src/entry-server.tsx (build-time prerender entry)
 import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
-import { HelmetProvider } from "react-helmet-async";
+import { HelmetProvider, type HelmetServerState } from "react-helmet-async";
 import App from "./App";
 import { guides } from "./content/guides";
 import { articles } from "./content/articles";
@@ -16,7 +16,7 @@ import { articles } from "./content/articles";
  *                 baked into the static HTML; prerender strips the template defaults).
  */
 export function render(url: string): { html: string; head: string; headFull: string } {
-  const helmetContext: { helmet?: Record<string, { toString(): string }> } = {};
+  const helmetContext: { helmet?: HelmetServerState } = {};
   const html = renderToString(
     <HelmetProvider context={helmetContext}>
       <StaticRouter location={url}>
