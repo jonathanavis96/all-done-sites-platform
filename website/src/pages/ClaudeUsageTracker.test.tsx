@@ -61,7 +61,6 @@ import opus55 from "@/lib/__fixtures__/claude-usage-opus-5-5.json";
 import inferredRates from "@/lib/__fixtures__/claude-usage-inferred-rates.json";
 import { withWf50 } from "@/lib/__fixtures__/wf50";
 import { withSonnet55 } from "@/lib/__fixtures__/sonnet55";
-import liveJson from "../../public/data/claude-usage.json";
 // The published file frozen as it stood at 2026-09-23 (commit 4577da8), for tests that need the
 // real file's shape but must not move when the data refreshes.
 import liveSnapshot from "@/lib/__fixtures__/claude-usage-live-2026-09-23.json";
@@ -72,6 +71,8 @@ import regimeContract from "@/lib/__fixtures__/claude-usage-regime-contract.json
 // The live file as the 28 Sep 15:31 refresh published it: two changes (14 Sep and 22 Sep), and the
 // refresh whose windows-per-week headline read 4.9 beside a Max 20x line ending at 4.8.
 import live0928 from "@/lib/__fixtures__/claude-usage-live-2026-09-28.json";
+// Tests that need the real file's shape read these frozen copies, never public/data, which the
+// hourly data refresh rewrites.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 // Tracker PR #98's offline rebuild: every change carries a state, and the 22 Sep change moves both
@@ -1602,7 +1603,7 @@ describe("the effort table", () => {
 // them "Max account 1" to "Max account 4" wherever it shows one.
 describe("account labels", () => {
   it("never prints a bare a1..a4 label, on any plan or model", () => {
-    for (const j of [liveJson, inferredRates] as unknown as UsageJson[]) {
+    for (const j of [live0928, inferredRates] as unknown as UsageJson[]) {
       for (const plan of ["pro", "max5", "max20"] as Plan[]) {
         for (const model of Object.keys(j.rates)) {
           const html = renderHtml(j, plan, model);
@@ -1610,7 +1611,7 @@ describe("account labels", () => {
         }
       }
     }
-    const text = render(liveJson as unknown as UsageJson, "max20", "claude-opus-5");
+    const text = render(live0928 as unknown as UsageJson, "max20", "claude-opus-5");
     expect(text).toContain("Max account 1");
     expect(text).toMatch(/Max account \d \d+\.\d{2} \(\d+ readings\)/);
   });
@@ -1732,7 +1733,7 @@ describe("inferred Opus 5.5 and Haiku rows", () => {
 
 describe("how fast each model answers", () => {
   const BLOCK = speedBlock as unknown as SpeedBlock;
-  const withSpeed = (block: SpeedBlock | undefined): UsageJson => ({ ...(liveJson as unknown as UsageJson), speed: block });
+  const withSpeed = (block: SpeedBlock | undefined): UsageJson => ({ ...(live0928 as unknown as UsageJson), speed: block });
   const speedSvg = (html: string): string => {
     const at = html.indexOf('aria-label="Median output tokens per second by day');
     return html.slice(html.lastIndexOf("<svg", at), html.indexOf("</svg>", at));
@@ -1805,7 +1806,7 @@ describe("how fast each model answers", () => {
 });
 
 describe("how fast each model answers, by account", () => {
-  const LIVE = (liveJson as unknown as UsageJson).speed!;
+  const LIVE = (live0928 as unknown as UsageJson).speed!;
   // The speed-block fixture, which carries no fast-session figures anywhere, with a row added
   // that does: the shape the tracker published before it folded those requests back in.
   const BLOCK = speedBlock as unknown as SpeedBlock;
@@ -1821,7 +1822,7 @@ describe("how fast each model answers, by account", () => {
       },
     };
   };
-  const withSpeed = (block: SpeedBlock): UsageJson => ({ ...(liveJson as unknown as UsageJson), speed: block });
+  const withSpeed = (block: SpeedBlock): UsageJson => ({ ...(live0928 as unknown as UsageJson), speed: block });
   const accountSvg = (html: string): string => {
     const at = html.indexOf('aria-label="Median output tokens per second by day for ');
     return html.slice(html.lastIndexOf("<svg", at), html.indexOf("</svg>", at));
@@ -2198,7 +2199,7 @@ describe("the tracker's regime contract on the three plan charts", () => {
 });
 
 describe("the speed section's info icons", () => {
-  const withSpeed = { ...(liveJson as unknown as UsageJson), speed: speedBlock as unknown as SpeedBlock };
+  const withSpeed = { ...(live0928 as unknown as UsageJson), speed: speedBlock as unknown as SpeedBlock };
   it("puts each explanation behind an icon, described by a tooltip, focusable", () => {
     const html = renderHtml(withSpeed, "max20", "claude-opus-5");
     const tips = [...html.matchAll(/<button type="button" class="info-tip-btn" aria-label="([^"]*)" aria-describedby="([^"]*)"[^>]*>/g)];
@@ -2220,7 +2221,7 @@ describe("the speed section's info icons", () => {
   });
 
   it("keeps the by-account chart directly below the per-model chart, full width", () => {
-    const html = renderHtml({ ...(liveJson as unknown as UsageJson) }, "max20", "claude-opus-5");
+    const html = renderHtml({ ...(live0928 as unknown as UsageJson) }, "max20", "claude-opus-5");
     const speed = html.slice(html.indexOf('id="speed"'));
     const perModel = speed.indexOf('aria-label="Median output tokens per second by day');
     const byAccount = speed.indexOf(" by account</h3>");
