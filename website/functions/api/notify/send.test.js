@@ -16,6 +16,9 @@ function fakeKv(initial = {}) {
     async put(key, value) {
       store.set(key, value);
     },
+    async delete(key) {
+      store.delete(key);
+    },
     async list({ prefix }) {
       const keys = [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name }));
       return { keys, list_complete: true };
@@ -181,5 +184,27 @@ describe("POST /api/notify/send without `to` (the list send)", () => {
     const change = { date: "2026-08-21", direction: "decreased", percent: 36, scope: "monthly" };
     const res = await onRequestPost({ request: post(change), env: e });
     expect(res.status).toBe(400);
+  });
+
+  it("rejects a calendar date that does not exist rather than mailing the day it rolls over to", async () => {
+    const e = env();
+    const change = { date: "2026-02-31", direction: "increased", percent: 5 };
+    const res = await onRequestPost({ request: post(change), env: e });
+    expect(res.status).toBe(400);
+    expect(e.NOTIFY_KV.store.has("sent:2026-02-31")).toBe(false);
+  });
+
+  it("releases the date marker when every batch fails, so a retry can still send", async () => {
+    fetchMock.mockImplementation(async () => new Response("down", { status: 500 }));
+    const e = env();
+    e.NOTIFY_KV.store.set("sub:a@example.com", JSON.stringify({ status: "confirmed" }));
+    const change = { date: "2026-09-11", direction: "increased", percent: 7 };
+    const res = await onRequestPost({ request: post(change), env: e });
+    expect(await res.json()).toMatchObject({ ok: false, sent: 0 });
+    expect(e.NOTIFY_KV.store.has("sent:2026-09-11")).toBe(false);
+
+    fetchMock.mockImplementation(async () => new Response('{"id":"msg_1"}', { status: 200 }));
+    const retry = await onRequestPost({ request: post(change), env: e });
+    expect(await retry.json()).toMatchObject({ ok: true, sent: 1 });
   });
 });

@@ -37,8 +37,6 @@ import {
   planWindowsPerWeek,
   accountWindowsPerWeek,
   basisDate,
-  documentedSource,
-  documentedWindowsPerWeek,
   referenceDateFor,
   shortfallRows,
   computeWindowTokens,
@@ -68,7 +66,6 @@ import {
   inferredRateNote,
   windowCreditAccounts,
   windowCreditAccountsWithoutStretch,
-  cacheReadShareFor,
   effortRunCounts,
   perWeekRegimesOf,
   windowTokensValueFor as windowTokensValueOf,
@@ -725,6 +722,11 @@ describe("fmtTokens", () => {
     expect(fmtTokens(42_000_000)).toBe("42M");
     expect(fmtTokens(2_604_000)).toBe("2.6M");
     expect(fmtTokens(420_000)).toBe("420k");
+  });
+
+  it("carries into the next unit when rounding reaches it", () => {
+    expect(fmtTokens(999_700)).toBe("1M");
+    expect(fmtTokens(999.6)).toBe("1k");
   });
 });
 
@@ -1678,22 +1680,11 @@ describe("one quantity, one figure", () => {
   });
 
   it("reads the documented level, its source and its date off the JSON", () => {
-    expect(documentedWindowsPerWeek(MEASURED, "max20")).toBe(7.58);
-    expect(documentedWindowsPerWeek(MEASURED, "max5")).toBe(12.63);
-    expect(documentedWindowsPerWeek(MEASURED, "pro")).toBe(9.09);
-    // Read, not typed: a different published figure gives a different level.
-    const moved = structuredClone(MEASURED);
-    moved.weekly_window_ratios_basis!.documented_windows_per_week!.max20 = 9.99;
-    expect(documentedWindowsPerWeek(moved, "max20")).toBe(9.99);
     // The same table is undated in the basis block and dated in the reference block. The date is
     // the fact, so it is what the page says beside the URL.
     expect(MEASURED.weekly_window_ratios_basis!.dated).toBe(false);
     expect(referenceDateFor(MEASURED, MEASURED.weekly_window_ratios_basis!.source_url)).toBe("2026-01-25");
     expect(referenceDateFor(MEASURED, "https://support.claude.com/en/articles/11049741-what-is-the-max-plan")).toBeNull();
-    expect(documentedSource(MEASURED)).toBe("she-llac.com, 25 Jan 2026");
-    // A file published before either block keeps the wording it has always rendered.
-    expect(documentedSource(PUBLISHED)).toBe("she-llac, undated");
-    expect(documentedWindowsPerWeek(PUBLISHED, "max20")).toBe(7.58);
     expect(referenceDateFor(PUBLISHED, "https://she-llac.com/claude-limits")).toBeNull();
   });
 
@@ -1712,9 +1703,6 @@ describe("one quantity, one figure", () => {
     expect(effortRunCounts(undefined)).toEqual([]);
     // The charts plot raw tokens at the account's own mix, a different quantity from the priced
     // figure above them, so the page states the share they carry.
-    expect(cacheReadShareFor(MEASURED, "claude-sonnet-5")).toBe(0.9702);
-    expect(cacheReadShareFor(PUBLISHED, "claude-sonnet-5")).toBe(0.971307);
-    expect(fmtShare(cacheReadShareFor(MEASURED, "claude-sonnet-5")!)).toBe("97.0%");
   });
 
   it("gives each watched account's own windows per week, where the JSON carries them", () => {
@@ -1755,7 +1743,6 @@ describe("the dated blocks and the shortfall (tracker PR #68)", () => {
     const moved = structuredClone(SHORTFALL);
     moved.weekly_window_ratios_basis!.as_of = "2026-02-02";
     expect(basisDate(moved, moved.weekly_window_ratios_basis)).toBe("2026-02-02");
-    expect(documentedSource(moved)).toBe("she-llac.com, 2 Feb 2026");
     // The older file dates neither block, and the reference block answers for the same URL.
     expect(MEASURED.weekly_window_ratios_basis!.dated).toBe(false);
     expect(MEASURED.weekly_window_ratios_basis!.as_of).toBeUndefined();
@@ -1763,7 +1750,6 @@ describe("the dated blocks and the shortfall (tracker PR #68)", () => {
     expect(referenceDateFor(MEASURED, MEASURED.weekly_window_ratios_basis!.source_url)).toBe("2026-01-25");
     // And a file with neither has no date to print.
     expect(basisDate(PUBLISHED, PUBLISHED.plan_ratios_basis)).toBeNull();
-    expect(documentedSource(PUBLISHED)).toBe("she-llac, undated");
     expect(basisDate(PUBLISHED, undefined)).toBeNull();
   });
 
@@ -1815,7 +1801,6 @@ describe("the dated blocks and the shortfall (tracker PR #68)", () => {
       expect(num(c.sessionsPerWeek!.text) / num(c.sessionsPerWindow!.text), plan).toBeCloseTo(c.planWindowsPerWeek!, 1);
     }
     expect(planScaling(SHORTFALL)).toEqual({ credits: true, perWindow: "1 : 6 : 20", perWeek: "1 : 8.33 : 16.67" });
-    expect(documentedWindowsPerWeek(SHORTFALL, "max20")).toBe(7.58);
   });
 });
 

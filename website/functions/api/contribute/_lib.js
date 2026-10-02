@@ -19,6 +19,7 @@ export {
   isContributorId,
   validateSample,
 } from "../../../src/lib/contrib";
+export { getManyJson, listAllKeys, secretsMatch } from "../_shared";
 
 export const SITE = "https://alldonesites.com";
 export const ME_PATH = "/claude-usage-tracker/me/";
@@ -36,6 +37,34 @@ export const sampleKey = (id, ts) => `${SAMPLE_PREFIX}${id}:${ts}`;
 export const idRateKey = (id) => `contrib:rl:id:${id}`;
 export const ipRateKey = (ipHash) => `contrib:rl:ip:${ipHash}`;
 
+/**
+ * The request body as text, or null once it passes `max` bytes. Reads chunk by chunk so an
+ * oversized or never-ending body is abandoned at the cap rather than buffered whole.
+ */
+export async function readCappedText(request, max) {
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  const all = new Uint8Array(size);
+  let at = 0;
+  for (const c of chunks) {
+    all.set(c, at);
+    at += c.byteLength;
+  }
+  return new TextDecoder().decode(all);
+}
+
 export function json(body, status = 200, origin = null) {
   const headers = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
   if (origin) {
@@ -48,13 +77,6 @@ export function json(body, status = 200, origin = null) {
 export async function sha256Hex(text) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-export function secretsMatch(a, b) {
-  if (typeof a !== "string" || typeof b !== "string" || a.length === 0 || a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }
 
 /**
@@ -76,27 +98,4 @@ export function originCheck(request) {
   }
   const ok = origin === SITE || (self !== "" && origin === self);
   return { allow: ok ? origin : null, foreign: !ok };
-}
-
-/** Every key name under a prefix, following the KV cursor to the end. */
-export async function listAllKeys(kv, prefix) {
-  const names = [];
-  let cursor;
-  for (;;) {
-    const page = await kv.list({ prefix, cursor, limit: 1000 });
-    for (const k of page.keys) names.push(k.name);
-    if (page.list_complete || !page.cursor) break;
-    cursor = page.cursor;
-  }
-  return names;
-}
-
-/** Fetch many JSON values a few at a time, keeping the input order. */
-export async function getManyJson(kv, keys, batch = 25) {
-  const out = [];
-  for (let i = 0; i < keys.length; i += batch) {
-    const rows = await Promise.all(keys.slice(i, i + batch).map((k) => kv.get(k, { type: "json" })));
-    out.push(...rows);
-  }
-  return out;
 }

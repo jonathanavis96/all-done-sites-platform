@@ -22,6 +22,14 @@ describe("GET /api/contribute/me", () => {
     expect((await get("3f7a2b1c-9d4e-1f60-8a1b-2c3d4e5f6a7b")).status).toBe(400);
   });
 
+  it("orders samples by instant, not by the text of a timestamp with an offset", async () => {
+    const kv = fakeKv();
+    // 01:00+02:00 on the 10th is 23:00Z on the 9th, older than 23:30Z on the 9th.
+    seed(kv, CONTRIB_ID, ["2026-09-10T01:00:00+02:00", "2026-09-09T23:30:00Z"]);
+    const data = await (await get(CONTRIB_ID, { NOTIFY_KV: kv })).json();
+    expect(data.samples.map((s) => s.ts)).toEqual(["2026-09-09T23:30:00Z", "2026-09-10T01:00:00+02:00"]);
+  });
+
   it("answers 404 for an id with no samples", async () => {
     const res = await get(CONTRIB_ID);
     expect(res.status).toBe(404);

@@ -231,15 +231,15 @@ export function validateSample(body: unknown, now: number = Date.now()): Validat
 // `sample.py --compact` prints the minified body as url-safe base64 behind a `CUT1:`
 // prefix, for pasting into the page instead of posting from the reader's machine.
 
-const utf8 = { enc: new TextEncoder(), dec: new TextDecoder() };
+const utf8 = { enc: new TextEncoder(), dec: new TextDecoder("utf-8", { fatal: true }) };
 
-function b64urlEncode(bytes: Uint8Array): string {
+export function b64urlEncode(bytes: Uint8Array): string {
   let s = "";
   for (const b of bytes) s += String.fromCharCode(b);
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function b64urlDecode(str: string): Uint8Array {
+export function b64urlDecode(str: string): Uint8Array {
   const padded = str.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (str.length % 4)) % 4);
   const bin = atob(padded);
   const out = new Uint8Array(bin.length);
@@ -272,7 +272,11 @@ export function decodeCut1(line: unknown): string {
   } catch {
     throw new Error("CUT1 payload is not url-safe base64");
   }
-  return utf8.dec.decode(bytes);
+  try {
+    return utf8.dec.decode(bytes);
+  } catch {
+    throw new Error("CUT1 payload is not UTF-8");
+  }
 }
 
 export function byteLength(text: string): number {
@@ -528,7 +532,8 @@ export function contribXScale(
     const t0 = times.length === 1 ? Math.min(times[0], now - 1) : now - CONTRIB_CHART_SPAN_MS;
     return { t0, t1, frac: () => 0.5 };
   }
-  const earliest = Math.min(...times);
+  // A loop, not Math.min(...times): spreading a few hundred thousand values overflows the stack.
+  const earliest = times.reduce((a, b) => (b < a ? b : a));
   const t0 = Math.max(earliest, now - CONTRIB_CHART_SPAN_MS);
   const span = Math.max(1, t1 - t0);
   return { t0, t1, frac: (t: string) => (Date.parse(t) - t0) / span };
@@ -548,7 +553,7 @@ export function contribYMax(
 ): number {
   const vals = points.map(value).filter((v): v is number => typeof v === "number");
   if (typeof fleetUsd === "number") vals.push(fleetUsd);
-  const max = vals.length > 0 ? Math.max(...vals) : 0;
+  const max = vals.reduce((a, b) => (b > a ? b : a), 0);
   return max > 0 ? max * 1.15 : 1;
 }
 

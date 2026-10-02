@@ -21,6 +21,7 @@ import {
   SITE,
   byteLength,
   decodeCut1,
+  readCappedText,
   idRateKey,
   ipRateKey,
   json,
@@ -54,8 +55,8 @@ export async function onRequestPost({ request, env }) {
   const { allow, foreign } = originCheck(request);
   if (foreign) return json({ error: "origin not allowed" }, 403);
 
-  const raw = await request.text();
-  if (byteLength(raw) > MAX_RAW_BYTES) {
+  const raw = await readCappedText(request, MAX_RAW_BYTES);
+  if (raw === null) {
     return json({ error: `body must be under ${MAX_BODY_BYTES} bytes` }, 400, allow);
   }
   let outer;
