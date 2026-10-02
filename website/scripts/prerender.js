@@ -16,6 +16,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { execFileSync } from "child_process";
+import { appendToHead, fillRoot } from "./inject-html.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
@@ -56,8 +57,8 @@ console.log("\n🧩 Prerendering...\n");
 
   let out = template;
   out = out.replace(/<title>[\s\S]*?<\/title>/i, "");
-  out = out.replace("</head>", `${heroPreload}\n  ${head}\n  </head>`);
-  out = out.replace('<div id="root"></div>', `<div id="root">${html}</div>`);
+  out = appendToHead(out, `${heroPreload}\n  ${head}`);
+  out = fillRoot(out, html);
   fs.writeFileSync(distIndex, out);
   console.log(`✓ / (${html.length.toLocaleString()} chars)`);
 }
@@ -84,8 +85,8 @@ for (const route of prerenderRoutes) {
   }
 
   let out = stripTemplateMeta(template);
-  out = out.replace("</head>", `${headFull}\n  </head>`);
-  out = out.replace('<div id="root"></div>', `<div id="root">${html}</div>`);
+  out = appendToHead(out, headFull);
+  out = fillRoot(out, html);
 
   const outDir = path.join(distDir, route.replace(/^\//, ""));
   fs.mkdirSync(outDir, { recursive: true });

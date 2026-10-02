@@ -6,6 +6,7 @@
  * the React form uses, so the client and the server can never drift apart.
  */
 export { isValidEmail, normalizeEmail } from "../../../src/lib/notify";
+import { b64urlDecode, b64urlEncode } from "../../../src/lib/contrib";
 
 export const SITE = "https://alldonesites.com";
 export const PAGE = `${SITE}/claude-usage-tracker/`;
@@ -28,20 +29,6 @@ export function json(body, status = 200) {
 }
 
 const enc = new TextEncoder();
-
-function b64urlEncode(bytes) {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function b64urlDecode(str) {
-  const padded = str.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (str.length % 4)) % 4);
-  const bin = atob(padded);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
 
 async function hmac(secret, message) {
   const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [

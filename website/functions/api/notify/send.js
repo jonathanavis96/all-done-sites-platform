@@ -27,6 +27,7 @@ import {
 } from "./_lib";
 // The same labels the tracker page shows, so an email never names a model
 // differently from the chart it links to.
+import { getManyJson, listAllKeys, secretsMatch } from "../_shared";
 import { MODEL_LABELS } from "../../../src/lib/claudeUsage";
 
 const BATCH_SIZE = 100; // Resend's per-request cap on /emails/batch.
@@ -39,14 +40,6 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 function fmtDate(iso) {
   const d = new Date(`${iso}T00:00:00Z`);
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-}
-
-/** Constant-time string compare, so the bearer secret cannot be probed. */
-function secretsMatch(a, b) {
-  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }
 
 export async function onRequestPost({ request, env }) {
@@ -68,7 +61,9 @@ export async function onRequestPost({ request, env }) {
   if (body?.to !== undefined) return sendToOne(body, env);
 
   const { date, direction, percent, model, scope } = body ?? {};
-  if (typeof date !== "string" || !DATE_RE.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) {
+  // Round-trip the date: Date.parse rolls 2026-02-31 over to 3 March instead of refusing it.
+  const day = typeof date === "string" && DATE_RE.test(date) ? new Date(`${date}T00:00:00Z`) : null;
+  if (!day || Number.isNaN(day.getTime()) || day.toISOString().slice(0, 10) !== date) {
     return json({ error: "date must be YYYY-MM-DD" }, 400);
   }
   if (direction !== "increased" && direction !== "decreased") {
@@ -87,16 +82,10 @@ export async function onRequestPost({ request, env }) {
   if (await kv.get(sentKey(date))) return json({ ok: true, already_sent: true, date, sent: 0 });
   await kv.put(sentKey(date), new Date().toISOString());
 
-  const recipients = [];
-  let cursor;
-  do {
-    const page = await kv.list({ prefix: "sub:", cursor });
-    for (const k of page.keys) {
-      const rec = await kv.get(k.name, { type: "json" });
-      if (rec?.status === "confirmed") recipients.push(k.name.slice("sub:".length));
-    }
-    cursor = page.list_complete ? undefined : page.cursor;
-  } while (cursor);
+  // Read the subscriber records a batch at a time rather than one round trip each.
+  const subKeys = await listAllKeys(kv, "sub:");
+  const records = await getManyJson(kv, subKeys);
+  const recipients = subKeys.filter((_, i) => records[i]?.status === "confirmed").map((k) => k.slice("sub:".length));
 
   const modelLabel = model ? MODEL_LABELS[model] ?? model : null;
   // The page headline's words: a change observed on the watched account, not a limit Anthropic
@@ -139,6 +128,10 @@ export async function onRequestPost({ request, env }) {
       failures.push(String(err).slice(0, 200));
     }
   }
+
+  // Nobody was mailed, so release the claim: a retry should send rather than report "already sent".
+  // After a partial send the marker stays, since a retry would mail the delivered half twice.
+  if (sent === 0 && failures.length > 0) await kv.delete(sentKey(date));
 
   return json({ ok: failures.length === 0, date, subscribers: recipients.length, sent, failures });
 }

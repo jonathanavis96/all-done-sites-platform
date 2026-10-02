@@ -66,6 +66,13 @@ describe("CUT1 lines", () => {
     expect(() => decodeCut1("CUT1:a b")).toThrow("url-safe base64");
     expect(() => decodeCut1(5)).toThrow("must be a string");
   });
+
+  it("refuse a payload that is not UTF-8 instead of storing replacement characters", () => {
+    // {"a":"<0xff>"} : a lone 0xff byte is never valid UTF-8.
+    const bytes = [...'{"a":"'].map((c) => c.charCodeAt(0)).concat([0xff], [...'"}'].map((c) => c.charCodeAt(0)));
+    const line = "CUT1:" + btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    expect(() => decodeCut1(line)).toThrow("UTF-8");
+  });
 });
 
 describe("validateSample", () => {
@@ -457,6 +464,13 @@ describe("contrib chart helpers", () => {
   it("contribYMax is 1.15x the max of points and the probe figure, and skips null-usd points", () => {
     expect(contribYMax([P("t", 1, 2), P("t", 1, null)], 0.5)).toBeCloseTo(2.3, 5);
     expect(contribYMax([P("t", 1, 0.5)], 2)).toBeCloseTo(2.3, 5);
+  });
+
+  it("contribXScale and contribYMax survive more points than fit in an argument list", () => {
+    const now = Date.parse("2026-09-16T00:00:00Z");
+    const many = Array.from({ length: 300_000 }, (_, i) => P(new Date(now - 86400e3 + i).toISOString(), 1, i));
+    expect(contribXScale(many, now).t0).toBe(now - 86400e3);
+    expect(contribYMax(many, null)).toBeCloseTo(299_999 * 1.15, 3);
   });
 
   it("contribYMax falls back to a positive default when there is nothing to plot", () => {

@@ -101,6 +101,26 @@ describe("POST /api/contribute with a JSON body", () => {
     expect((await res.json()).error).toContain("2048");
   });
 
+  it("stops reading an oversized body instead of buffering all of it", async () => {
+    // A stream that never ends: reading it whole would hang, so only a capped read answers.
+    let pulled = 0;
+    const endless = new ReadableStream({
+      pull(c) {
+        pulled++;
+        c.enqueue(new TextEncoder().encode("x".repeat(1024)));
+      },
+    });
+    const request = new Request("https://alldonesites.com/api/contribute", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: endless,
+      duplex: "half",
+    });
+    const res = await onRequestPost({ request, env: env() });
+    expect(res.status).toBe(400);
+    expect(pulled).toBeLessThan(20);
+  }, 2000);
+
   it("rejects an unknown top-level key", async () => {
     const res = await call(validBody(Date.now(), { email: "me@example.com" }));
     expect(res.status).toBe(400);

@@ -815,13 +815,6 @@ export function weeklyCurrentFor(
   return { value, inferred, inferredFrom };
 }
 
-// Documented reference levels, five-hour windows per week. Drawn beside the measured figures,
-// never in their place, and never used in any arithmetic. These two are the fallback for JSON
-// published before `weekly_window_ratios_basis` existed, and nothing else: a file that publishes
-// the block is read from the block, so the figures on the live page are the publisher's.
-const DOCUMENTED_FALLBACK: Record<Plan, number> = { pro: 9.09, max5: 12.63, max20: 7.58 };
-const DOCUMENTED_FALLBACK_SOURCE = "she-llac, undated";
-
 // Two URLs naming the same page, protocol and trailing slash apart.
 function sameSourceUrl(a: string | null | undefined, b: string | null | undefined): boolean {
   const norm = (u: string) => u.replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
@@ -847,23 +840,6 @@ export function basisDate(
 ): string | null {
   if (basis?.as_of) return basis.as_of;
   return referenceDateFor(j, basis?.source_url);
-}
-
-// One plan's documented windows per week, as the weekly basis block publishes it.
-export function documentedWindowsPerWeek(j: UsageJson, plan: Plan): number | null {
-  const published = j.weekly_window_ratios_basis?.documented_windows_per_week?.[plan];
-  if (typeof published === "number") return published;
-  return DOCUMENTED_FALLBACK[plan] ?? null;
-}
-
-// What to call that reference beside the level it draws: the basis block's own host, dated by the
-// reference block wherever the two name the same page.
-export function documentedSource(j: UsageJson): string {
-  const url = j.weekly_window_ratios_basis?.source_url;
-  if (!url) return DOCUMENTED_FALLBACK_SOURCE;
-  const host = url.replace(/^https?:\/\//, "").split("/")[0];
-  const at = basisDate(j, j.weekly_window_ratios_basis);
-  return at ? `${host}, ${fmtDate(at)}` : host;
 }
 
 // Each watched account's own windows per week on this plan, where the JSON carries them: the
@@ -1242,8 +1218,9 @@ export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "f
 }
 
 export function fmtTokens(n: number): string {
-  if (n >= 1e6) { const m = n / 1e6; return (m >= 10 ? m.toFixed(0) : m.toFixed(1).replace(/\.0$/, "")) + "M"; }
-  if (n >= 1e3) return Math.round(n / 1e3) + "k";
+  // Thresholds sit half a unit low, so 999,700 reads 1M rather than "1000k".
+  if (n >= 999_500) { const m = n / 1e6; return (m >= 10 ? m.toFixed(0) : m.toFixed(1).replace(/\.0$/, "")) + "M"; }
+  if (n >= 999.5) return Math.round(n / 1e3) + "k";
   return String(Math.round(n));
 }
 
@@ -2454,16 +2431,6 @@ export function windowCreditAccountsWithoutStretch(wc: WindowCredits | null | un
     .filter(([, a]) => (a?.n ?? 0) === 0)
     .map(([label]) => label)
     .sort();
-}
-
-// The cache-read share the account's own mix carries, for the charts that plot raw tokens at that
-// mix rather than the credits route's priced figure. The credits block's own split first, since
-// that is the split its sessions figures are normalised at.
-export function cacheReadShareFor(j: UsageJson, model: string): number | null {
-  const fromCredits = creditsOf(j)?.sessions?.[model]?.split?.cache_read;
-  if (typeof fromCredits === "number") return fromCredits;
-  const fromRate = j.rates[model]?.split?.cache_read;
-  return typeof fromRate === "number" ? fromRate : null;
 }
 
 // How many runs each effort cell was measured over, distinct and ascending, so the caveat can

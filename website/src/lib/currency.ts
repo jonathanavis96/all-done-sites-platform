@@ -140,7 +140,7 @@ const KNOWN_CODES = [
 
 const PRICE_RE = new RegExp(
   // Either "ZAR 800" / "ZAR800", or a symbol immediately before the number.
-  String.raw`(?:\b(${KNOWN_CODES.join("|")})\s?|(NZ\$|HK\$|US\$|R\$|A\$|C\$|S\$|\$|£|€|₹|¥|₦|R(?=\d)))` +
+  String.raw`(?:\b(${KNOWN_CODES.join("|")})\s?|(NZ\$|HK\$|US\$|R\$|A\$|C\$|S\$|\$|£|€|₹|¥|₦|(?<![A-Za-z])R(?=\d)))` +
     String.raw`(\d{1,3}(?:[ ,]\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)`,
   "g",
 );
@@ -222,6 +222,8 @@ export function convert(
   if (from === to) return null;
   const fromRate = from === "USD" ? 1 : rates[from];
   const toRate = to === "USD" ? 1 : rates[to];
-  if (!fromRate || !toRate) return null;
+  // The rates come from a third-party feed: only a finite positive number is a rate.
+  const usable = (r: unknown): r is number => typeof r === "number" && Number.isFinite(r) && r > 0;
+  if (!usable(fromRate) || !usable(toRate)) return null;
   return (amount / fromRate) * toRate;
 }

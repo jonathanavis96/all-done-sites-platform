@@ -16,8 +16,11 @@ export async function onRequestGet({ request, env }) {
   const id = (new URL(request.url).searchParams.get("id") || "").trim().toLowerCase();
   if (!isContributorId(id)) return json({ error: "id must be a contributor id (UUID4)" }, 400);
 
-  // Keys are `contrib:s:<id>:<ts>` with ISO timestamps, so lexical order is time order.
-  const keys = (await listAllKeys(kv, samplePrefix(id))).sort();
+  // Keys are `contrib:s:<id>:<ts>`. A ts may carry an offset, so order by the instant it
+  // names rather than by its text, which only matches time order for UTC timestamps.
+  const prefix = samplePrefix(id);
+  const at = (k) => Date.parse(k.slice(prefix.length));
+  const keys = (await listAllKeys(kv, prefix)).sort((a, b) => at(a) - at(b) || (a < b ? -1 : a > b ? 1 : 0));
   if (keys.length === 0) return json({ error: "no samples for that id" }, 404);
   const newest = keys.slice(-MAX_SAMPLES).reverse();
 
