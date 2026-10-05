@@ -397,6 +397,81 @@ export const articles: Article[] = [
       },
     ],
   },
+  {
+    slug: "website-designers-for-small-business-near-me",
+    title: "Website Designers for Small Business Near Me",
+    metaTitle: "Website Designers for Small Business Near Me",
+    description:
+      "Local designer, DIY builder or remote studio: what website designers for small business near me search really means, and what each costs in South Africa.",
+    summary:
+      "Compares local designers, DIY builders and remote studios for small business websites, with South African pricing and what to check before choosing.",
+    category: "Getting started",
+    readMins: 9,
+    intro:
+      "\"Website designer for small business near me\" is really three separate searches wearing one disguise: a local freelancer, a DIY builder, and a remote studio that simply ranks well in your area. This guide sorts those apart, tells you when \"near\" genuinely matters, what each route costs in South Africa, and what to check before you commit to one.",
+    publishedAt: "2026-10-05",
+    updatedAt: "2026-10-05",
+    author: {
+      name: "Jonathan Avis",
+      url: "https://www.linkedin.com/in/jonathan-avis-0503a6201/",
+    },
+    blocks: [
+      { h2: "The short answer: what searching for a website designer for small business near me actually gets you" },
+      { p: "Searching \"website designer for small business near me\" turns up three different things mixed together: local agencies and freelancers, DIY builders like Wix and Squarespace, and national or remote studios that just rank well locally. They are not the same purchase. A local designer meets you in person and knows your area. A builder hands you the tools and you do the work yourself. A remote studio often costs less and still gets the job done, because a website build does not require a local visit." },
+      { p: "What you actually need depends on your budget, how much time you have, and whether you want ongoing help once the site is live. Managed plans start around R799 a month; a DIY builder from about R300. The full tier breakdown comes later, in the costs section." },
+      { p: "The rest of this guide breaks down when \"local\" matters, what builders and designers each actually deliver, what a small business site costs in South Africa, and what happens after launch." },
+      { h2: "Does your web designer need to be local?" },
+      { p: "For most small businesses, no. A website build is a screen-sharing call, a brief, and a review round, not a site visit. A designer in Cape Town can build a site for a plumber in Durban without either of them noticing the distance." },
+      { p: "Local still earns its keep in a few cases. If you want someone to photograph your shop, sit with you in person to plan the site, or you simply prefer meeting face to face before you hand over money, that is worth paying for. It is a preference, not a technical requirement." },
+      { p: "What actually matters is turnaround time, whether they answer when something breaks, and whether they explain things in plain language rather than jargon. Those show up in how a studio works, not where its office is." },
+      { p: "So when you search \"website designer for small business near me,\" treat \"near me\" as a filter for responsiveness and trust, not geography. A remote studio that replies fast and writes clearly will usually serve you better than a local one that goes quiet after the invoice. The same holds for \"website for small business near me\": the site itself is built the same way wherever the builder sits." },
+      { h2: "Website builder for small business near me, or a designer who builds it for you?" },
+      { p: "A builder gives you a template, a drag-and-drop editor, and full control over every change. You do the work yourself, on your own time, and DIY builders generally start from around R300 a month. That suits a business owner who enjoys tinkering and has an afternoon to spend on it." },
+      { p: "The best website builder for a small business is usually the one that bills in rands and takes a local payment card, so you are not watching an exchange rate every month. Check whether support answers during South African hours, because a reply that lands overnight costs you a working day. Then check how easily you can export your pages and images if you leave. A builder you cannot walk away from is a builder that has priced itself higher than it looks." },
+      { p: "A designer takes the template choice, the copywriting and the setup off your plate, then keeps the site running afterwards. That service starts at R799 a month for a launch-level site, with the higher tiers priced in the costs section below. You are paying for someone else's time, not just software." },
+      { p: "Neither option is wrong. A builder is cheaper if your time is genuinely free and you do not mind fiddling with settings. A designer costs more each month but means the site gets fixed, updated and kept secure without you learning how any of that works." },
+      { p: "The real question is what your own time is worth, and whether \"website for small business near me\" is a search you plan to make once, or one you would rather never have to make again." },
+      { h2: "What a small business website costs in South Africa, and what you get for it" },
+      { p: "A managed monthly plan runs from around R799 for a launch-level site up to R3,600 for a premium one, with R2,200 sitting between the two for a fuller business package. Building it yourself on a builder generally starts from around R300 a month, and you carry the editing." },
+      { p: "The R799 plan buys a working site, hosting and someone to fix it when it breaks. The R3,600 tier adds more pages, more design work and closer ongoing support. Neither figure includes your domain, which is a separate yearly cost." },
+      { p: "What you actually get for the money is not just the pages themselves. It is who answers when the contact form stops sending emails, or when a browser update breaks a layout. A R300 builder plan leaves that on you. A managed plan puts it on someone else, at a price that reflects the hours saved rather than the number of pages." },
+      { p: "Match the plan to how much of the fixing you want to do yourself, not to the lowest number on the page. [How much does a website cost in South Africa?](/guides/how-much-does-a-website-cost-in-south-africa/) sets out the wider range if you want to compare before you decide. If the managed route is the one you want priced up, All Done Sites builds and maintains sites on exactly these plans." },
+      { h2: "How to choose between website developers for small business near me" },
+      { p: "Ask three developers the same brief and compare what comes back, not just the price. A vague quote with no timeline is a warning sign on its own." },
+      { p: "Check what happens after launch. Some developers hand over the files and disappear. Others, like the managed monthly plans priced earlier in this guide, and covered in full in [monthly vs upfront website cost](/guides/monthly-vs-upfront-website-cost/), keep hosting, fixes and updates running for as long as you pay. Ask directly: who fixes it when it breaks, and how fast?" },
+      { p: "Look at real examples of their work, not a portfolio slide. Load a few of their sites on your phone. If those are slow or hard to read, yours will be too." },
+      { p: "Get the scope in writing: number of pages, who writes the copy, how many rounds of changes are included. A cheap quote that balloons once you ask for a second round of edits was never the cheap option." },
+      { p: "Plain language matters more than it sounds like it should. If a developer cannot explain a decision without jargon in the first call, that will not improve once you have paid them." },
+      { h2: "What happens after launch: hosting, updates and ongoing support" },
+      { p: "Launch is not the finish line. A site needs hosting to stay online, software kept current, and someone to notice when a form stops working or a page breaks. [What is included in website hosting and maintenance?](/guides/whats-included-in-website-hosting-and-maintenance/) sets out the split: hosting keeps the site reachable and secure, maintenance keeps it working, updated and findable." },
+      { p: "On a managed monthly plan, that support is baked in. It is why R799 buys more than server space: someone is watching the site and answering when you email. The R3,600 tier adds more design attention and closer support alongside the extra pages." },
+      { p: "Choose a builder instead, and none of that goes away; it just moves to you. You will watch your own hosting and fix your own broken plugin. Fine if you enjoy that kind of maintenance. If you would rather spend that time running your business, ask any designer you are considering one plain question before you sign anything: what happens the week after launch, and who answers if something breaks?" },
+      { p: "\"Near me\" was never the real question. What matters is whether you want to build the site yourself or hand it to someone who answers when it breaks, and what that choice costs each month. A builder puts the work and the maintenance on you from around R300 a month. A managed plan starts at R799 and takes both off your plate, rising to R2,200 or R3,600 depending on how much site and support you need." },
+      { p: "If you would rather someone else built and kept running your site, get in touch with All Done Sites for a quote and see which plan matches what you need." },
+    ],
+    faqs: [
+      {
+        q: "Does my website designer need to be based near me?",
+        a: "No. Most of a build happens over calls and a shared brief, so a designer anywhere in South Africa can do the work. Treat \"near me\" as a search for someone responsive and easy to reach, not someone local.",
+      },
+      {
+        q: "What does a small business website cost in South Africa?",
+        a: "A managed monthly plan runs from R799 for a launch-level site up to R3,600 for a premium one, with R2,200 for a fuller business package in between. Building it yourself on a DIY builder generally starts from around R300 a month.",
+      },
+      {
+        q: "Is a DIY website builder cheaper than hiring a designer?",
+        a: "On the monthly price, yes: builders start near R300 against R799 for a managed plan. The difference is who does the ongoing work. A builder leaves fixes and updates to you; a managed plan includes them.",
+      },
+      {
+        q: "What happens to my site after it launches?",
+        a: "It needs hosting, software updates, and someone to notice when something breaks. On a managed plan that support is included in the monthly fee. On a builder, all of it moves to you.",
+      },
+      {
+        q: "How do I choose between website developers for small business near me?",
+        a: "Get the same brief in front of a few of them, ask what happens after launch, and check their existing sites on your phone. A vague quote or heavy jargon in the first call is a warning sign.",
+      },
+    ],
+  },
 ];
 
 export function getArticle(slug: string | undefined): Article | undefined {
