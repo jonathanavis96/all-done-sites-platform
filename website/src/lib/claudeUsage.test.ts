@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  accountMeterChanges,
+  headlessFactor,
   speedAccountSeries,
   speedAccounts,
   speedFastSessionRequestsLatest,
@@ -2687,5 +2689,63 @@ describe("a new model id's own family", () => {
     measured.credits!.per_model!["sonnet-5-5"]!.rate_source = "measured";
     measured.credits!.window_tokens!.per_family!["sonnet-5-5"]!.rate_source = "measured";
     expect(computeCredits(measured, "max20", SONNET55)!.inferredNote).toBeNull();
+  });
+});
+
+describe("each account's measured change on each meter (wf-146)", () => {
+  const per = (a1: number | null, combined1: boolean, a2: number | null) => ({
+    a1: { change_pct: a1, combined: combined1 },
+    a2: { change_pct: a2, combined: true },
+    a3: { change_pct: null, combined: false },
+  });
+  const j = {
+    events: [
+      {
+        date: "2026-09-14",
+        kind: "change",
+        label: "",
+        five_hour_window_credits: {
+          direct_tests: { at: "2026-09-14T12:00:00+00:00", window_change: { per_account: per(3.3, true, 2.9) }, weekly_change: { per_account: per(-9, true, -10.4) } },
+        },
+      },
+      { date: "2026-09-22", kind: "change", label: "" },
+    ],
+    credits: {
+      five_hour_on_meters: {
+        candidates: [
+          { at: "2026-08-21T17:21:44+00:00", window_change: { per_account: per(null, false, null) } },
+          { at: "2026-09-22T19:41:49+00:00", window_change: { per_account: per(38.1, true, 10.4) }, weekly_change: { per_account: per(26.6, false, 9) } },
+        ],
+      },
+    },
+  } as unknown as UsageJson;
+
+  it("keeps only accounts that entered the combined figure with a number, per boundary", () => {
+    expect(accountMeterChanges(j, "window")).toEqual([
+      { date: "2026-09-14T12:00:00+00:00", perAccount: { a1: 3.3, a2: 2.9 } },
+      { date: "2026-09-22T19:41:49+00:00", perAccount: { a1: 38.1, a2: 10.4 } },
+    ]);
+    // a1 did not enter the 22 Sep weekly figure, so only a2 has one there.
+    expect(accountMeterChanges(j, "weekly")).toEqual([
+      { date: "2026-09-14T12:00:00+00:00", perAccount: { a1: -9, a2: -10.4 } },
+      { date: "2026-09-22T19:41:49+00:00", perAccount: { a2: 9 } },
+    ]);
+  });
+
+  it("is empty for a file that publishes no tests", () => {
+    expect(accountMeterChanges({ events: [] } as unknown as UsageJson, "window")).toEqual([]);
+  });
+});
+
+describe("headless factor on the five-hour meter (wf-146)", () => {
+  it("reads the value and its interval", () => {
+    const j = { five_hour_meter: { headless_factor: { value: 1.495, interval: [1.39, 1.609] } } } as unknown as UsageJson;
+    expect(headlessFactor(j)).toEqual({ value: 1.495, lo: 1.39, hi: 1.609 });
+  });
+
+  it("is null where the factor is missing or not a number", () => {
+    expect(headlessFactor({} as unknown as UsageJson)).toBeNull();
+    expect(headlessFactor({ five_hour_meter: {} } as unknown as UsageJson)).toBeNull();
+    expect(headlessFactor({ five_hour_meter: { headless_factor: { value: null, interval: [1, 2] } } } as unknown as UsageJson)).toBeNull();
   });
 });

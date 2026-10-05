@@ -201,6 +201,23 @@ export interface UsageEvent extends Partial<Omit<ChangeRecord, "date" | "scope">
   kind: EventKind;
   scope?: EventScope;
   label: string;
+  // The change tested directly on both meters, each account against itself. Only the fields the
+  // page reads are typed.
+  five_hour_window_credits?: { direct_tests?: MeterChangeTests & { at?: string | null } };
+}
+
+// One account's own change across a tested boundary, on one meter. `combined` is whether the
+// account entered the combined figure; a null `change_pct` is an account with nothing either side.
+export interface AccountMeterChange {
+  change_pct?: number | null;
+  combined?: boolean;
+}
+
+// A boundary tested on both meters: the five-hour window change and the weekly limit change, each
+// with every account's own figure.
+export interface MeterChangeTests {
+  window_change?: { per_account?: Record<string, AccountMeterChange> };
+  weekly_change?: { per_account?: Record<string, AccountMeterChange> };
 }
 
 export interface Freshness {
@@ -432,6 +449,9 @@ export interface UsageJson {
   history: Record<string, HistoryRow[]>;
   last_change: ChangeRecord | null;
   events?: UsageEvent[];
+  // The five-hour meter's own measurements. Only the headless factor is typed: how many times as
+  // fast headless `claude -p` work fills the meter as interactive work does.
+  five_hour_meter?: { headless_factor?: { value?: number | null; interval?: (number | null)[] | null } | null };
   // Median tokens of one session on another account, per model. compute() divides the window
   // by it (scaled by the priced effort figures) for the sessions per window and per week lines,
   // as the page did at PR #74; audit finding 11 had dropped that and Jonathan reversed it.
@@ -1697,6 +1717,44 @@ export function windowChangePct(j: UsageJson): number | null {
   return c.direction === "decreased" ? -c.percent : c.percent;
 }
 
+// Each account's own measured change at every tested boundary, on the window (five-hour) or the
+// weekly meter: the boundary's time, and the figure for each account that entered the combined
+// figure there. The legend states these rather than the account's level step, which is not the
+// change test and can disagree with the headline. The weekly event's direct tests first, then
+// each family's first use.
+export function accountMeterChanges(
+  j: UsageJson,
+  meter: "window" | "weekly",
+): { date: string; perAccount: Record<string, number> }[] {
+  const key = meter === "window" ? "window_change" : "weekly_change";
+  const tested = [
+    ...(j.events ?? []).flatMap((ev) => {
+      const dt = ev.five_hour_window_credits?.direct_tests;
+      return dt ? [{ ...dt, at: dt.at ?? ev.date }] : [];
+    }),
+    ...(creditsOf(j)?.five_hour_on_meters?.candidates ?? []),
+  ];
+  return tested.flatMap((t) => {
+    const per = t[key]?.per_account;
+    if (typeof t.at !== "string" || !per) return [];
+    const perAccount: Record<string, number> = {};
+    for (const [a, c] of Object.entries(per)) {
+      if (c?.combined === true && typeof c.change_pct === "number" && Number.isFinite(c.change_pct)) perAccount[a] = c.change_pct;
+    }
+    return Object.keys(perAccount).length > 0 ? [{ date: t.at, perAccount }] : [];
+  });
+}
+
+// How many times as fast headless work fills the five-hour meter, with its interval. Null where
+// the file publishes no numeric factor.
+export function headlessFactor(j: UsageJson): { value: number; lo: number | null; hi: number | null } | null {
+  const hf = j.five_hour_meter?.headless_factor;
+  if (!hf || typeof hf.value !== "number" || !Number.isFinite(hf.value)) return null;
+  const iv = hf.interval;
+  const ok = Array.isArray(iv) && typeof iv[0] === "number" && typeof iv[1] === "number";
+  return { value: hf.value, lo: ok ? iv[0] : null, hi: ok ? iv[1] : null };
+}
+
 // ---------------------------------------------------------------------------
 // One line per watched account on the three plan charts
 // ---------------------------------------------------------------------------
@@ -2224,6 +2282,8 @@ export interface CreditsBlock {
   // Each model family's first use across every account. `before_from` is the previous boundary,
   // null for the family already in use when tracking began.
   announced_change?: { candidates?: FamilyFirstUse[] };
+  // Each family's first use, tested as a change on both meters.
+  five_hour_on_meters?: { candidates?: (MeterChangeTests & { at?: string | null })[] };
   derivation?: string;
 }
 export interface FamilyFirstUse {

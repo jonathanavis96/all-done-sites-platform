@@ -8,6 +8,7 @@ import ClaudeUsageTracker, {
   LABEL_LINE_PX,
   accountChangePct,
   accountLegendText,
+  HeadlessNote,
   layoutMarkerLabels,
   markerColour,
   markerPctText,
@@ -2544,5 +2545,109 @@ describe("how settled a change is (tracker PR #98)", () => {
     expect(markers(live, "window")).toEqual(["-4% on 14 Sep", "+5% on 22 Sep"]);
     expect(markers(live, "tokens")).toEqual(["-26% on 14 Sep"]);
     expect(markers(live, "windows")).toEqual(["-22% on 14 Sep", "-5% on 22 Sep"]);
+  });
+});
+
+describe("account legend states each account's measured change (wf-146)", () => {
+  const levels = [
+    { start: "2026-09-01T00:00:00Z", end: "2026-09-14T12:00:00Z", value: 100 },
+    { start: "2026-09-14T12:00:00Z", end: "2026-09-22T19:00:00Z", value: 109 },
+    { start: "2026-09-22T19:00:00Z", end: "2026-09-28T00:00:00Z", value: 103.5 },
+  ];
+  const markers = [{ date: "2026-09-14T12:00:00Z" }, { date: "2026-09-22T19:00:00Z" }];
+
+  it("uses the published per-account figure at a marker on the same UTC day, not the level step", () => {
+    expect(accountLegendText("Max account 2", levels, markers, [{ date: "2026-09-22T19:41:49+00:00", pct: 10.4 }])).toBe(
+      "Max account 2 (+9% on 14 Sep, +10% on 22 Sep)",
+    );
+  });
+
+  it("falls back to the level step where no figure is published for that marker", () => {
+    expect(accountLegendText("Max account 2", levels, markers)).toBe("Max account 2 (+9% on 14 Sep, -5% on 22 Sep)");
+    // A figure for another day does not stand in for this one.
+    expect(accountLegendText("Max account 2", levels, markers, [{ date: "2026-09-29T18:25:18Z", pct: 4 }])).toBe(
+      "Max account 2 (+9% on 14 Sep, -5% on 22 Sep)",
+    );
+  });
+
+  it("drops a published figure that rounds to 0%", () => {
+    expect(accountLegendText("Max account 2", levels, markers, [{ date: "2026-09-14T12:00:00Z", pct: 0.3 }])).toBe(
+      "Max account 2 (-5% on 22 Sep)",
+    );
+  });
+
+  it("renders the 22 Sep window figures from the live file's shape", () => {
+    const j = {
+      ...(live0928 as unknown as UsageJson),
+      credits: {
+        ...(live0928 as unknown as UsageJson).credits!,
+        five_hour_on_meters: {
+          candidates: [
+            {
+              at: "2026-09-22T19:41:49+00:00",
+              window_change: {
+                per_account: {
+                  a1: { change_pct: 38.1, combined: true },
+                  a2: { change_pct: 10.4, combined: true },
+                  a3: { change_pct: 17.9, combined: true },
+                  a4: { change_pct: null, combined: false },
+                },
+              },
+            },
+          ],
+        },
+      },
+    } as UsageJson;
+    const h = renderToString(
+      <HelmetProvider context={{}}>
+        <MemoryRouter>
+          <ClaudeUsageTracker initial={j} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart="window" />
+        </MemoryRouter>
+      </HelmetProvider>,
+    ).replace(/<!-- -->/g, "");
+    const at = h.indexOf('<div role="tabpanel" id="plan-chart-window"');
+    const panel = h.slice(at, h.indexOf('<div role="tabpanel"', at + 1));
+    const items = [...panel.matchAll(/<li data-account="[^"]*"><span class="swatch"[^>]*><\/span>([^<]*)<\/li>/g)].map((m) => m[1]);
+    expect(items.find((t) => t.startsWith("Max account 1"))).toMatch(/\+38% on 22 Sep\)$/);
+    expect(items.find((t) => t.startsWith("Max account 2"))).toMatch(/\+10% on 22 Sep\)$/);
+    expect(items.find((t) => t.startsWith("Max account 3"))).toMatch(/\+18% on 22 Sep\)$/);
+    expect(items).toContain("Max account 4");
+  });
+});
+
+describe("headless NB under the window figure (wf-146)", () => {
+  const NB =
+    "NB: headless work (<code>claude -p</code>) fills the five-hour meter <b>1.50x</b> as fast as interactive work [<b>1.39</b>–<b>1.61</b>]. Window figures are for interactive use.";
+  const strip = (h: string) => h.replace(/<!-- -->/g, "");
+
+  it("states the factor and its interval to 2 decimals", () => {
+    expect(strip(renderToString(<HeadlessNote factor={{ value: 1.495, lo: 1.39, hi: 1.609 }} className="quiet" />))).toBe(
+      `<div class="quiet" data-note="headless">${NB}</div>`,
+    );
+  });
+
+  it("renders nothing without a factor", () => {
+    expect(renderToString(<HeadlessNote factor={null} className="quiet" />)).toBe("");
+  });
+
+  it("sits under the hero window figure and under the window chart, and only where the file publishes it", () => {
+    const base = live0928 as unknown as UsageJson;
+    const page = (j: UsageJson) =>
+      strip(
+        renderToString(
+          <HelmetProvider context={{}}>
+            <MemoryRouter>
+              <ClaudeUsageTracker initial={j} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart="window" />
+            </MemoryRouter>
+          </HelmetProvider>,
+        ),
+      );
+    const withFactor = page({ ...base, five_hour_meter: { headless_factor: { value: 1.495, interval: [1.39, 1.609] } } });
+    expect(withFactor).toContain(`<div class="quiet" data-note="headless">${NB}</div>`);
+    const at = withFactor.indexOf('<div role="tabpanel" id="plan-chart-window"');
+    const panel = withFactor.slice(at, withFactor.indexOf('<div role="tabpanel"', at + 1));
+    expect(panel).toContain(`<div class="sub" data-note="headless">${NB}</div>`);
+    expect(page({ ...base, five_hour_meter: { headless_factor: { value: null } } })).not.toContain("headless work");
+    expect(page({ ...base, five_hour_meter: undefined })).not.toContain("headless work");
   });
 });
