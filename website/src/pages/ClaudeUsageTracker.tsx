@@ -58,6 +58,8 @@ import {
   windowChangePct,
   tokensPerWeekChangePct,
   pendingChangeStates,
+  accountMeterChanges,
+  headlessFactor,
   type AccountLines,
   type ChangeState,
   type ContribPoint,
@@ -312,17 +314,20 @@ export function accountChangePct(
 
 // "Max account 1 (-6% on 14 Sep, +8% on 22 Sep)": every change the chart marks, by date, where the
 // account has a level on both sides and its own step there does not round to 0%, oldest first.
-// Just the name where no change applies. The
+// Where the file publishes the account's own measured change at a marker (`measured`, matched by
+// UTC day), the legend states that figure instead of the level step, so it agrees with the
+// headline's change test. Just the name where no change applies. The
 // date is written the way the marker writes it, so the legend and the marker name the same day.
 export function accountLegendText(
   name: string,
   levels: { start: string; end: string; value: number; gap?: boolean }[],
   markers: { date: string }[],
+  measured: { date: string; pct: number }[] = [],
 ): string {
   const parts = [...markers]
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
     .flatMap((m) => {
-      const pct = accountChangePct(levels, m.date);
+      const pct = measured.find((c) => utcDay(c.date) === utcDay(m.date))?.pct ?? accountChangePct(levels, m.date);
       return pct === null || markerRoundsToZero(pct) ? [] : [`${markerPctText(pct)} on ${fmtDateShort(utcDay(m.date))}`];
     });
   return parts.length > 0 ? `${name} (${parts.join(", ")})` : name;
@@ -390,6 +395,7 @@ function LevelChart({
   markEvents,
   pendingStates,
   accountLines,
+  accountChanges,
   missingFor,
   shown = true,
 }: {
@@ -423,6 +429,9 @@ function LevelChart({
   // with the same legend and the same "No data for ..." note for an account that has nothing to
   // draw here.
   accountLines?: AccountLines;
+  // Each account's own measured change at a tested boundary, on this chart's meter: where one
+  // falls on a marker's day, the account's legend entry states it instead of its level step.
+  accountChanges?: { date: string; perAccount: Record<string, number> }[];
   missingFor?: string;
   // False while the chart sits in a hidden panel; the scroller re-opens on the newest readings
   // when it is shown.
@@ -560,7 +569,14 @@ function LevelChart({
       {accounts.map((l) => (
         <li key={l.account} data-account={accountLabel(l.account)}>
           <span className="swatch" style={{ background: colorOf(l.account) }} />
-          {accountLegendText(accountLabel(l.account), l.levels, changeMarkers)}
+          {accountLegendText(
+            accountLabel(l.account),
+            l.levels,
+            changeMarkers,
+            (accountChanges ?? []).flatMap((c) =>
+              typeof c.perAccount[l.account] === "number" ? [{ date: c.date, pct: c.perAccount[l.account] }] : [],
+            ),
+          )}
         </li>
       ))}
       {accountLines.missing.length > 0 && (
@@ -853,6 +869,32 @@ function LegendMark({ kind }: { kind: "reading" | "weekly" }) {
 // A figure the tracker can bound but not identify publishes a sentence in place of its value, so
 // the sentence takes the number's place rather than a dash, a zero or a silently-dropped line.
 // The interval is shown beneath either way, as the range the readings spanned.
+// "NB: headless work (`claude -p`) fills the five-hour meter 1.50x as fast as interactive work
+// [1.39–1.61]. Window figures are for interactive use." Nothing where the file publishes no
+// numeric factor; no bracket where it publishes no interval. `className` is the caption class the
+// spot it sits in already uses.
+export function HeadlessNote({
+  factor,
+  className,
+}: {
+  factor: { value: number; lo: number | null; hi: number | null } | null;
+  className: string;
+}) {
+  if (!factor) return null;
+  return (
+    <div className={className} data-note="headless">
+      NB: headless work (<code>claude -p</code>) fills the five-hour meter <b>{factor.value.toFixed(2)}x</b> as fast as
+      interactive work
+      {factor.lo !== null && factor.hi !== null && (
+        <>
+          {" "}[<b>{factor.lo.toFixed(2)}</b>–<b>{factor.hi.toFixed(2)}</b>]
+        </>
+      )}
+      . Window figures are for interactive use.
+    </div>
+  );
+}
+
 function Fig({ fig, unit, statusUnit, lead }: { fig: CreditFigureText; unit: string; statusUnit?: string; lead?: string }) {
   // Number first where there is a number, unit first where what was published is a sentence:
   // "about 354 sessions per window", but "sessions per window: rate not yet identified".
@@ -1326,6 +1368,9 @@ export default function ClaudeUsageTracker({
   // speed-by-account chart gives the same accounts.
   const windowAccountLines = useMemo(() => (data ? accountWindowTokenLines(data, model) : undefined), [data, model]);
   const weeklyTokenAccountLines = useMemo(() => (data ? accountWeeklyTokenLines(data, model) : undefined), [data, model]);
+  const windowAccountChanges = useMemo(() => (data ? accountMeterChanges(data, "window") : undefined), [data]);
+  const weeklyAccountChanges = useMemo(() => (data ? accountMeterChanges(data, "weekly") : undefined), [data]);
+  const headless = useMemo(() => (data ? headlessFactor(data) : null), [data]);
   const windowsAccountLines = useMemo(() => (data ? accountWindowLines(data) : undefined), [data]);
   // The readings behind the selected plan's levels, and the documented level beside them. Only a
   // plan's own readings: today that is Max 20x, so Pro and Max 5x get the reference alone.
@@ -1696,6 +1741,8 @@ export default function ClaudeUsageTracker({
                   {wt?.perWindow ? (
                     <>
                       <HeroFigure fig={wt.perWindow} unit="tokens per 5-hour window" statusUnit="tokens per 5-hour window" />
+                      {/* Window figures are measured on interactive work; headless work fills the meter faster. */}
+                      <HeadlessNote factor={headless} className="quiet" />
                       {/* An inferred rate's figures are marked in words, as the plan table marks an
                           inferred plan's, and draw no range. */}
                       {wt.inferredNote && wt.perWindow.kind === "value" && (
@@ -1929,10 +1976,12 @@ export default function ClaudeUsageTracker({
                         markEvents={measuredEvents}
                         pendingStates={pendingStates}
                         accountLines={windowAccountLines}
+                        accountChanges={windowAccountChanges}
                         missingFor={modelLabel(model)}
                         shown={planChart === "window"}
                       />
                     )}
+                    <HeadlessNote factor={headless} className="sub" />
                   </>
                 )}
             </div>
@@ -1982,6 +2031,7 @@ export default function ClaudeUsageTracker({
                       markEvents={weeklyMeasuredEvents}
                       pendingStates={pendingStates}
                       accountLines={weeklyTokenAccountLines}
+                      accountChanges={weeklyAccountChanges}
                       missingFor={modelLabel(model)}
                       shown={planChart === "tokens"}
                       // This chart's quantity is tokens a week buys, so its marker states the
