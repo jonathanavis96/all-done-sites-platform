@@ -73,6 +73,11 @@
 .cut .share-legend { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 20px; font-size: 13px; color: var(--ads-bd); }
 .cut .share-legend li { display: inline-flex; align-items: center; gap: 6px; }
 .cut .share-legend .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+/* Account lines and dots on the level charts: faint until the account is hovered, focused or tapped (wf-147). */
+.cut .level-account { transition: opacity .15s ease; }
+.cut .level-account-key { cursor: pointer; }
+.cut .level-account-key:focus-visible { outline: 2px solid var(--ads-ac); outline-offset: 2px; border-radius: 2px; }
+@media (prefers-reduced-motion: reduce) { .cut .level-account { transition: none; } }
 .cut .tp-bars { display: flex; flex-direction: column; gap: 18px; }
 .cut .tp-row { display: flex; flex-direction: column; gap: 4px; }
 .cut .tp-label { font-size: 13px; font-weight: 600; color: var(--ads-tx); }

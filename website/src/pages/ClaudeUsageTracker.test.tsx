@@ -6,7 +6,9 @@ import ClaudeUsageTracker, {
   LABEL_ASCENT_PX,
   LABEL_DESCENT_PX,
   LABEL_LINE_PX,
+  ACCOUNT_FAINT_OPACITY,
   accountChangePct,
+  accountHighlightProps,
   accountLegendText,
   HeadlessNote,
   layoutMarkerLabels,
@@ -2343,21 +2345,22 @@ describe("chart labels (seat 120)", () => {
     expect(headline(panelOf(html("windows"), "windows"))).toBe("4.8");
   });
 
-  it("names each change in the account legend by its date, and skips one the account has no level either side of", () => {
+  it("names only the newest change in the account legend, and just the name where the account has no level either side of it", () => {
     const legend = (panel: string) =>
-      [...panel.matchAll(/<li data-account="[^"]*"><span class="swatch"[^>]*><\/span>([^<]*)<\/li>/g)].map((m) => m[1]);
+      [...panel.matchAll(/<li data-account="[^"]*"[^>]*><span class="swatch"[^>]*><\/span>([^<]*)<\/li>/g)].map((m) => m[1]);
     for (const chart of ["window", "windows"] as PlanChart[]) {
       const items = legend(panelOf(html(chart), chart));
-      // Max account 1 and 2 have a level either side of both changes.
-      expect(items.find((t) => t.startsWith("Max account 1")), chart).toMatch(/^Max account 1 \([-+]\d+% on 14 Sep, [-+]\d+% on 22 Sep\)$/);
-      expect(items.find((t) => t.startsWith("Max account 2")), chart).toMatch(/^Max account 2 \([-+]\d+% on 14 Sep, [-+]\d+% on 22 Sep\)$/);
-      // Max account 3 has no level before 14 Sep, so only 22 Sep is named.
+      // The chart marks 14 Sep and 22 Sep; every legend entry names 22 Sep alone (wf-147).
+      expect(items.find((t) => t.startsWith("Max account 1")), chart).toMatch(/^Max account 1 \([-+]\d+% on 22 Sep\)$/);
+      expect(items.find((t) => t.startsWith("Max account 2")), chart).toMatch(/^Max account 2 \([-+]\d+% on 22 Sep\)$/);
+      expect(items.join(" "), chart).not.toContain("14 Sep");
+      // Max account 3 has no level before 14 Sep; 22 Sep is the newest marker either way.
       expect(items.find((t) => t.startsWith("Max account 3")), chart).toMatch(/^Max account 3 \([-+]\d+% on 22 Sep\)$/);
       // Max account 4 has a level only after 22 Sep: no change applies, so its name alone.
       expect(items, chart).toContain("Max account 4");
       expect(items.join(" "), chart).not.toContain("across the change");
     }
-    // Tokens per week draws no 22 Sep marker (it rounds to 0% there), so no legend entry names it.
+    // Tokens per week draws no 22 Sep marker (it rounds to 0% there), so 14 Sep is its newest.
     const tokens = legend(panelOf(html("tokens"), "tokens"));
     expect(tokens.find((t) => t.startsWith("Max account 1"))).toMatch(/^Max account 1 \([-+]\d+% on 14 Sep\)$/);
     expect(tokens.join(" ")).not.toContain("22 Sep");
@@ -2373,18 +2376,20 @@ describe("chart labels (seat 120)", () => {
     expect(accountChangePct(levels, "2026-09-14T12:00:00Z")).toBeCloseTo(-6, 10);
     // The level after 22 Sep follows a gap: no level on the near side of that change.
     expect(accountChangePct(levels, "2026-09-22T19:00:00Z")).toBeNull();
+    // The newest marker, 22 Sep, has no figure for this account: just its name, never 14 Sep's (wf-147).
     expect(accountLegendText("Max account 1", levels, [{ date: "2026-09-22T19:00:00Z" }, { date: "2026-09-14T12:00:00Z" }])).toBe(
-      "Max account 1 (-6% on 14 Sep)",
+      "Max account 1",
     );
+    expect(accountLegendText("Max account 1", levels, [{ date: "2026-09-14T12:00:00Z" }])).toBe("Max account 1 (-6% on 14 Sep)");
     expect(accountLegendText("Max account 1", levels, [])).toBe("Max account 1");
-    // An account whose own step at a marked change rounds to 0% gets no entry for it (seat 123).
+    // An account whose own step at the newest marked change rounds to 0% gets just its name (seat 123).
     const flat = [
       { start: "2026-09-01T00:00:00Z", end: "2026-09-14T12:00:00Z", value: 100 },
       { start: "2026-09-14T12:00:00Z", end: "2026-09-22T19:00:00Z", value: 94 },
       { start: "2026-09-22T19:00:00Z", end: "2026-09-28T00:00:00Z", value: 94.3 },
     ];
     expect(accountLegendText("Max account 1", flat, [{ date: "2026-09-14T12:00:00Z" }, { date: "2026-09-22T19:00:00Z" }])).toBe(
-      "Max account 1 (-6% on 14 Sep)",
+      "Max account 1",
     );
     expect(accountLegendText("Max account 1", levels, [{ date: "2026-09-05" }])).toBe("Max account 1");
     // A level running straight through a change: a level either side, and no movement.
@@ -2558,22 +2563,20 @@ describe("account legend states each account's measured change (wf-146)", () => 
 
   it("uses the published per-account figure at a marker on the same UTC day, not the level step", () => {
     expect(accountLegendText("Max account 2", levels, markers, [{ date: "2026-09-22T19:41:49+00:00", pct: 10.4 }])).toBe(
-      "Max account 2 (+9% on 14 Sep, +10% on 22 Sep)",
+      "Max account 2 (+10% on 22 Sep)",
     );
   });
 
   it("falls back to the level step where no figure is published for that marker", () => {
-    expect(accountLegendText("Max account 2", levels, markers)).toBe("Max account 2 (+9% on 14 Sep, -5% on 22 Sep)");
+    expect(accountLegendText("Max account 2", levels, markers)).toBe("Max account 2 (-5% on 22 Sep)");
     // A figure for another day does not stand in for this one.
     expect(accountLegendText("Max account 2", levels, markers, [{ date: "2026-09-29T18:25:18Z", pct: 4 }])).toBe(
-      "Max account 2 (+9% on 14 Sep, -5% on 22 Sep)",
+      "Max account 2 (-5% on 22 Sep)",
     );
   });
 
   it("drops a published figure that rounds to 0%", () => {
-    expect(accountLegendText("Max account 2", levels, markers, [{ date: "2026-09-14T12:00:00Z", pct: 0.3 }])).toBe(
-      "Max account 2 (-5% on 22 Sep)",
-    );
+    expect(accountLegendText("Max account 2", levels, markers, [{ date: "2026-09-22T12:00:00Z", pct: 0.3 }])).toBe("Max account 2");
   });
 
   it("renders the 22 Sep window figures from the live file's shape", () => {
@@ -2607,11 +2610,79 @@ describe("account legend states each account's measured change (wf-146)", () => 
     ).replace(/<!-- -->/g, "");
     const at = h.indexOf('<div role="tabpanel" id="plan-chart-window"');
     const panel = h.slice(at, h.indexOf('<div role="tabpanel"', at + 1));
-    const items = [...panel.matchAll(/<li data-account="[^"]*"><span class="swatch"[^>]*><\/span>([^<]*)<\/li>/g)].map((m) => m[1]);
+    const items = [...panel.matchAll(/<li data-account="[^"]*"[^>]*><span class="swatch"[^>]*><\/span>([^<]*)<\/li>/g)].map((m) => m[1]);
     expect(items.find((t) => t.startsWith("Max account 1"))).toMatch(/\+38% on 22 Sep\)$/);
     expect(items.find((t) => t.startsWith("Max account 2"))).toMatch(/\+10% on 22 Sep\)$/);
     expect(items.find((t) => t.startsWith("Max account 3"))).toMatch(/\+18% on 22 Sep\)$/);
     expect(items).toContain("Max account 4");
+  });
+});
+
+describe("account lines faint until highlighted (wf-147)", () => {
+  // A stand-in for the chart's useState: the highlight state and a setter that takes a value or an updater.
+  const state = () => {
+    let cur: string | null = null;
+    const set = (next: string | null | ((c: string | null) => string | null)) => {
+      cur = typeof next === "function" ? next(cur) : next;
+    };
+    return { get: () => cur, set };
+  };
+  const mouse = { pointerType: "mouse" }, touch = { pointerType: "touch" };
+
+  it("hovering a legend entry highlights its account, and leaving restores the default", () => {
+    const s = state();
+    const p = accountHighlightProps("a1", s.set, { focusable: true });
+    p.onPointerEnter(mouse);
+    expect(s.get()).toBe("a1");
+    p.onPointerLeave(mouse);
+    expect(s.get()).toBeNull();
+  });
+
+  it("keyboard focus on a legend entry highlights like hover, and blur clears it", () => {
+    const s = state();
+    const p = accountHighlightProps("a2", s.set, { focusable: true });
+    expect(p.tabIndex).toBe(0);
+    p.onFocus!();
+    expect(s.get()).toBe("a2");
+    p.onBlur!();
+    expect(s.get()).toBeNull();
+  });
+
+  it("a tap toggles the highlight, and a touch's enter and leave do nothing", () => {
+    const s = state();
+    const p = accountHighlightProps("a3", s.set, { focusable: true });
+    p.onPointerEnter(touch);
+    expect(s.get()).toBeNull();
+    p.onPointerDown!(touch);
+    expect(s.get()).toBe("a3");
+    p.onPointerLeave(touch);
+    expect(s.get()).toBe("a3");
+    p.onPointerDown!(touch);
+    expect(s.get()).toBeNull();
+  });
+
+  it("leaving one account does not clear another's highlight", () => {
+    const s = state();
+    accountHighlightProps("a1", s.set).onPointerEnter(mouse);
+    accountHighlightProps("a2", s.set).onPointerLeave(mouse);
+    expect(s.get()).toBe("a1");
+  });
+
+  it("draws every account line and its dots faint by default, and leaves the plan lines alone", () => {
+    const h = renderToString(
+      <HelmetProvider context={{}}>
+        <MemoryRouter>
+          <ClaudeUsageTracker initial={live0928 as unknown as UsageJson} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart="windows" />
+        </MemoryRouter>
+      </HelmetProvider>,
+    );
+    const lines = [...h.matchAll(/<g data-account="[^"]*" class="level-account" style="opacity:([\d.]+)"/g)].map((m) => Number(m[1]));
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.every((o) => o === ACCOUNT_FAINT_OPACITY)).toBe(true);
+    const dots = [...h.matchAll(/<circle class="level-account" style="opacity:([\d.]+)"/g)].map((m) => Number(m[1]));
+    expect(dots.length).toBeGreaterThan(0);
+    expect(dots.every((o) => o === ACCOUNT_FAINT_OPACITY)).toBe(true);
+    expect(h).toContain('<li data-account="Max account 1" class="level-account-key" tabindex="0">');
   });
 });
 

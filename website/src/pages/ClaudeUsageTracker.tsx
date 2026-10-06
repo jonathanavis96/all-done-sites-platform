@@ -312,25 +312,56 @@ export function accountChangePct(
   return through ? 0 : null;
 }
 
-// "Max account 1 (-6% on 14 Sep, +8% on 22 Sep)": every change the chart marks, by date, where the
-// account has a level on both sides and its own step there does not round to 0%, oldest first.
-// Where the file publishes the account's own measured change at a marker (`measured`, matched by
-// UTC day), the legend states that figure instead of the level step, so it agrees with the
-// headline's change test. Just the name where no change applies. The
-// date is written the way the marker writes it, so the legend and the marker name the same day.
+// "Max account 1 (+8% on 22 Sep)": the newest change the chart marks, by date, where the account
+// has a level on both sides and its own step there does not round to 0% (wf-147). Only the newest
+// marker: an account with no figure there gets just its name, never an older marker's figure, so
+// the legend moves to each new change as the chart marks it. Where the file publishes the
+// account's own measured change at that marker (`measured`, matched by UTC day), the legend states
+// that figure instead of the level step, so it agrees with the headline's change test. The date is
+// written the way the marker writes it, so the legend and the marker name the same day.
 export function accountLegendText(
   name: string,
   levels: { start: string; end: string; value: number; gap?: boolean }[],
   markers: { date: string }[],
   measured: { date: string; pct: number }[] = [],
 ): string {
-  const parts = [...markers]
-    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
-    .flatMap((m) => {
-      const pct = measured.find((c) => utcDay(c.date) === utcDay(m.date))?.pct ?? accountChangePct(levels, m.date);
-      return pct === null || markerRoundsToZero(pct) ? [] : [`${markerPctText(pct)} on ${fmtDateShort(utcDay(m.date))}`];
-    });
-  return parts.length > 0 ? `${name} (${parts.join(", ")})` : name;
+  const newest = [...markers].sort((a, b) => Date.parse(a.date) - Date.parse(b.date)).at(-1);
+  if (!newest) return name;
+  const pct = measured.find((c) => utcDay(c.date) === utcDay(newest.date))?.pct ?? accountChangePct(levels, newest.date);
+  return pct === null || markerRoundsToZero(pct) ? name : `${name} (${markerPctText(pct)} on ${fmtDateShort(utcDay(newest.date))})`;
+}
+
+// An account line and its reading dots sit this faint until the account is highlighted (wf-147),
+// so the plan lines carry the chart.
+export const ACCOUNT_FAINT_OPACITY = 0.25;
+
+// The handlers that highlight one account from its legend entry, its line or its dots: a mouse
+// pointer highlights on enter and clears on leave, keyboard focus does the same, and a touch on a
+// legend entry toggles it (a touch has no hover). `setHighlight` is the chart's highlight state.
+export function accountHighlightProps(
+  account: string,
+  setHighlight: (next: string | null | ((cur: string | null) => string | null)) => void,
+  { focusable = false }: { focusable?: boolean } = {},
+) {
+  const clear = () => setHighlight((cur) => (cur === account ? null : cur));
+  return {
+    onPointerEnter: (e: { pointerType: string }) => {
+      if (e.pointerType !== "touch") setHighlight(account);
+    },
+    onPointerLeave: (e: { pointerType: string }) => {
+      if (e.pointerType !== "touch") clear();
+    },
+    ...(focusable
+      ? {
+          tabIndex: 0,
+          onPointerDown: (e: { pointerType: string }) => {
+            if (e.pointerType === "touch") setHighlight((cur) => (cur === account ? null : account));
+          },
+          onFocus: () => setHighlight(account),
+          onBlur: clear,
+        }
+      : {}),
+  };
 }
 
 // One row of the plan-comparison table: its label, and the cell each plan renders.
@@ -456,6 +487,9 @@ function LevelChart({
   // the account's own line; any other reading keeps the plan's hue.
   const drawnAccounts = new Set(accounts.map((l) => l.account));
   const readingColor = (a: string | undefined) => (a && drawnAccounts.has(a) ? colorOf(a) : "var(--ads-ac)");
+  // The account highlighted from its legend entry, line or dots; every other account stays faint.
+  const [highlight, setHighlight] = useState<string | null>(null);
+  const accountOpacity = (a: string) => (a === highlight ? 1 : ACCOUNT_FAINT_OPACITY);
   if (plotted.length === 0) return <p className="sub">Not enough history yet.</p>;
   // The plot's top (T), bottom (B) and the viewBox height (H) are set once the change markers'
   // labels are laid out, below: the labels take a band above the plot, one row per stacked label.
@@ -562,12 +596,18 @@ function LevelChart({
   const markerLayout = layoutMarkerLabels(shownMarkers, R);
   const changeMarkers = markerLayout.labels;
   const T = markerLayout.top, B = T + 180, H = B + 60;
-  // Each account's legend entry names every change this chart marks by its date, with the
-  // account's own movement across it on this chart's quantity (seat 120).
+  // Each account's legend entry names the newest change this chart marks by its date, with the
+  // account's own movement across it on this chart's quantity (seat 120, wf-147).
   const accountLegend = accountLines && (accounts.length > 0 || accountLines.missing.length > 0) && (
     <ul className="share-legend speed-legend level-accounts">
       {accounts.map((l) => (
-        <li key={l.account} data-account={accountLabel(l.account)}>
+        <li
+          key={l.account}
+          data-account={accountLabel(l.account)}
+          data-highlight={l.account === highlight ? "" : undefined}
+          className="level-account-key"
+          {...accountHighlightProps(l.account, setHighlight, { focusable: true })}
+        >
           <span className="swatch" style={{ background: colorOf(l.account) }} />
           {accountLegendText(
             accountLabel(l.account),
@@ -670,9 +710,14 @@ function LevelChart({
       <g>
         {readings.map((r) => {
           const coarse = r.seven_day_pct < COARSE_SEVEN_DAY_PCT;
+          // A drawn account's dot is faint with its line until that account is highlighted.
+          const own = r.account && drawnAccounts.has(r.account) ? r.account : null;
           return (
             <circle
               key={`${r.window_ending}-${r.account ?? ""}`}
+              className={own ? "level-account" : undefined}
+              style={own ? { opacity: accountOpacity(own) } : undefined}
+              {...(own ? accountHighlightProps(own, setHighlight) : {})}
               cx={xStamp(r.window_ending)}
               cy={y(r.windows)}
               r="2.5"
@@ -723,7 +768,13 @@ function LevelChart({
       {/* The accounts' own lines, beneath the plans' so the plan lines and their labels stay
           on top. Flat per regime, like the plans'. */}
       {accounts.map((a) => (
-        <g key={a.account} data-account={accountLabel(a.account)}>
+        <g
+          key={a.account}
+          data-account={accountLabel(a.account)}
+          className="level-account"
+          style={{ opacity: accountOpacity(a.account) }}
+          {...accountHighlightProps(a.account, setHighlight)}
+        >
           {/* A level flagged `gap` starts a new run: the regime before it had no reading for
               this account, so the line breaks there rather than bridging it. */}
           {a.levels
@@ -740,7 +791,7 @@ function LevelChart({
               ),
             )
             .map((run, i) => (
-              <path key={i} d={run.d} fill="none" stroke={colorOf(a.account)} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity=".9" />
+              <path key={i} d={run.d} fill="none" stroke={colorOf(a.account)} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
             ))}
         </g>
       ))}
