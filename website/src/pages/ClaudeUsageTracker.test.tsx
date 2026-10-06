@@ -2304,6 +2304,59 @@ describe("chart labels (seat 120)", () => {
     expect(layoutMarkerLabels([{ x: 100, text: "-19% on 1 Aug" }], 732).top).toBe(20);
   });
 
+  // Every pair of labels in marker order: the earlier label never starts or ends right of the later
+  // one, never sits on a lower row where the two share columns, and stays inside the plot.
+  const expectOrdered = (labels: ReturnType<typeof layoutMarkerLabels<{ x: number; text: string }>>["labels"], left: number, right: number) => {
+    const byX = [...labels].sort((a, b) => a.x - b.x);
+    for (const l of byX) {
+      expect(l.lo).toBeGreaterThanOrEqual(left);
+      expect(l.hi).toBeLessThanOrEqual(right);
+      // Anchored at its own line, on one side of it.
+      expect(l.anchor === "start" ? l.tx - l.x : l.x - l.tx).toBe(6);
+    }
+    for (let a = 0; a < byX.length; a++)
+      for (let b = a + 1; b < byX.length; b++) {
+        expect(byX[a].lo).toBeLessThanOrEqual(byX[b].lo);
+        expect(byX[a].hi).toBeLessThanOrEqual(byX[b].hi);
+        if (byX[a].lo < byX[b].hi && byX[b].lo < byX[a].hi) expect(byX[a].row).toBeGreaterThan(byX[b].row);
+      }
+  };
+
+  it("keeps two markers 8 days apart in date order on a narrow chart, the earlier on top", () => {
+    // A 300px plot spanning 60 days: 8 days is 40px, so the labels must stack.
+    const left = 44, right = 344, perDay = 300 / 60;
+    for (const x14 of [left + 2, left + 150, right - 8 * perDay - 2]) {
+      const { labels } = layoutMarkerLabels(
+        [
+          { x: x14, text: "-1% on 14 Sep" },
+          { x: x14 + 8 * perDay, text: "+20% on 22 Sep" },
+        ],
+        right,
+        left,
+      );
+      expectOrdered(labels, left, right);
+      const [earlier, later] = labels;
+      expect(earlier.row).toBe(1);
+      expect(later.row).toBe(0);
+      expect(earlier.ty).toBeLessThan(later.ty);
+    }
+  });
+
+  it("keeps three close markers in date order, each anchored at its own line", () => {
+    const left = 44, right = 732;
+    for (const x of [60, 300, 600, 680]) {
+      const markers = [
+        { x, text: "-26% on 6 Sep" },
+        { x: x + 20, text: "+3% on 10 Sep" },
+        { x: x + 40, text: "-11% on 14 Sep" },
+      ];
+      const { labels } = layoutMarkerLabels(markers, right, left);
+      expectOrdered(labels, left, right);
+      expect(labels.map((l) => l.text)).toEqual(markers.map((m) => m.text));
+      expect(labels.map((l) => l.row)).toEqual([2, 1, 0]);
+    }
+  });
+
   for (const chart of ["window", "tokens", "windows"] as PlanChart[]) {
     it(`keeps every marker label on the ${chart} tab off every drawn line and off each other`, () => {
       for (const plan of ["max20", "max5", "pro"] as Plan[]) {
