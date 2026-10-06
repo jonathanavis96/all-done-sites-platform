@@ -2067,8 +2067,8 @@ export default function ClaudeUsageTracker({
             <div role="tabpanel" id="plan-chart-tokens" aria-labelledby="plan-chart-tab-tokens" hidden={planChart !== "tokens"}>
                 <h2>Tokens per week</h2>
                 <p className="sub">
-                  {PLAN_LABELS[plan]} · {modelLabel(model)} · how many tokens a full week of five-hour windows
-                  buys. Full history.
+                  {PLAN_LABELS[plan]} · {modelLabel(model)} · how many tokens the weekly limit allows, read from
+                  the seven-day meter. Full history.
                 </p>
                 {/* The same notice as the window chart: another plan's line under this plan's heading would
                     read as this plan's figure (audit finding 2, kept). */}
@@ -2124,7 +2124,7 @@ export default function ClaudeUsageTracker({
             <div role="tabpanel" id="plan-chart-windows" aria-labelledby="plan-chart-tab-windows" hidden={planChart !== "windows"}>
                 <h2>Five-hour windows per week</h2>
                 <p className="sub">
-                  How many 5-hour windows fit in one week, read from the usage meter. Full history.
+                  How many 5-hour windows fit in one week: tokens per week divided by the window. Full history.
                 </p>
                 {r && !r.included ? (
                   <p className="sub">{notIncluded}</p>
@@ -2436,12 +2436,12 @@ export default function ClaudeUsageTracker({
           <details>
             <summary>How we measure this</summary>
             <p>
-              Every morning the tracker reads two things off each Max 20x account it watches
+              Throughout the day the tracker reads two things off each Max 20x account it watches
               {data?.passive_account_count ? ` (${data.passive_account_count === 1 ? "one account" : `${data.passive_account_count} accounts`} with usable readings today)` : ""}
               : the Claude Code transcripts of the work actually done on it, and that account's own usage meter. Between
               any two meter readings it knows how far the meter moved and which tokens were spent moving it, and that
               gives a price for one percent of the five-hour window. Readings from every account are pooled by day.
-              Nothing is run to produce these numbers. They come out of ordinary working days.
+              Nothing is run to produce the limit figures. They come out of ordinary working days.
             </p>
             <p>
               The meter does not treat every token the same. Cache reads cost nothing against it. Input, output and
@@ -2449,13 +2449,14 @@ export default function ClaudeUsageTracker({
               {credits ? "" : ", the output rate fitted from 60 measured stretches of real work"}. So every reading here
               is an API-dollar value per percent of meter.{" "}
               {credits?.window_tokens
-                ? "The token figures are not converted from it: they are the tokens those same stretches carried, counted per percent of the meter."
+                ? "The token figures are not converted from it: they are the tokens those same stretches carried, counted per percent of the meter. Headless (claude -p) work moves the five-hour meter faster, so on five-hour figures its tokens count at the measured factor shown below the window."
                 : "The token counts are that value converted back through the token mix of real sessions."}{" "}
               The effort figures come from one calibration task, run at each effort level on each model.
             </p>
             <p>
-              The weekly limit is measured the same way, per five-hour window: how far the seven-day meter moves for
-              each full window spent. A change is dated to the day it lands rather than averaged into a calendar week.
+              The weekly limit is measured the same way on the seven-day meter: the tokens behind each 1% it moves, times
+              100. Windows per week is the weekly figure divided by the window. A change is dated to the day it lands
+              rather than averaged into a calendar week.
             </p>
             {wt?.conversion && (
               <p>
@@ -2517,7 +2518,7 @@ export default function ClaudeUsageTracker({
               the stretch is dropped. Partial use elsewhere is not obvious, and it reads as a cheap day.
             </p>
             <p>
-              The current figure does not wait for a week to finish. It is measured from the five-hour windows since the
+              The current figure does not wait for a week to finish. It is measured from the seven-day meter since the
               last confirmed change, so a step is dated to the day it landed rather than blended into a week's average.
             </p>
             <p>
