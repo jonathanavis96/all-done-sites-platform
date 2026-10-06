@@ -241,35 +241,63 @@ const LABEL_BAND_GAP_PX = 5;
 
 // Where each change marker's label goes: in a band reserved above the plot, never inside it, so no
 // label can sit on a drawn line (seat 120: "-26% on 14 Sep" sat on the Max 20x line once a second,
-// newer marker pushed it down a row into the plot). Each label sits beside its own marker line,
-// anchored off the plot's right edge so a label near the right margin is never clipped. Where a
-// newer label would cover an older one, the older goes up a row, newest placed first; the band
-// grows by a row for each, and `top` is where the plot then starts.
+// newer marker pushed it down a row into the plot). Each label sits beside its own marker line:
+// to its right where it fits between `left` and `right` (the band's edges: nothing else is drawn
+// there, so it may run past the plot into the right margin), else to its left, so none is clipped.
+// Labels keep their markers' order: an earlier label reaching right across a later one reaching
+// left would cross it (wf-148: "+20% on 22 Sep" sat over the 14 Sep line, "-1% on 14 Sep" past the
+// 22 Sep one), so the earlier one turns to reach left of its own line instead. Where a newer label
+// would still cover an older one, the older goes up a row, newest placed first; the band grows by
+// a row for each, and `top` is where the plot then starts.
 export function layoutMarkerLabels<M extends { x: number; text: string }>(
   markers: M[],
-  plotRight: number,
+  right: number,
+  left = 0,
 ): { top: number; labels: (M & { tx: number; ty: number; anchor: "start" | "end"; lo: number; hi: number; row: number })[] } {
+  const width = (m: M) => m.text.length * LABEL_CHAR_PX;
+  const span = (m: M, anchor: "start" | "end"): [number, number] =>
+    anchor === "end" ? [m.x - 6 - width(m), m.x - 6] : [m.x + 6, m.x + 6 + width(m)];
+  const fits = (m: M, anchor: "start" | "end") => {
+    const [lo, hi] = span(m, anchor);
+    return lo >= left && hi <= right;
+  };
+  const order = markers.map((_, i) => i).sort((a, b) => markers[a].x - markers[b].x);
+  const anchors = markers.map((m) => (fits(m, "start") || !fits(m, "end") ? ("start" as const) : ("end" as const)));
+  // Only ever turns a label from right to left, so it settles.
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (let a = 0; a < order.length; a++)
+      for (let b = a + 1; b < order.length; b++) {
+        const i = order[a], j = order[b];
+        if (anchors[i] === "start" && anchors[j] === "end" && span(markers[j], "end")[0] < span(markers[i], "start")[1]) {
+          anchors[i] = "end";
+          changed = true;
+        }
+      }
+  }
+  const sided = markers.map((m, i) => {
+    const anchor = anchors[i];
+    let [lo, hi] = span(m, anchor);
+    // Last resort on a chart too narrow for a label on either side: slide it back inside the band.
+    const shift = Math.max(0, left - lo) - Math.max(0, hi - right);
+    lo += shift;
+    hi += shift;
+    return { ...m, anchor, lo, hi, tx: anchor === "end" ? hi : lo };
+  });
   const placed: { lo: number; hi: number; row: number }[] = [];
-  const rowed = markers
-    .map((m) => {
-      const end = m.x > plotRight - 130;
-      const w = m.text.length * LABEL_CHAR_PX;
-      const tx = end ? m.x - 6 : m.x + 6;
-      return { ...m, tx, anchor: end ? ("end" as const) : ("start" as const), lo: end ? tx - w : tx, hi: end ? tx : tx + w };
-    })
-    .reverse()
-    .map((m) => {
-      let row = 0;
-      while (placed.some((p) => p.row === row && m.lo < p.hi && p.lo < m.hi)) row++;
-      placed.push({ lo: m.lo, hi: m.hi, row });
-      return { ...m, row };
-    })
-    .reverse();
-  const rows = rowed.length > 0 ? Math.max(...rowed.map((m) => m.row)) + 1 : 1;
-  const top = LABEL_BAND_TOP_PX + rows * LABEL_LINE_PX;
+  const rows = new Array<number>(markers.length);
+  for (const i of [...order].reverse()) {
+    const m = sided[i];
+    let row = 0;
+    while (placed.some((p) => p.row === row && m.lo < p.hi && p.lo < m.hi)) row++;
+    placed.push({ lo: m.lo, hi: m.hi, row });
+    rows[i] = row;
+  }
+  const rowCount = markers.length > 0 ? Math.max(...rows) + 1 : 1;
+  const top = LABEL_BAND_TOP_PX + rowCount * LABEL_LINE_PX;
   // The bottom row's descenders stop the gap short of the plot; each older row sits one line higher.
   const base = top - LABEL_BAND_GAP_PX - LABEL_DESCENT_PX;
-  return { top, labels: rowed.map((m) => ({ ...m, ty: base - m.row * LABEL_LINE_PX })) };
+  return { top, labels: sided.map((m, i) => ({ ...m, row: rows[i], ty: base - rows[i] * LABEL_LINE_PX })) };
 }
 
 function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: number, gap = 16): Map<Plan, number> {
@@ -593,7 +621,7 @@ function LevelChart({
   // A change that moves this chart's own quantity by less than half a percent is not a change on
   // this tab: no line, no label, and no legend entry (seat 123: Tokens per week drew "0% on 22 Sep").
   const shownMarkers = rawMarkers.filter((m) => !markerRoundsToZero(m.pct));
-  const markerLayout = layoutMarkerLabels(shownMarkers, R);
+  const markerLayout = layoutMarkerLabels(shownMarkers, W, L);
   const changeMarkers = markerLayout.labels;
   const T = markerLayout.top, B = T + 180, H = B + 60;
   // Each account's legend entry names the newest change this chart marks by its date, with the
