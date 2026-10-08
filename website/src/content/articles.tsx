@@ -472,6 +472,105 @@ export const articles: Article[] = [
       },
     ],
   },
+  {
+    slug: "how-much-does-a-small-business-website-cost",
+    title: "How Much Does a Small Business Website Cost?",
+    metaTitle: "How Much Does a Small Business Website Cost?",
+    description:
+      "South African small business website costs: R5,590-R15,000 once-off, from R799/month, or R16,900-R40,000 for custom design. What changes the price.",
+    summary:
+      "What a small business website costs in South Africa, DIY versus freelancer versus agency, monthly hosting costs, and how to compare quotes fairly.",
+    category: "Pricing",
+    readMins: 9,
+    intro:
+      "Budgeting for a small business website usually starts with one question: what does it actually cost? In South Africa a template build runs R5,590 to R15,000 once-off, or from R799 a month on a managed plan. This guide is for a small business owner who wants a straight number first, plus a sense of what changes it.",
+    publishedAt: "2026-10-08",
+    updatedAt: "2026-10-08",
+    author: {
+      name: "Jonathan Avis",
+      url: "https://www.linkedin.com/in/jonathan-avis-0503a6201/",
+    },
+    blocks: [
+      { p: "From there it covers what pushes a quote up or down. It compares building it yourself, hiring a freelancer and using an agency, then sets out the monthly costs that keep a site running once it is live. It also explains why overseas quotes are hard to compare against a South African one, and what to ask instead. Last, how to read a quote so two designers' numbers line up." },
+      { h2: "The Short Answer: What a Small Business Website Costs" },
+      { p: "A small business website in South Africa typically costs somewhere between R5,590 and R15,000 once-off for a template-based build, or from R799 a month on a managed plan that bundles hosting and support. A fully custom-designed site runs higher, usually R16,900 to R40,000. That band covers original design work and a bigger content build, not a template with your logo dropped in." },
+      { p: "Which end you land on depends on how many pages you need. It also depends on whether you build it yourself or pay someone, and on whether you want a once-off price or a monthly one. These are hedged, real-world ranges. Treat them as a guide to budget against, not a quote for your specific site." },
+      { ul: [
+        "**Template build (designer-built):** R5,590–R15,000 once-off, or a monthly plan from R799.",
+        "**DIY builder:** from around R300 a month, you do the design and content work yourself.",
+        "**Fully custom design:** R16,900–R40,000 once-off, more for complex builds.",
+        "**Ongoing costs:** hosting, a domain and maintenance, all separate from the build price.",
+      ] },
+      { p: "The rest of this guide breaks down what pushes a quote up or down, and how to [compare a web design quote](/guides/how-to-get-a-website-for-your-small-business/) fairly." },
+      { h2: "What Actually Drives the Price of a Website Design" },
+      { p: "A web design quote is not one number. It is a build made of several separate costs, and each one moves independently." },
+      { ul: [
+        "**Number of pages:** more pages means more design and content work, so a five-page brochure site sits well under a ten-page one.",
+        "**Custom design versus template:** a template build starts around R5,590. Original design work, done from scratch for your brand, pushes the same site into the custom band.",
+        "**Features:** a booking form, a product catalogue or a members' area all add build time on top of the base price.",
+        "**Content:** who writes the copy and sources the images changes the quote. Supplying your own text keeps costs down.",
+        "**Ongoing support:** a once-off price and a monthly plan cover different things. A monthly plan from R799 usually bundles hosting and support in; a once-off quote usually does not.",
+      ] },
+      { p: "Some designers quote by the hour rather than by the project. If yours does, ask how many hours the build is expected to take and turn that into an estimated project total. Only then can you set it beside a fixed-price quote." },
+      { p: "Two quotes for what looks like the same site can differ by thousands of rand. The reason is almost always one of these factors, not a difference in workmanship." },
+      { h2: "Your Three Options: DIY Builder, Freelancer or Web Design Agency" },
+      { p: "Three routes get you a small business site, and each suits a different budget and a different amount of your own time." },
+      { ul: [
+        "**DIY builder:** from around R300 a month, depending on the platform and the exchange rate on the day. You build it yourself on a platform like Squarespace. Cheapest route, but you carry the design and content work.",
+        "**Freelance web designer:** usually lands in template territory. A freelancer can also do original design work, at which point pricing moves into the custom band.",
+        "**Web design agency:** covers template and fully custom builds too, but adds a team, project management and often ongoing support. Expect the custom band for custom work, sometimes more for a complex build.",
+      ] },
+      { p: "A managed plan from R799 a month sits alongside any of these. It bundles hosting and support into one monthly fee rather than a separate once-off design cost. That is a different decision to who designs the site. Read [monthly vs upfront](/guides/monthly-vs-upfront-website-cost/) before you choose between a plan and a once-off quote." },
+      { h2: "Monthly Costs: Hosting, Domain and Maintenance" },
+      { p: "A once-off build price is only half the budget. Three ongoing costs keep a site online and working: hosting, a domain, and maintenance." },
+      { p: "Hosting alone typically runs **R89–R499 a month**, depending on traffic and the level of support included. A **.co.za domain** costs around **R150 a year** to register, separate from hosting. Skip a managed plan and you add a maintenance retainer on top. Agencies commonly charge **R500–R1,500 a month** for basic upkeep like updates, backups and small content changes, and up to **R12,000 a month** for hands-on support of a larger or e-commerce site." },
+      { p: "A managed plan from **R799 a month** bundles hosting and support into one bill. At the bottom of each range those items come to less than R799 a month: hosting from R89, a .co.za domain at around R150 a year, and basic maintenance from R500. Once maintenance moves past the basic band, the separate total runs well above R799. Compare on what is included, not on the headline number alone. Read [what's included in hosting and maintenance](/guides/whats-included-in-website-hosting-and-maintenance/) before comparing a monthly plan against a once-off quote plus these running costs." },
+      { h2: "Why Overseas Website Quotes Don't Compare Directly: UK, Australia and India" },
+      { p: "The figures in this article are South African, in rands, from South African suppliers. This guide prices the South African market only, so an overseas reader should use the band framework here rather than these rand amounts. That matters if you're comparing a local quote against something you found on a UK, Australian or Indian site. Currency, tax rules and labour costs differ. A number quoted in pounds or dollars won't translate cleanly into rands just by converting it on the day, and no rand figure in this article is a UK, Australian or Indian price." },
+      { p: "The shape of the market is the same everywhere, though. A template or DIY build sits at the bottom of the range. A fully custom design costs more, because it includes original design work rather than a template with your logo dropped in. In South Africa that is the template band and the custom band set out in the short answer above." },
+      { p: "Three things to check on an overseas quote: whether VAT or GST is included in the figure, what local labour rates are for design work, and whether hosting is billed locally or bundled. Comparing an overseas quote? Ask what band it falls into rather than trusting the raw number. Is it template-based or custom, and does it include hosting? A cheap-looking quote that excludes hosting and a domain isn't cheaper than a managed plan, it's just missing line items." },
+      { h2: "How to Read a Web Design Quote and Compare It Fairly" },
+      { p: "Line up quotes on what each one includes, not just the total at the bottom. A build price alone tells you little if one quote bundles hosting and one does not." },
+      { p: "Check for these before comparing numbers:" },
+      { ul: [
+        "**Hosting:** is it included, or billed separately at the monthly rate set out above?",
+        "**Domain:** does the quote cover your .co.za registration, or is that on you?",
+        "**Maintenance:** are updates and small changes included, or a separate retainer?",
+        "**Design type:** is it the template band or the custom band from the short answer? A quote should say which one you're getting.",
+        "**Pricing basis:** is it a fixed project price or an hourly rate? An hourly quote needs an estimated hour count turned into a project total before it can be set beside a fixed price.",
+      ] },
+      { p: "A low once-off number that leaves out hosting, a domain and maintenance still needs all three added somewhere. Compare it against a managed plan from R799 a month on the same basis. Everything in, side by side, before you decide which is actually cheaper." },
+      { p: "Ask each designer for the same brief and the same list of inclusions. Our [South African website cost guide](/guides/how-much-does-a-website-cost-in-south-africa/) sets out the same bands in more detail if you want a second reference point." },
+      { p: "A once-off template build, a fully custom design, or a managed monthly plan: whichever route fits your budget, the number now has a range attached to it. Three things decide the band. How many pages you need, how much of the design is original, and whether hosting and support are bundled in or billed apart." },
+      { p: "Want that worked out for your business rather than in the abstract? All Done Sites builds and maintains small business websites in South Africa on exactly this kind of template and managed-plan pricing. Get in touch and describe what you need; you'll get a quote that says plainly what it includes." },
+    ],
+    faqs: [
+      {
+        q: "How much does a small business website cost in South Africa?",
+        a: "A template-based build typically costs R5,590 to R15,000 once-off, or from R799 a month on a managed plan. A fully custom design usually runs R16,900 to R40,000.",
+      },
+      {
+        q: "What is the cheapest way to get a small business website?",
+        a: "A DIY builder is the cheapest route, from around R300 a month. You do the design and content work yourself rather than paying someone else to.",
+      },
+      {
+        q: "Does the build price include hosting and a domain?",
+        a: "Not usually, unless you're on a managed plan. Hosting alone typically costs R89 to R499 a month, and a .co.za domain around R150 a year.",
+      },
+      {
+        q: "Is a freelancer or an agency cheaper?",
+        a: "Both cover roughly the same bands, though a freelancer more often works in the template band: R5,590 to R15,000 for a template build, R16,900 to R40,000 for custom design. An agency adds a team and project management on top.",
+      },
+      {
+        q: "How much does website maintenance cost each month?",
+        a: "Agencies commonly charge R500 to R1,500 a month for basic upkeep: updates, backups and small content changes.",
+      },
+      {
+        q: "Is South African website pricing different from the UK, Australia or India?",
+        a: "The rand figures here are South African. They won't convert cleanly from a quote in another currency, so ask an overseas quote which band it is in instead. The shape of the market is the same everywhere: template builds sit lower, custom design costs more.",
+      },
+    ],
+  },
 ];
 
 export function getArticle(slug: string | undefined): Article | undefined {
