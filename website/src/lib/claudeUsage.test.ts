@@ -69,6 +69,7 @@ import {
   windowCreditAccounts,
   windowCreditAccountsWithoutStretch,
   effortRunCounts,
+  effortTableModels,
   perWeekRegimesOf,
   windowTokensValueFor as windowTokensValueOf,
   weeklyRegimeLevelsFor as weeklyLevelsOf,
@@ -1698,6 +1699,42 @@ describe("one quantity, one figure", () => {
     delete partial.weekly_window_ratios_basis!.credits_per_week!.max5;
     expect(planScaling(partial).perWeek).toBeNull();
     expect(planScaling(PUBLISHED)).toEqual({ credits: false, perWindow: "1 : 5 : 20", perWeek: null });
+  });
+
+  it("shows a measured successor in its predecessor's place in the effort table, keeping a new model", () => {
+    const order = ["claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1"];
+    const mix = creditsOf(MEASURED)!.effort_cache_mix!;
+    // Only the old ids: nothing is superseded, every model stays.
+    expect(new Set(effortTableModels(MEASURED, mix, order))).toEqual(new Set(Object.keys(mix)));
+    const with55 = {
+      ...mix,
+      "claude-sonnet-5-5": mix["claude-sonnet-5"],
+      "claude-opus-5-5": mix["claude-opus-5"],
+      "claude-haiku-5-5": mix["claude-sonnet-5"],
+    };
+    // This file has no window figure for Opus 5.5, so the page hides it and Opus 5 keeps its column.
+    // Haiku 5.5's predecessor has no cells, so it replaces nothing and is kept, after the order.
+    expect(effortTableModels(MEASURED, with55, order)).toEqual([
+      "claude-sonnet-5-5",
+      "claude-fable-5-1",
+      "claude-opus-5",
+      "claude-haiku-5-5",
+    ]);
+    const measured55 = structuredClone(MEASURED);
+    measured55.credits!.window_tokens = {
+      ...measured55.credits!.window_tokens,
+      per_family: {
+        ...measured55.credits!.window_tokens?.per_family,
+        "opus-5-5": { all: { value: 1e9, interval: [8e8, 1.2e9], status: null } },
+      },
+    } as never;
+    measured55.credits!.per_model = { ...measured55.credits!.per_model, "opus-5-5": measured55.credits!.per_model!.opus };
+    expect(effortTableModels(measured55, with55, order)).toEqual([
+      "claude-sonnet-5-5",
+      "claude-opus-5-5",
+      "claude-fable-5-1",
+      "claude-haiku-5-5",
+    ]);
   });
 
   it("reads the run counts and the plotted mix off the JSON", () => {

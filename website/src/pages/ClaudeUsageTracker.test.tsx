@@ -22,6 +22,8 @@ import {
   accountLabel,
   compute,
   computeCredits,
+  EFFORTS,
+  fmtShare,
   computeWindowTokens,
   windowTokenRegimeLevelsFor,
   windowTokensValueFor,
@@ -58,6 +60,9 @@ import schema3WindowTokens from "@/lib/__fixtures__/claude-usage-schema3-window-
 import schema3TokensPerWeek from "@/lib/__fixtures__/claude-usage-schema3-tokens-per-week.json";
 // The file published at 2026-09-23T11:30Z plus a null opus-5-5 family (tracker branch opus-5-5-family).
 import opus55 from "@/lib/__fixtures__/claude-usage-opus-5-5.json";
+// tracker PR #132: the publisher's output once Sonnet 5.5 and Opus 5.5 were calibrated (2026-10-08),
+// with the Sonnet 5 and Opus 5 cells still in the file.
+import effort55 from "@/lib/__fixtures__/claude-usage-effort-5-5.json";
 // The file published at 2026-09-23T15:30Z with the opus-5-5 and haiku rows filled at an inferred
 // rate, per tracker seat wf-102's contract: Opus 5.5 at 0.8x Opus (list price), Haiku at 0.2x
 // (the January 2026 credit table), each row's figures scaled from Opus's.
@@ -1419,7 +1424,7 @@ describe("the Opus 5.5 row", () => {
     for (const list of options(html)) expect(list.map(([v]) => v)).toContain("claude-haiku-4-5");
   });
 
-  it("lists Opus 5.5 once it is measured: just before Opus 5 in the newest-first pickers, just after it in the table", () => {
+  it("lists Opus 5.5 once it is measured: just before Opus 5 in the newest-first pickers, in Opus 5's place in the table", () => {
     const html = renderHtml(measured55(), "max20", OPUS, NOW);
     const lists = options(html);
     expect(lists.length).toBe(1);
@@ -1428,7 +1433,10 @@ describe("the Opus 5.5 row", () => {
       expect(list[at - 1]).toEqual(["claude-opus-5-5", "Opus 5.5"]);
     }
     const heads = [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
-    expect(heads.indexOf("Opus 5.5")).toBe(heads.indexOf("Opus 5") + 1);
+    // The effort table shows the model that replaced Opus 5; Opus 5's cells stay in the file as history.
+    expect(heads).toContain("Opus 5.5");
+    expect(heads).not.toContain("Opus 5");
+    expect(measured55().credits!.effort_cache_mix).toHaveProperty(OPUS);
   });
 
   it("reads Opus 5.5's own family figure, not Opus's", () => {
@@ -2773,5 +2781,43 @@ describe("headless NB under the window figure (wf-146)", () => {
     expect(panel).toContain(`<div class="sub" data-note="headless">${NB}</div>`);
     expect(page({ ...base, five_hour_meter: { headless_factor: { value: null } } })).not.toContain("headless work");
     expect(page({ ...base, five_hour_meter: undefined })).not.toContain("headless work");
+  });
+});
+
+// Jonathan, 2026-10-08: the effort table reads Sonnet 5.5 | Opus 5.5 | Fable 5.1, from new runs.
+describe("the effort table on the 5.5 cells", () => {
+  const J = effort55 as unknown as UsageJson;
+  const effortTable = (html: string) => html.slice(html.indexOf('<table class="effort"'), html.indexOf("</table>", html.indexOf('<table class="effort"')));
+
+  it("shows Sonnet 5.5, Opus 5.5 and Fable 5.1, and keeps the old cells in the file", () => {
+    const table = effortTable(renderHtml(J, "max20", "claude-opus-5-5"));
+    const heads = [...table.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]).filter(Boolean);
+    expect(heads).toEqual(["Sonnet 5.5", "Opus 5.5", "Fable 5.1"]);
+    expect(table).not.toMatch(/data-model="claude-(sonnet|opus)-5"/);
+    for (const old of ["claude-sonnet-5", "claude-opus-5"]) {
+      expect(J.credits!.effort_cache_mix).toHaveProperty(old);
+      expect(J.credits!.effort_credits).toHaveProperty(old);
+      expect(J.effort_usd).toHaveProperty(old);
+    }
+  });
+
+  it("prints each 5.5 cell's credits, share of the window, cache-read share, runs and cold runs", () => {
+    const html = renderHtml(J, "max20", "claude-opus-5-5");
+    const table = effortTable(html);
+    for (const m of ["claude-sonnet-5-5", "claude-opus-5-5"]) {
+      for (const e of EFFORTS) {
+        const c = computeCredits(J, "max20", m, e)!.effortCredits!;
+        const mix = J.credits!.effort_cache_mix![m]![e]!;
+        const cell = table.split(`data-model="${m}"`)[EFFORTS.length - EFFORTS.indexOf(e)].split("</td>")[0];
+        const text = cell.replace(/<[^>]+>/g, "");
+        expect(text, `${m} ${e}`).toContain(c.credits!.text);
+        expect(text, `${m} ${e}`).toContain(c.percentOfWindow!.text);
+        expect(text, `${m} ${e}`).toContain(`${fmtShare(mix.cache_read_share!)} cache read`);
+        expect(text, `${m} ${e}`).toContain(`${mix.runs} runs`);
+        expect(text, `${m} ${e}`).toContain(`${mix.cold_cache_runs} cold`);
+      }
+    }
+    // Fable 5.1 max kept 6 of its 7 runs (2026-09-09), so the caveat points at the printed counts.
+    expect(render(J, "max20", "claude-opus-5-5")).toContain("run the number of times each cell of the matrix above prints");
   });
 });
