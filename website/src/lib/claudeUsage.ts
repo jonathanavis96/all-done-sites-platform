@@ -2436,6 +2436,18 @@ export function pageModels(j: UsageJson, models: string[]): string[] {
     .flatMap((m) => [m, ...placed.filter((p) => placedAfter(j, p) === m)]);
 }
 
+// The effort table's columns, in the order it shows them: `order` first, then any other model the
+// matrix publishes cells for, in the file's own order, so a new model never silently drops off the
+// table. A model whose successor in its own line is shown too (claude-sonnet-5 once
+// claude-sonnet-5-5 is measured) is left off: the file keeps its cells as history, and the table
+// shows the model that replaced it. A successor the page still hides (pageModels) replaces nothing.
+export function effortTableModels(j: UsageJson, mix: Record<string, unknown>, order: string[]): string[] {
+  const shown = pageModels(j, Object.keys(mix));
+  const superseded = new Set(shown.map(predecessorOf).filter((m): m is string => m !== null && shown.includes(m)));
+  const current = shown.filter((m) => !superseded.has(m));
+  return [...order.filter((m) => current.includes(m)), ...current.filter((m) => !order.includes(m))];
+}
+
 export function fmtCredits(n: number): string {
   return Math.round(n).toLocaleString("en-US");
 }

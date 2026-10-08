@@ -42,6 +42,7 @@ import {
   weeklyCurrentFor,
   weeklyReadingsFor,
   effortRunCounts,
+  effortTableModels,
   shortfallRows,
   speedAccountSeries,
   speedAccounts,
@@ -1478,15 +1479,10 @@ export default function ClaudeUsageTracker({
   const effortCredits = credits?.effort_credits ?? null;
   // The effort table's own column order: Sonnet, Opus, Fable first (the plan's own progression),
   // then any other model key the file happens to publish, kept in whatever order the file gives
-  // them so a new model never silently drops off the table.
-  const EFFORT_MODEL_ORDER = ["claude-sonnet-5", "claude-opus-5", "claude-fable-5-1"];
-  const effortModelOrder =
-    effortMix && data
-      ? pageModels(data, [
-          ...EFFORT_MODEL_ORDER.filter((m) => m in effortMix),
-          ...Object.keys(effortMix).filter((m) => !EFFORT_MODEL_ORDER.includes(m)),
-        ])
-      : [];
+  // them so a new model never silently drops off the table. A model superseded by a measured
+  // successor (Sonnet 5 by Sonnet 5.5) stays in the file as history and off the table.
+  const EFFORT_MODEL_ORDER = ["claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1"];
+  const effortModelOrder = effortMix && data ? effortTableModels(data, effortMix, EFFORT_MODEL_ORDER) : [];
   // True once the credits block can state this model's window in credits. Everything the page
   // says about the meter, the API value it holds and the sessions it buys then comes from that one
   // block, so the hero, the chart headlines and the plan table cannot disagree. The token figures
@@ -1507,7 +1503,7 @@ export default function ClaudeUsageTracker({
   // Each watched account's own windows per week, as values rather than as dots alone.
   const accountWeekly = data ? accountWindowsPerWeek(data, plan) : [];
   // How many runs each effort cell was measured over, for the caveat that used to name a number.
-  const runCounts = effortRunCounts(effortMix);
+  const runCounts = effortRunCounts(effortMix && Object.fromEntries(effortModelOrder.map((m) => [m, effortMix[m]])));
   const documentedUrlText =
     data?.weekly_window_ratios_basis?.source_url?.replace(/^https?:\/\//, "") ?? "she-llac.com/claude-limits";
   const documentedAsOf = data ? basisDate(data, data.weekly_window_ratios_basis) : null;

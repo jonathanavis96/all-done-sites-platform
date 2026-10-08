@@ -1419,7 +1419,7 @@ describe("the Opus 5.5 row", () => {
     for (const list of options(html)) expect(list.map(([v]) => v)).toContain("claude-haiku-4-5");
   });
 
-  it("lists Opus 5.5 once it is measured: just before Opus 5 in the newest-first pickers, just after it in the table", () => {
+  it("lists Opus 5.5 once it is measured: just before Opus 5 in the newest-first pickers, in Opus 5's place in the table", () => {
     const html = renderHtml(measured55(), "max20", OPUS, NOW);
     const lists = options(html);
     expect(lists.length).toBe(1);
@@ -1428,7 +1428,10 @@ describe("the Opus 5.5 row", () => {
       expect(list[at - 1]).toEqual(["claude-opus-5-5", "Opus 5.5"]);
     }
     const heads = [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
-    expect(heads.indexOf("Opus 5.5")).toBe(heads.indexOf("Opus 5") + 1);
+    // The effort table shows the model that replaced Opus 5; Opus 5's cells stay in the file as history.
+    expect(heads).toContain("Opus 5.5");
+    expect(heads).not.toContain("Opus 5");
+    expect(measured55().credits!.effort_cache_mix).toHaveProperty(OPUS);
   });
 
   it("reads Opus 5.5's own family figure, not Opus's", () => {
