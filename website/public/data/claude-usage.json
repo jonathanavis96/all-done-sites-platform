@@ -6,17 +6,17 @@
    "state": "idle"
   },
   "a2": {
-   "feed_at": "2026-10-10T00:29:48+00:00",
+   "feed_at": "2026-10-10T00:59:23+00:00",
    "newest_stretch_end": "2026-10-09T07:35:59+00:00",
    "state": "fresh"
   },
   "a3": {
-   "feed_at": "2026-10-10T00:29:48+00:00",
+   "feed_at": "2026-10-10T00:48:53+00:00",
    "newest_stretch_end": "2026-10-08T23:54:07+00:00",
    "state": "fresh"
   },
   "a4": {
-   "feed_at": "2026-10-10T00:29:48+00:00",
+   "feed_at": "2026-10-10T00:59:23+00:00",
    "newest_stretch_end": "2026-10-06T22:48:16+00:00",
    "state": "idle"
   }
@@ -169,8 +169,8 @@
   "max20": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-10-10T00:30:04+00:00",
-    "current_since": "2026-09-10T00:30:04+00:00",
+    "as_of": "2026-10-10T01:00:04+00:00",
+    "current_since": "2026-09-10T01:00:04+00:00",
     "freshest_sample_at": "2026-09-16T00:11:31+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 1,
@@ -210,8 +210,8 @@
   "max5": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-10-10T00:30:04+00:00",
-    "current_since": "2026-09-10T00:30:04+00:00",
+    "as_of": "2026-10-10T01:00:04+00:00",
+    "current_since": "2026-09-10T01:00:04+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -243,8 +243,8 @@
   "pro": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-10-10T00:30:04+00:00",
-    "current_since": "2026-09-10T00:30:04+00:00",
+    "as_of": "2026-10-10T01:00:04+00:00",
+    "current_since": "2026-09-10T01:00:04+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -272,7 +272,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-10-10T00:30:04+00:00"
+  "updated_at": "2026-10-10T01:00:04+00:00"
  },
  "credits": {
   "announced_change": {
@@ -7928,7 +7928,7 @@
        "a3",
        "a4"
       ],
-      "end": "2026-10-10T00:39:59.843053+00:00",
+      "end": "2026-10-10T00:48:53+00:00",
       "n_windows": 324,
       "ratio": 4.8477,
       "raw_ratio": 5.5383,
@@ -8154,7 +8154,7 @@
    }
   }
  },
- "generated_at": "2026-10-10T00:31:29.269766+00:00",
+ "generated_at": "2026-10-10T01:01:27.029362+00:00",
  "history": {
   "claude-fable-5-1": [
    {
@@ -15504,7 +15504,7 @@
   ]
  },
  "last_sample_at": "2026-10-09T15:45:08+00:00",
- "meter_read_at": "2026-10-10T00:29:48+00:00",
+ "meter_read_at": "2026-10-10T00:59:23+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -16547,7 +16547,7 @@
    },
    "a2": {
     "first_day": "2026-08-23",
-    "last_day": "2026-10-09"
+    "last_day": "2026-10-10"
    },
    "a3": {
     "first_day": "2026-08-30",
@@ -34114,7 +34114,7 @@
      "regimes": [
       {
        "assumed": false,
-       "end": "2026-10-10T00:29:48+00:00",
+       "end": "2026-10-10T00:48:53+00:00",
        "pieces": 63,
        "points": 58,
        "quality": "bounded",
@@ -43001,28 +43001,6 @@
      "windows": 7.4
     },
     {
-     "account": "a3",
-     "five_hour_pct": 0.0,
-     "headless_inflation": 1.487,
-     "headless_share": 1.0,
-     "headless_share_source": "seven_day_steps",
-     "pieces": 1,
-     "raw_five_hour_pct": 0.0,
-     "raw_rounding_interval": [
-      0.0,
-      null
-     ],
-     "raw_windows": 0.0,
-     "reset_verified": false,
-     "rounding_interval": [
-      0.0,
-      null
-     ],
-     "seven_day_pct": 1.0,
-     "window_ending": "2026-10-10T00:29:48+00:00",
-     "windows": 0.0
-    },
-    {
      "account": "a2",
      "five_hour_pct": 1.0,
      "headless_inflation": 1.0,
@@ -43043,11 +43021,33 @@
      "seven_day_pct": 0.0,
      "window_ending": "2026-10-10T00:39:59.843053+00:00",
      "windows": null
+    },
+    {
+     "account": "a3",
+     "five_hour_pct": 0.0,
+     "headless_inflation": 1.487,
+     "headless_share": 1.0,
+     "headless_share_source": "seven_day_steps",
+     "pieces": 1,
+     "raw_five_hour_pct": 0.0,
+     "raw_rounding_interval": [
+      0.0,
+      null
+     ],
+     "raw_windows": 0.0,
+     "reset_verified": false,
+     "rounding_interval": [
+      0.0,
+      null
+     ],
+     "seven_day_pct": 1.0,
+     "window_ending": "2026-10-10T00:48:53+00:00",
+     "windows": 0.0
     }
    ],
    "current": 4.73,
    "current_estimate": {
-    "as_of": "2026-10-10T00:39:59.843053+00:00",
+    "as_of": "2026-10-10T00:48:53+00:00",
     "assumed": false,
     "five_hour_pct": 1106.1,
     "from": "2026-09-26T10:55:14+00:00",
@@ -43242,7 +43242,7 @@
     },
     {
      "assumed": false,
-     "end": "2026-10-10T00:39:59.843053+00:00",
+     "end": "2026-10-10T00:48:53+00:00",
      "pieces": 348,
      "points": 324,
      "quality": "bounded",
