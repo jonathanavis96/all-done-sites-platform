@@ -6,7 +6,7 @@
    "state": "idle"
   },
   "a2": {
-   "feed_at": "2026-10-12T17:22:22+00:00",
+   "feed_at": "2026-10-12T17:58:29+00:00",
    "newest_stretch_end": "2026-10-09T07:35:59+00:00",
    "state": "idle"
   },
@@ -16,7 +16,7 @@
    "state": "fresh"
   },
   "a4": {
-   "feed_at": "2026-10-12T17:27:44+00:00",
+   "feed_at": "2026-10-12T17:53:09+00:00",
    "newest_stretch_end": "2026-10-06T22:48:16+00:00",
    "state": "idle"
   }
@@ -188,8 +188,8 @@
   "max20": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-10-12T17:30:05+00:00",
-    "current_since": "2026-09-12T17:30:05+00:00",
+    "as_of": "2026-10-12T18:00:05+00:00",
+    "current_since": "2026-09-12T18:00:05+00:00",
     "freshest_sample_at": "2026-09-16T00:11:31+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 1,
@@ -229,8 +229,8 @@
   "max5": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-10-12T17:30:05+00:00",
-    "current_since": "2026-09-12T17:30:05+00:00",
+    "as_of": "2026-10-12T18:00:05+00:00",
+    "current_since": "2026-09-12T18:00:05+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -262,8 +262,8 @@
   "pro": {
    "contributors": 0,
    "evidence": {
-    "as_of": "2026-10-12T17:30:05+00:00",
-    "current_since": "2026-09-12T17:30:05+00:00",
+    "as_of": "2026-10-12T18:00:05+00:00",
+    "current_since": "2026-09-12T18:00:05+00:00",
     "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -291,7 +291,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-10-12T17:30:05+00:00"
+  "updated_at": "2026-10-12T18:00:05+00:00"
  },
  "credits": {
   "announced_change": {
@@ -3948,16 +3948,16 @@
        "n_straddling": 0,
        "ratio_after_over_before": 0.8271,
        "ratio_interval": [
-        0.2933,
-        4.1096
+        0.2812,
+        4.916
        ],
        "raw_windows_per_week_after": 4.0,
        "raw_windows_per_week_before": 4.8936,
        "readings": {
         "five_hour_scope": {
          "five_hour_window_change_interval_pct": [
-          -75.7,
-          240.9
+          -79.7,
+          255.7
          ],
          "five_hour_window_change_pct": 20.9,
          "weekly_cap_change_pct": 0.0
@@ -3965,18 +3965,18 @@
         "weekly_scope": {
          "five_hour_window_change_pct": 0.0,
          "weekly_cap_change_interval_pct": [
-          -70.7,
-          311.0
+          -71.9,
+          391.6
          ],
          "weekly_cap_change_pct": -17.3
         }
        },
-       "weight": 0.4076,
+       "weight": 0.3694,
        "windows_per_week_after": 3.8125,
        "windows_per_week_before": 4.6095,
        "windows_per_week_change_interval_pct": [
-        -70.7,
-        311.0
+        -71.9,
+        391.6
        ],
        "windows_per_week_change_pct": -17.3
       },
@@ -4012,7 +4012,7 @@
          "weekly_cap_change_pct": -8.7
         }
        },
-       "weight": 0.5924,
+       "weight": 0.6306,
        "windows_per_week_after": 4.4892,
        "windows_per_week_before": 4.9147,
        "windows_per_week_change_interval_pct": [
@@ -4050,19 +4050,19 @@
      "readings": {
       "five_hour_scope": {
        "five_hour_window_change_interval_pct": [
-        -74.3,
-        176.3
+        -75.8,
+        176.8
        ],
-       "five_hour_window_change_pct": 14.0,
+       "five_hour_window_change_pct": 13.6,
        "weekly_cap_change_pct": 0.0
       },
       "weekly_scope": {
        "five_hour_window_change_pct": 0.0,
        "weekly_cap_change_interval_pct": [
-        -63.8,
-        288.5
+        -63.9,
+        313.6
        ],
-       "weekly_cap_change_pct": -12.3
+       "weekly_cap_change_pct": -11.9
       }
      },
      "scope": {
@@ -4179,18 +4179,18 @@
      },
      "windows_per_week_change_excludes_no_change": false,
      "windows_per_week_change_interval_pct": [
-      -63.8,
-      288.5
+      -63.9,
+      313.6
      ],
-     "windows_per_week_change_pct": -12.3,
-     "windows_per_week_ratio": 0.8772,
+     "windows_per_week_change_pct": -11.9,
+     "windows_per_week_ratio": 0.8805,
      "windows_per_week_ratio_bootstrap_interval": [
-      0.7345,
-      1.3858
+      0.7436,
+      1.3267
      ],
      "windows_per_week_ratio_interval": [
-      0.3619,
-      3.8849
+      0.3612,
+      4.1357
      ],
      "withheld_reason": "the five-hour window change (credits per 1% of the five-hour meter) -0.8%: plan-wide test (ADR 0001 rule 9) failed: the change rests on one account (a3); a plan limit change applies to every account at once; interval test (ADR 0001 rule 9) failed: its 95% interval [-20.9, 24.4] includes no change; the weekly limit change (credits per 1% of the seven-day meter): not measured, no account has both sides"
     }
@@ -7680,8 +7680,8 @@
      "windows_per_week_meters": 4.4658,
      "windows_per_week_pooled": 4.5659,
      "windows_per_week_pooled_interval": [
-      4.1934,
-      4.9982
+      4.1927,
+      4.9992
      ],
      "windows_per_week_source": "weekly_over_window"
     }
@@ -8563,8 +8563,8 @@
       "raw_ratio": 5.535,
       "raw_sum_five_hour_pct": 4738.0,
       "rounding_interval": [
-       4.6375,
-       5.0474
+       4.6372,
+       5.0477
       ],
       "start": "2026-09-05T10:57:35+00:00",
       "sum_five_hour_pct": 4138.9,
@@ -8783,7 +8783,7 @@
    }
   }
  },
- "generated_at": "2026-10-12T17:31:39.721544+00:00",
+ "generated_at": "2026-10-12T18:01:35.714843+00:00",
  "history": {
   "claude-fable-5-1": [
    {
@@ -17158,7 +17158,7 @@
   ]
  },
  "last_sample_at": "2026-10-12T13:12:24+00:00",
- "meter_read_at": "2026-10-12T17:27:44+00:00",
+ "meter_read_at": "2026-10-12T17:58:29+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -28044,16 +28044,16 @@
       {
        "day": "2026-10-12",
        "fast_session_requests": 0,
-       "n": 424,
+       "n": 434,
        "output_tokens_per_s": {
-        "median": 100.3,
-        "q1": 92.9,
-        "q3": 109.1
+        "median": 100.4,
+        "q1": 93.0,
+        "q3": 109.3
        },
        "time_to_first_block_s": {
-        "median": 3.26,
-        "q1": 2.22,
-        "q3": 5.63
+        "median": 3.3,
+        "q1": 2.23,
+        "q3": 5.7
        }
       }
      ],
@@ -29016,16 +29016,16 @@
       {
        "day": "2026-10-12",
        "fast_session_requests": 0,
-       "n": 356,
+       "n": 366,
        "output_tokens_per_s": {
-        "median": 99.9,
-        "q1": 92.3,
-        "q3": 108.2
+        "median": 100.1,
+        "q1": 92.4,
+        "q3": 108.5
        },
        "time_to_first_block_s": {
-        "median": 3.13,
+        "median": 3.15,
         "q1": 2.24,
-        "q3": 5.33
+        "q3": 5.37
        }
       }
      ],
@@ -29900,16 +29900,16 @@
       {
        "day": "2026-10-12",
        "fast_session_requests": 0,
-       "n": 479,
+       "n": 489,
        "output_tokens_per_s": {
-        "median": 98.0,
+        "median": 98.1,
         "q1": 88.9,
-        "q3": 107.0
+        "q3": 107.2
        },
        "time_to_first_block_s": {
-        "median": 3.63,
-        "q1": 2.35,
-        "q3": 5.59
+        "median": 3.64,
+        "q1": 2.36,
+        "q3": 5.64
        }
       }
      ],
@@ -30460,16 +30460,16 @@
      {
       "day": "2026-10-12",
       "fast_session_requests": 0,
-      "n": 1844,
+      "n": 1854,
       "output_tokens_per_s": {
-       "median": 101.6,
+       "median": 101.7,
        "q1": 91.9,
        "q3": 114.2
       },
       "time_to_first_block_s": {
-       "median": 3.45,
+       "median": 3.46,
        "q1": 2.27,
-       "q3": 5.84
+       "q3": 5.86
       }
      }
     ]
@@ -36071,16 +36071,16 @@
       {
        "day": "2026-10-12",
        "fast_session_requests": 0,
-       "n": 106,
+       "n": 107,
        "output_tokens_per_s": {
-        "median": 119.1,
+        "median": 119.2,
         "q1": 112.1,
-        "q3": 125.6
+        "q3": 125.5
        },
        "time_to_first_block_s": {
-        "median": 9.19,
-        "q1": 5.12,
-        "q3": 14.25
+        "median": 9.14,
+        "q1": 5.15,
+        "q3": 14.23
        }
       }
      ]
@@ -36254,16 +36254,16 @@
      {
       "day": "2026-10-12",
       "fast_session_requests": 0,
-      "n": 106,
+      "n": 107,
       "output_tokens_per_s": {
-       "median": 119.1,
+       "median": 119.2,
        "q1": 112.1,
-       "q3": 125.6
+       "q3": 125.5
       },
       "time_to_first_block_s": {
-       "median": 9.19,
-       "q1": 5.12,
-       "q3": 14.25
+       "median": 9.14,
+       "q1": 5.15,
+       "q3": 14.23
       }
      }
     ]
@@ -36355,13 +36355,13 @@
       {
        "assumed": false,
        "end": "2026-10-12T21:40:00.180642+00:00",
-       "pieces": 159,
+       "pieces": 160,
        "points": 147,
        "quality": "bounded",
        "raw_windows": 5.42,
        "rounding_interval": [
-        4.4816,
-        5.127
+        4.4807,
+        5.1282
        ],
        "seven_day_pct": 349.0,
        "source": "passive_paired_deltas",
@@ -45797,16 +45797,16 @@
      "headless_inflation": 1.0,
      "headless_share": null,
      "headless_share_source": null,
-     "pieces": 1,
+     "pieces": 2,
      "raw_five_hour_pct": 2.0,
      "raw_rounding_interval": [
-      0.1671,
+      0.0,
       null
      ],
      "raw_windows": 2.0,
      "reset_verified": true,
      "rounding_interval": [
-      0.1671,
+      0.0,
       null
      ],
      "seven_day_pct": 1.0,
@@ -45820,13 +45820,13 @@
     "assumed": false,
     "five_hour_pct": 1067.0,
     "from": "2026-09-29T00:09:59.971104+00:00",
-    "pieces": 183,
+    "pieces": 184,
     "points": 155,
     "quality": "measured",
     "reasons": [],
     "rounding_interval": [
-     4.2479,
-     5.2925
+     4.2467,
+     5.2942
     ],
     "seven_day_pct": 226.0,
     "source": "passive_paired_deltas",
@@ -46012,13 +46012,13 @@
     {
      "assumed": false,
      "end": "2026-10-12T21:40:00.180642+00:00",
-     "pieces": 382,
+     "pieces": 383,
      "points": 347,
      "quality": "bounded",
      "raw_windows": 5.54,
      "rounding_interval": [
-      4.6375,
-      5.0474
+      4.6372,
+      5.0477
      ],
      "seven_day_pct": 856.0,
      "source": "passive_paired_deltas",
@@ -46171,8 +46171,8 @@
      "partial": true,
      "raw_windows": 4.92,
      "rounding_interval": [
-      2.3439,
-      9.7898
+      2.3167,
+      10.107
      ],
      "seven_day_pct": 13.0,
      "source": "passive_paired_deltas",
