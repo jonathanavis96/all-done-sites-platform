@@ -65,6 +65,7 @@ import {
   fmtCredits,
   modelFamily,
   pageModels,
+  familyRateProvisional,
   inferredRateNote,
   windowCreditAccounts,
   windowCreditAccountsWithoutStretch,
@@ -2726,6 +2727,93 @@ describe("a new model id's own family", () => {
     measured.credits!.per_model!["sonnet-5-5"]!.rate_source = "measured";
     measured.credits!.window_tokens!.per_family!["sonnet-5-5"]!.rate_source = "measured";
     expect(computeCredits(measured, "max20", SONNET55)!.inferredNote).toBeNull();
+  });
+});
+
+describe("a provisional measured rate (tracker #93)", () => {
+  // The seat-119 file prices Opus 5.5 at its measured rate with `measured_rate.provisional`
+  // false. The live file on 2026-09-24 published the same row with the flag true; this is that
+  // shape, with nothing else changed.
+  const BASE = regimeContract as unknown as UsageJson;
+  const OPUS55 = "claude-opus-5-5";
+  const PROVISIONAL = (() => {
+    const j = structuredClone(BASE);
+    j.credits!.per_model!["opus-5-5"]!.measured_rate = { ...j.credits!.per_model!["opus-5-5"]!.measured_rate, provisional: true };
+    return j;
+  })();
+
+  it("marks a value it is told is provisional, and never a status", () => {
+    const f: CreditsFigure = { value: 100, interval: [90, 110], status: null };
+    expect(creditFigure(f, fmtCredits, 1, true)).toEqual({ kind: "value", text: "100", range: "90 to 110", provisional: true });
+    expect(creditFigure(f, fmtCredits)).not.toHaveProperty("provisional");
+    expect(creditFigure({ value: null, interval: null, status: "rate not yet identified" }, fmtCredits, 1, true)).toEqual({
+      kind: "status",
+      text: "rate not yet identified",
+      range: null,
+    });
+  });
+
+  it("reads the flag off the family's measured rate, and only while the row is priced at it", () => {
+    expect(familyRateProvisional(BASE, "opus-5-5")).toBe(false);
+    expect(familyRateProvisional(PROVISIONAL, "opus-5-5")).toBe(true);
+    expect(familyRateProvisional(PROVISIONAL, "opus")).toBe(false);
+    expect(familyRateProvisional(PROVISIONAL, null)).toBe(false);
+    // Priced at its list price instead, the row does not rest on the fit the flag describes.
+    const listed = structuredClone(PROVISIONAL);
+    listed.credits!.per_model!["opus-5-5"]!.rate_source = "list_price_until_separable";
+    expect(familyRateProvisional(listed, "opus-5-5")).toBe(false);
+  });
+
+  it("marks every Opus 5.5 figure priced at the rate, at the same value, and nothing else", () => {
+    const cr = computeCredits(PROVISIONAL, "max20", OPUS55)!;
+    const before = computeCredits(BASE, "max20", OPUS55)!;
+    expect(cr.rateProvisional).toBe(true);
+    expect(before.rateProvisional).toBe(false);
+    for (const key of ["usdIn", "usdOut", "usdInPerWeek", "sessionsPerWindow", "sessionsPerWeek"] as const) {
+      expect(cr[key], key).toMatchObject({ kind: "value", provisional: true, text: before[key]!.text });
+      expect(before[key], key).not.toHaveProperty("provisional");
+    }
+    // The window's credits are counted on pure-Opus stretches: no Opus 5.5 rate enters them.
+    expect(cr.windowCredits).not.toHaveProperty("provisional");
+    // Opus 5 is priced at its own rate, which the flag does not describe.
+    const opus5 = computeCredits(PROVISIONAL, "max20", "claude-opus-5")!;
+    expect(opus5.rateProvisional).toBe(false);
+    expect(opus5.usdIn).not.toHaveProperty("provisional");
+    // The window in tokens is the Opus window converted at the Opus 5.5 rate, so it is marked too.
+    const wt = computeWindowTokens(PROVISIONAL, "max20", OPUS55)!;
+    expect(wt.rateProvisional).toBe(true);
+    expect(wt.perWindow).toMatchObject({ kind: "value", provisional: true });
+    expect(wt.perWeek).toMatchObject({ kind: "value", provisional: true });
+    expect(wt.perClass.length).toBeGreaterThan(0);
+    for (const { fig } of wt.perClass) expect(fig.provisional).toBe(true);
+    expect(computeWindowTokens(PROVISIONAL, "max20", "claude-opus-5")!.perWindow).not.toHaveProperty("provisional");
+  });
+
+  it("leaves a window the block does not convert at the rate unmarked", () => {
+    // A family's window measured directly on its own stretches is published with another
+    // rate_source ("list" on the live file) and no conversion.
+    const direct = structuredClone(PROVISIONAL);
+    direct.credits!.window_tokens!.per_family!["opus-5-5"]!.rate_source = "list";
+    const wt = computeWindowTokens(direct, "max20", OPUS55)!;
+    expect(wt.rateProvisional).toBe(false);
+    expect(wt.perWindow).not.toHaveProperty("provisional");
+  });
+
+  it("marks an effort cell priced at the provisional rate, and not one priced at another", () => {
+    const j = structuredClone(PROVISIONAL);
+    const cell = (rate_source: string) => ({
+      median_credits: { value: 28547, interval: [28547, 28547], status: null },
+      percent_of_window: { value: 0.15, interval: [0.14, 0.17], status: null },
+      runs: 7,
+      rate_source,
+    });
+    j.credits!.effort_credits = { ...j.credits!.effort_credits, [OPUS55]: { high: cell("measured"), low: cell("list_price_until_separable") } };
+    const high = computeCredits(j, "max20", OPUS55, "high")!.effortCredits!;
+    expect(high.credits).toMatchObject({ kind: "value", text: "28,547", provisional: true });
+    expect(high.percentOfWindow).toMatchObject({ kind: "value", provisional: true });
+    const low = computeCredits(j, "max20", OPUS55, "low")!.effortCredits!;
+    expect(low.credits).not.toHaveProperty("provisional");
+    expect(low.percentOfWindow).not.toHaveProperty("provisional");
   });
 });
 
