@@ -119,13 +119,13 @@ function weeklyChart(html: string): string {
 }
 
 // The cells of one plan-comparison row, in Pro, Max 5x, Max 20x order. A cell whose figure is
-// inferred reads "<figure> inferred".
+// inferred reads "<figure> inferred", and one priced at a provisional rate "<figure> provisional".
 function row(text: string, label: string): string[] {
   const table = text.slice(text.indexOf(" Plan comparison "), text.indexOf(" Contribute your own meter "));
   const after = table.split(` ${label} `)[1];
   const cells: string[] = [];
   for (const word of after.trim().split(" ")) {
-    if (word === "inferred" && cells.length > 0) cells[cells.length - 1] += " inferred";
+    if ((word === "inferred" || word === "provisional") && cells.length > 0) cells[cells.length - 1] += ` ${word}`;
     else if (cells.length === 3) break;
     else cells.push(word);
   }
@@ -1661,6 +1661,38 @@ describe("a new model id's own family on the page", () => {
 
 // Tracker seat wf-102: a family the fits cannot identify yet is published with a full row priced
 // at an inferred rate, `rate_source: "inferred"` and `inferred_from` naming the basis.
+// Since tracker #93 a measured rate can be published as provisional (`measured_rate.provisional`):
+// a figure, but not a final one. The seat-119 file prices Opus 5.5 at its measured rate with the
+// flag false; the live file on 2026-09-24 carried the same row with it true.
+describe("a provisional Opus 5.5 rate on the page", () => {
+  const BASE = regimeContract as unknown as UsageJson;
+  const OPUS55 = "claude-opus-5-5";
+  const PROVISIONAL = structuredClone(BASE);
+  PROVISIONAL.credits!.per_model!["opus-5-5"]!.measured_rate = {
+    ...PROVISIONAL.credits!.per_model!["opus-5-5"]!.measured_rate,
+    provisional: true,
+  };
+  const plans: Plan[] = ["pro", "max5", "max20"];
+  const marked = (f: { text: string } | null | undefined) => (f ? `${f.text} provisional` : "\u2014");
+
+  it("says so under the hero and marks every plan-table figure priced at the rate", () => {
+    const text = render(PROVISIONAL, "max20", OPUS55);
+    const wt = computeWindowTokens(PROVISIONAL, "max20", OPUS55)!;
+    expect(text).toContain(`${wt.perWindow!.text} tokens per 5-hour window`);
+    expect(text).toContain("Provisional: priced at a measured rate that is not yet final.");
+    expect(row(text, "Tokens per 5-hour window")).toEqual(plans.map((p) => marked(computeWindowTokens(PROVISIONAL, p, OPUS55)!.perWindow)));
+    expect(row(text, "API value per 5-hour window")).toEqual(plans.map((p) => marked(computeCredits(PROVISIONAL, p, OPUS55)!.usdIn)));
+  });
+
+  it("marks nothing while the flag is false, and nothing on a model priced at another rate", () => {
+    const count = (t: string) => (t.match(/provisional/gi) ?? []).length;
+    const before = count(render(BASE, "max20", OPUS55));
+    expect(count(render(PROVISIONAL, "max20", OPUS55))).toBeGreaterThan(before);
+    expect(count(render(PROVISIONAL, "max20", "claude-opus-5"))).toBe(count(render(BASE, "max20", "claude-opus-5")));
+    expect(render(BASE, "max20", OPUS55)).not.toContain("Provisional: priced at a measured rate");
+  });
+});
+
 describe("inferred Opus 5.5 and Haiku rows", () => {
   const INFERRED = inferredRates as unknown as UsageJson;
   // Pinned to the 2026-09-23 snapshot, when both rows were inferred. The live file changes with

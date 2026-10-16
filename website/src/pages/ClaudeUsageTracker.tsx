@@ -396,7 +396,8 @@ export function accountHighlightProps(
 // One row of the plan-comparison table: its label, and the cell each plan renders.
 interface PlanTableRow {
   label: string;
-  cell: (p: Plan) => { text: string; inferred: boolean };
+  // `provisional` marks a cell priced at a provisional rate (claudeUsage familyRateProvisional).
+  cell: (p: Plan) => { text: string; inferred: boolean; provisional?: boolean };
 }
 
 // One plan's levels on a chart: what the limit was, held flat between changes.
@@ -975,6 +976,19 @@ export function HeadlessNote({
   );
 }
 
+// A figure priced at a rate the tracker publishes as provisional says so in words beside the
+// number, the way the plan table marks an inferred one. Nothing for any other figure.
+const PROVISIONAL_NOTE = "Provisional: priced at a measured rate that is not yet final.";
+function ProvisionalMark({ fig }: { fig: CreditFigureText | null | undefined }) {
+  if (!fig?.provisional) return null;
+  return (
+    <>
+      {" "}
+      <em title={PROVISIONAL_NOTE}>provisional</em>
+    </>
+  );
+}
+
 function Fig({ fig, unit, statusUnit, lead }: { fig: CreditFigureText; unit: string; statusUnit?: string; lead?: string }) {
   // Number first where there is a number, unit first where what was published is a sentence:
   // "about 354 sessions per window", but "sessions per window: rate not yet identified".
@@ -982,6 +996,7 @@ function Fig({ fig, unit, statusUnit, lead }: { fig: CreditFigureText; unit: str
     <>
       {lead ? `${lead} ` : ""}
       <b>{fig.text}</b> {unit}
+      <ProvisionalMark fig={fig} />
     </>
   ) : (
     <>
@@ -1023,6 +1038,7 @@ function HeroFigure({
         <span>{unit}</span>
       </div>
       {fig.range && <div className="quiet">Range {fig.range}.</div>}
+      {fig.provisional && <div className="quiet">{PROVISIONAL_NOTE}</div>}
     </>
   );
 }
@@ -1557,7 +1573,8 @@ export default function ClaudeUsageTracker({
           label,
           cell: (p: Plan) => {
             const w = computeWindowTokens(data, p, model);
-            return { text: dash(w ? of(w) : null), inferred: !!w?.weeklyInferred };
+            const f = w ? of(w) : null;
+            return { text: dash(f), inferred: !!w?.weeklyInferred, provisional: !!f?.provisional };
           },
         }))
       : [];
@@ -1574,7 +1591,8 @@ export default function ClaudeUsageTracker({
           label,
           cell: (p: Plan) => {
             const c = computeCredits(data, p, model)!;
-            return { text: dash(of(c)), inferred: c.weeklyInferred };
+            const f = of(c);
+            return { text: dash(f), inferred: c.weeklyInferred, provisional: !!f?.provisional };
           },
         })),
       ];
@@ -2282,7 +2300,7 @@ export default function ClaudeUsageTracker({
                   <tr key={rw.label}>
                     <td>{rw.label}</td>
                     {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => {
-                      const { text, inferred } = rw.cell(p);
+                      const { text, inferred, provisional } = rw.cell(p);
                       return (
                         <td key={p} className={p === plan ? "hl" : ""}>
                           {text}
@@ -2292,6 +2310,13 @@ export default function ClaudeUsageTracker({
                             <>
                               {" "}
                               <em>inferred</em>
+                            </>
+                          )}
+                          {/* A figure priced at a provisional measured rate, marked the same way. */}
+                          {text !== "—" && provisional && (
+                            <>
+                              {" "}
+                              <em title={PROVISIONAL_NOTE}>provisional</em>
                             </>
                           )}
                         </td>
