@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { countryFromTrace, detectRegionFromIp, regionForCountry, regionFromBrowser } from "./pricing";
+import {
+  countryFromTrace,
+  detectRegionFromIp,
+  regionForCountry,
+  regionFromBrowser,
+  regionReducer,
+  type RegionEvent,
+  type RegionState,
+} from "./pricing";
 
 describe("regionForCountry", () => {
   it("prices the rand zone in rand and the rest of Africa in USD", () => {
@@ -46,6 +54,21 @@ describe("regionFromBrowser", () => {
   it("keeps the existing timezone and language rules", () => {
     expect(regionFromBrowser("Europe/London", "en-GB")).toBe("UK");
     expect(regionFromBrowser("Europe/Berlin", "de-DE")).toBe("EU");
+  });
+
+  it("gives euro-tier timezones EU and other European zones USD, as the IP lookup will", () => {
+    for (const tz of ["Europe/Paris", "Europe/Dublin", "Europe/Stockholm", "Atlantic/Canary"]) {
+      expect(regionFromBrowser(tz, "en-US")).toBe("EU");
+    }
+    for (const tz of ["Europe/Zurich", "Europe/Oslo", "Europe/Istanbul", "Europe/Moscow", "Europe/Kyiv", "Atlantic/Reykjavik"]) {
+      expect(regionFromBrowser(tz, "de-DE")).toBe("OTHER");
+    }
+  });
+
+  it("agrees with regionForCountry for every mapped European zone", () => {
+    expect(regionFromBrowser("Europe/Zurich", "en-US")).toBe(regionForCountry("CH"));
+    expect(regionFromBrowser("Europe/Berlin", "en-US")).toBe(regionForCountry("DE"));
+    expect(regionFromBrowser("Europe/London", "en-US")).toBe(regionForCountry("GB"));
     expect(regionFromBrowser("America/New_York", "en-US")).toBe("US");
     expect(regionFromBrowser("", "en-ZA")).toBe("ZA");
     expect(regionFromBrowser("Asia/Tokyo", "ja-JP")).toBe("OTHER");
@@ -65,5 +88,33 @@ describe("detectRegionFromIp", () => {
     expect(await detectRegionFromIp()).toBeNull();
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
     expect(await detectRegionFromIp()).toBeNull();
+  });
+});
+
+describe("regionReducer", () => {
+  const start: RegionState = { region: "ZA", committed: false };
+  const run = (...events: RegionEvent[]) => events.reduce(regionReducer, start);
+
+  it("lets detection set the region until the visitor commits", () => {
+    expect(run({ type: "detected", region: "OTHER" }, { type: "detected", region: "UK" }).region).toBe("UK");
+  });
+
+  it("ignores a detection that found nothing", () => {
+    expect(run({ type: "detected", region: "EU" }, { type: "detected", region: null }).region).toBe("EU");
+  });
+
+  it("keeps a manual pick when the IP answer arrives late", () => {
+    const s = run({ type: "detected", region: "ZA" }, { type: "picked", region: "EU" }, { type: "detected", region: "US" });
+    expect(s).toEqual({ region: "EU", committed: true });
+  });
+
+  it("keeps the region an open checkout was built on when the IP answer arrives late", () => {
+    const s = run({ type: "detected", region: "ZA" }, { type: "checkoutOpened" }, { type: "detected", region: "US" });
+    expect(s).toEqual({ region: "ZA", committed: true });
+  });
+
+  it("still lets the visitor change currency by hand after opening checkout", () => {
+    const s = run({ type: "checkoutOpened" }, { type: "picked", region: "UK" });
+    expect(s.region).toBe("UK");
   });
 });

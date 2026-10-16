@@ -119,6 +119,22 @@ export function regionForCountry(country: string | null | undefined): RegionKey 
   return "OTHER";
 }
 
+/**
+ * Country for each European (and Atlantic island) timezone whose country is
+ * priced in euro. Zones not listed (Zurich, Oslo, Istanbul, Moscow, Kyiv,
+ * Belgrade, ...) fall through to Other (USD), matching regionForCountry.
+ */
+const EUROPE_TZ_COUNTRY: Record<string, string> = {
+  Vienna: "AT", Brussels: "BE", Sofia: "BG", Nicosia: "CY", Famagusta: "CY",
+  Prague: "CZ", Berlin: "DE", Busingen: "DE", Copenhagen: "DK", Tallinn: "EE",
+  Madrid: "ES", Canary: "ES", Helsinki: "FI", Mariehamn: "FI", Paris: "FR",
+  Athens: "GR", Zagreb: "HR", Budapest: "HU", Dublin: "IE", Rome: "IT",
+  Vilnius: "LT", Luxembourg: "LU", Riga: "LV", Malta: "MT", Amsterdam: "NL",
+  Warsaw: "PL", Lisbon: "PT", Madeira: "PT", Azores: "PT", Bucharest: "RO",
+  Stockholm: "SE", Ljubljana: "SI", Bratislava: "SK", Andorra: "AD",
+  Monaco: "MC", San_Marino: "SM", Vatican: "VA", Podgorica: "ME",
+};
+
 /** Reads the visitor's country from a Cloudflare /cdn-cgi/trace body. */
 export function countryFromTrace(text: string): string | null {
   const loc = /(?:^|\n)loc=([A-Z0-9]{2})/.exec(text);
@@ -138,7 +154,12 @@ export function regionFromBrowser(tz: string, language: string): RegionKey {
   if (/^Africa\/(Johannesburg|Maseru|Mbabane|Windhoek)$/.test(tz)) return "ZA";
   if (tz.startsWith("Africa/")) return "OTHER";
   if (tz === "Europe/London" || tz === "Europe/Isle_of_Man" || tz === "Europe/Jersey" || tz === "Europe/Guernsey") return "UK";
-  if (tz.startsWith("Europe/")) return "EU";
+  if (tz.startsWith("Europe/") || tz.startsWith("Atlantic/")) {
+    // Same answer the IP lookup will give for that country, so a visitor in
+    // Zurich or Istanbul does not see euro first and then flip to USD.
+    const cc = EUROPE_TZ_COUNTRY[tz.slice(tz.indexOf("/") + 1)];
+    return (cc && regionForCountry(cc)) || "OTHER";
+  }
   if (tz.startsWith("America/")) return "US";
   if (lang.endsWith("-za")) return "ZA";
   if (lang.endsWith("-gb")) return "UK";
@@ -168,6 +189,34 @@ export async function detectRegionFromIp(signal?: AbortSignal): Promise<RegionKe
     return regionForCountry(countryFromTrace(await res.text()));
   } catch {
     return null;
+  }
+}
+
+/**
+ * Who decides the pricing region. Detection (browser guess, then IP country)
+ * sets it until the visitor commits, by picking a currency or by opening
+ * checkout. After that, no late detection answer can change it, so the price
+ * shown, the terms record and the Paystack link always agree.
+ */
+export interface RegionState {
+  region: RegionKey;
+  committed: boolean;
+}
+
+export type RegionEvent =
+  | { type: "detected"; region: RegionKey | null }
+  | { type: "picked"; region: RegionKey }
+  | { type: "checkoutOpened" };
+
+export function regionReducer(state: RegionState, event: RegionEvent): RegionState {
+  switch (event.type) {
+    case "detected":
+      if (state.committed || !event.region || event.region === state.region) return state;
+      return { ...state, region: event.region };
+    case "picked":
+      return { region: event.region, committed: true };
+    case "checkoutOpened":
+      return state.committed ? state : { ...state, committed: true };
   }
 }
 
