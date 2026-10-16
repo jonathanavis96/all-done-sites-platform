@@ -2080,7 +2080,7 @@ describe("the contributors section", () => {
     // The token tabs still draw the tracker's line for the hero's model.
     const text = render(SNAP, "pro", "claude-opus-5", NOW, "window");
     const wt = computeWindowTokens(SNAP, "pro", "claude-opus-5")!;
-    expect(text).toContain(`tracker ${fmtTokens(wt.perWindowValue!)} \u00b7 Opus 5`);
+    expect(text).toContain(`tracker ${fmtTokens(wt.perWindowValue!)} \u00b7 Opus 5 \u00b7 ${fmtShare(wt.cacheReadShare!)} cache reads`);
   });
 
   it("keeps the section on a plan whose block names no contributors", () => {
@@ -2120,6 +2120,37 @@ describe("the contributors section", () => {
     expect(section).toContain("Each dot is that contributor's own mix of models.");
     expect(section).toContain("the tracker's figure for the model picked at the top of the page");
     expect(section).toContain("the plan meter does not count cache reads");
+  });
+
+  // Gate note on #87: the dots are each contributor's own mix, so the line they are read against
+  // states its own -- the hero's model and the cache-read share the window was measured at, the
+  // same share the hero prints beside its cache reads.
+  it("labels the tracker's line on both token tabs with the mix it was measured on", () => {
+    const wt = computeWindowTokens(SNAP, "max20", "claude-opus-5")!;
+    expect(wt.cacheReadShare).not.toBeNull();
+    const share = fmtShare(wt.cacheReadShare!);
+    const cases: [ContribMetric, number][] = [
+      ["window", wt.perWindowValue!],
+      ["weekly", wt.perWeekValue!],
+    ];
+    for (const [tab, value] of cases) {
+      const svg = chartSvg(contributors(renderHtml(SNAP, "max20", "claude-opus-5", NOW, tab)))!;
+      expect(svg, tab).toContain(`tracker ${fmtTokens(value)} \u00b7 Opus 5 \u00b7 ${share} cache reads`);
+      const text = render(SNAP, "max20", "claude-opus-5", NOW, tab);
+      expect(text, tab).toContain("measured on work whose cache-read share the line's label gives");
+    }
+    // The cost tab's line is the fleet's dollars per 1%, not the measured window: no token mix.
+    const usd = chartSvg(contributors(renderHtml(SNAP, "max20", "claude-opus-5", NOW, "usd")))!;
+    expect(usd).not.toContain("cache reads");
+  });
+
+  it("names the model alone on the tracker's line when the block publishes no cache-read share", () => {
+    const j = structuredClone(SNAP);
+    delete j.credits!.window_tokens!.cache_read_share;
+    const wt = computeWindowTokens(j, "max20", "claude-opus-5")!;
+    const svg = chartSvg(contributors(renderHtml(j, "max20", "claude-opus-5", NOW, "window")))!;
+    expect(svg).toContain(`tracker ${fmtTokens(wt.perWindowValue!)} \u00b7 Opus 5<`);
+    expect(svg).not.toContain("cache reads");
   });
 });
 

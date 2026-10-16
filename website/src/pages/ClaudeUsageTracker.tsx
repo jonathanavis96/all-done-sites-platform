@@ -1036,8 +1036,17 @@ const fmtValue2 = (v: number) => v.toFixed(2);
 // (audit finding 7), and schema 2 no longer publishes that quotient.
 //
 // No tab is per model: every dot is the contributor's own figure across whatever mix of models
-// they used. The token tabs' dashed line is the tracker's figure for the model picked in the hero,
-// so its label names that model.
+// they used. The token tabs' dashed line is one mix, the one the tracker measured its window on:
+// the model picked in the hero, and the share of the window's tokens that were cache reads. Its
+// label names both, so a dot is read against a stated mix rather than an unlabelled figure.
+interface RefMix {
+  model: string;
+  // `credits.window_tokens.cache_read_share`, the share the hero's class split prints beside cache
+  // reads. A converted family's window is stated at the same class mix, so the one share holds
+  // for every model. Null where the block does not publish it: the label then names the model only.
+  cacheReadShare: number | null;
+}
+
 interface ContribTab {
   key: ContribMetric;
   label: string;
@@ -1046,12 +1055,23 @@ interface ContribTab {
   // The tracker's own line on this chart. The token tabs take it from the measured window, the
   // same figure the hero states, and draw none where that figure is not published.
   reference: (wt: WindowTokensView | null, fleetUsd: number | null) => number | null;
-  refLabel: (v: number, fmt: (v: number) => string, modelName: string) => string;
+  refLabel: (v: number, fmt: (v: number) => string, mix: RefMix) => string;
   legend: string;
+}
+
+// The token tabs' label for the tracker's line: its value, then the mix it was measured on.
+function tokenRefLabel(v: number, fmt: (v: number) => string, mix: RefMix): string {
+  const share = mix.cacheReadShare;
+  const cache = typeof share === "number" && Number.isFinite(share) ? ` · ${fmtShare(share)} cache reads` : "";
+  return `tracker ${fmt(v)} · ${mix.model}${cache}`;
 }
 
 const CACHE_READ_NOTE =
   "They still differ by how cache-heavy the work was: the plan meter does not count cache reads, so a session that is mostly cache reads shows far more tokens for the same meter percent. ";
+
+// What the token tabs' legend says about the dashed line.
+const TOKEN_REF_LEGEND =
+  "Dashed line: the tracker's figure for the model picked at the top of the page, measured on work whose cache-read share the line's label gives. ";
 
 const CONTRIB_TABS: ContribTab[] = [
   {
@@ -1070,9 +1090,10 @@ const CONTRIB_TABS: ContribTab[] = [
     value: (p) => contribPointValue(p, "window"),
     fmt: fmtTokens,
     reference: (wt) => wt?.perWindowValue ?? null,
-    refLabel: (v, fmt, modelName) => `tracker ${fmt(v)} \u00b7 ${modelName}`,
+    refLabel: tokenRefLabel,
     legend:
-      "Tokens a full five-hour window buys, read off each contributor's own meter. Each dot is that contributor's own mix of models. Dashed line: the tracker's figure for the model picked at the top of the page. " +
+      "Tokens a full five-hour window buys, read off each contributor's own meter. Each dot is that contributor's own mix of models. " +
+      TOKEN_REF_LEGEND +
       CACHE_READ_NOTE,
   },
   {
@@ -1081,9 +1102,10 @@ const CONTRIB_TABS: ContribTab[] = [
     value: (p) => contribPointValue(p, "weekly"),
     fmt: fmtTokens,
     reference: (wt) => wt?.perWeekValue ?? null,
-    refLabel: (v, fmt, modelName) => `tracker ${fmt(v)} \u00b7 ${modelName}`,
+    refLabel: tokenRefLabel,
     legend:
-      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Each dot is that contributor's own mix of models. Dashed line: the tracker's figure for the model picked at the top of the page. " +
+      "Tokens a full week buys, read off each contributor's own seven-day meter: their tokens since that meter reset, over the percent of it they have used. Each dot is that contributor's own mix of models. " +
+      TOKEN_REF_LEGEND +
       CACHE_READ_NOTE,
   },
 ];
@@ -1122,13 +1144,13 @@ function ContributorsChart({
   points,
   reference,
   tab,
-  modelName,
+  refMix,
   planLabel,
 }: {
   points: ContribPoint[];
   reference: number | null;
   tab: ContribTab;
-  modelName: string;
+  refMix: RefMix;
   planLabel: string;
 }) {
   const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
@@ -1173,7 +1195,7 @@ function ContributorsChart({
           <g>
             <line x1={L} x2={R} y1={y(reference)} y2={y(reference)} stroke="var(--ads-ac)" strokeWidth="1.5" strokeDasharray="5 4" />
             <text x={R} y={y(reference) - 6} textAnchor="end" style={{ fill: "var(--ads-ac)", fontWeight: 500 }}>
-              {tab.refLabel(reference, tab.fmt, modelName)}
+              {tab.refLabel(reference, tab.fmt, refMix)}
             </text>
           </g>
         )}
@@ -2290,7 +2312,8 @@ export default function ClaudeUsageTracker({
             {/* The hero's plan picker again, so a reader comparing their own plan does not have
                 to scroll back up. There is no model picker here: every dot is a contributor's own
                 figure across their own mix of models, and the token tabs' dashed line is the
-                tracker's figure for the model picked in the hero, named in its label. The tabs,
+                tracker's figure for the model picked in the hero, its label naming that model and
+                the cache-read share it was measured at. The tabs,
                 the picker and the chart stay on every plan, with or without readings. */}
             <h2>From contributors</h2>
             {contributed && <p className="sub">{contributed.intro}</p>}
@@ -2323,7 +2346,7 @@ export default function ClaudeUsageTracker({
               points={data.contributed[plan]?.points ?? []}
               tab={contribTab}
               reference={contribTab.reference(wt, fleetUsdPerPercent(data, plan))}
-              modelName={modelLabel(model)}
+              refMix={{ model: modelLabel(model), cacheReadShare: wt?.cacheReadShare ?? null }}
               planLabel={PLAN_LABELS[plan]}
             />
             {/* The cost sentence belongs to the cost chart, so it follows its own tab rather than
