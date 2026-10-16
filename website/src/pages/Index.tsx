@@ -23,6 +23,7 @@ import {
   OLD_WAY_QUOTE,
   PAYSTACK_PAGES,
   detectRegion,
+  detectRegionFromIp,
   formatAmount,
   recordTermsAcceptance,
 } from "@/lib/pricing";
@@ -120,17 +121,31 @@ export default function Index() {
   // Default to ZA (primary market) so the prerendered HTML shows rand pricing;
   // the client re-detects the real region on mount.
   const [region, setRegion] = useState<RegionKey>("ZA");
-  const [terms, setTerms] = useState<{ id: PlanId; name: string; payLink: string } | null>(null);
+  const [terms, setTerms] = useState<{ id: PlanId; name: string; region: RegionKey; payLink: string } | null>(null);
   const [termsChecked, setTermsChecked] = useState(false);
   const [termsText, setTermsText] = useState("");
   const [redirecting, setRedirecting] = useState(false);
 
-  useEffect(() => setRegion(detectRegion()), []);
+  // A region the visitor picked by hand always wins over detection.
+  const regionPicked = useRef(false);
+  useEffect(() => {
+    // Browser guess first (instant), then the IP country from Cloudflare, which
+    // is what decides: a timezone cannot tell Lagos from Johannesburg pricing.
+    setRegion(detectRegion());
+    const ctrl = new AbortController();
+    detectRegionFromIp(ctrl.signal).then((r) => {
+      if (r && !regionPicked.current) setRegion(r);
+    });
+    return () => ctrl.abort();
+  }, []);
 
   // Load the agreement text lazily, only when a plan's terms modal is opened
   // (keeps terms.txt off the initial critical path).
   function openTerms(id: PlanId, name: string) {
-    setTerms({ id, name, payLink: PAYSTACK_PAGES[region][id] });
+    // Checkout has begun: a late IP answer must not change the region under the
+    // open modal, or the terms record and the Paystack link would disagree.
+    regionPicked.current = true;
+    setTerms({ id, name, region, payLink: PAYSTACK_PAGES[region][id] });
     setTermsChecked(false);
     if (!termsText) {
       const b = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -143,7 +158,7 @@ export default function Index() {
   async function acceptTerms() {
     if (!terms) return;
     setRedirecting(true);
-    await recordTermsAcceptance(terms.id, region);
+    await recordTermsAcceptance(terms.id, terms.region);
     window.location.href = terms.payLink;
   }
 
@@ -697,7 +712,10 @@ export default function Index() {
             </div>
             <label className="regionsel reveal">
               <span>Currency</span>
-              <select value={region} onChange={(e) => setRegion(e.target.value as RegionKey)} aria-label="Choose your region / currency">
+              <select value={region} onChange={(e) => {
+                regionPicked.current = true;
+                setRegion(e.target.value as RegionKey);
+              }} aria-label="Choose your region / currency">
                 {REGION_ORDER.map((r) => (
                   <option key={r} value={r}>{REGION_LABELS[r]}</option>
                 ))}
