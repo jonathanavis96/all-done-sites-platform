@@ -7,7 +7,7 @@
 // how-it-works timeline, live-preview modal, scroll-progress bar, aurora drift,
 // hero auto-scroll).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Seo from "@/components/Seo";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,7 @@ import {
   PAYSTACK_PAGES,
   detectRegion,
   detectRegionFromIp,
+  regionReducer,
   formatAmount,
   recordTermsAcceptance,
 } from "@/lib/pricing";
@@ -120,22 +121,19 @@ export default function Index() {
   // region-aware pricing + Paystack terms-acceptance flow
   // Default to ZA (primary market) so the prerendered HTML shows rand pricing;
   // the client re-detects the real region on mount.
-  const [region, setRegion] = useState<RegionKey>("ZA");
+  const [{ region }, dispatchRegion] = useReducer(regionReducer, { region: "ZA", committed: false });
   const [terms, setTerms] = useState<{ id: PlanId; name: string; region: RegionKey; payLink: string } | null>(null);
   const [termsChecked, setTermsChecked] = useState(false);
   const [termsText, setTermsText] = useState("");
   const [redirecting, setRedirecting] = useState(false);
 
-  // A region the visitor picked by hand always wins over detection.
-  const regionPicked = useRef(false);
+  // Browser guess first (instant), then the IP country from Cloudflare, which
+  // is what decides: a timezone cannot tell Lagos from Johannesburg pricing.
+  // regionReducer ignores both once the visitor has picked or opened checkout.
   useEffect(() => {
-    // Browser guess first (instant), then the IP country from Cloudflare, which
-    // is what decides: a timezone cannot tell Lagos from Johannesburg pricing.
-    setRegion(detectRegion());
+    dispatchRegion({ type: "detected", region: detectRegion() });
     const ctrl = new AbortController();
-    detectRegionFromIp(ctrl.signal).then((r) => {
-      if (r && !regionPicked.current) setRegion(r);
-    });
+    detectRegionFromIp(ctrl.signal).then((r) => dispatchRegion({ type: "detected", region: r }));
     return () => ctrl.abort();
   }, []);
 
@@ -144,7 +142,7 @@ export default function Index() {
   function openTerms(id: PlanId, name: string) {
     // Checkout has begun: a late IP answer must not change the region under the
     // open modal, or the terms record and the Paystack link would disagree.
-    regionPicked.current = true;
+    dispatchRegion({ type: "checkoutOpened" });
     setTerms({ id, name, region, payLink: PAYSTACK_PAGES[region][id] });
     setTermsChecked(false);
     if (!termsText) {
@@ -712,10 +710,7 @@ export default function Index() {
             </div>
             <label className="regionsel reveal">
               <span>Currency</span>
-              <select value={region} onChange={(e) => {
-                regionPicked.current = true;
-                setRegion(e.target.value as RegionKey);
-              }} aria-label="Choose your region / currency">
+              <select value={region} onChange={(e) => dispatchRegion({ type: "picked", region: e.target.value as RegionKey })} aria-label="Choose your region / currency">
                 {REGION_ORDER.map((r) => (
                   <option key={r} value={r}>{REGION_LABELS[r]}</option>
                 ))}
