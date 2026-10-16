@@ -23,6 +23,7 @@ import {
   OLD_WAY_QUOTE,
   PAYSTACK_PAGES,
   detectRegion,
+  detectRegionFromIp,
   formatAmount,
   recordTermsAcceptance,
 } from "@/lib/pricing";
@@ -125,7 +126,18 @@ export default function Index() {
   const [termsText, setTermsText] = useState("");
   const [redirecting, setRedirecting] = useState(false);
 
-  useEffect(() => setRegion(detectRegion()), []);
+  // A region the visitor picked by hand always wins over detection.
+  const regionPicked = useRef(false);
+  useEffect(() => {
+    // Browser guess first (instant), then the IP country from Cloudflare, which
+    // is what decides: a timezone cannot tell Lagos from Johannesburg pricing.
+    setRegion(detectRegion());
+    const ctrl = new AbortController();
+    detectRegionFromIp(ctrl.signal).then((r) => {
+      if (r && !regionPicked.current) setRegion(r);
+    });
+    return () => ctrl.abort();
+  }, []);
 
   // Load the agreement text lazily, only when a plan's terms modal is opened
   // (keeps terms.txt off the initial critical path).
@@ -697,7 +709,10 @@ export default function Index() {
             </div>
             <label className="regionsel reveal">
               <span>Currency</span>
-              <select value={region} onChange={(e) => setRegion(e.target.value as RegionKey)} aria-label="Choose your region / currency">
+              <select value={region} onChange={(e) => {
+                regionPicked.current = true;
+                setRegion(e.target.value as RegionKey);
+              }} aria-label="Choose your region / currency">
                 {REGION_ORDER.map((r) => (
                   <option key={r} value={r}>{REGION_LABELS[r]}</option>
                 ))}

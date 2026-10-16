@@ -92,23 +92,83 @@ export const TERMS_UPDATED_LABEL = new Date(TERMS_VERSION + "T00:00:00Z").toLoca
   timeZone: "UTC",
 });
 
+/**
+ * Countries priced in rand. South Africa, plus the Common Monetary Area members
+ * whose currencies are pegged one-to-one to the rand (Namibia, Lesotho,
+ * Eswatini). Every other African country gets international (USD) pricing.
+ */
+const RAND_COUNTRIES = new Set(["ZA", "NA", "LS", "SZ"]);
+
+/** EU member states plus the euro-using non-members, priced in euro. */
+const EURO_COUNTRIES = new Set([
+  "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "HR",
+  "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI",
+  "SK", "AD", "MC", "SM", "VA", "ME", "XK",
+]);
+
+/** Pricing region for an ISO 3166-1 alpha-2 country code, or null if unusable. */
+export function regionForCountry(country: string | null | undefined): RegionKey | null {
+  const cc = (country || "").trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(cc)) return null;
+  // Cloudflare's placeholders: XX = unknown, T1 = Tor. Neither is a real country.
+  if (cc === "XX" || cc === "T1") return null;
+  if (RAND_COUNTRIES.has(cc)) return "ZA";
+  if (cc === "GB" || cc === "IM" || cc === "JE" || cc === "GG") return "UK";
+  if (cc === "US") return "US";
+  if (EURO_COUNTRIES.has(cc)) return "EU";
+  return "OTHER";
+}
+
+/** Reads the visitor's country from a Cloudflare /cdn-cgi/trace body. */
+export function countryFromTrace(text: string): string | null {
+  const loc = /(?:^|\n)loc=([A-Z0-9]{2})/.exec(text);
+  return loc ? loc[1] : null;
+}
+
+/**
+ * Best guess from the browser alone: timezone first, then language. Used before
+ * the IP lookup answers, and when it cannot (local dev, blocked request).
+ *
+ * Only the rand-zone timezones map to ZA. Any other "Africa/" zone (Lagos,
+ * Nairobi, Cairo) used to land on rand pricing too, which is how a Lagos visitor
+ * reached a ZAR checkout on 2026-06-11.
+ */
+export function regionFromBrowser(tz: string, language: string): RegionKey {
+  const lang = language.toLowerCase();
+  if (/^Africa\/(Johannesburg|Maseru|Mbabane|Windhoek)$/.test(tz)) return "ZA";
+  if (tz.startsWith("Africa/")) return "OTHER";
+  if (tz === "Europe/London" || tz === "Europe/Isle_of_Man" || tz === "Europe/Jersey" || tz === "Europe/Guernsey") return "UK";
+  if (tz.startsWith("Europe/")) return "EU";
+  if (tz.startsWith("America/")) return "US";
+  if (lang.endsWith("-za")) return "ZA";
+  if (lang.endsWith("-gb")) return "UK";
+  if (lang.startsWith("fr-") || lang.startsWith("de-") || lang.startsWith("es-") || lang.startsWith("it-")) return "EU";
+  if (lang.startsWith("en-")) return "US";
+  return "OTHER";
+}
+
 export function detectRegion(): RegionKey {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    const lang = (navigator.language || "").toLowerCase();
-    if (tz.includes("Johannesburg")) return "ZA";
-    if (tz.startsWith("Africa/")) return "ZA";
-    if (tz.includes("London")) return "UK";
-    if (tz.startsWith("Europe/")) return "EU";
-    if (tz.startsWith("America/")) return "US";
-    if (lang.endsWith("-za")) return "ZA";
-    if (lang.endsWith("-gb")) return "UK";
-    if (lang.startsWith("fr-") || lang.startsWith("de-") || lang.startsWith("es-") || lang.startsWith("it-")) return "EU";
-    if (lang.startsWith("en-")) return "US";
+    return regionFromBrowser(tz, navigator.language || "");
   } catch {
-    // ignore
+    return "OTHER";
   }
-  return "OTHER";
+}
+
+/**
+ * The visitor's region from their IP address, via Cloudflare's same-origin trace
+ * endpoint (free, no third party). Resolves null when the lookup is unavailable,
+ * so the caller keeps its browser-based guess.
+ */
+export async function detectRegionFromIp(signal?: AbortSignal): Promise<RegionKey | null> {
+  try {
+    const res = await fetch("/cdn-cgi/trace", { signal });
+    if (!res.ok) return null;
+    return regionForCountry(countryFromTrace(await res.text()));
+  } catch {
+    return null;
+  }
 }
 
 /** Currency-formatted amount with symbol, no "/mo" suffix (e.g. "R2,200", "$89"). */
