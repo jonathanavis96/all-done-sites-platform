@@ -2116,6 +2116,11 @@ export interface PerModelCredits {
   // date at all, in which case the page shows no date rather than the file's.
   as_of?: string | null;
   as_of_source?: string | null;
+  // The fit behind a measured rate (tracker #93). `provisional` is true while the rate's interval
+  // is wider than a final rate's (1.5x end to end) but inside the bound the tracker still
+  // publishes (`measured_rates.provisional_max_interval_ratio`, 3x): the row's figures are priced
+  // at it and can still move as readings accrue.
+  measured_rate?: { provisional?: boolean | null; rate_in_use?: string | null } | null;
 }
 
 // One effort cell priced in credits (tracker PR #67): the median of the cell's own runs, and that
@@ -2402,6 +2407,16 @@ export function familyRateInferred(j: UsageJson, family: string | null): boolean
   );
 }
 
+// True when the family's row is priced at a measured rate the tracker publishes as provisional
+// (`measured_rate.provisional`): a figure, not a sentence, but one that is not final. A row priced
+// at anything other than its measured rate (the reference table, an inferred or a list price)
+// does not rest on the fit, so the flag on the fit does not reach its figures.
+export function familyRateProvisional(j: UsageJson, family: string | null): boolean {
+  if (!family) return false;
+  const row = creditsOf(j)?.per_model?.[family];
+  return row?.rate_source === "measured" && row.measured_rate?.provisional === true;
+}
+
 // The words set beside an inferred family's figures, from what the block says it was inferred from.
 export function inferredRateNote(j: UsageJson, family: string | null): string | null {
   if (!familyRateInferred(j, family)) return null;
@@ -2471,19 +2486,28 @@ export interface CreditFigureText {
   kind: "value" | "status";
   text: string;
   range: string | null;
+  // True on a value priced at a rate the tracker publishes as provisional (familyRateProvisional):
+  // the caller marks it wherever it prints the number. Absent otherwise, and never on a status,
+  // which has no number to qualify.
+  provisional?: true;
 }
 
 // One published figure turned into the text the page shows. `scale` is the plan ratio the rest of
 // the page already applies to a five-hour window, so a figure measured on Max 20x is never shown
-// unchanged under another plan's heading.
+// unchanged under another plan's heading. `provisional` says the figure is priced at a
+// provisional rate; the figure itself carries no such field.
 export function creditFigure(
   f: CreditsFigure | null | undefined,
   fmt: (n: number) => string,
   scale = 1,
+  provisional = false,
 ): CreditFigureText | null {
   if (!f) return null;
   const range = rangeText(f.interval, fmt, scale);
-  if (typeof f.value === "number" && Number.isFinite(f.value)) return { kind: "value", text: fmt(f.value * scale), range };
+  if (typeof f.value === "number" && Number.isFinite(f.value)) {
+    const text = fmt(f.value * scale);
+    return provisional ? { kind: "value", text, range, provisional: true } : { kind: "value", text, range };
+  }
   if (typeof f.status === "string" && f.status) return { kind: "status", text: f.status, range };
   return null;
 }
@@ -2544,8 +2568,11 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
   const per = family ? credits.per_model?.[family] ?? null : null;
   const session = credits.sessions?.[model] ?? null;
   const wc = credits.window_credits;
-  const fig = (f: CreditsFigure | undefined, fmt: (n: number) => string, s = scale) =>
-    limit.included ? creditFigure(f, fmt, s) : null;
+  // Every figure here but the window's credits is priced at the family's rate, so a provisional
+  // rate marks them all. The window is counted in credits on pure-family stretches; no rate enters.
+  const provisional = familyRateProvisional(j, family);
+  const fig = (f: CreditsFigure | undefined, fmt: (n: number) => string, s = scale, prov = provisional) =>
+    limit.included ? creditFigure(f, fmt, s, prov) : null;
   // Tokens per week is the published per-window figure times the plan's own measured windows per
   // week, the same figure the page states in words a line below it, with the model's share of the
   // week on top. The block publishes no tokens-per-week of its own.
@@ -2565,6 +2592,9 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
     weekScale === null ? null : fig(f, fmt, weekScale);
   const count = (n: number) => Math.round(n).toLocaleString("en-US");
   const cell = effort ? credits.effort_credits?.[model]?.[effort] ?? null : null;
+  // An effort cell names the rate it was priced at; one priced at anything but the measured rate
+  // does not rest on the provisional fit.
+  const cellProvisional = provisional && (cell?.rate_source ?? "measured") === "measured";
   // An inferred rate is a single figure the fits did not measure, so no figure priced at it
   // carries an interval, whatever the row publishes.
   const inferred = familyRateInferred(j, family);
@@ -2584,7 +2614,7 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
     // per-window figure ($144.05 against the credits block's $75.49 on the same file), so the
     // table takes this from the block too rather than putting the two side by side.
     usdInPerWeek: noRange(perWeek(per?.api_value_per_window_usd?.input, fmtUsd)),
-    windowCredits: fig(wc, fmtCredits),
+    windowCredits: fig(wc, fmtCredits, scale, false),
     windowCreditsN: typeof wc?.n === "number" ? wc.n : null,
     pureFamily: wc?.pure_family ?? null,
     accountCount: windowCreditAccounts(wc),
@@ -2593,6 +2623,7 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
     // date (finding 5): how the window was measured, and what this family's row was priced at.
     windowCreditsMethod: wc?.method ?? null,
     rateSource: per?.rate_source ?? null,
+    rateProvisional: provisional,
     creditsAsOf: credits.as_of ?? null,
     familyAsOf: per?.as_of ?? null,
     creditsPerTokenIn: per?.credits_per_token?.input ?? null,
@@ -2614,8 +2645,8 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
     effortCredits:
       cell && limit.included && ratio > 0
         ? {
-            credits: creditFigure(cell.median_credits, fmtCredits),
-            percentOfWindow: creditFigure(cell.percent_of_window, (n) => `${n.toFixed(2)}%`, 1 / ratio),
+            credits: creditFigure(cell.median_credits, fmtCredits, 1, cellProvisional),
+            percentOfWindow: creditFigure(cell.percent_of_window, (n) => `${n.toFixed(2)}%`, 1 / ratio, cellProvisional),
             runs: typeof cell.runs === "number" ? cell.runs : null,
             rateSource: cell.rate_source ?? null,
           }
@@ -2719,6 +2750,9 @@ export interface WindowTokensView {
   weeklyInferred: boolean;
   // The words beside every figure here when the family's rate is inferred rather than measured.
   inferredNote: string | null;
+  // True when every figure here is converted at a provisional measured rate; each figure also
+  // carries the flag itself.
+  rateProvisional: boolean;
   n: number | null;
 }
 
@@ -2738,9 +2772,13 @@ export function computeWindowTokens(j: UsageJson, plan: Plan, model: string): Wi
   // drawn beside it, so an unmeasured family is never quoted as a range the page did not measure.
   // An inferred family's figure draws no interval either.
   const inferred = familyRateInferred(j, family);
+  // A family's window is converted at its own rate only where the block says so (`rate_source`
+  // "measured"); a window measured directly on the family's own stretches carries no rate, so a
+  // provisional fit does not reach it.
+  const provisional = familyRateProvisional(j, family) && fam?.rate_source === "measured";
   const fig = (f: CreditsFigure | undefined | null, s = scale): CreditFigureText | null => {
     if (!limit.included) return null;
-    const text = creditFigure(f, fmtTokens, s);
+    const text = creditFigure(f, fmtTokens, s, provisional);
     return text && (text.kind === "status" || inferred) ? { ...text, range: null } : text;
   };
   const value = (f: CreditsFigure | undefined | null, s = scale): number | null =>
@@ -2796,6 +2834,7 @@ export function computeWindowTokens(j: UsageJson, plan: Plan, model: string): Wi
     windowsPerWeek: typeof published === "number" ? published : null,
     weeklyInferred: week.value !== null && week.inferred,
     inferredNote: inferredRateNote(j, family),
+    rateProvisional: provisional,
     n: typeof wt.n === "number" ? wt.n : null,
   };
 }
