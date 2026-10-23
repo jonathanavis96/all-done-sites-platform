@@ -99,8 +99,8 @@ export async function onRequestPost({ request, env }) {
     subject = `Anthropic ${direction} Claude's ${limitWords} by ${percent}%`;
     headingText = `Anthropic ${direction} Claude's ${limitWords} by ${percent}% on ${fmtDate(date)}.`;
     // The text part ends on the link to the full history below it, as the older email does.
-    introText = lead.lines.join("\n");
-    intro = [...lead.lines, "The tracker has the full history."].map(escapeHtml).join("<br><br>");
+    introText = lead.lines.map(lineText).join("\n");
+    intro = [...lead.lines.map(lineHtml), "The tracker has the full history."].join("<br><br>");
   } else {
     // A change the tracker cannot state as a limit: the older words, a change observed on the
     // watched account (audit finding 4).
@@ -174,25 +174,34 @@ function rangeWords([lo, hi], down = "decrease", up = "increase") {
   return `very likely between ${article(lo)} ${fmtPct(lo)} ${down} and ${article(hi)} ${fmtPct(hi)} ${up}`;
 }
 
+// Each explaining line is its figure (`main`) and, where the tracker sent one, its range
+// (`range`), which the email sets small: in brackets in the text part, a smaller muted line under
+// the figure in the HTML part.
 function limitLine(words, pct, range) {
   const verb = pct > 0 ? "increased" : pct < 0 ? "decreased" : "did not change";
   const figure = pct === 0 ? "" : ` ${fmtPct(pct)}`;
-  return `The ${words} ${verb}${figure}${range ? `, ${rangeWords(range)}` : ""}.`;
+  return { main: `The ${words} ${verb}${figure}`, range: range ? rangeWords(range) : null };
 }
 
 function windowsLine(pct, range) {
   const whole = Math.round(Math.abs(pct));
-  const said = whole === 0
+  const main = whole === 0
     ? "So a week now holds about the same number of full 5-hour windows"
     : `So a week now holds about ${whole}% ${pct > 0 ? "more" : "fewer"} full 5-hour windows`;
-  if (!range) return `${said}.`;
+  if (!range) return { main, range: null };
   const [lo, hi] = range;
   if (lo >= 0 || hi <= 0) {
     const [a, b] = [Math.abs(lo), Math.abs(hi)].sort((x, y) => x - y);
-    return `${said}, very likely between ${fmtPct(a)} and ${fmtPct(b)} ${hi <= 0 ? "fewer" : "more"}.`;
+    return { main, range: `very likely between ${fmtPct(a)} and ${fmtPct(b)} ${hi <= 0 ? "fewer" : "more"}` };
   }
-  return `${said}, very likely between ${fmtPct(lo)} fewer and ${fmtPct(hi)} more.`;
+  return { main, range: `very likely between ${fmtPct(lo)} fewer and ${fmtPct(hi)} more` };
 }
+
+const lineText = ({ main, range }) => (range ? `${main} (${range}).` : `${main}.`);
+const lineHtml = ({ main, range }) =>
+  range
+    ? `${escapeHtml(main)}.<br><span style="font-size:12px;color:#8a8f99">${escapeHtml(range)}</span>`
+    : `${escapeHtml(main)}.`;
 
 /**
  * The hero's sentence and the figures that explain it, when the tracker names the limit the
@@ -226,8 +235,10 @@ function heroLead(body) {
   if (isFigure(body.windows_per_week_change_pct)) {
     lines.push(windowsLine(body.windows_per_week_change_pct, body.windows_per_week_change_interval_pct));
   }
-  if (accounts === 4) lines.push("Measured on all four Max accounts the tracker watches.");
-  else if (accounts) lines.push(`Measured on ${COUNT_WORDS[accounts] ?? accounts} of the Max accounts the tracker watches.`);
+  if (accounts === 4) lines.push({ main: "Measured on all four Max accounts the tracker watches", range: null });
+  else if (accounts) {
+    lines.push({ main: `Measured on ${COUNT_WORDS[accounts] ?? accounts} of the Max accounts the tracker watches`, range: null });
+  }
   return { limit, lines };
 }
 

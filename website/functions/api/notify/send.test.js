@@ -202,14 +202,16 @@ describe("POST /api/notify/send without `to` (the list send)", () => {
       [
         "Anthropic increased Claude's 5-hour limit by 17% on 9 Oct 2026.",
         "",
-        "The 5-hour limit increased 17.1%, very likely between 9.3% and 25.5%.",
-        "The weekly limit increased 5.6%, very likely between 0% and 11.6%.",
-        "So a week now holds about 9% fewer full 5-hour windows, very likely between 5.2% and 12.9% fewer.",
+        "The 5-hour limit increased 17.1% (very likely between 9.3% and 25.5%).",
+        "The weekly limit increased 5.6% (very likely between 0% and 11.6%).",
+        "So a week now holds about 9% fewer full 5-hour windows (very likely between 5.2% and 12.9% fewer).",
         "Measured on all four Max accounts the tracker watches.",
       ].join("\n"),
     );
     expect(sent.html).toContain("Anthropic increased Claude&#39;s 5-hour limit by 17% on 9 Oct 2026.");
-    expect(sent.html).toContain("very likely between 9.3% and 25.5%.<br><br>The weekly limit");
+    expect(sent.html).toContain(
+      'The 5-hour limit increased 17.1%.<br><span style="font-size:12px;color:#8a8f99">very likely between 9.3% and 25.5%</span><br><br>The weekly limit increased 5.6%.',
+    );
     expect(sent.html).toContain("the tracker watches.<br><br>The tracker has the full history.");
     expect(sent.html).toContain("unsubscribe?token=");
     expect(`${sent.subject} ${sent.text}`).not.toMatch(/observed|interval|ratio/i);
@@ -230,7 +232,7 @@ describe("POST /api/notify/send without `to` (the list send)", () => {
     expect(sent.subject).toBe("Anthropic increased Claude's weekly limit by 21%");
     expect(sent.text).toContain("Anthropic increased Claude's weekly limit by 21% on 23 Sep 2026.");
     expect(sent.text).toContain(
-      "So a week now holds about 3% fewer full 5-hour windows, very likely between 12.5% fewer and 8.4% more.",
+      "So a week now holds about 3% fewer full 5-hour windows (very likely between 12.5% fewer and 8.4% more).",
     );
     expect(sent.text).toContain("Measured on three of the Max accounts the tracker watches.");
   });
@@ -242,7 +244,7 @@ describe("POST /api/notify/send without `to` (the list send)", () => {
     await onRequestPost({ request: post(change), env: e });
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(sent.text).toContain(
-      "The weekly limit increased 5.3%, very likely between a 0.7% decrease and an 11.8% increase.",
+      "The weekly limit increased 5.3% (very likely between a 0.7% decrease and an 11.8% increase).",
     );
   });
 
