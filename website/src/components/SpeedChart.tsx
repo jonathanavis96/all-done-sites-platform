@@ -28,15 +28,29 @@ export function placeEndLabels(
   gap: number,
 ): Map<string, number> {
   const sorted = [...items].sort((a, b) => a.y - b.y || a.key.localeCompare(b.key));
+  const pin = sorted.findIndex((it) => it.pinned);
+  if (pin < 0) return spread(sorted, top, bottom, gap, "top");
+  // The pinned label never moves: the labels above it are spread above it and the ones below it
+  // below, each side running past its outer bound if it must (the chart grows to hold them)
+  // rather than over the pinned label.
+  const py = sorted[pin].y;
+  return new Map([
+    ...spread(sorted.slice(0, pin), top, py - gap, gap, "bottom"),
+    [sorted[pin].key, py] as const,
+    ...spread(sorted.slice(pin + 1), py + gap, bottom, gap, "top"),
+  ]);
+}
+
+// Labels in their lines' order, spread `gap` apart in groups about their own lines' mean height.
+// `hard` names the bound a group never crosses where the room runs out; it may cross the other.
+function spread(sorted: { key: string; y: number }[], top: number, bottom: number, gap: number, hard: "top" | "bottom") {
   // Each group: its labels in order, and the height of its first; a label sits `gap` below the one before.
   type Group = { items: typeof sorted; y0: number };
   const groups: Group[] = [];
-  // A group sits at its pinned label's own height, else centred on its labels' own heights.
   const fit = (g: Group) => {
-    const k = g.items.findIndex((it) => it.pinned);
-    const want = k >= 0 ? g.items[k].y - k * gap : g.items.reduce((sum, it, i) => sum + it.y - i * gap, 0) / g.items.length;
+    const want = g.items.reduce((sum, it, i) => sum + it.y - i * gap, 0) / g.items.length;
     const span = (g.items.length - 1) * gap;
-    g.y0 = Math.min(Math.max(want, top), Math.max(top, bottom - span));
+    g.y0 = hard === "top" ? Math.max(Math.min(want, bottom - span), top) : Math.min(Math.max(want, top), bottom - span);
   };
   for (const it of sorted) {
     const g: Group = { items: [it], y0: 0 };
@@ -103,6 +117,10 @@ export default function SpeedChart({ series, selectedModel }: { series: SpeedSer
     H - 30,
     14,
   );
+  // The plot keeps its place; the viewBox grows where a label had to run past the usual band.
+  const labelYs = [...labelY.values()];
+  const vbTop = Math.min(0, Math.min(...labelYs) - 12);
+  const vbH = Math.max(H, Math.max(...labelYs) + 8) - vbTop;
   const ariaLabel = [
     "Median output tokens per second by day",
     ...series.map(
@@ -145,7 +163,7 @@ export default function SpeedChart({ series, selectedModel }: { series: SpeedSer
     >
       <svg
         className="chart"
-        viewBox={`0 0 ${W} ${H}`}
+        viewBox={`0 ${vbTop} ${W} ${vbH}`}
         width="100%"
         style={{ minWidth: 640, display: "block" }}
         role="img"
@@ -222,7 +240,8 @@ export default function SpeedChart({ series, selectedModel }: { series: SpeedSer
                 fill="none"
                 stroke={color}
                 strokeWidth={isSelected ? 1.5 : 1}
-                strokeDasharray={isSelected ? undefined : "2 3"}
+                // Dashed even when selected, so a long leader is never read as a flat run of data.
+                strokeDasharray={isSelected ? "4 3" : "2 3"}
                 opacity={isSelected ? 1 : 0.6}
               />
               <text x={R + 11} y={ly + 4} data-end-label={s.model}>

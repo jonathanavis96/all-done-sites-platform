@@ -81,6 +81,19 @@ describe("SpeedChart end labels (2026-10-23)", () => {
     expect(ends["claude-opus-5-5"].label).toBeCloseTo(ends["claude-opus-5-5"].line, 6);
   });
 
+  it("keeps whichever model is selected level with its own line, even inside a bunch at the edge (Codex, PR #139)", () => {
+    for (const sel of SERIES.map((s) => s.model)) {
+      const out = renderToString(<SpeedChart series={SERIES} selectedModel={sel} />);
+      const m = out.match(new RegExp(`data-leader="${sel}" points="[\\d.]+,([\\d.]+) [\\d.]+,([\\d.]+)`))!;
+      expect(Number(m[2]), sel).toBeCloseTo(Number(m[1]), 6);
+      // Every label still has its own height, in its line's order.
+      const all = [...out.matchAll(/data-leader="([^"]+)" points="[\d.]+,([\d.]+) [\d.]+,([\d.]+)/g)].map((x) => ({ line: Number(x[2]), label: Number(x[3]) }));
+      // Lines at one height may take their labels in either order.
+      const byLine = [...all].sort((a, b) => a.line - b.line || a.label - b.label).map((x) => x.label);
+      for (let i = 1; i < byLine.length; i++) expect(byLine[i] - byLine[i - 1], sel).toBeGreaterThanOrEqual(14 - 1e-6);
+    }
+  });
+
   it("keeps the labels in their lines' top-to-bottom order, each joined to its own line by a leader", () => {
     const byLine = SERIES.map((s) => s.model).sort((a, b) => ends[a].line - ends[b].line);
     const byLabel = SERIES.map((s) => s.model).sort((a, b) => ends[a].label - ends[b].label);
@@ -94,7 +107,7 @@ describe("SpeedChart end labels (2026-10-23)", () => {
     const g = svg.slice(svg.indexOf('data-model="claude-opus-5-5"'));
     const group = g.slice(0, g.indexOf("</g>"));
     expect(group).toContain('stroke="#0EA5E9" stroke-width="3"');
-    expect(group).toMatch(/data-leader="claude-opus-5-5"[^>]*stroke="#0EA5E9" stroke-width="1.5"/);
+    expect(group).toMatch(/data-leader="claude-opus-5-5"[^>]*stroke="#0EA5E9" stroke-width="1.5" stroke-dasharray="4 3"/);
     expect(group).toContain("fill:#0277B5;font-weight:700");
   });
 

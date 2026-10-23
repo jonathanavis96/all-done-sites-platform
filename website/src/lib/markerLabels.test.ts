@@ -85,3 +85,17 @@ describe("placeMarkerLabels", () => {
     expect(crossed).toBe(0);
   });
 });
+
+describe("placeMarkerLabels past the search limit (Codex, PR #139)", () => {
+  it("keeps every leader out of every label with six close markers", () => {
+    const marks = [500, 540, 580, 620, 660, 700].map((x) => ({ x, w: 50 }));
+    const slots = placeMarkerLabels(marks, 0, 732);
+    marks.forEach((_, i) =>
+      marks.forEach((o, j) => {
+        if (i === j) return;
+        if (slots[j].row === slots[i].row) expect(slots[i].hi <= slots[j].lo || slots[j].hi <= slots[i].lo).toBe(true);
+        if (slots[j].row >= slots[i].row) expect(slots[i].lo < o.x && o.x < slots[i].hi, `label ${i} across leader ${j}`).toBe(false);
+      }),
+    );
+  });
+});

@@ -98,21 +98,25 @@ export function placeMarkerLabels(
     return best;
   };
 
-  // The layout for a crowded band: each label, newest first, on the lowest row that keeps it off
-  // the labels already placed.
-  const greedy = (): MarkerLabelSlot[] => {
+  // The layout for a band with too many markers to search, or too crowded for any paired layout:
+  // each label, in the given order, on the lowest row that keeps the rules at `level`, trying its
+  // right side first (or its left, `leftFirst`). Null where some label has no such row.
+  const greedy = (seq: number[], level: number, leftFirst = false): MarkerLabelSlot[] | null => {
     const out = new Array<MarkerLabelSlot>(n);
-    order.forEach((i, k) => {
-      for (let row = 0; ; row++) {
-        const s = sides[i].map((a) => place(i, a, row)).find((c) => order.slice(0, k).every((j) => compatible(i, c, j, out[j], 0)));
-        if (s) {
-          out[i] = s;
-          return;
-        }
-      }
-    });
+    const rows = level === 0 ? n * n + 1 : 2 * n;
+    for (let k = 0; k < seq.length; k++) {
+      const i = seq[k];
+      // Row by row, right side first; or every row on the left before any on the right.
+      const tries: [number, "start" | "end"][] = leftFirst
+        ? [...sides[i]].reverse().flatMap((a) => Array.from({ length: rows }, (_, r) => [r, a] as [number, "start" | "end"]))
+        : Array.from({ length: rows }, (_, r) => sides[i].map((a) => [r, a] as [number, "start" | "end"])).flat();
+      const s = tries.map(([r, a]) => place(i, a, r)).find((c) => seq.slice(0, k).every((j) => compatible(i, c, j, out[j], level)));
+      if (!s) return null;
+      out[i] = s;
+    }
     return out;
   };
+  const oldestFirst = [...order].reverse();
 
   if (n <= SEARCH_LIMIT) {
     for (const level of [2, 1]) {
@@ -120,5 +124,12 @@ export function placeMarkerLabels(
       if (l) return l;
     }
   }
-  return greedy();
+  // Many markers: the leader rule is kept wherever a greedy layout can keep it.
+  for (const level of [2, 1])
+    for (const seq of [order, oldestFirst])
+      for (const leftFirst of [false, true]) {
+        const l = greedy(seq, level, leftFirst);
+        if (l) return l;
+      }
+  return greedy(order, 0)!;
 }
