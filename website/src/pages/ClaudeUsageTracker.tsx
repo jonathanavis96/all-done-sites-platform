@@ -139,12 +139,12 @@ function dropSegment(xy: [number, number][], cx: number | null): [number, number
 // A regime step line: one horizontal run per level, joined by verticals at the boundaries.
 // Levels are what the detector measured; the weekly points behind them are estimates of the
 // same constant, carrying the assembly error the collector's weighted_regimes docstring lists.
-function stepRuns<T extends { start: string; end: string; inferred: boolean }>(
+function stepRuns<T extends { start: string; end: string; inferred: boolean; provisional?: boolean }>(
   levels: T[],
   xAt: (iso: string) => number | null,
   yOf: (lvl: T) => number,
-): { d: string; inferred: boolean }[] {
-  const runs: { d: string; inferred: boolean }[] = [];
+): { d: string; inferred: boolean; provisional: boolean }[] {
+  const runs: { d: string; inferred: boolean; provisional: boolean }[] = [];
   let prev: { x: number; y: number } | null = null;
   for (const lvl of levels) {
     const x0 = xAt(lvl.start), x1 = xAt(lvl.end);
@@ -153,7 +153,7 @@ function stepRuns<T extends { start: string; end: string; inferred: boolean }>(
     // Join to the previous level with a vertical at the step, so a change reads as a step and
     // never as a slope: a slope would imply the limit moved gradually, which it never does.
     const lead = prev !== null ? `M ${prev.x},${prev.y} L ${x0},${prev.y} L ${x0},${y} ` : `M ${x0},${y} `;
-    runs.push({ d: `${lead}L ${x1},${y}`, inferred: lvl.inferred });
+    runs.push({ d: `${lead}L ${x1},${y}`, inferred: lvl.inferred, provisional: lvl.provisional === true });
     prev = { x: x1, y };
   }
   return runs;
@@ -401,7 +401,7 @@ export function accountHighlightProps(
 interface PlanTableRow {
   label: string;
   // `provisional` marks a cell priced at a provisional rate (claudeUsage familyRateProvisional).
-  cell: (p: Plan) => { text: string; inferred: boolean; provisional?: boolean };
+  cell: (p: Plan) => { text: string; inferred: boolean; provisional?: boolean; levelProvisional?: boolean };
 }
 
 // One plan's levels on a chart: what the limit was, held flat between changes.
@@ -412,7 +412,9 @@ export interface PlanLevels {
   // is false, the source it was scaled from when true. That is how the change marker's
   // cross-plan fallback (`levelStepFor`) finds the plan to draw the marker from when the
   // selected plan's own recent levels are all borrowed.
-  levels: { start: string; end: string; value: number; inferred: boolean; plan: Plan }[];
+  // `provisional` marks a level a provisional change opened: drawn dashed and lighter, and
+  // labelled provisional, until the change is measured (tracker ADR 0001 rule 22, 2026-10-23).
+  levels: { start: string; end: string; value: number; inferred: boolean; plan: Plan; provisional?: boolean }[];
 }
 
 // What the windows-per-week chart draws beneath the selected plan's levels: the measurements the
@@ -493,8 +495,8 @@ function LevelChart({
   pendingStates?: { date: string; state: ChangeState }[];
   // The tracker's own markers for this chart's quantity (four_accounts.change_markers, ADR 0001
   // rule 22 amended 2026-10-23). A measured one ("step") states its published size on the step the
-  // line draws there; a provisional one ("dashed") opens no step, so it is marked at its own date
-  // with its published size and the word provisional. The hero reads the same published size.
+  // line draws there; a provisional one ("dashed") states it too, on the provisional level it
+  // opens, with the word provisional. The hero reads the same published size.
   published?: PublishedChangeMarker[];
   // One line per watched Max 20x account, in the account colours the speed-by-account chart uses,
   // with the same legend and the same "No data for ..." note for an account that has nothing to
@@ -674,8 +676,8 @@ function LevelChart({
           {accountLegendText(
             accountLabel(l.account),
             l.levels,
-            // A provisional marker opens no step, so no account has a figure there: the legend
-            // keeps naming the newest change the line steps at.
+            // The legend names the newest measured change: an account's own movement across a
+            // provisional one is not stated beside the provisional figure.
             changeMarkers.filter((m) => !m.provisional),
             (accountChanges ?? []).flatMap((c) =>
               typeof c.perAccount[l.account] === "number" ? [{ date: c.date, pct: c.perAccount[l.account] }] : [],
@@ -708,7 +710,10 @@ function LevelChart({
     ...plotted.map(
       (p) =>
         `${p.label}: ${p.levels
-          .map((l) => `${fmtDate(l.start.slice(0, 10))} to ${fmtDate(l.end.slice(0, 10))} ${fmtValue(l.value)}${l.inferred ? " (dashed)" : ""}`)
+          .map(
+            (l) =>
+              `${fmtDate(l.start.slice(0, 10))} to ${fmtDate(l.end.slice(0, 10))} ${fmtValue(l.value)}${l.provisional ? " provisional" : ""}${l.inferred ? " (dashed)" : ""}`,
+          )
           .join(", ")}`,
     ),
     ...accounts.map(
@@ -877,9 +882,13 @@ function LevelChart({
                 fill="none"
                 stroke={color}
                 strokeWidth={isSelected ? 3 : 1.75}
-                strokeDasharray={run.inferred ? "6 4" : undefined}
+                // A provisional level (the change that opened it is not yet measured): dashed and
+                // lighter, until the tracker publishes the change as measured.
+                strokeDasharray={run.provisional ? "4 4" : run.inferred ? "6 4" : undefined}
+                strokeOpacity={run.provisional ? 0.5 : undefined}
+                data-provisional={run.provisional ? "" : undefined}
                 strokeLinejoin="round"
-                strokeLinecap="round"
+                strokeLinecap="butt"
               />
             ))}
             <g>
@@ -1013,12 +1022,14 @@ export function HeadlessNote({
 // A figure priced at a rate the tracker publishes as provisional says so in words beside the
 // number, the way the plan table marks an inferred one. Nothing for any other figure.
 const PROVISIONAL_NOTE = "Provisional: priced at a measured rate that is not yet final.";
+// A figure read off a provisional level (the change that opened it is not yet measured) is tagged
+// the same word, as the hero sentence is.
 function ProvisionalMark({ fig }: { fig: CreditFigureText | null | undefined }) {
-  if (!fig?.provisional) return null;
+  if (!fig?.provisional && !fig?.levelProvisional) return null;
   return (
     <>
       {" "}
-      <em title={PROVISIONAL_NOTE}>provisional</em>
+      <em title={fig.provisional ? PROVISIONAL_NOTE : undefined}>provisional</em>
     </>
   );
 }
@@ -1069,7 +1080,17 @@ function HeroFigure({
     <>
       <div className={usd ? "big usd" : "big"}>
         {fig.text}
-        <span>{unit}</span>
+        <span>
+          {unit}
+          {/* Read off a provisional level: the same tag the hero sentence carries, until the change
+              is measured. */}
+          {fig.levelProvisional && (
+            <>
+              {" "}
+              <span className="prov-tag">provisional</span>
+            </>
+          )}
+        </span>
       </div>
       {fig.range && <div className="quiet">Range {fig.range}.</div>}
       {fig.provisional && <div className="quiet">{PROVISIONAL_NOTE}</div>}
@@ -1615,7 +1636,7 @@ export default function ClaudeUsageTracker({
           cell: (p: Plan) => {
             const w = computeWindowTokens(data, p, model);
             const f = w ? of(w) : null;
-            return { text: dash(f), inferred: !!w?.weeklyInferred, provisional: !!f?.provisional };
+            return { text: dash(f), inferred: !!w?.weeklyInferred, provisional: !!f?.provisional, levelProvisional: !!f?.levelProvisional };
           },
         }))
       : [];
@@ -1633,7 +1654,7 @@ export default function ClaudeUsageTracker({
           cell: (p: Plan) => {
             const c = computeCredits(data, p, model)!;
             const f = of(c);
-            return { text: dash(f), inferred: c.weeklyInferred, provisional: !!f?.provisional };
+            return { text: dash(f), inferred: c.weeklyInferred, provisional: !!f?.provisional, levelProvisional: !!f?.levelProvisional };
           },
         })),
       ];
@@ -2360,7 +2381,7 @@ export default function ClaudeUsageTracker({
                   <tr key={rw.label}>
                     <td>{rw.label}</td>
                     {(Object.keys(PLAN_LABELS) as Plan[]).map((p) => {
-                      const { text, inferred, provisional } = rw.cell(p);
+                      const { text, inferred, provisional, levelProvisional } = rw.cell(p);
                       return (
                         <td key={p} className={p === plan ? "hl" : ""}>
                           {text}
@@ -2372,11 +2393,12 @@ export default function ClaudeUsageTracker({
                               <em>inferred</em>
                             </>
                           )}
-                          {/* A figure priced at a provisional measured rate, marked the same way. */}
-                          {text !== "—" && provisional && (
+                          {/* A figure priced at a provisional measured rate, or read off a provisional
+                              level, marked the same way. */}
+                          {text !== "—" && (provisional || levelProvisional) && (
                             <>
                               {" "}
-                              <em title={PROVISIONAL_NOTE}>provisional</em>
+                              <em title={provisional ? PROVISIONAL_NOTE : undefined}>provisional</em>
                             </>
                           )}
                         </td>

@@ -89,6 +89,8 @@ import changeStateJson from "@/lib/__fixtures__/claude-usage-pr98-change-state.j
 // The four-account detector's published block (tracker #142): the base the hero-record tests add
 // the tracker's headline and chart markers to.
 import fourAccountsFixture from "@/lib/__fixtures__/claude-usage-four-accounts.json";
+// The tracker branch's publish of the committed state of 2026-10-23: 9 Oct provisional, levels open.
+import provisionalLevels from "@/lib/__fixtures__/claude-usage-provisional-levels.json";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
   return renderToString(
@@ -2979,5 +2981,51 @@ describe("the hero record and the provisional chart markers", () => {
     expect(h1Text(html)).toBe("Anthropic last increased Claude's limits by 18% on 23 Sep 2026.");
     expect(html).not.toContain("prov-tag");
     for (const c of charts) expect(aria(html, c)).not.toContain("(provisional)");
+  });
+});
+
+// Tracker ADR 0001 rule 22, amended again 2026-10-23 (Jonathan's decision): the charts update
+// provisionally too. The provisional 9 Oct change opens a level on the window and windows-per-week
+// charts, drawn dashed and lighter and labelled with its figure and the word provisional; the hero's
+// big number follows the window chart's current level and carries the same tag as the sentence.
+describe("provisional levels on the charts and in the hero", () => {
+  const PROV = provisionalLevels as unknown as UsageJson;
+  const MODEL = "claude-opus-5-5";
+  const measuredFile = (): UsageJson => {
+    const copy = JSON.parse(JSON.stringify(PROV));
+    const off = (rows: Record<string, unknown>[] | undefined) =>
+      rows?.forEach((r) => {
+        if ("provisional" in r) r.provisional = false;
+        if ("windows_per_week_provisional" in r) r.windows_per_week_provisional = false;
+      });
+    const wt = copy.credits.window_tokens;
+    off(wt.regimes);
+    off(wt.per_week_regimes);
+    off([wt, wt.per_week, copy.credits.window_credits, copy.weekly_windows.max20]);
+    off(copy.weekly_windows.max20.regimes);
+    copy.headline = { ...copy.headline, state: "measured", provisional: false };
+    for (const rows of Object.values(copy.four_accounts.change_markers) as Record<string, unknown>[][])
+      for (const m of rows) Object.assign(m, { style: "step", state: "measured" });
+    return copy;
+  };
+  const big = (html: string) => html.match(/<div class="big">(.*?)<\/div>/)![1];
+
+  it("tags the big number provisional, as the sentence is", () => {
+    const html = renderHtml(PROV, "max20", MODEL);
+    expect(big(html)).toContain('<span class="prov-tag">provisional</span>');
+    // The sentence, the tokens per window and the API value per window, all read off the level.
+    expect(html.match(/class="prov-tag"/g)).toHaveLength(3);
+    expect(html.match(/<div class="big usd">(.*?)<\/div>/)![1]).toContain("prov-tag");
+    expect(big(renderHtml(measuredFile(), "max20", MODEL))).not.toContain("prov-tag");
+  });
+
+  it("draws the provisional level dashed and lighter on the charts it moves, and solid once measured", () => {
+    const html = renderHtml(PROV, "max20", MODEL);
+    expect(html.match(/data-provisional=""/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(html).toMatch(/9 Oct 2026 to [^"]*provisional/);
+    expect(html).toContain("+15% on 9 Oct (provisional)");
+    const done = renderHtml(measuredFile(), "max20", MODEL);
+    expect(done).not.toContain("data-provisional");
+    expect(done).not.toContain("(provisional)");
   });
 });

@@ -12,7 +12,8 @@
 .cut h1 .down { color: var(--red); } .cut h1 .up { color: var(--green); } .cut h1 .claude { color: var(--claude); }
 .cut h1 .nb { white-space: nowrap; }
 /* The hero's "provisional" tag: small and muted beside the sentence while the change is held. */
-.cut h1 .prov-tag { display: inline-block; vertical-align: middle; position: relative; top: -.15em; font-family: var(--ads-body); font-size: 13px; font-weight: 600; letter-spacing: 0; line-height: 1; color: var(--ads-mut); border: 1px solid var(--ads-line); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+.cut h1 .prov-tag, .cut .big .prov-tag { display: inline-block; vertical-align: middle; position: relative; top: -.15em; font-family: var(--ads-body); font-size: 13px; font-weight: 600; letter-spacing: 0; line-height: 1; color: var(--ads-mut); border: 1px solid var(--ads-line); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+.cut .hero .big .prov-tag { display: inline-block; top: -.35em; margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--ads-mut); }
 .cut .pillrow { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 48px; }
 .cut .pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(5,150,105,.10); color: #047857; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px; }
 .cut .stats-cta { display: inline-flex; align-items: center; font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 999px; color: var(--ads-acd); border: 1.5px solid var(--ads-acd); background: var(--ads-surface); text-decoration: none; }
