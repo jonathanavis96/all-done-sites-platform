@@ -30,6 +30,7 @@ import {
   PLAN_LABELS,
   compute,
   fmtDate,
+  fmtLocalDateTime,
   fmtSource,
   fmtTokens,
   fmtUsd,
@@ -1755,7 +1756,7 @@ export default function ClaudeUsageTracker({
     const newestT = Number.isFinite(meterT) ? [meterT] : [lastSampleT, passiveT].filter(Number.isFinite);
     setLocalTime(
       newestT.length > 0
-        ? new Date(Math.max(...newestT)).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+        ? fmtLocalDateTime(Math.max(...newestT))
         : null,
     );
   }, [data]);
