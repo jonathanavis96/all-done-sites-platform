@@ -61,7 +61,9 @@ because a person clicks them straight from their inbox.
   from `last_change.hero` in the tracker), `direction` and `percent` are that
   limit's, and the email reads "Anthropic increased Claude's 5-hour limit by 15%
   on 9 Oct 2026." Below it come the 5-hour limit and the weekly limit, each with
-  its range ("very likely between X% and Y%"), what that means for full 5-hour
+  its range ("very likely between X% and Y%", set small: in brackets on the same
+  line in the text part, a smaller muted line under the figure in the HTML
+  part), what that means for full 5-hour
   windows per week, and how many Max accounts it was measured on, from the
   optional `five_hour_limit_change_pct`, `weekly_limit_change_pct`,
   `windows_per_week_change_pct` (each with its `*_interval_pct` pair) and
