@@ -257,4 +257,7 @@
 .cut .fa-key-provisional { height: 0; border-top: 3px dashed var(--ads-ac); background: none; }
 @media (max-width: 640px) {
   .cut .fa-legend { font-size: 13px; gap: 8px 16px; }
+  /* The prerender draws at a desktop width: on a phone, show the chart once it is measured and
+     drawn at the column's own width, never its text scaled down. */
+  .cut .fa-unmeasured .fa-chart-plot { visibility: hidden; }
 }

@@ -43,10 +43,27 @@ describe("FourAccountChart", () => {
   it("labels each change with its size and interval", () => {
     const t = text(html);
     expect(t).toContain("+18.3%");
-    expect(t).toContain("11.5 to 25.6 · 23 Sep");
+    expect(t).toContain("+11.5 to +25.6% · 23 Sep");
+    expect(t).toContain("with model rates −5.2 to +47.8%");
     expect(t).toContain("−17.4%");
-    expect(t).toContain("−25.7 to −8.1 · 14 Sep");
-    expect(t).toContain("−16.2 to −1.6 · 9 Oct · provisional");
+    expect(t).toContain("−25.7 to −8.1% · 14 Sep");
+    expect(t).toContain("−16.2 to −1.6% · 9 Oct · provisional");
+  });
+
+  it("names a candidate change's dashed step in the legend by its state", () => {
+    const probe = JSON.parse(JSON.stringify(fixture.four_accounts)) as NonNullable<UsageJson["four_accounts"]>;
+    probe.changes!.find((c) => c.at.startsWith("2026-10-09"))!.state = "candidate";
+    for (const ls of Object.values(probe.levels!)) for (const l of ls!) if (l.opened_by === "provisional") l.opened_by = "candidate";
+    const t = text(renderToString(<FourAccountChart block={probe} />));
+    expect(t).toContain("−16.2 to −1.6% · 9 Oct · candidate");
+    expect(t).toContain("Candidate");
+    expect(t).not.toContain("provisional");
+    // The step it drew is dashed.
+    expect(renderToString(<FourAccountChart block={probe} />)).toMatch(/stroke-dasharray="7 5"/);
+  });
+
+  it("hides the prerendered chart on a phone until it is measured", () => {
+    expect(html).toMatch(/class="fa-chart-wrap fa-unmeasured"/);
   });
 
   it("is drawn at a fixed pixel width, not scaled from a viewBox", () => {

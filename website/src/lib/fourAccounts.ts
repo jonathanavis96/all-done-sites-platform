@@ -16,12 +16,17 @@ export interface FourAccountSize {
   excludes_no_change?: boolean;
   agree?: boolean;
   accounts?: string[];
+  // What the model rates' own intervals do to the size, stated beside it, never folded into it:
+  // `rate_limited` where that range is wider than the size's own interval.
+  rate_dependence?: { rate_limited?: boolean; interval_pct?: [number, number] | null; change_pct_range?: [number, number] | null } | null;
 }
 
 export interface FourAccountChange {
   at: string;
   found_on: FourAccountLine;
-  state: "measured" | "provisional" | string;
+  // "candidate" on the day a change is first found, "provisional" while it is held, "measured"
+  // after the hold.
+  state: "measured" | "provisional" | "candidate" | string;
   change_pct?: number | null;
   interval_pct?: [number, number] | null;
   instant_range?: [string, string] | null;
@@ -77,8 +82,12 @@ export interface SharedSegment {
   t0: number;
   t1: number;
   v: number;
-  // The segment a provisional change opened: drawn dashed until the change is measured.
-  provisional: boolean;
+  // The state of the change that opened the segment (null for the first).
+  state: string | null;
+  // A step to this segment that a change not yet measured (a candidate or a provisional one)
+  // drew: dashed until the change is measured. A segment the change opened without moving this
+  // line is not a step, and keeps the line it continues.
+  unconfirmed: boolean;
 }
 
 export interface ChangeMark {
@@ -86,11 +95,19 @@ export interface ChangeMark {
   lo: number;
   hi: number;
   pct: number;
-  // "−17.4%" and "−25.7 to −8.1": the size and interval on the line that found the change.
+  // "−17.4%" and "−25.7 to −8.1%": the size and interval on this panel's line.
   size: string;
   interval: string | null;
+  // The interval with the model rates' own ranges, where the rates limit the size more than the
+  // meters do (`rate_dependence.rate_limited`); null otherwise.
+  ratesInterval: string | null;
   date: string;
-  provisional: boolean;
+  // The change's state, and whether it is not yet measured.
+  state: string;
+  unconfirmed: boolean;
+  // Whether this line found the change, or the change was found on the other line and this one
+  // stepped there too.
+  found: boolean;
 }
 
 export interface FourAccountPanel {
@@ -119,11 +136,17 @@ export function signedPct(pct: number): string {
   return minus(`${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`);
 }
 
-// "−25.7 to −8.1", or null without a two-sided interval.
+const signed = (x: number) => `${x > 0 ? "+" : ""}${x.toFixed(1)}`;
+
+// "−25.7 to −8.1%", "+11.5 to +25.6%", or null without a two-sided interval.
 export function intervalText(iv: (number | null)[] | null | undefined): string | null {
   if (!iv || typeof iv[0] !== "number" || typeof iv[1] !== "number") return null;
-  return minus(`${iv[0].toFixed(1)} to ${iv[1].toFixed(1)}`);
+  return minus(`${signed(iv[0])} to ${signed(iv[1])}%`);
 }
+
+// Whether a change is not yet measured: a candidate or a provisional change, or any state the
+// tracker may add, other than "measured".
+export const unconfirmedState = (state: string | null | undefined) => state != null && state !== "measured";
 
 const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 // "14 Sep" from any ISO stamp, by its UTC day.
@@ -154,13 +177,27 @@ function seriesOf(account: string, rows: FourAccountRow[]): AccountSeries {
   return { account, runs, dots };
 }
 
+// Whether two published level indexes differ: a step, not the rounding of one level.
+const steps = (a: number, b: number) => Math.abs(Math.log(a / b)) > 1e-4;
+
 function sharedOf(levels: FourAccountLevel[] | undefined, t0: number, t1: number): SharedSegment[] {
-  return (levels ?? []).flatMap((l) => {
+  const valid = (levels ?? []).filter((l) => typeof l.index === "number" && l.index > 0);
+  return valid.flatMap((l, i) => {
     const a = l.from ? Math.max(stamp(l.from), t0) : t0;
     const b = l.to ? Math.min(stamp(l.to), t1) : t1;
-    if (!(typeof l.index === "number" && l.index > 0) || !(b > a)) return [];
-    return [{ t0: a, t1: b, v: l.index, provisional: l.opened_by === "provisional" }];
+    if (!(b > a)) return [];
+    const prev = valid[i - 1];
+    const unconfirmed = unconfirmedState(l.opened_by) && prev !== undefined && steps(prev.index, l.index);
+    return [{ t0: a, t1: b, v: l.index, state: l.opened_by ?? null, unconfirmed }];
   });
+}
+
+// Whether the published shared level on a line steps at `at`: the segment that starts there
+// against the one before it.
+function stepsAt(levels: FourAccountLevel[] | undefined, at: number): boolean {
+  const ls = levels ?? [];
+  const k = ls.findIndex((l) => l.from !== null && stamp(l.from) === at);
+  return k > 0 && typeof ls[k].index === "number" && typeof ls[k - 1].index === "number" && steps(ls[k - 1].index, ls[k].index);
 }
 
 const quantile = (xs: number[], q: number) => {
@@ -220,12 +257,17 @@ export function fourAccountChart(block: FourAccountsBlock | null | undefined): F
     const byAccount = block.lines?.[line] ?? {};
     const series = accounts.flatMap((a) => (byAccount[a]?.length ? [seriesOf(a, byAccount[a])] : []));
     const shared = sharedOf(block.levels?.[line], t0, t1);
+    // A change is labelled on the line that found it, and on any line its shared step moves at
+    // (the tracker steps a line it found moved there too): no step is drawn without its figure.
+    const labelled = (c: FourAccountChange) => c.found_on === line || stepsAt(block.levels?.[line], stamp(c.at));
     const marks = changes
-      .filter((c) => c.found_on === line)
+      .filter(labelled)
       .flatMap((c): ChangeMark[] => {
+        const found = c.found_on === line;
         const own = c.sizes?.[line];
-        const pct = typeof own?.change_pct === "number" ? own.change_pct : c.change_pct;
+        const pct = typeof own?.change_pct === "number" ? own.change_pct : found ? c.change_pct : null;
         if (typeof pct !== "number" || !Number.isFinite(pct)) return [];
+        const rates = own?.rate_dependence;
         const t = stamp(c.at);
         const range = c.instant_range;
         const lo = range && Number.isFinite(stamp(range[0])) ? stamp(range[0]) : t;
@@ -237,14 +279,17 @@ export function fourAccountChart(block: FourAccountsBlock | null | undefined): F
             hi: Math.max(hi, t),
             pct,
             size: signedPct(pct),
-            interval: intervalText(own?.interval_pct ?? c.interval_pct),
+            interval: intervalText(own?.interval_pct ?? (found ? c.interval_pct : null)),
+            ratesInterval: rates?.rate_limited ? intervalText(rates.interval_pct) : null,
             date: shortDay(t),
-            provisional: c.state !== "measured",
+            state: typeof c.state === "string" ? c.state : "candidate",
+            unconfirmed: unconfirmedState(typeof c.state === "string" ? c.state : "candidate"),
+            found,
           },
         ];
       })
       .sort((a, b) => a.t - b.t);
-    const guides = changes.filter((c) => c.found_on !== line).map((c) => stamp(c.at));
+    const guides = changes.filter((c) => !labelled(c)).map((c) => stamp(c.at));
     return { line, title, series, shared, changes: marks, guides, domain: panelDomain(series, shared) };
   }).filter((p) => p.series.length > 0);
   return panels.length > 0 ? { t0, t1, accounts, panels } : null;
@@ -264,6 +309,32 @@ export function seriesAt(s: AccountSeries, t: number): number | null {
 
 export function sharedAt(shared: SharedSegment[], t: number): number | null {
   return shared.find((s) => s.t0 <= t && t <= s.t1)?.v ?? null;
+}
+
+// Where an account's pooled line leaves the panel's range: each stretch of readings above or
+// below it, so the chart can mark the edge they run off.
+export function offScale(s: AccountSeries, domain: [number, number]): { t0: number; t1: number; side: "below" | "above" }[] {
+  const out: { t0: number; t1: number; side: "below" | "above" }[] = [];
+  for (const run of s.runs) {
+    let cur: { t0: number; t1: number; side: "below" | "above" } | null = null;
+    for (const p of run) {
+      const side = p.v < domain[0] ? "below" : p.v > domain[1] ? "above" : null;
+      if (side && cur && cur.side === side) cur.t1 = p.t;
+      else {
+        if (cur) out.push(cur);
+        cur = side ? { t0: p.t, t1: p.t, side } : null;
+      }
+    }
+    if (cur) out.push(cur);
+  }
+  return out;
+}
+
+const COUNT_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+// The section's heading, counting the accounts the block publishes.
+export function accountsHeading(n: number): string {
+  const w = COUNT_WORDS[n] ?? String(n);
+  return `Limit changes on ${w} Max account${n === 1 ? "" : "s"}`;
 }
 
 // "Max account 2" -> "a2", the key the page's account colours are keyed on.

@@ -10,6 +10,7 @@ import { accountColor } from "@/components/SpeedChart";
 import {
   accountKey,
   fourAccountChart,
+  offScale,
   pctTicks,
   seriesAt,
   sharedAt,
@@ -24,7 +25,8 @@ const DAY_MS = 86400e3;
 // The width the prerender draws at, before the page has measured its column.
 const SSR_WIDTH = 760;
 const RED = "#B42318";
-const GREEN = "#059669";
+// The page's darker green, not its #059669, which is also Max account 2's line colour.
+const GREEN = "#047857";
 const GREY = "#94A3B8";
 
 // A fall is red and a rise green, as on the page's other change markers.
@@ -33,7 +35,8 @@ const changeColour = (pct: number) => (pct < 0 ? RED : pct > 0 ? GREEN : GREY);
 // Rough widths of the label text, enough to keep two labels from overlapping.
 const SIZE_CHAR_PX = 8.2; // 14px bold
 const NOTE_CHAR_PX = 6.6; // 12px
-const LABEL_ROW_PX = 36; // two lines of label and a little air
+const LINE_PX = 15; // one line of label
+const ROW_AIR_PX = 6;
 
 interface PlacedLabel extends ChangeMark {
   x: number;
@@ -41,15 +44,22 @@ interface PlacedLabel extends ChangeMark {
   tx: number;
   row: number;
   note: string;
+  rates: string | null;
 }
 
-function placeLabels(marks: ChangeMark[], x: (t: number) => number, left: number, right: number): { rows: number; labels: PlacedLabel[] } {
+function placeLabels(
+  marks: ChangeMark[],
+  x: (t: number) => number,
+  left: number,
+  right: number,
+): { rows: number; rowPx: number; labels: PlacedLabel[] } {
   const placed: { lo: number; hi: number; row: number }[] = [];
   const out: PlacedLabel[] = [];
   // Newest first, so the newest change keeps the row next to the plot.
   for (const m of [...marks].sort((a, b) => b.t - a.t)) {
-    const note = [m.interval, m.date, m.provisional ? "provisional" : null].filter(Boolean).join(" · ");
-    const w = Math.max(m.size.length * SIZE_CHAR_PX, note.length * NOTE_CHAR_PX);
+    const note = [m.interval, m.date, m.unconfirmed ? m.state : null].filter(Boolean).join(" · ");
+    const rates = m.ratesInterval ? `with model rates ${m.ratesInterval}` : null;
+    const w = Math.max(m.size.length * SIZE_CHAR_PX, note.length * NOTE_CHAR_PX, (rates ?? "").length * NOTE_CHAR_PX);
     const mx = x(m.t);
     let anchor: "start" | "end" = mx + 6 + w <= right ? "start" : "end";
     let lo = anchor === "start" ? mx + 6 : mx - 6 - w;
@@ -61,10 +71,12 @@ function placeLabels(marks: ChangeMark[], x: (t: number) => number, left: number
     let row = 0;
     while (placed.some((p) => p.row === row && lo < p.hi + 8 && p.lo < hi + 8)) row++;
     placed.push({ lo, hi, row });
-    out.push({ ...m, x: mx, anchor, tx: anchor === "start" ? lo : hi, row, note });
+    out.push({ ...m, x: mx, anchor, tx: anchor === "start" ? lo : hi, row, note, rates });
   }
   const rows = out.length > 0 ? Math.max(...out.map((l) => l.row)) + 1 : 0;
-  return { rows, labels: out };
+  // Two lines (size, then interval and date), three where a size states its rate range.
+  const rowPx = (out.some((l) => l.rates) ? 3 : 2) * LINE_PX + ROW_AIR_PX;
+  return { rows, rowPx, labels: out };
 }
 
 function stepPath(segments: { t0: number; t1: number; v: number }[], x: (t: number) => number, y: (v: number) => number): string {
@@ -81,6 +93,9 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
   const chart = useMemo(() => fourAccountChart(block), [block]);
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(SSR_WIDTH);
+  // False until the column is measured: the prerender's width is a guess, and on a phone it would
+  // draw the text scaled down until the page hydrates (the CSS hides it there until measured).
+  const [measured, setMeasured] = useState(false);
   const [hoverT, setHoverT] = useState<number | null>(null);
   const [pointerX, setPointerX] = useState(0);
   const [highlight, setHighlight] = useState<string | null>(null);
@@ -90,7 +105,10 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
   useEffect(() => {
     const el = wrap.current;
     if (!el) return;
-    const measure = () => setWidth(Math.max(280, Math.round(el.getBoundingClientRect().width)));
+    const measure = () => {
+      setWidth(Math.max(240, Math.round(el.getBoundingClientRect().width)));
+      setMeasured(true);
+    };
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(measure);
@@ -110,14 +128,14 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
   // Each panel: its title, a band for its change labels, then its plot.
   let top = 0;
   const layout = chart.panels.map((p) => {
-    const { rows, labels } = placeLabels(p.changes, x, 0, width);
+    const { rows, rowPx, labels } = placeLabels(p.changes, x, 0, width);
     const titleY = top + 16;
-    const plotTop = titleY + 10 + rows * LABEL_ROW_PX + (rows > 0 ? 6 : 8);
+    const plotTop = titleY + 10 + rows * rowPx + (rows > 0 ? 6 : 8);
     const plotBottom = plotTop + plotH;
     const [lo, hi] = p.domain;
     const y = (v: number) => plotBottom - ((Math.log(v) - Math.log(lo)) / (Math.log(hi) - Math.log(lo))) * plotH;
     top = plotBottom + 22;
-    return { p, labels, rows, titleY, plotTop, plotBottom, y, ticks: pctTicks(p.domain, narrow ? 3 : 5) };
+    return { p, labels, rows, rowPx, titleY, plotTop, plotBottom, y, ticks: pctTicks(p.domain, narrow ? 3 : 5) };
   });
   const axisY = layout[layout.length - 1].plotBottom;
   const H = axisY + 30;
@@ -161,13 +179,18 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
     "Four Max accounts, each against its own level now",
     ...chart.panels.map(
       (p) =>
-        `${p.title}: ${p.changes.length > 0 ? p.changes.map((c) => `${c.date} ${c.size}${c.interval ? ` (${c.interval})` : ""}${c.provisional ? " provisional" : ""}`).join(", ") : "no change found"}`,
+        `${p.title}: ${p.changes.length > 0 ? p.changes.map((c) => `${c.date} ${c.size}${c.interval ? ` (${c.interval})` : ""}${c.ratesInterval ? `, with model rates ${c.ratesInterval}` : ""}${c.unconfirmed ? ` ${c.state}` : ""}`).join(", ") : "no change found"}`,
     ),
   ].join(". ");
-  const hasProvisional = chart.panels.some((p) => p.shared.some((s) => s.provisional));
+  // The states of the dashed steps, for the legend: "Provisional", "Candidate", or both.
+  const dashedStates = [
+    ...new Set(chart.panels.flatMap((p) => p.shared.filter((s) => s.unconfirmed).map((s) => s.state ?? "candidate"))),
+  ];
+  const dashedLabel = dashedStates.map((st, i) => (i === 0 ? st.charAt(0).toUpperCase() + st.slice(1) : st)).join(" or ");
+  const toggle = (a: string) => setHighlight((cur) => (cur === a ? null : a));
 
   return (
-    <div className="fa-chart-wrap" ref={wrap}>
+    <div className={measured ? "fa-chart-wrap" : "fa-chart-wrap fa-unmeasured"} ref={wrap}>
       <div className="fa-chart-plot">
         <svg
           className="chart fa-chart"
@@ -178,7 +201,8 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
           aria-label={ariaLabel}
           onPointerMove={onMove}
           onPointerDown={onMove}
-          onPointerLeave={() => setHoverT(null)}
+          // A finger lifting fires pointerleave: keep a tap's reading up until the next tap.
+          onPointerLeave={(e) => e.pointerType !== "touch" && setHoverT(null)}
         >
           <defs>
             {layout.map((l, i) => (
@@ -232,15 +256,21 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
                   />
                 ))}
                 {l.labels.map((c) => {
-                  const base = l.plotTop - 8 - c.row * LABEL_ROW_PX;
+                  const base = l.plotTop - 8 - c.row * l.rowPx;
+                  const lines = c.rates ? 3 : 2;
                   return (
                     <g key={`label-${c.t}`} className="fa-label">
-                      <text x={c.tx} y={base - 15} textAnchor={c.anchor} className="fa-size" style={{ fill: changeColour(c.pct) }}>
+                      <text x={c.tx} y={base - (lines - 1) * LINE_PX} textAnchor={c.anchor} className="fa-size" style={{ fill: changeColour(c.pct) }}>
                         {c.size}
                       </text>
-                      <text x={c.tx} y={base} textAnchor={c.anchor} className="fa-note">
+                      <text x={c.tx} y={base - (lines - 2) * LINE_PX} textAnchor={c.anchor} className="fa-note">
                         {c.note}
                       </text>
+                      {c.rates && (
+                        <text x={c.tx} y={base} textAnchor={c.anchor} className="fa-note">
+                          {c.rates}
+                        </text>
+                      )}
                     </g>
                   );
                 })}
@@ -268,9 +298,26 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
                       )}
                     </g>
                   ))}
-                  {/* The step every account took: measured segments solid, a provisional one dashed. */}
+                  {/* Where an account's line runs off the panel's range: a mark along that edge. */}
+                  {p.series.map((s) =>
+                    offScale(s, p.domain).map((o) => {
+                      const ey = o.side === "below" ? l.plotBottom - 1.5 : l.plotTop + 1.5;
+                      const tip = o.side === "below" ? 5 : -5;
+                      return (
+                        <g key={`off-${s.account}-${o.t0}`} className="fa-off" style={{ opacity: accountOpacity(s.account) }}>
+                          <line x1={x(o.t0)} x2={Math.max(x(o.t1), x(o.t0) + 1)} y1={ey} y2={ey} stroke={accountColor(accountKey(s.account))} strokeWidth="3" />
+                          <path
+                            d={`M ${x(o.t0) - 4},${ey - tip} L ${x(o.t0) + 4},${ey - tip} L ${x(o.t0)},${ey} Z`}
+                            fill={accountColor(accountKey(s.account))}
+                          />
+                        </g>
+                      );
+                    }),
+                  )}
+                  {/* The step every account took: measured segments solid, a step a change not yet
+                      measured drew dashed. */}
                   <path
-                    d={stepPath(p.shared.filter((s) => !s.provisional), x, y)}
+                    d={stepPath(p.shared.filter((s) => !s.unconfirmed), x, y)}
                     fill="none"
                     stroke="var(--ads-ac)"
                     strokeWidth="3"
@@ -278,7 +325,7 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
                     strokeLinecap="round"
                   />
                   {p.shared.map((s, j) => {
-                    if (!s.provisional) return null;
+                    if (!s.unconfirmed) return null;
                     const prev = p.shared[j - 1];
                     return (
                       <path
@@ -359,12 +406,20 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
           <li
             key={a}
             className="level-account-key"
+            role="button"
             tabIndex={0}
+            aria-pressed={highlight === a}
+            aria-label={`Highlight ${a}`}
             data-account={a}
             onPointerEnter={(e) => e.pointerType !== "touch" && setHighlight(a)}
             onPointerLeave={(e) => e.pointerType !== "touch" && setHighlight((cur) => (cur === a ? null : cur))}
-            onPointerDown={(e) => e.pointerType === "touch" && setHighlight((cur) => (cur === a ? null : a))}
-            onFocus={() => setHighlight(a)}
+            onPointerDown={(e) => e.pointerType === "touch" && toggle(a)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggle(a);
+              }
+            }}
             onBlur={() => setHighlight((cur) => (cur === a ? null : cur))}
           >
             <span className="fa-key" style={{ background: accountColor(accountKey(a)) }} />
@@ -375,10 +430,10 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
           <span className="fa-key fa-key-shared" />
           Shared step
         </li>
-        {hasProvisional && (
+        {dashedStates.length > 0 && (
           <li>
             <span className="fa-key fa-key-provisional" />
-            Provisional
+            {dashedLabel}
           </li>
         )}
       </ul>
@@ -391,6 +446,7 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
             <th>Date</th>
             <th>Change</th>
             <th>Interval</th>
+            <th>With model rates</th>
           </tr>
         </thead>
         <tbody>
@@ -401,9 +457,10 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
                 <td>{c.date}</td>
                 <td>
                   {c.size}
-                  {c.provisional ? " provisional" : ""}
+                  {c.unconfirmed ? ` ${c.state}` : ""}
                 </td>
                 <td>{c.interval ?? ""}</td>
+                <td>{c.ratesInterval ?? ""}</td>
               </tr>
             )),
           )}

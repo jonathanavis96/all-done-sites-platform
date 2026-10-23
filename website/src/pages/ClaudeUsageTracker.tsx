@@ -5,7 +5,7 @@ import NotifyForm from "@/components/NotifyForm";
 import Seo from "@/components/Seo";
 import SpeedChart, { SpeedByAccountChart, accountColor } from "@/components/SpeedChart";
 import FourAccountChart from "@/components/FourAccountChart";
-import { fourAccountChart } from "@/lib/fourAccounts";
+import { accountsHeading, fourAccountChart } from "@/lib/fourAccounts";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
   EFFORTS,
@@ -1507,7 +1507,8 @@ export default function ClaudeUsageTracker({
   // at two scales. Null for a file published before the block, which the page says in words.
   const wt = useMemo(() => (data ? computeWindowTokens(data, plan, model) : null), [data, plan, model]);
   const changeSentences = useMemo(() => (data ? changeLines(data) : []), [data]);
-  const fourAccountsShown = useMemo(() => fourAccountChart(data?.four_accounts) !== null, [data]);
+  // The accounts the four-account chart draws, or null where it draws nothing.
+  const fourAccountsDrawn = useMemo(() => fourAccountChart(data?.four_accounts)?.accounts ?? null, [data]);
   // How many accounts the passive readings rest on, in words. Null without the credits block, in
   // which case the page keeps saying "a real account" as it does today.
   const accountsWord =
@@ -2204,9 +2205,9 @@ export default function ClaudeUsageTracker({
             it searches, the step all of them took, and each change it found with its size and
             interval. Files published before the detector have no block, and the section is not
             drawn at all. */}
-        {!unavailable && data?.four_accounts && fourAccountsShown && (
+        {!unavailable && data?.four_accounts && fourAccountsDrawn && (
           <section id="limit-changes">
-            <h2>Limit changes on four Max accounts</h2>
+            <h2>{accountsHeading(fourAccountsDrawn.length)}</h2>
             <FourAccountChart block={data.four_accounts} />
           </section>
         )}
