@@ -8,6 +8,7 @@ import ClaudeUsageTracker, {
   LABEL_LINE_PX,
   ACCOUNT_FAINT_OPACITY,
   accountHighlightProps,
+  HeadlessNote,
   layoutMarkerLabels,
   markerColour,
   markerPctText,
@@ -2781,23 +2782,42 @@ describe("account lines faint until highlighted (wf-147)", () => {
   });
 });
 
-describe("no headless NB on the page (Jonathan, 2026-10-23)", () => {
-  it("draws no headless note under the hero figure or the window chart, even where the file publishes the factor", () => {
-    const base = live0928 as unknown as UsageJson;
-    const h = renderToString(
-      <HelmetProvider context={{}}>
-        <MemoryRouter>
-          <ClaudeUsageTracker
-            initial={{ ...base, five_hour_meter: { headless_factor: { value: 1.495, interval: [1.39, 1.609] } } } as UsageJson}
-            initialPlan="max20"
-            initialModel="claude-opus-5"
-            initialPlanChart="window"
-          />
-        </MemoryRouter>
-      </HelmetProvider>,
+describe("headless NB under the window figure (wf-146)", () => {
+  const NB =
+    "NB: headless work (<code>claude -p</code>) fills the five-hour meter <b>1.50x</b> as fast as interactive work [<b>1.39</b>–<b>1.61</b>]. Window figures are for interactive use.";
+  const strip = (h: string) => h.replace(/<!-- -->/g, "");
+
+  it("states the factor and its interval to 2 decimals", () => {
+    expect(strip(renderToString(<HeadlessNote factor={{ value: 1.495, lo: 1.39, hi: 1.609 }} className="quiet" />))).toBe(
+      `<div class="quiet" data-note="headless">${NB}</div>`,
     );
-    expect(h).not.toContain("headless work");
-    expect(h).not.toContain('data-note="headless"');
+  });
+
+  it("renders nothing without a factor", () => {
+    expect(renderToString(<HeadlessNote factor={null} className="quiet" />)).toBe("");
+  });
+
+  it("sits under the hero window figure only, not under the window chart, and only where the file publishes it", () => {
+    const base = live0928 as unknown as UsageJson;
+    const page = (j: UsageJson) =>
+      strip(
+        renderToString(
+          <HelmetProvider context={{}}>
+            <MemoryRouter>
+              <ClaudeUsageTracker initial={j} initialPlan="max20" initialModel="claude-opus-5" initialPlanChart="window" />
+            </MemoryRouter>
+          </HelmetProvider>,
+        ),
+      );
+    const withFactor = page({ ...base, five_hour_meter: { headless_factor: { value: 1.495, interval: [1.39, 1.609] } } });
+    expect(withFactor).toContain(`<div class="quiet" data-note="headless">${NB}</div>`);
+    const at = withFactor.indexOf('<div role="tabpanel" id="plan-chart-window"');
+    const panel = withFactor.slice(at, withFactor.indexOf('<div role="tabpanel"', at + 1));
+    // Under the chart it is gone (Jonathan, 2026-10-23); the hero keeps it.
+    expect(panel).not.toContain("headless work");
+    expect(withFactor.split("headless work").length - 1).toBe(1);
+    expect(page({ ...base, five_hour_meter: { headless_factor: { value: null } } })).not.toContain("headless work");
+    expect(page({ ...base, five_hour_meter: undefined })).not.toContain("headless work");
   });
 });
 

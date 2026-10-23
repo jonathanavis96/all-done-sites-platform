@@ -64,6 +64,7 @@ import {
   tokensPerWeekChangePct,
   pendingChangeStates,
   publishedChangeMarkers,
+  headlessFactor,
   type AccountLines,
   type ChangeState,
   type ContribPoint,
@@ -913,6 +914,31 @@ function LegendMark({ kind }: { kind: "reading" | "weekly" }) {
 // A figure the tracker can bound but not identify publishes a sentence in place of its value, so
 // the sentence takes the number's place rather than a dash, a zero or a silently-dropped line.
 // The interval is shown beneath either way, as the range the readings spanned.
+// "NB: headless work (`claude -p`) fills the five-hour meter 1.50x as fast as interactive work
+// [1.39–1.61]. Window figures are for interactive use." Nothing where the file publishes no
+// numeric factor; no bracket where it publishes no interval. `className` is the caption class the
+// spot it sits in already uses.
+export function HeadlessNote({
+  factor,
+  className,
+}: {
+  factor: { value: number; lo: number | null; hi: number | null } | null;
+  className: string;
+}) {
+  if (!factor) return null;
+  return (
+    <div className={className} data-note="headless">
+      NB: headless work (<code>claude -p</code>) fills the five-hour meter <b>{factor.value.toFixed(2)}x</b> as fast as
+      interactive work
+      {factor.lo !== null && factor.hi !== null && (
+        <>
+          {" "}[<b>{factor.lo.toFixed(2)}</b>–<b>{factor.hi.toFixed(2)}</b>]
+        </>
+      )}
+      . Window figures are for interactive use.
+    </div>
+  );
+}
 // A figure priced at a rate the tracker publishes as provisional says so in words beside the
 // number, the way the plan table marks an inferred one. Nothing for any other figure.
 const PROVISIONAL_NOTE = "Provisional: priced at a measured rate that is not yet final.";
@@ -1440,6 +1466,7 @@ export default function ClaudeUsageTracker({
   // speed-by-account chart gives the same accounts.
   const windowAccountLines = useMemo(() => (data ? accountWindowTokenLines(data, model) : undefined), [data, model]);
   const weeklyTokenAccountLines = useMemo(() => (data ? accountWeeklyTokenLines(data, model) : undefined), [data, model]);
+  const headless = useMemo(() => (data ? headlessFactor(data) : null), [data]);
   const windowsAccountLines = useMemo(() => (data ? accountWindowLines(data) : undefined), [data]);
   // The readings behind the selected plan's levels, and the documented level beside them. Only a
   // plan's own readings: today that is Max 20x, so Pro and Max 5x get the reference alone.
@@ -1814,6 +1841,8 @@ export default function ClaudeUsageTracker({
                   {wt?.perWindow ? (
                     <>
                       <HeroFigure fig={wt.perWindow} unit="tokens per 5-hour window" statusUnit="tokens per 5-hour window" />
+                      {/* Window figures are measured on interactive work; headless work fills the meter faster. */}
+                      <HeadlessNote factor={headless} className="quiet" />
                       {/* An inferred rate's figures are marked in words, as the plan table marks an
                           inferred plan's, and draw no range. */}
                       {wt.inferredNote && wt.perWindow.kind === "value" && (
