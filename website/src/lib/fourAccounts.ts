@@ -53,7 +53,31 @@ export interface FourAccountsBlock {
   lines?: Partial<Record<FourAccountLine, Record<string, FourAccountRow[]>>>;
   levels?: Partial<Record<FourAccountLine, FourAccountLevel[]>>;
   changes?: FourAccountChange[];
+  // Each change the plan charts mark, per quantity (ADR 0001 rule 22, amended 2026-10-23). Absent
+  // from files published before the amendment.
+  change_markers?: Partial<Record<ChangeMarkerQuantity, PublishedChangeMarker[]>>;
   [k: string]: unknown;
+}
+
+// The three plan charts' quantities: the effective window (five_hour_limit), tokens per week
+// (weekly_limit) and five-hour windows per week (windows_per_week).
+export type ChangeMarkerQuantity = "five_hour_limit" | "weekly_limit" | "windows_per_week";
+
+// One change on one quantity, as the tracker publishes it for the charts. `style` is "step" for a
+// measured change (the line steps there) and "dashed" for a provisional one (no step: a marker
+// with its figure and the word provisional). A candidate has no marker.
+export interface PublishedChangeMarker {
+  date: string;
+  at?: string;
+  state?: string;
+  style?: "step" | "dashed" | string;
+  change_pct?: number | null;
+  interval_pct?: (number | null)[] | null;
+  percent?: number;
+  direction?: "increased" | "decreased";
+  found_on?: string;
+  held_days?: number;
+  holds_needed?: number;
 }
 
 // The two lines the rule searches, in the order the chart stacks them, and each panel's title.

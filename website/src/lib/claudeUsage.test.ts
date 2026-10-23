@@ -13,6 +13,9 @@ import {
   type SpeedDay,
   compute,
   headline,
+  publishedHeadline,
+  publishedChangeMarkers,
+  type HeadlineRecord,
   fmtTokens,
   fmtUsd,
   fmtSource,
@@ -2883,5 +2886,103 @@ describe("fmtLocalDateTime", () => {
     expect(fmtLocalDateTime(at("09:05"), "en-US", "UTC")).toBe("Oct 23, 9:05 AM");
     expect(fmtLocalDateTime(at("12:00"), "en-US", "UTC")).toBe("Oct 23, 12:00 PM");
     expect(fmtLocalDateTime(at("00:07"), "en-US", "UTC")).toBe("Oct 23, 12:07 AM");
+  });
+});
+
+// ADR 0001 rule 22, amended 2026-10-23 (Jonathan's decision): the tracker publishes the hero
+// record and the page states it. The records below are the tracker's own output for the three
+// cases its branch replayed: today (9 Oct provisional), 9 Oct once measured, and 9 Oct withdrawn.
+describe("headline from the published hero record", () => {
+  const PROVISIONAL: HeadlineRecord = {
+    at: "2026-10-09T16:00:00+00:00", change_pct: 15.3, date: "2026-10-09", direction: "increased",
+    first_found: "2026-10-20", found_on: "ratio", held_days: 4, holds_needed: 7, interval_pct: [3.2, 28.8],
+    limit: "5-hour limit", line: "five_hour", measured_on: null, passed_over: [], percent: 15,
+    provisional: true, quantity: "five_hour_limit", state: "provisional",
+  };
+  const MEASURED: HeadlineRecord = {
+    ...PROVISIONAL, change_pct: 15.1, held_days: 8, interval_pct: [7.2, 23.6], measured_on: "2026-10-26",
+    provisional: false, state: "measured",
+  };
+  const WEEKLY: HeadlineRecord = {
+    at: "2026-09-23T13:00:00+00:00", change_pct: 20.5, date: "2026-09-23", direction: "increased",
+    first_found: "2026-10-04", found_on: "seven_day", held_days: 20, holds_needed: 7, interval_pct: [13.5, 27.9],
+    limit: "weekly limit", line: "seven_day", measured_on: "2026-10-10", passed_over: [], percent: 21,
+    provisional: false, quantity: "weekly_limit", state: "measured",
+  };
+  // `J`'s own last_change is a 2 Sep window change: the hero record, where published, wins over it.
+  const withHeadline = (h: HeadlineRecord | null | undefined): UsageJson => ({ ...J, headline: h });
+
+  it("states a provisional 5-hour change and tags it provisional", () => {
+    expect(headline(withHeadline(PROVISIONAL))).toEqual({
+      text: "Anthropic last increased Claude's 5-hour limit by 15% on 9 Oct 2026.",
+      tone: "up",
+      provisional: true,
+    });
+  });
+  it("drops the tag once the same change is measured", () => {
+    const h = headline(withHeadline(MEASURED));
+    expect(h).toEqual({ text: "Anthropic last increased Claude's 5-hour limit by 15% on 9 Oct 2026.", tone: "up" });
+    expect(h.provisional).toBeUndefined();
+  });
+  it("states the weekly limit when the record names it, as after 9 Oct is withdrawn", () => {
+    expect(headline(withHeadline(WEEKLY))).toEqual({
+      text: "Anthropic last increased Claude's weekly limit by 21% on 23 Sep 2026.",
+      tone: "up",
+    });
+  });
+  it("states a decrease in red", () => {
+    expect(headline(withHeadline({ ...WEEKLY, direction: "decreased", percent: 9, change_pct: -9.2 }))).toEqual({
+      text: "Anthropic last decreased Claude's weekly limit by 9% on 23 Sep 2026.",
+      tone: "down",
+    });
+  });
+  it("never says windows per week or the generic limits for a record", () => {
+    for (const h of [PROVISIONAL, MEASURED, WEEKLY]) {
+      const text = headline(withHeadline(h)).text;
+      expect(text).not.toMatch(/windows|limits/);
+    }
+  });
+  it("says the limits have not changed when the tracker publishes no change it can state as a limit", () => {
+    expect(headline(withHeadline(null))).toEqual({ text: "Anthropic hasn't changed Claude's limits since 1 May 2026.", tone: "flat" });
+  });
+  it("never states a candidate, a withdrawn change or a quantity the hero does not name", () => {
+    const legacy = headline(J);
+    for (const bad of [
+      { ...PROVISIONAL, state: "candidate" },
+      { ...PROVISIONAL, state: "withdrawn" },
+      { ...PROVISIONAL, quantity: "windows_per_week" },
+      { ...PROVISIONAL, percent: Number.NaN },
+    ]) {
+      expect(publishedHeadline(withHeadline(bad))).toBeNull();
+      expect(headline(withHeadline(bad))).toEqual(legacy);
+    }
+  });
+  it("keeps today's sentence for a file published before the record", () => {
+    expect("headline" in J).toBe(false);
+    expect(headline(J)).toEqual({ text: "Anthropic last decreased Claude's limits by 14% on 2 Sep 2026.", tone: "down" });
+  });
+});
+
+describe("publishedChangeMarkers", () => {
+  const marker = (o: Record<string, unknown>) => ({
+    at: "2026-10-09T16:00:00+00:00", change_pct: 15.3, date: "2026-10-09", direction: "increased", percent: 15,
+    state: "provisional", style: "dashed", ...o,
+  });
+  it("reads each quantity's markers, and nothing from a file published before them", () => {
+    const j = {
+      ...J,
+      four_accounts: { change_markers: { five_hour_limit: [marker({})], windows_per_week: [marker({ change_pct: -9.2 })] } },
+    } as UsageJson;
+    expect(publishedChangeMarkers(j, "five_hour_limit").map((m) => m.change_pct)).toEqual([15.3]);
+    expect(publishedChangeMarkers(j, "windows_per_week").map((m) => m.change_pct)).toEqual([-9.2]);
+    expect(publishedChangeMarkers(j, "weekly_limit")).toEqual([]);
+    expect(publishedChangeMarkers(J, "five_hour_limit")).toEqual([]);
+  });
+  it("skips a marker with no size or a style the charts do not draw", () => {
+    const j = {
+      ...J,
+      four_accounts: { change_markers: { five_hour_limit: [marker({ change_pct: null }), marker({ style: "candidate" }), marker({ style: "step" })] } },
+    } as UsageJson;
+    expect(publishedChangeMarkers(j, "five_hour_limit").map((m) => m.style)).toEqual(["step"]);
   });
 });
