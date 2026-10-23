@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   accountMeterChanges,
+  fmtLocalDateTime,
   headlessFactor,
   speedAccountSeries,
   speedAccounts,
@@ -2872,5 +2873,15 @@ describe("headless factor on the five-hour meter (wf-146)", () => {
     expect(headlessFactor({} as unknown as UsageJson)).toBeNull();
     expect(headlessFactor({ five_hour_meter: {} } as unknown as UsageJson)).toBeNull();
     expect(headlessFactor({ five_hour_meter: { headless_factor: { value: null, interval: [1, 2] } } } as unknown as UsageJson)).toBeNull();
+  });
+});
+
+describe("fmtLocalDateTime", () => {
+  const at = (hhmm: string) => Date.parse(`2026-10-23T${hhmm}:00Z`);
+  it("shows the hour without a leading zero in a 12-hour locale", () => {
+    expect(fmtLocalDateTime(at("15:43"), "en-US", "UTC")).toBe("Oct 23, 3:43 PM");
+    expect(fmtLocalDateTime(at("09:05"), "en-US", "UTC")).toBe("Oct 23, 9:05 AM");
+    expect(fmtLocalDateTime(at("12:00"), "en-US", "UTC")).toBe("Oct 23, 12:00 PM");
+    expect(fmtLocalDateTime(at("00:07"), "en-US", "UTC")).toBe("Oct 23, 12:07 AM");
   });
 });

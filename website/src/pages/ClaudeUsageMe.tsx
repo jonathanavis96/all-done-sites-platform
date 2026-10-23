@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
-import { PLAN_LABELS, fmtTokens, fmtUsd2, modelLabel, type UsageJson } from "@/lib/claudeUsage";
+import { PLAN_LABELS, fmtLocalDateTime, fmtTokens, fmtUsd2, modelLabel, type UsageJson } from "@/lib/claudeUsage";
 import {
   COARSE_BELOW,
   fleetTokensPerPercent,
@@ -33,7 +33,7 @@ const MODEL_COLORS = ["var(--ads-ac)", "var(--claude)", "#7C6FE0", "#059669", "#
 function fmtWhen(iso: string): string {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return iso;
-  return new Date(t).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  return fmtLocalDateTime(t);
 }
 
 function fmtDay(t: number): string {

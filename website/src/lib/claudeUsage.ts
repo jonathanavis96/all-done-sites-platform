@@ -1170,6 +1170,13 @@ export function stoppedFeedsLine(j: UsageJson): string | null {
   return `${count} data has not arrived${since}.`;
 }
 
+/** A local date and time for a timestamp, such as the "Last sample" badge. The hour is
+ * "numeric", not "2-digit", so a 12-hour locale reads "3:43 PM" rather than "03:43 PM".
+ * `locale` and `timeZone` default to the viewer's; tests pass them to pin the output. */
+export function fmtLocalDateTime(t: number, locale: string | string[] = [], timeZone?: string): string {
+  return new Date(t).toLocaleString(locale, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone });
+}
+
 export function fmtUsd(n: number): string {
   return "$" + Math.round(n).toLocaleString("en-US");
 }
