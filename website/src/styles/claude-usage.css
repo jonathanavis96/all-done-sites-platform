@@ -230,3 +230,31 @@
 .cut .info-tip-btn:focus-visible { outline: 2px solid var(--ads-acd); outline-offset: 1px; }
 .cut .info-tip-text { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 5; max-width: 560px; padding: 10px 12px; border: 1px solid var(--ads-line); border-radius: 8px; background: var(--ads-surface); color: var(--ads-bd); font-size: 13.5px; font-weight: 400; line-height: 1.5; box-shadow: 0 6px 20px rgba(15, 23, 42, .12); visibility: hidden; opacity: 0; transition: opacity .12s; }
 .cut .info-tip:hover .info-tip-text, .cut .info-tip:focus-within .info-tip-text, .cut .info-tip[data-open] .info-tip-text { visibility: visible; opacity: 1; }
+
+/* The four-account chart: drawn at the width it is shown at, so its text is the same size on a
+   phone as on a wide screen. */
+.cut .fa-chart-wrap { margin-top: 18px; }
+.cut .fa-chart-plot { position: relative; }
+.cut svg.fa-chart { display: block; max-width: 100%; height: auto; touch-action: pan-y; }
+.cut svg.fa-chart text { font-size: 12px; }
+.cut svg.fa-chart text.fa-title { font-size: 14px; font-weight: 600; fill: var(--ads-tx); }
+.cut svg.fa-chart text.fa-tick { font-size: 12px; }
+.cut svg.fa-chart text.fa-now { fill: var(--ads-tx); font-weight: 600; }
+.cut svg.fa-chart text.fa-size { font-size: 14px; font-weight: 700; }
+.cut svg.fa-chart text.fa-note { font-size: 12px; fill: var(--ads-bd); }
+.cut svg.fa-chart .fa-axis text { font-size: 12px; fill: #0277B5; font-weight: 500; }
+.cut .fa-tip { position: absolute; top: 24px; z-index: 5; pointer-events: none; padding: 8px 10px; border: 1px solid var(--ads-line); border-radius: 8px; background: var(--ads-surface); box-shadow: 0 6px 20px rgba(15, 23, 42, .12); font-size: 12.5px; color: var(--ads-bd); }
+.cut .fa-tip-day { font-weight: 600; color: var(--ads-tx); margin-bottom: 4px; }
+.cut .fa-tip table { width: auto; border-collapse: collapse; }
+.cut .fa-tip th, .cut .fa-tip td { padding: 2px 0 2px 12px; border: 0; font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cut .fa-tip th:first-child, .cut .fa-tip td:first-child { padding-left: 0; text-align: left; }
+.cut .fa-tip-shared td { font-weight: 600; color: var(--ads-tx); }
+.cut .fa-swatch { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+.cut .fa-swatch-shared { width: 12px; height: 3px; border-radius: 2px; background: var(--ads-ac); vertical-align: 3px; }
+.cut .fa-legend { margin-top: 10px; }
+.cut .fa-key { display: inline-block; width: 16px; height: 2px; border-radius: 1px; }
+.cut .fa-key-shared { height: 4px; border-radius: 2px; background: var(--ads-ac); }
+.cut .fa-key-provisional { height: 0; border-top: 3px dashed var(--ads-ac); background: none; }
+@media (max-width: 640px) {
+  .cut .fa-legend { font-size: 13px; gap: 8px 16px; }
+}
