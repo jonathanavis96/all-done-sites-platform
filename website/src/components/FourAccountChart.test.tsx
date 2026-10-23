@@ -50,6 +50,15 @@ describe("FourAccountChart", () => {
     expect(t).toContain("−16.2 to −1.6% · 9 Oct · provisional");
   });
 
+  it("counts the accounts the block publishes in its accessible name", () => {
+    expect(html).toContain("Four Max accounts, each against its own level now");
+    const probe = JSON.parse(JSON.stringify(fixture.four_accounts)) as NonNullable<UsageJson["four_accounts"]>;
+    probe.accounts = probe.accounts!.slice(0, 3);
+    const three = renderToString(<FourAccountChart block={probe} />);
+    expect(three).toContain("Three Max accounts, each against its own level now");
+    expect(three).not.toContain("Four Max accounts");
+  });
+
   it("names a candidate change's dashed step in the legend by its state", () => {
     const probe = JSON.parse(JSON.stringify(fixture.four_accounts)) as NonNullable<UsageJson["four_accounts"]>;
     probe.changes!.find((c) => c.at.startsWith("2026-10-09"))!.state = "candidate";

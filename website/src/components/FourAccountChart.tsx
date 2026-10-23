@@ -5,10 +5,11 @@
 //
 // The SVG is drawn at the width it is shown at (measured after mount), not scaled down from a
 // desktop viewBox, so its text stays the same size on a phone.
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { accountColor } from "@/components/SpeedChart";
 import {
   accountKey,
+  accountsPhrase,
   fourAccountChart,
   offScale,
   pctTicks,
@@ -98,6 +99,11 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
   const [measured, setMeasured] = useState(false);
   const [hoverT, setHoverT] = useState<number | null>(null);
   const [pointerX, setPointerX] = useState(0);
+  // The reading's measured width, so it can be kept inside the plot on a narrow phone.
+  const [tipW, setTipW] = useState(0);
+  const tipRef = useCallback((el: HTMLDivElement | null) => {
+    if (el) setTipW((w) => (w === el.offsetWidth ? w : el.offsetWidth));
+  }, []);
   const [highlight, setHighlight] = useState<string | null>(null);
   const clipBase = `fa-clip-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
   const drawn = chart !== null;
@@ -176,7 +182,7 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
 
   const pctAgainstNow = (v: number | null) => (v === null ? "–" : tickText(v) === "now" ? "0%" : tickText(v));
   const ariaLabel = [
-    "Four Max accounts, each against its own level now",
+    `${accountsPhrase(chart.accounts.length).replace(/^./, (c) => c.toUpperCase())}, each against its own level now`,
     ...chart.panels.map(
       (p) =>
         `${p.title}: ${p.changes.length > 0 ? p.changes.map((c) => `${c.date} ${c.size}${c.interval ? ` (${c.interval})` : ""}${c.ratesInterval ? `, with model rates ${c.ratesInterval}` : ""}${c.unconfirmed ? ` ${c.state}` : ""}`).join(", ") : "no change found"}`,
@@ -362,7 +368,11 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
           <div
             className="fa-tip"
             role="presentation"
-            style={pointerX > width / 2 ? { right: width - pointerX + 12 } : { left: pointerX + 12 }}
+            ref={tipRef}
+            // Beside the pointer, on the side with more room, and never past either edge of the plot.
+            style={{
+              left: Math.max(0, Math.min(pointerX > width / 2 ? pointerX - 12 - tipW : pointerX + 12, width - tipW)),
+            }}
           >
             <div className="fa-tip-day">{shortDay(hoverT)}</div>
             <table>

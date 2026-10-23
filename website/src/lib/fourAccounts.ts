@@ -331,10 +331,15 @@ export function offScale(s: AccountSeries, domain: [number, number]): { t0: numb
 }
 
 const COUNT_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+// "four Max accounts", "one Max account", "12 Max accounts": the accounts the block publishes.
+export function accountsPhrase(n: number): string {
+  const w = COUNT_WORDS[n] ?? String(n);
+  return `${w} Max account${n === 1 ? "" : "s"}`;
+}
+
 // The section's heading, counting the accounts the block publishes.
 export function accountsHeading(n: number): string {
-  const w = COUNT_WORDS[n] ?? String(n);
-  return `Limit changes on ${w} Max account${n === 1 ? "" : "s"}`;
+  return `Limit changes on ${accountsPhrase(n)}`;
 }
 
 // "Max account 2" -> "a2", the key the page's account colours are keyed on.

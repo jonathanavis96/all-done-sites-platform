@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   accountKey,
   accountsHeading,
+  accountsPhrase,
   fourAccountChart,
   intervalText,
   offScale,
@@ -175,6 +176,8 @@ describe("four-account figures", () => {
     expect(accountsHeading(3)).toBe("Limit changes on three Max accounts");
     expect(accountsHeading(1)).toBe("Limit changes on one Max account");
     expect(accountsHeading(12)).toBe("Limit changes on 12 Max accounts");
+    expect(accountsPhrase(3)).toBe("three Max accounts");
+    expect(accountsPhrase(1)).toBe("one Max account");
   });
 
   it("ticks in round percent against now, never more than asked", () => {
