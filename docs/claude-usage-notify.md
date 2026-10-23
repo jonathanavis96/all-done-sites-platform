@@ -33,7 +33,7 @@ underscore.
 | `/api/notify/subscribe` | POST | `{"email":"…"}` | `200 {ok,message}`, `400` bad address or body, `429` rate-limited, `502` Resend refused, `503` unconfigured |
 | `/api/notify/confirm` | GET | `?token=…` | HTML page: `200` confirmed, `400` bad token, `404` no pending record |
 | `/api/notify/unsubscribe` | GET, POST | `?token=…` | HTML page: `200` removed, `400` bad token |
-| `/api/notify/send` | POST | `{date,direction,percent,model?}` + `Authorization: Bearer $NOTIFY_SEND_SECRET` | `200 {ok,date,subscribers,sent,failures}`, `401`, `400` bad payload, `503` unconfigured |
+| `/api/notify/send` | POST | `{date,direction,percent,model?,scope?,limit?,…}` + `Authorization: Bearer $NOTIFY_SEND_SECRET` | `200 {ok,date,subscribers,sent,failures}`, `401`, `400` bad payload, `503` unconfigured |
 | `/api/notify/send` (one address) | POST | `{to,subject,text}` + the same bearer secret | `200 {ok,to,sent:1}`, `401`, `400` bad payload, `403` address not in `NOTIFY_ADMIN_TO`, `502` Resend refused, `503` unconfigured |
 
 `confirm` and `unsubscribe` return a rendered HTML page rather than JSON,
@@ -56,6 +56,18 @@ because a person clicks them straight from their inbox.
   `{already_sent:true}` instead of mailing the list twice. The trade-off is
   deliberate: a crash midway through a fan-out drops the rest of that send rather
   than risking duplicates, and the failure is visible in the job's log.
+- **The list email leads with the page's hero sentence.** When the tracker names
+  the limit a change is stated as (`limit`: `five_hour_limit` or `weekly_limit`,
+  from `last_change.hero` in the tracker), `direction` and `percent` are that
+  limit's, and the email reads "Anthropic increased Claude's 5-hour limit by 15%
+  on 9 Oct 2026." Below it come the 5-hour limit and the weekly limit, each with
+  its range ("very likely between X% and Y%"), what that means for full 5-hour
+  windows per week, and how many Max accounts it was measured on, from the
+  optional `five_hour_limit_change_pct`, `weekly_limit_change_pct`,
+  `windows_per_week_change_pct` (each with its `*_interval_pct` pair) and
+  `accounts`. Without `limit` (a change neither limit's range separates from no
+  change) the older "Claude's observed ..." wording is sent. A malformed figure
+  answers `400` before anything is marked sent.
 - **`send` with a `to` field mails one address, not the list.** This is the
   tracker's alert channel to its owner: an outlier probe, a confirmed change,
   a refused weight. The body is `{to, subject, text}`; the same bearer secret

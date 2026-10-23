@@ -179,6 +179,85 @@ describe("POST /api/notify/send without `to` (the list send)", () => {
     expect(`${sent.subject} ${sent.text} ${sent.html}`).not.toContain("Anthropic");
   });
 
+  // The 9 October change as the tracker sends it once measured: found on windows per week, stated
+  // by the hero as the 5-hour limit (tracker `last_change.hero`), so `direction`/`percent` are the
+  // 5-hour limit's and `limit` names it.
+  const OCT09 = {
+    date: "2026-10-09", direction: "increased", percent: 17, state: "measured", limit: "five_hour_limit",
+    metric: "windows_per_week", change_pct: -9.2, interval_pct: [-12.9, -5.2],
+    five_hour_limit_change_pct: 17.1, five_hour_limit_change_interval_pct: [9.3, 25.5],
+    weekly_limit_change_pct: 5.6, weekly_limit_change_interval_pct: [-0.0, 11.6],
+    windows_per_week_change_pct: -9.2, windows_per_week_change_interval_pct: [-12.9, -5.2],
+    accounts: 4,
+  };
+
+  it("leads with the hero's sentence when the tracker names the limit, and explains the figures", async () => {
+    const e = env();
+    e.NOTIFY_KV.store.set("sub:a@example.com", JSON.stringify({ status: "confirmed" }));
+    const res = await onRequestPost({ request: post(OCT09), env: e });
+    expect(await res.json()).toMatchObject({ ok: true, date: "2026-10-09", sent: 1 });
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.subject).toBe("Anthropic increased Claude's 5-hour limit by 17%");
+    expect(sent.text.split("\n\nSee the full history")[0]).toBe(
+      [
+        "Anthropic increased Claude's 5-hour limit by 17% on 9 Oct 2026.",
+        "",
+        "The 5-hour limit increased 17.1%, very likely between 9.3% and 25.5%.",
+        "The weekly limit increased 5.6%, very likely between 0% and 11.6%.",
+        "So a week now holds about 9% fewer full 5-hour windows, very likely between 5.2% and 12.9% fewer.",
+        "Measured on all four Max accounts the tracker watches.",
+      ].join("\n"),
+    );
+    expect(sent.html).toContain("Anthropic increased Claude&#39;s 5-hour limit by 17% on 9 Oct 2026.");
+    expect(sent.html).toContain("very likely between 9.3% and 25.5%.<br><br>The weekly limit");
+    expect(sent.html).toContain("the tracker watches.<br><br>The tracker has the full history.");
+    expect(sent.html).toContain("unsubscribe?token=");
+    expect(`${sent.subject} ${sent.text}`).not.toMatch(/observed|interval|ratio/i);
+  });
+
+  it("states the weekly limit when the tracker names it, and words a range across no change", async () => {
+    const e = env();
+    e.NOTIFY_KV.store.set("sub:a@example.com", JSON.stringify({ status: "confirmed" }));
+    const change = {
+      date: "2026-09-23", direction: "increased", percent: 21, limit: "weekly_limit",
+      five_hour_limit_change_pct: 19.7, five_hour_limit_change_interval_pct: [3.1, 39.1],
+      weekly_limit_change_pct: 20.5, weekly_limit_change_interval_pct: [13.5, 27.9],
+      windows_per_week_change_pct: -2.6, windows_per_week_change_interval_pct: [-12.5, 8.4],
+      accounts: 3,
+    };
+    await onRequestPost({ request: post(change), env: e });
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.subject).toBe("Anthropic increased Claude's weekly limit by 21%");
+    expect(sent.text).toContain("Anthropic increased Claude's weekly limit by 21% on 23 Sep 2026.");
+    expect(sent.text).toContain(
+      "So a week now holds about 3% fewer full 5-hour windows, very likely between 12.5% fewer and 8.4% more.",
+    );
+    expect(sent.text).toContain("Measured on three of the Max accounts the tracker watches.");
+  });
+
+  it("words a limit range that spans no change as a decrease and an increase", async () => {
+    const e = env();
+    e.NOTIFY_KV.store.set("sub:a@example.com", JSON.stringify({ status: "confirmed" }));
+    const change = { ...OCT09, weekly_limit_change_pct: 5.3, weekly_limit_change_interval_pct: [-0.7, 11.8] };
+    await onRequestPost({ request: post(change), env: e });
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.text).toContain(
+      "The weekly limit increased 5.3%, very likely between a 0.7% decrease and an 11.8% increase.",
+    );
+  });
+
+  it.each([
+    ["an unknown limit", { ...OCT09, limit: "windows_per_week" }],
+    ["a non-numeric figure", { ...OCT09, weekly_limit_change_pct: "5.6" }],
+    ["a one-ended range", { ...OCT09, five_hour_limit_change_interval_pct: [9.3] }],
+    ["a fractional account count", { ...OCT09, accounts: 3.5 }],
+  ])("answers 400 for %s and marks nothing sent", async (_label, change) => {
+    const e = env();
+    const res = await onRequestPost({ request: post(change), env: e });
+    expect(res.status).toBe(400);
+    expect(e.NOTIFY_KV.store.has("sent:2026-10-09")).toBe(false);
+  });
+
   it("rejects an unrecognised scope", async () => {
     const e = env();
     const change = { date: "2026-08-21", direction: "decreased", percent: 36, scope: "monthly" };
