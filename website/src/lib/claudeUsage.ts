@@ -392,7 +392,11 @@ export interface WeeklyPlan {
     quality?: string;
     source?: string;
     assumed?: boolean;
+    // A level a provisional change opened (tracker ADR 0001 rule 22, amended 2026-10-23).
+    provisional?: boolean;
   }[];
+  // True when `current` is read off a provisional level.
+  provisional?: boolean;
   availability?: { status: string; reason: string | null };
   plan_change?: { date: string; source: string; independently_verified: boolean };
   inferred_from?: Plan;
@@ -701,6 +705,10 @@ export interface RegimeLevel {
   // True when an inferred level carries the value of the plan's own measured level beside it
   // rather than its scaled one. It stays inferred (dashed); only `windows` changed.
   continued?: boolean;
+  // True when the level was opened by a change the tracker holds as provisional (its row's
+  // `provisional` flag, tracker ADR 0001 rule 22 amended 2026-10-23): drawn dashed and lighter,
+  // and labelled provisional, until the change is measured.
+  provisional?: boolean;
 }
 
 // A plan's five-hour windows per week relative to Max 20x. Schema 1 publishes it directly under
@@ -739,7 +747,14 @@ export function weeklyRegimeLevelsFor(j: UsageJson, plan: Plan): RegimeLevel[] {
     if (scale === null) continue;
     for (const r of regimes) {
       if (!Number.isFinite(r.windows)) continue;
-      out.push({ start: r.start, end: r.end, windows: r.windows * scale, inferred: !isOwn, plan: source });
+      out.push({
+        start: r.start,
+        end: r.end,
+        windows: r.windows * scale,
+        inferred: !isOwn,
+        plan: source,
+        ...(r.provisional === true ? { provisional: true } : {}),
+      });
     }
   }
   // A measured level wins any overlap: clip an inferred level to the parts no measured one
@@ -814,7 +829,9 @@ function firstRegimeStart(j: UsageJson): string | null {
 
 // Max 20x's windows-per-week regimes: `window_tokens.per_week_regimes` where the tracker publishes
 // them, the weekly detector's own `weekly_windows.max20.regimes` otherwise.
-function max20WindowRegimes(j: UsageJson): { start: string; end: string; windows: number }[] | undefined {
+function max20WindowRegimes(
+  j: UsageJson,
+): { start: string; end: string; windows: number; provisional?: boolean }[] | undefined {
   const own = j.weekly_windows?.max20?.regimes;
   const pw = perWeekRegimesOf(j);
   if (!pw) return own;
@@ -823,7 +840,7 @@ function max20WindowRegimes(j: UsageJson): { start: string; end: string; windows
   return pw.flatMap((r) => {
     const start = r.from ?? first;
     return start && typeof r.windows_per_week === "number" && Number.isFinite(r.windows_per_week)
-      ? [{ start, end: r.until ?? end, windows: r.windows_per_week }]
+      ? [{ start, end: r.until ?? end, windows: r.windows_per_week, provisional: r.windows_per_week_provisional === true }]
       : [];
   });
 }
@@ -1561,6 +1578,7 @@ function perWeekTokenRegimes(
     windows: typeof r.windows_per_week === "number" ? r.windows_per_week * weekRatio : Number.NaN,
     inferred: plan !== "max20",
     plan: "max20" as Plan,
+    provisional: r.provisional === true,
     tokens: (r.value as number) * factor,
     tokensInterval:
       interval && Array.isArray(r.interval) ? r.interval.map((n) => (typeof n === "number" ? n * factor : null)) : null,
@@ -1698,6 +1716,7 @@ function windowTokenRegimes(
     windows: Number.NaN,
     inferred: plan !== "max20",
     plan: "max20" as Plan,
+    provisional: r.provisional === true,
     tokens: r.value * factor,
     // An inferred family's figure carries no interval (windowTokensIntervalFor), and neither does
     // any of its regimes.
@@ -2134,6 +2153,8 @@ export interface WindowRegime {
   value: number;
   interval: (number | null)[] | null;
   source?: string;
+  // A level a provisional change opened (tracker ADR 0001 rule 22, amended 2026-10-23).
+  provisional?: boolean;
 }
 
 // Tracker seat 119: Max 20x's tokens per week over the same five-hour regimes, oldest first and
@@ -2146,6 +2167,10 @@ export interface PerWeekRegime {
   interval?: (number | null)[] | null;
   window?: number | null;
   windows_per_week?: number | null;
+  // The week (`provisional`) or windows per week (`windows_per_week_provisional`) of a level a
+  // provisional change opened on that quantity's chart.
+  provisional?: boolean;
+  windows_per_week_provisional?: boolean;
 }
 
 // One watched account's own figures over the same regime boundaries. Any factor is null where the
@@ -2170,6 +2195,8 @@ export interface WindowCredits extends CreditsFigure {
   cache_read_weight?: number;
   accounts?: Record<string, WindowCreditsAccount>;
   method?: string;
+  // True when the current figure is a provisional level, as on `window_tokens`.
+  provisional?: boolean;
 }
 
 export interface PerModelCredits {
@@ -2328,6 +2355,9 @@ export interface WindowTokensPerWeek {
   windows_per_week?: CreditsFigure & { source?: string | null };
   all?: CreditsFigure;
   per_family?: Record<string, { all: CreditsFigure }>;
+  // True when the week, or the windows per week it was multiplied by, is a provisional level.
+  provisional?: boolean;
+  windows_per_week_provisional?: boolean;
 }
 
 export interface WindowTokens extends CutSplit {
@@ -2347,6 +2377,9 @@ export interface WindowTokens extends CutSplit {
   cache_read_share?: CreditsFigure;
   per_family?: Record<string, WindowTokensFamily>;
   per_week?: WindowTokensPerWeek;
+  // True when the current figure is a provisional level: the newest regime opened at a change the
+  // tracker holds as provisional (ADR 0001 rule 22, amended 2026-10-23).
+  provisional?: boolean;
 }
 
 export interface CreditsBlock {
@@ -2570,6 +2603,15 @@ export interface CreditFigureText {
   // the caller marks it wherever it prints the number. Absent otherwise, and never on a status,
   // which has no number to qualify.
   provisional?: true;
+  // True on a value read off a provisional level: the newest regime opened at a change the
+  // tracker holds as provisional (levelProvisional). The caller tags it "provisional", as the hero
+  // sentence is tagged, until the change is measured.
+  levelProvisional?: true;
+}
+
+// `f` tagged as read off a provisional level, where `on` and `f` is a value.
+export function onLevel(f: CreditFigureText | null, on: boolean): CreditFigureText | null {
+  return f && on && f.kind === "value" ? { ...f, levelProvisional: true } : f;
 }
 
 // One published figure turned into the text the page shows. `scale` is the plan ratio the rest of
@@ -2653,6 +2695,10 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
   const provisional = familyRateProvisional(j, family);
   const fig = (f: CreditsFigure | undefined, fmt: (n: number) => string, s = scale, prov = provisional) =>
     limit.included ? creditFigure(f, fmt, s, prov) : null;
+  // The window's figures follow its current level, and a week's follow the window and the windows
+  // per week it is multiplied by: provisional while either is a provisional level.
+  const windowLevel = wc?.provisional === true;
+  const weekLevel = windowLevel || j.weekly_windows?.max20?.provisional === true;
   // Tokens per week is the published per-window figure times the plan's own measured windows per
   // week, the same figure the page states in words a line below it, with the model's share of the
   // week on top. The block publishes no tokens-per-week of its own.
@@ -2688,13 +2734,13 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
     // that family's credits per token -- the whole window spent on nothing but fresh input, or
     // nothing but output, and on Sonnet it carries the fitted rate's 0.33-to-0.83 interval with
     // it. The page states the measured window instead; see computeWindowTokens (wf-60).
-    usdIn: noRange(fig(per?.api_value_per_window_usd?.input, fmtUsd2)),
-    usdOut: noRange(fig(per?.api_value_per_window_usd?.output, fmtUsd2)),
+    usdIn: onLevel(noRange(fig(per?.api_value_per_window_usd?.input, fmtUsd2)), windowLevel),
+    usdOut: onLevel(noRange(fig(per?.api_value_per_window_usd?.output, fmtUsd2)), windowLevel),
     // The same window's API value a week of windows holds. The dollar route publishes its own
     // per-window figure ($144.05 against the credits block's $75.49 on the same file), so the
     // table takes this from the block too rather than putting the two side by side.
-    usdInPerWeek: noRange(perWeek(per?.api_value_per_window_usd?.input, fmtUsd)),
-    windowCredits: fig(wc, fmtCredits, scale, false),
+    usdInPerWeek: onLevel(noRange(perWeek(per?.api_value_per_window_usd?.input, fmtUsd)), weekLevel),
+    windowCredits: onLevel(fig(wc, fmtCredits, scale, false), windowLevel),
     windowCreditsN: typeof wc?.n === "number" ? wc.n : null,
     pureFamily: wc?.pure_family ?? null,
     accountCount: windowCreditAccounts(wc),
@@ -2709,10 +2755,10 @@ export function computeCredits(j: UsageJson, plan: Plan, model: string, effort?:
     creditsPerTokenIn: per?.credits_per_token?.input ?? null,
     creditsPerTokenInInterval: inferred ? null : per?.credits_per_token_interval?.input ?? null,
     referenceRateIn: per?.reference_rate?.input ?? null,
-    sessionsPerWindow: fig(session?.per_window, count),
+    sessionsPerWindow: onLevel(fig(session?.per_window, count), windowLevel),
     // The published per-week figure already carries the measured windows per week; the model's
     // own share of that week (Fable's half on Max) is the page's rule and applies on top.
-    sessionsPerWeek: fig(session?.per_week, count, scale * limit.weekly_fraction * weekRatio),
+    sessionsPerWeek: onLevel(fig(session?.per_week, count, scale * limit.weekly_fraction * weekRatio), weekLevel),
     split: session?.split ?? null,
     splitSource: session?.split_source ?? null,
     medianSessionTokens: session?.median_session_tokens ?? null,
@@ -2856,10 +2902,17 @@ export function computeWindowTokens(j: UsageJson, plan: Plan, model: string): Wi
   // "measured"); a window measured directly on the family's own stretches carries no rate, so a
   // provisional fit does not reach it.
   const provisional = familyRateProvisional(j, family) && fam?.rate_source === "measured";
-  const fig = (f: CreditsFigure | undefined | null, s = scale): CreditFigureText | null => {
+  // The window's figures follow its current level, and the week's follow the week and the windows
+  // per week it is scaled by: provisional while either is a provisional level.
+  const windowLevel = wt.provisional === true;
+  const weekLevel =
+    wt.per_week?.provisional === true ||
+    wt.per_week?.windows_per_week_provisional === true ||
+    j.weekly_windows?.max20?.provisional === true;
+  const fig = (f: CreditsFigure | undefined | null, s = scale, level = windowLevel): CreditFigureText | null => {
     if (!limit.included) return null;
     const text = creditFigure(f, fmtTokens, s, provisional);
-    return text && (text.kind === "status" || inferred) ? { ...text, range: null } : text;
+    return onLevel(text && (text.kind === "status" || inferred) ? { ...text, range: null } : text, level);
   };
   const value = (f: CreditsFigure | undefined | null, s = scale): number | null =>
     limit.included && typeof f?.value === "number" && Number.isFinite(f.value) ? f.value * s : null;
@@ -2900,7 +2953,7 @@ export function computeWindowTokens(j: UsageJson, plan: Plan, model: string): Wi
     measuredFamily,
     perWindow: fig(fam?.all),
     perWindowValue: value(fam?.all),
-    perWeek: weekScale === null ? null : fig(perWeekFigure, weekScale),
+    perWeek: weekScale === null ? null : fig(perWeekFigure, weekScale, weekLevel),
     perWeekValue: weekScale === null ? null : value(perWeekFigure, weekScale),
     perClass,
     cacheReadShare:
