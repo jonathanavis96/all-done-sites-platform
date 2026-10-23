@@ -5,7 +5,7 @@ import NotifyForm from "@/components/NotifyForm";
 import Seo from "@/components/Seo";
 import SpeedChart, { SpeedByAccountChart, accountColor } from "@/components/SpeedChart";
 import FourAccountChart from "@/components/FourAccountChart";
-import { accountsHeading, fourAccountChart } from "@/lib/fourAccounts";
+import { accountsHeading, fourAccountChart, type PublishedChangeMarker } from "@/lib/fourAccounts";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
   EFFORTS,
@@ -62,6 +62,7 @@ import {
   windowChangePct,
   tokensPerWeekChangePct,
   pendingChangeStates,
+  publishedChangeMarkers,
   accountMeterChanges,
   headlessFactor,
   type AccountLines,
@@ -458,6 +459,7 @@ function LevelChart({
   changePct,
   markEvents,
   pendingStates,
+  published,
   accountLines,
   accountChanges,
   missingFor,
@@ -489,6 +491,11 @@ function LevelChart({
   // Published changes not yet measured (tracker PR #98): a marker within a few days of one says
   // its state after the date, e.g. "+30% on 22 Sep (measuring)".
   pendingStates?: { date: string; state: ChangeState }[];
+  // The tracker's own markers for this chart's quantity (four_accounts.change_markers, ADR 0001
+  // rule 22 amended 2026-10-23). A measured one ("step") states its published size on the step the
+  // line draws there; a provisional one ("dashed") opens no step, so it is marked at its own date
+  // with its published size and the word provisional. The hero reads the same published size.
+  published?: PublishedChangeMarker[];
   // One line per watched Max 20x account, in the account colours the speed-by-account chart uses,
   // with the same legend and the same "No data for ..." note for an account that has nothing to
   // draw here.
@@ -552,7 +559,7 @@ function LevelChart({
     ...readings.map((r) => stamp(r.window_ending)),
     ...pooled.map((p) => stamp(p.week_ending)),
   ].filter(Number.isFinite);
-  const markerDays = [...events, ...(markEvents ?? [])].map((ev) => day(ev.date));
+  const markerDays = [...events, ...(markEvents ?? []), ...(published ?? [])].map((ev) => day(ev.date));
   const d0 = Math.min(...stamps, ...markerDays);
   const d1 = Math.max(...stamps, ...markerDays);
   const span = Math.max(1, d1 - d0);
@@ -572,7 +579,7 @@ function LevelChart({
   // drawn step really is.
   const eventChange = latestWeeklyChange(events);
   const levelSteps = changeFromLevels ? levelStepsFor(plotted, plotted.find(isSelectedPlan)) : [];
-  const rawMarkers: { x: number; date: string; text: string; pct: number | null }[] =
+  const rawMarkers: { x: number; date: string; text: string; pct: number | null; provisional?: boolean }[] =
     levelSteps.length > 0
       ? levelSteps.map((st, i) => {
           // Only the newest step is the change the publisher's figure describes.
@@ -617,8 +624,30 @@ function LevelChart({
     const pct = before && after !== null ? ((after - before) / before) * 100 : 0;
     rawMarkers.push({ x: xDay(ev.date), date: ev.date, pct, text: `${markerPctText(pct)} on ${fmtDateShort(utcDay(ev.date))}` });
   }
+  for (const pm of published ?? []) {
+    const pct = pm.change_pct;
+    if (typeof pct !== "number" || !Number.isFinite(pct)) continue;
+    const at = day(utcDay(pm.date));
+    const provisional = pm.style === "dashed";
+    const near = rawMarkers.find((m) => Math.abs(day(utcDay(m.date)) - at) <= NEAR_MS);
+    if (near) {
+      near.pct = pct;
+      near.text = `${markerPctText(pct)} on ${fmtDateShort(utcDay(near.date))}${provisional ? " (provisional)" : ""}`;
+      near.provisional = provisional;
+    } else {
+      const date = pm.at ?? pm.date;
+      rawMarkers.push({
+        x: xStamp(date),
+        date,
+        pct,
+        text: `${markerPctText(pct)} on ${fmtDateShort(utcDay(date))}${provisional ? " (provisional)" : ""}`,
+        provisional,
+      });
+    }
+  }
   rawMarkers.sort((a, b) => a.x - b.x);
   for (const m of rawMarkers) {
+    if (m.provisional) continue;
     const at = day(utcDay(m.date));
     const pending = (pendingStates ?? []).find((p) => Math.abs(day(p.date) - at) <= NEAR_MS);
     if (pending) m.text = `${m.text} (${pending.state})`;
@@ -645,7 +674,9 @@ function LevelChart({
           {accountLegendText(
             accountLabel(l.account),
             l.levels,
-            changeMarkers,
+            // A provisional marker opens no step, so no account has a figure there: the legend
+            // keeps naming the newest change the line steps at.
+            changeMarkers.filter((m) => !m.provisional),
             (accountChanges ?? []).flatMap((c) =>
               typeof c.perAccount[l.account] === "number" ? [{ date: c.date, pct: c.perAccount[l.account] }] : [],
             ),
@@ -1454,6 +1485,11 @@ export default function ClaudeUsageTracker({
     [data, perWeekRegimes],
   );
   const pendingStates = useMemo(() => (data ? pendingChangeStates(data) : []), [data]);
+  // The tracker's markers for each plan chart's quantity: the window chart marks the 5-hour limit,
+  // tokens per week the weekly limit, and the windows chart windows per week.
+  const windowMarkers = useMemo(() => (data ? publishedChangeMarkers(data, "five_hour_limit") : []), [data]);
+  const weeklyMarkers = useMemo(() => (data ? publishedChangeMarkers(data, "weekly_limit") : []), [data]);
+  const windowsMarkers = useMemo(() => (data ? publishedChangeMarkers(data, "windows_per_week") : []), [data]);
   const weeklyMeasuredEvents = useMemo(() => measuredEvents.filter((e) => e.scope === "weekly"), [measuredEvents]);
   const weeklyTokenLevels = useMemo(
     () =>
@@ -1804,7 +1840,12 @@ export default function ClaudeUsageTracker({
                   .replace(/>/g, "&gt;")
                   .replace(/(increased|decreased)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
                   .replace(/(\d+%)/, `<span class="${h.tone === "down" ? "down" : "up"}">$1</span>`)
-                  .replace(/Claude/, `<span class="claude">Claude</span>`),
+                  .replace(/Claude/, `<span class="claude">Claude</span>`)
+                  // "5-hour" is one word: never broken at its hyphen.
+                  .replace(/5-hour/, `<span class="nb">5-hour</span>`) +
+                  // While the stated change is provisional, a small tag beside the sentence; it goes
+                  // when the tracker publishes the change as measured.
+                  (h.provisional ? ` <span class="prov-tag">provisional</span>` : ""),
               }}
             />
           )}
@@ -2095,6 +2136,7 @@ export default function ClaudeUsageTracker({
                         changePct={windowPct}
                         markEvents={measuredEvents}
                         pendingStates={pendingStates}
+                        published={windowMarkers}
                         accountLines={windowAccountLines}
                         accountChanges={windowAccountChanges}
                         missingFor={modelLabel(model)}
@@ -2150,6 +2192,7 @@ export default function ClaudeUsageTracker({
                       changeFromLevels
                       markEvents={weeklyMeasuredEvents}
                       pendingStates={pendingStates}
+                      published={weeklyMarkers}
                       accountLines={weeklyTokenAccountLines}
                       accountChanges={weeklyAccountChanges}
                       missingFor={modelLabel(model)}
@@ -2189,6 +2232,7 @@ export default function ClaudeUsageTracker({
                       changeFromLevels
                       markEvents={measuredEvents}
                       pendingStates={pendingStates}
+                      published={windowsMarkers}
                       accountLines={windowsAccountLines}
                       missingFor="five-hour windows per week"
                       shown={planChart === "windows"}

@@ -1,4 +1,4 @@
-import type { FourAccountsBlock } from "./fourAccounts";
+import type { ChangeMarkerQuantity, FourAccountsBlock, PublishedChangeMarker } from "./fourAccounts";
 export type Plan = "pro" | "max5" | "max20";
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export type TokenClass = "input" | "output" | "cache_read" | "cache_write";
@@ -196,6 +196,28 @@ export interface ChangeRecord {
     scope?: string;
     source?: string;
   };
+}
+// The tracker's hero record. `quantity` names the limit the sentence states and `percent` and
+// `direction` its rounded size; `state` is "provisional" while the change is held, then "measured".
+export type HeadlineQuantity = "five_hour_limit" | "weekly_limit";
+export interface HeadlineRecord {
+  date: string;
+  at?: string;
+  state: string;
+  provisional?: boolean;
+  held_days?: number;
+  holds_needed?: number;
+  quantity: string;
+  line?: string;
+  limit?: string;
+  direction: string;
+  percent: number;
+  change_pct?: number | null;
+  interval_pct?: (number | null)[] | null;
+  found_on?: string;
+  first_found?: string;
+  measured_on?: string | null;
+  passed_over?: { at?: string; state?: string; found_on?: string; reason?: string }[];
 }
 export interface UsageEvent extends Partial<Omit<ChangeRecord, "date" | "scope">> {
   date: string;
@@ -449,6 +471,10 @@ export interface UsageJson {
   api_price_per_mtok: Record<string, ApiPrice>;
   history: Record<string, HistoryRow[]>;
   last_change: ChangeRecord | null;
+  // The change the hero states, picked by the tracker (ADR 0001 rule 22, amended 2026-10-23):
+  // the newest provisional-or-measured change with a 5-hour or weekly size whose interval excludes
+  // no change. Null where no change can be stated as a limit; absent from files published before.
+  headline?: HeadlineRecord | null;
   events?: UsageEvent[];
   // The four-account detector's run (tracker four_accounts_page.public_block): each Max account's
   // own readings on the lines it searches, the step all of them took, and every change it found.
@@ -1206,17 +1232,48 @@ export function changeState(c: { state?: unknown } | null | undefined): ChangeSt
 // Jonathan reversed audit finding 4 on 2026-09-16: the headline says Anthropic changed the
 // limit again, as it did at PR #74, rather than hedging to "observed ... ratio changed". The figure
 // is always the measured one, never an announced figure.
-export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "flat" } {
-  const c = j.last_change;
-  if (!c) {
-    // "held" rows are backfilled with the first real reading, not measured on that day, so
-    // the "hasn't changed since" date must come from the first genuinely measured row.
-    const rows = Object.values(j.history ?? {}).flat();
-    const firstReal = rows.filter((h) => h.source !== "held").map((h) => h.date).sort()[0];
-    const first = firstReal ?? rows.map((h) => h.date).sort()[0];
-    if (!first) return { text: "Anthropic hasn't changed Claude's limits since we started measuring.", tone: "flat" };
-    return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
+const HEADLINE_LIMITS: Record<HeadlineQuantity, string> = { five_hour_limit: "5-hour limit", weekly_limit: "weekly limit" };
+
+// The published hero record, where it is one the page can state: a provisional or measured change
+// on the 5-hour or the weekly limit, with a whole percent and a direction. Anything else -- a
+// candidate, a withdrawn change, a quantity the hero never names -- is not stated.
+export function publishedHeadline(j: UsageJson): (HeadlineRecord & { quantity: HeadlineQuantity }) | null {
+  const h = j.headline;
+  if (!h || typeof h !== "object") return null;
+  if (h.state !== "provisional" && h.state !== "measured") return null;
+  if (!(h.quantity === "five_hour_limit" || h.quantity === "weekly_limit")) return null;
+  if (h.direction !== "increased" && h.direction !== "decreased") return null;
+  if (typeof h.percent !== "number" || !Number.isFinite(h.percent) || typeof h.date !== "string") return null;
+  return h as HeadlineRecord & { quantity: HeadlineQuantity };
+}
+
+function unchangedSince(j: UsageJson): { text: string; tone: "flat" } {
+  // "held" rows are backfilled with the first real reading, not measured on that day, so
+  // the "hasn't changed since" date must come from the first genuinely measured row.
+  const rows = Object.values(j.history ?? {}).flat();
+  const firstReal = rows.filter((h) => h.source !== "held").map((h) => h.date).sort()[0];
+  const first = firstReal ?? rows.map((h) => h.date).sort()[0];
+  if (!first) return { text: "Anthropic hasn't changed Claude's limits since we started measuring.", tone: "flat" };
+  return { text: `Anthropic hasn't changed Claude's limits since ${fmtDate(first)}.`, tone: "flat" };
+}
+
+// `provisional` is set (true) only while the stated change is provisional: the hero shows its tag.
+export function headline(j: UsageJson): { text: string; tone: "up" | "down" | "flat"; provisional?: true } {
+  // A file that publishes the hero record (ADR 0001 rule 22, amended 2026-10-23, Jonathan's
+  // decision): the tracker picks the change and the limit, and the page states them. It names the
+  // 5-hour limit or the weekly limit, never windows per week or "limits"; null means no change can
+  // be stated as a limit.
+  if (j.headline !== undefined) {
+    const h = publishedHeadline(j);
+    if (h) {
+      const text = `Anthropic last ${h.direction} Claude's ${HEADLINE_LIMITS[h.quantity]} by ${h.percent}% on ${fmtDate(h.date)}.`;
+      const tone = h.direction === "increased" ? "up" : "down";
+      return h.state === "provisional" ? { text, tone, provisional: true } : { text, tone };
+    }
+    if (j.headline === null) return unchangedSince(j);
   }
+  const c = j.last_change;
+  if (!c) return unchangedSince(j);
   // Tracker PR #98: a fitted change moves both limits and is published as the five-hour limit
   // change, whose rounded size and direction are the record's own `percent` and `direction`, with
   // the weekly one beside it. The headline keeps its "limits" sentence for it; `scope` there only
@@ -1716,6 +1773,17 @@ export function pendingChangeStates(j: UsageJson): { date: string; state: Change
     if (!out.some((o) => o.date === c.date)) out.push({ date: c.date, state });
   }
   return out;
+}
+
+// The tracker's markers for one plan chart's quantity: each measured change ("step") and each
+// provisional one ("dashed") with its published size. Empty for files published before them.
+export function publishedChangeMarkers(j: UsageJson, quantity: ChangeMarkerQuantity): PublishedChangeMarker[] {
+  const list = j.four_accounts?.change_markers?.[quantity];
+  return Array.isArray(list)
+    ? list.filter(
+        (m) => m && typeof m.date === "string" && typeof m.change_pct === "number" && Number.isFinite(m.change_pct) && (m.style === "step" || m.style === "dashed"),
+      )
+    : [];
 }
 
 // The signed percent the window chart's newest step states: the published `last_change`, but only

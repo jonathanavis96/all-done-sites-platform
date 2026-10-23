@@ -86,6 +86,9 @@ import { resolve } from "node:path";
 // Tracker PR #98's offline rebuild: every change carries a state, and the 22 Sep change moves both
 // the five-hour and the weekly limit.
 import changeStateJson from "@/lib/__fixtures__/claude-usage-pr98-change-state.json";
+// The four-account detector's published block (tracker #142): the base the hero-record tests add
+// the tracker's headline and chart markers to.
+import fourAccountsFixture from "@/lib/__fixtures__/claude-usage-four-accounts.json";
 
 function renderHtml(j: UsageJson, plan: Plan = "max20", model = "claude-sonnet-5", now?: number, contribMetric?: ContribMetric): string {
   return renderToString(
@@ -2882,5 +2885,99 @@ describe("the effort table on the 5.5 cells", () => {
     }
     // Fable 5.1 max kept 6 of its 7 runs (2026-09-09), so the caveat points at the printed counts.
     expect(render(J, "max20", "claude-opus-5-5")).toContain("run the number of times each cell of the matrix above prints");
+  });
+});
+
+// ADR 0001 rule 22, amended 2026-10-23 (Jonathan's decision): the hero states the tracker's
+// published record -- the newest provisional-or-measured change, as the 5-hour or the weekly limit
+// -- with a small "provisional" tag while it is held, and every plan chart the change moves marks
+// it: dashed with its figure and "provisional" (no step) while provisional, on the step once
+// measured. The records and sizes are the tracker branch's own output for 9 Oct.
+describe("the hero record and the provisional chart markers", () => {
+  const BASE = fourAccountsFixture as unknown as UsageJson;
+  const H9 = {
+    at: "2026-10-09T16:00:00+00:00", change_pct: 15.3, date: "2026-10-09", direction: "increased",
+    first_found: "2026-10-20", found_on: "ratio", held_days: 4, holds_needed: 7, interval_pct: [3.2, 28.8],
+    limit: "5-hour limit", line: "five_hour", measured_on: null, passed_over: [], percent: 15,
+    provisional: true, quantity: "five_hour_limit", state: "provisional",
+  };
+  const H23 = {
+    at: "2026-09-23T13:00:00+00:00", change_pct: 20.5, date: "2026-09-23", direction: "increased",
+    first_found: "2026-10-04", found_on: "seven_day", held_days: 20, holds_needed: 7, interval_pct: [13.5, 27.9],
+    limit: "weekly limit", line: "seven_day", measured_on: "2026-10-10", passed_over: [], percent: 21,
+    provisional: false, quantity: "weekly_limit", state: "measured",
+  };
+  const mk = (date: string, at: string, pct: number, style: "step" | "dashed") => ({
+    at, date, change_pct: pct, percent: Math.round(Math.abs(pct)), direction: pct < 0 ? "decreased" : "increased",
+    state: style === "step" ? "measured" : "provisional", style, held_days: style === "step" ? 20 : 4, holds_needed: 7,
+  });
+  const markers = (nine: "step" | "dashed" | null) => ({
+    five_hour_limit: [
+      mk("2026-09-23", "2026-09-23T13:00:00+00:00", 19.7, "step"),
+      ...(nine ? [mk("2026-10-09", "2026-10-09T16:00:00+00:00", 15.3, nine)] : []),
+    ],
+    weekly_limit: [mk("2026-09-23", "2026-09-23T13:00:00+00:00", 20.5, "step")],
+    windows_per_week: [
+      mk("2026-09-14", "2026-09-14T09:00:00+00:00", -17.4, "step"),
+      ...(nine ? [mk("2026-10-09", "2026-10-09T16:00:00+00:00", -9.2, nine)] : []),
+    ],
+  });
+  const withRecord = (headline: unknown, nine: "step" | "dashed" | null): UsageJson =>
+    ({ ...BASE, headline, four_accounts: { ...BASE.four_accounts, change_markers: markers(nine) } }) as UsageJson;
+  const MODEL = "claude-opus-5-5";
+  const h1 = (html: string) => html.match(/<h1[^>]*>(.*?)<\/h1>/)![1];
+  const h1Text = (html: string) => h1(html).replace(/<[^>]+>/g, "").replace(/&#x27;/g, "'");
+  const aria = (html: string, title: string) =>
+    (html.match(new RegExp(`aria-label="${title}\\. ([^"]*)"`))?.[1] ?? "").replace(/&#x27;/g, "'");
+  const charts = ["Effective window size over time", "Tokens per week over time", "Five-hour windows per week over time"];
+
+  it("states the provisional 9 Oct change as the 5-hour limit, with the tag beside it", () => {
+    const html = renderHtml(withRecord(H9, "dashed"), "max20", MODEL);
+    expect(h1Text(html)).toBe("Anthropic last increased Claude's 5-hour limit by 15% on 9 Oct 2026. provisional");
+    expect(h1(html)).toContain('<span class="prov-tag">provisional</span>');
+    expect(html.match(/prov-tag/g)).toHaveLength(1);
+  });
+
+  it("marks the provisional change dashed with its figure on the charts it moves, and on no other", () => {
+    const html = renderHtml(withRecord(H9, "dashed"), "max20", MODEL);
+    expect(aria(html, charts[0])).toContain("+15% on 9 Oct (provisional)");
+    expect(aria(html, charts[2])).toContain("-9% on 9 Oct (provisional)");
+    expect(aria(html, charts[1])).not.toContain("9 Oct");
+    // The earlier, measured changes keep their own markers, stating the published sizes the hero
+    // would state for them.
+    expect(aria(html, charts[0])).toContain("+20% on 23 Sep");
+    expect(aria(html, charts[1])).toContain("+21% on 23 Sep");
+    expect(aria(html, charts[2])).toContain("-17% on 14 Sep");
+    for (const c of charts) expect(aria(html, c)).not.toMatch(/2[0-9]% on 23 Sep \(provisional\)/);
+  });
+
+  it("drops the tag and the word provisional once the change is measured", () => {
+    const html = renderHtml(withRecord({ ...H9, state: "measured", provisional: false, held_days: 8, measured_on: "2026-10-26" }, "step"), "max20", MODEL);
+    expect(h1Text(html)).toBe("Anthropic last increased Claude's 5-hour limit by 15% on 9 Oct 2026.");
+    expect(html).not.toContain("prov-tag");
+    expect(aria(html, charts[0])).toContain("+15% on 9 Oct");
+    expect(aria(html, charts[2])).toContain("-9% on 9 Oct");
+    for (const c of charts) expect(aria(html, c)).not.toContain("(provisional)");
+  });
+
+  it("falls back to 23 Sep, as the weekly limit, once the provisional change is withdrawn", () => {
+    const html = renderHtml(withRecord(H23, null), "max20", MODEL);
+    expect(h1Text(html)).toBe("Anthropic last increased Claude's weekly limit by 21% on 23 Sep 2026.");
+    expect(html).not.toContain("prov-tag");
+    for (const c of charts) expect(aria(html, c)).not.toContain("9 Oct");
+  });
+
+  it("says the limits have not changed when no change can be stated as a limit", () => {
+    const html = renderHtml(withRecord(null, null), "max20", MODEL);
+    expect(h1Text(html)).toMatch(/^Anthropic hasn't changed Claude's limits since \d+ \w+ 2026\.$/);
+    expect(html).not.toContain("prov-tag");
+  });
+
+  it("renders a file published before the record as it does today", () => {
+    const html = renderHtml(BASE, "max20", MODEL);
+    expect("headline" in BASE).toBe(false);
+    expect(h1Text(html)).toBe("Anthropic last increased Claude's limits by 18% on 23 Sep 2026.");
+    expect(html).not.toContain("prov-tag");
+    for (const c of charts) expect(aria(html, c)).not.toContain("(provisional)");
   });
 });
