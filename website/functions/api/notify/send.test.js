@@ -248,6 +248,8 @@ describe("POST /api/notify/send without `to` (the list send)", () => {
 
   it.each([
     ["an unknown limit", { ...OCT09, limit: "windows_per_week" }],
+    ["an inherited property name as the limit", { ...OCT09, limit: "constructor" }],
+    ["a prototype key as the limit", { ...OCT09, limit: "__proto__" }],
     ["a non-numeric figure", { ...OCT09, weekly_limit_change_pct: "5.6" }],
     ["a one-ended range", { ...OCT09, five_hour_limit_change_interval_pct: [9.3] }],
     ["a fractional account count", { ...OCT09, accounts: 3.5 }],

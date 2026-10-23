@@ -202,7 +202,7 @@ function windowsLine(pct, range) {
 function heroLead(body) {
   const { limit } = body ?? {};
   if (limit === undefined) return {};
-  if (!(limit in HERO_LIMITS)) return { error: "limit must be five_hour_limit or weekly_limit" };
+  if (typeof limit !== "string" || !Object.hasOwn(HERO_LIMITS, limit)) return { error: "limit must be five_hour_limit or weekly_limit" };
   const pairs = [
     ["five_hour_limit_change_pct", "five_hour_limit_change_interval_pct"],
     ["weekly_limit_change_pct", "weekly_limit_change_interval_pct"],
