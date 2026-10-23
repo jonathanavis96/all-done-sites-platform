@@ -1,3 +1,4 @@
+import type { FourAccountsBlock } from "./fourAccounts";
 export type Plan = "pro" | "max5" | "max20";
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export type TokenClass = "input" | "output" | "cache_read" | "cache_write";
@@ -449,6 +450,10 @@ export interface UsageJson {
   history: Record<string, HistoryRow[]>;
   last_change: ChangeRecord | null;
   events?: UsageEvent[];
+  // The four-account detector's run (tracker four_accounts_page.public_block): each Max account's
+  // own readings on the lines it searches, the step all of them took, and every change it found.
+  // Absent from files published before the detector.
+  four_accounts?: FourAccountsBlock | null;
   // The five-hour meter's own measurements. Only the headless factor is typed: how many times as
   // fast headless `claude -p` work fills the meter as interactive work does.
   five_hour_meter?: { headless_factor?: { value?: number | null; interval?: (number | null)[] | null } | null };

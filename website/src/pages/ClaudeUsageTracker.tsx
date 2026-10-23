@@ -4,6 +4,8 @@ import ContributeMeter from "@/components/ContributeMeter";
 import NotifyForm from "@/components/NotifyForm";
 import Seo from "@/components/Seo";
 import SpeedChart, { SpeedByAccountChart, accountColor } from "@/components/SpeedChart";
+import FourAccountChart from "@/components/FourAccountChart";
+import { accountsHeading, fourAccountChart } from "@/lib/fourAccounts";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
   EFFORTS,
@@ -1505,6 +1507,8 @@ export default function ClaudeUsageTracker({
   // at two scales. Null for a file published before the block, which the page says in words.
   const wt = useMemo(() => (data ? computeWindowTokens(data, plan, model) : null), [data, plan, model]);
   const changeSentences = useMemo(() => (data ? changeLines(data) : []), [data]);
+  // The accounts the four-account chart draws, or null where it draws nothing.
+  const fourAccountsDrawn = useMemo(() => fourAccountChart(data?.four_accounts)?.accounts ?? null, [data]);
   // How many accounts the passive readings rest on, in words. Null without the credits block, in
   // which case the page keeps saying "a real account" as it does today.
   const accountsWord =
@@ -2194,6 +2198,17 @@ export default function ClaudeUsageTracker({
             <p className="stats-cta-row mob">
               <a className="stats-cta" href="#contribute">See your own stats &darr;</a>
             </p>
+          </section>
+        )}
+
+        {/* The four-account detector: each Max account against its own level now on the two lines
+            it searches, the step all of them took, and each change it found with its size and
+            interval. Files published before the detector have no block, and the section is not
+            drawn at all. */}
+        {!unavailable && data?.four_accounts && fourAccountsDrawn && (
+          <section id="limit-changes">
+            <h2>{accountsHeading(fourAccountsDrawn.length)}</h2>
+            <FourAccountChart block={data.four_accounts} />
           </section>
         )}
 
