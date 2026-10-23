@@ -21,6 +21,7 @@ import {
   type FourAccountPanel,
   type FourAccountsBlock,
 } from "@/lib/fourAccounts";
+import { placeMarkerLabels } from "@/lib/markerLabels";
 
 const DAY_MS = 86400e3;
 // The width the prerender draws at, before the page has measured its column.
@@ -37,6 +38,7 @@ const changeColour = (pct: number) => (pct < 0 ? RED : pct > 0 ? GREEN : GREY);
 const SIZE_CHAR_PX = 8.2; // 14px bold
 const NOTE_CHAR_PX = 6.6; // 12px
 const LINE_PX = 15; // one line of label
+const SIZE_ASCENT_PX = 11; // how far the 14px size line's ink reaches above its baseline
 const ROW_AIR_PX = 6;
 
 interface PlacedLabel extends ChangeMark {
@@ -48,32 +50,35 @@ interface PlacedLabel extends ChangeMark {
   rates: string | null;
 }
 
+// Each change's label sits just beside its own dashed line, which runs up out of the plot to the
+// label's row, so every label is attached to the line that reaches it (lib/markerLabels).
 function placeLabels(
   marks: ChangeMark[],
   x: (t: number) => number,
   left: number,
   right: number,
 ): { rows: number; rowPx: number; labels: PlacedLabel[] } {
-  const placed: { lo: number; hi: number; row: number }[] = [];
-  const out: PlacedLabel[] = [];
-  // Newest first, so the newest change keeps the row next to the plot.
-  for (const m of [...marks].sort((a, b) => b.t - a.t)) {
+  const texts = marks.map((m) => {
     const note = [m.interval, m.date, m.unconfirmed ? m.state : null].filter(Boolean).join(" · ");
     const rates = m.ratesInterval ? `with model rates ${m.ratesInterval}` : null;
     const w = Math.max(m.size.length * SIZE_CHAR_PX, note.length * NOTE_CHAR_PX, (rates ?? "").length * NOTE_CHAR_PX);
-    const mx = x(m.t);
-    let anchor: "start" | "end" = mx + 6 + w <= right ? "start" : "end";
-    let lo = anchor === "start" ? mx + 6 : mx - 6 - w;
-    if (lo < left) {
-      anchor = "start";
-      lo = Math.max(left, Math.min(mx + 6, right - w));
-    }
-    const hi = lo + w;
-    let row = 0;
-    while (placed.some((p) => p.row === row && lo < p.hi + 8 && p.lo < hi + 8)) row++;
-    placed.push({ lo, hi, row });
-    out.push({ ...m, x: mx, anchor, tx: anchor === "start" ? lo : hi, row, note, rates });
-  }
+    return { note, rates, w };
+  });
+  const slots = placeMarkerLabels(
+    marks.map((m, i) => ({ x: x(m.t), w: texts[i].w })),
+    left,
+    right,
+    { gap: 8 },
+  );
+  const out: PlacedLabel[] = marks.map((m, i) => ({
+    ...m,
+    x: x(m.t),
+    anchor: slots[i].anchor,
+    tx: slots[i].tx,
+    row: slots[i].row,
+    note: texts[i].note,
+    rates: texts[i].rates,
+  }));
   const rows = out.length > 0 ? Math.max(...out.map((l) => l.row)) + 1 : 0;
   // Two lines (size, then interval and date), three where a size states its rate range.
   const rowPx = (out.some((l) => l.rates) ? 3 : 2) * LINE_PX + ROW_AIR_PX;
@@ -254,7 +259,7 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
                     key={`mark-${c.t}`}
                     x1={x(c.t)}
                     x2={x(c.t)}
-                    y1={l.plotTop - (l.rows > 0 ? 4 : 0)}
+                    y1={l.plotTop}
                     y2={l.plotBottom}
                     stroke={changeColour(c.pct)}
                     strokeWidth="1.5"
@@ -266,6 +271,17 @@ export default function FourAccountChart({ block }: { block: FourAccountsBlock |
                   const lines = c.rates ? 3 : 2;
                   return (
                     <g key={`label-${c.t}`} className="fa-label">
+                      {/* The leader: the change's own line carried up to the top of its label. */}
+                      <line
+                        data-leader={c.size}
+                        x1={c.x}
+                        x2={c.x}
+                        y1={base - (lines - 1) * LINE_PX - SIZE_ASCENT_PX}
+                        y2={l.plotTop}
+                        stroke={changeColour(c.pct)}
+                        strokeWidth="1.5"
+                        strokeDasharray="5 4"
+                      />
                       <text x={c.tx} y={base - (lines - 1) * LINE_PX} textAnchor={c.anchor} className="fa-size" style={{ fill: changeColour(c.pct) }}>
                         {c.size}
                       </text>

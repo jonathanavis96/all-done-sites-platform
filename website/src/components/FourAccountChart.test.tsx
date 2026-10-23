@@ -50,6 +50,35 @@ describe("FourAccountChart", () => {
     expect(t).toContain("−16.2 to −1.6% · 9 Oct · provisional");
   });
 
+  it("runs each change's own line up to its label, which sits just beside it (2026-10-23)", () => {
+    {
+      const block = html;
+      const marks = [...block.matchAll(/<line x1="([\d.]+)" x2="[\d.]+" y1="([\d.]+)" y2="[\d.]+" stroke="#[0-9A-F]{6}" stroke-width="1.5" stroke-dasharray="5 4"/g)].map((m) => ({
+        x: Number(m[1]),
+        top: Number(m[2]),
+      }));
+      const labels = [...block.matchAll(/<g class="fa-label"><line data-leader="([^"]+)" x1="([\d.]+)" x2="[\d.]+" y1="([\d.]+)" y2="([\d.]+)"[^>]*><\/line><text x="([\d.]+)" y="([\d.]+)" text-anchor="(start|end)"/g)].map((m) => ({
+        size: m[1],
+        x: Number(m[2]),
+        y1: Number(m[3]),
+        y2: Number(m[4]),
+        tx: Number(m[5]),
+        ty: Number(m[6]),
+        anchor: m[7],
+      }));
+      expect(labels.length).toBe(marks.length);
+      expect(labels.length).toBeGreaterThanOrEqual(3);
+      for (const l of labels) {
+        // The leader stands on its own change's line, from the plot's top up to the label's top.
+        expect(marks.some((m) => Math.abs(m.x - l.x) < 1e-6 && m.top === l.y2)).toBe(true);
+        expect(l.y1).toBeLessThan(l.ty);
+        // Its label starts or ends 6px off that line.
+        expect(Math.abs(l.tx - l.x)).toBeCloseTo(6, 6);
+        expect(l.anchor === "start" ? l.tx > l.x : l.tx < l.x).toBe(true);
+      }
+    }
+  });
+
   it("counts the accounts the block publishes in its accessible name", () => {
     expect(html).toContain("Four Max accounts, each against its own level now");
     const probe = JSON.parse(JSON.stringify(fixture.four_accounts)) as NonNullable<UsageJson["four_accounts"]>;
