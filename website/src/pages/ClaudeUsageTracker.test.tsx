@@ -7,9 +7,7 @@ import ClaudeUsageTracker, {
   LABEL_DESCENT_PX,
   LABEL_LINE_PX,
   ACCOUNT_FAINT_OPACITY,
-  accountChangePct,
   accountHighlightProps,
-  accountLegendText,
   HeadlessNote,
   layoutMarkerLabels,
   markerColour,
@@ -1516,13 +1514,25 @@ describe("a dashed change marker at every real step", () => {
     expect(new Set(labels(svg).map((l) => l.y)).size).toBe(1);
   });
 
-  it("raises the older label a row, above the plot, when the two would overlap", () => {
+  it("turns the older label to the far side of its own line when the two would overlap, rather than stacking them", () => {
     const svg = weeklyChart(renderHtml(twoSteps("2026-08-03"), "max20"));
-    const ls = labels(svg);
+    const ls = [
+      ...svg.matchAll(/<text x="([\d.]+)" y="([\d.]+)" text-anchor="(start|end)" style="fill:#B42318[^"]*"[^>]*>([^<]*)<\/text>/g),
+    ].map((m) => ({ x: Number(m[1]), y: Number(m[2]), anchor: m[3], text: m[4] }));
     expect(ls.length).toBe(2);
+    const xs = markers(svg).map((m) => Number(m[1])).sort((a, b) => a - b);
     const older = ls.find((l) => l.text.includes("1 Aug"))!;
     const newer = ls.find((l) => l.text.includes("3 Aug"))!;
-    expect(older.y - newer.y).toBe(-LABEL_LINE_PX);
+    // One row, each label just beside its own line: the older to its left, the newer to its right.
+    expect(older.y).toBe(newer.y);
+    expect(older).toMatchObject({ anchor: "end", x: xs[0] - 6 });
+    expect(newer).toMatchObject({ anchor: "start", x: xs[1] + 6 });
+    // Each line's leader reaches up to its own label's row.
+    const leaders = [...svg.matchAll(/<line data-leader="([^"]*)" x1="([\d.]+)" x2="[\d.]+" y1="([\d.]+)"/g)];
+    for (const l of ls) {
+      const leader = leaders.find((m) => m[1] === l.text)!;
+      expect(Number(leader[3])).toBe(l.y - LABEL_ASCENT_PX);
+    }
   });
 
   it("marks one step per chart on the published file, and never the inferred seam", () => {
@@ -2050,12 +2060,11 @@ describe("plan chart toggle", () => {
       expect(g).toContain(`stroke="${colour}"`);
       for (const c of planColours) expect(g).not.toContain(c);
     }
-    // The legend names each change by its date, with the account's own step across it; an account
-    // with no level before the change gets its name alone.
+    // The legend names each account alone (Jonathan, 2026-10-23); the markers carry the figures.
     const legend = windows.replace(/<!-- -->/g, "");
-    expect(legend).toContain("Max account 1 (-21% on 14 Sep)");
-    expect(legend).not.toContain("across the change");
+    expect(legend).toMatch(/<\/span>Max account 1<\/li>/);
     expect(legend).toMatch(/<\/span>Max account 3<\/li>/);
+    expect(legend).not.toMatch(/Max account \d \(/);
   });
 
   it("names an account with nothing to draw instead of drawing it", () => {
@@ -2361,7 +2370,7 @@ describe("chart labels (seat 120)", () => {
   const overlap = (a: { left: number; right: number; top: number; bottom: number }, b: typeof a) =>
     a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 
-  it("lays close markers out in rows above the plot, never overlapping each other", () => {
+  it("lays close markers out above the plot, never overlapping each other", () => {
     const { top, labels } = layoutMarkerLabels(
       [
         { x: 600, text: "-26% on 14 Sep" },
@@ -2370,8 +2379,8 @@ describe("chart labels (seat 120)", () => {
       ],
       732,
     );
-    const rows = new Set(labels.map((l) => l.row));
-    expect(rows.size).toBe(2);
+    // 14 Sep and 22 Sep take the outer sides of their lines, so one row holds all three.
+    expect(new Set(labels.map((l) => l.row)).size).toBe(1);
     for (const l of labels) expect(l.ty + LABEL_DESCENT_PX).toBeLessThan(top);
     for (const a of labels)
       for (const b of labels)
@@ -2380,26 +2389,28 @@ describe("chart labels (seat 120)", () => {
     expect(layoutMarkerLabels([{ x: 100, text: "-19% on 1 Aug" }], 732).top).toBe(20);
   });
 
-  // Every pair of labels in marker order: the earlier label never starts or ends right of the later
-  // one, never sits on a lower row where the two share columns, and stays inside the plot.
-  const expectOrdered = (labels: ReturnType<typeof layoutMarkerLabels<{ x: number; text: string }>>["labels"], left: number, right: number) => {
+  // Every label is attached to its own line and only to it: just beside it (6px off), inside the
+  // band, off every other label on its row, in its markers' left-to-right order, and never drawn
+  // across another marker's leader (a line whose label sits on the same row or higher).
+  const expectPaired = (labels: ReturnType<typeof layoutMarkerLabels<{ x: number; text: string }>>["labels"], left: number, right: number) => {
     const byX = [...labels].sort((a, b) => a.x - b.x);
     for (const l of byX) {
       expect(l.lo).toBeGreaterThanOrEqual(left);
       expect(l.hi).toBeLessThanOrEqual(right);
-      // Anchored at its own line, on one side of it.
       expect(l.anchor === "start" ? l.tx - l.x : l.x - l.tx).toBe(6);
     }
     for (let a = 0; a < byX.length; a++)
       for (let b = a + 1; b < byX.length; b++) {
-        expect(byX[a].lo).toBeLessThanOrEqual(byX[b].lo);
-        expect(byX[a].hi).toBeLessThanOrEqual(byX[b].hi);
-        if (byX[a].lo < byX[b].hi && byX[b].lo < byX[a].hi) expect(byX[a].row).toBeGreaterThan(byX[b].row);
+        const [p, q] = [byX[a], byX[b]];
+        expect(p.lo).toBeLessThanOrEqual(q.lo);
+        expect(p.hi).toBeLessThanOrEqual(q.hi);
+        if (p.row === q.row) expect(p.hi <= q.lo).toBe(true);
+        for (const [l, m] of [[p, q], [q, p]]) if (m.row >= l.row) expect(l.lo < m.x && m.x < l.hi, `${l.text} across ${m.text}'s leader`).toBe(false);
       }
   };
 
-  it("keeps two markers 8 days apart in date order on a narrow chart, the earlier on top", () => {
-    // A 300px plot spanning 60 days: 8 days is 40px, so the labels must stack.
+  it("puts two labels 8 days apart on a narrow chart each beside its own line, outer sides first", () => {
+    // A 300px plot spanning 60 days: 8 days is 40px, too close for both labels to the right.
     const left = 44, right = 344, perDay = 300 / 60;
     for (const x14 of [left + 2, left + 150, right - 8 * perDay - 2]) {
       const { labels } = layoutMarkerLabels(
@@ -2410,15 +2421,24 @@ describe("chart labels (seat 120)", () => {
         right,
         left,
       );
-      expectOrdered(labels, left, right);
-      const [earlier, later] = labels;
-      expect(earlier.row).toBe(1);
-      expect(later.row).toBe(0);
-      expect(earlier.ty).toBeLessThan(later.ty);
+      expectPaired(labels, left, right);
     }
+    // With room on the left, the earlier label turns left of its line and both share one row.
+    const { labels } = layoutMarkerLabels(
+      [
+        { x: left + 150, text: "-1% on 14 Sep" },
+        { x: left + 150 + 8 * perDay, text: "+20% on 22 Sep" },
+      ],
+      right,
+      left,
+    );
+    expect(labels.map((l) => [l.anchor, l.row])).toEqual([
+      ["end", 0],
+      ["start", 0],
+    ]);
   });
 
-  it("keeps three close markers in date order, each anchored at its own line", () => {
+  it("keeps three close markers each beside its own line, wherever they fall", () => {
     const left = 44, right = 732;
     for (const x of [60, 300, 600, 680]) {
       const markers = [
@@ -2427,10 +2447,26 @@ describe("chart labels (seat 120)", () => {
         { x: x + 40, text: "-11% on 14 Sep" },
       ];
       const { labels } = layoutMarkerLabels(markers, right, left);
-      expectOrdered(labels, left, right);
+      expectPaired(labels, left, right);
       expect(labels.map((l) => l.text)).toEqual(markers.map((m) => m.text));
-      expect(labels.map((l) => l.row)).toEqual([2, 1, 0]);
     }
+  });
+
+  it("gives 23 Sep and the provisional 9 Oct their own sides of their own lines on the live window chart (2026-10-23)", () => {
+    // The two markers where the live file's window chart drew them on 23 Oct, in the 44-840 band.
+    const { labels } = layoutMarkerLabels(
+      [
+        { x: 574.78, text: "+20% on 23 Sep" },
+        { x: 658.3, text: "+15% on 9 Oct (provisional)" },
+      ],
+      840,
+      44,
+    );
+    expectPaired(labels, 44, 840);
+    expect(labels.map((l) => [l.anchor, l.row])).toEqual([
+      ["end", 0],
+      ["start", 0],
+    ]);
   });
 
   for (const chart of ["window", "tokens", "windows"] as PlanChart[]) {
@@ -2474,55 +2510,14 @@ describe("chart labels (seat 120)", () => {
     expect(headline(panelOf(html("windows"), "windows"))).toBe("4.8");
   });
 
-  it("names only the newest change in the account legend, and just the name where the account has no level either side of it", () => {
+  it("names each account in the legend by its name alone, on every tab (Jonathan, 2026-10-23)", () => {
     const legend = (panel: string) =>
       [...panel.matchAll(/<li data-account="[^"]*"[^>]*><span class="swatch"[^>]*><\/span>([^<]*)<\/li>/g)].map((m) => m[1]);
-    for (const chart of ["window", "windows"] as PlanChart[]) {
+    for (const chart of ["window", "tokens", "windows"] as PlanChart[]) {
       const items = legend(panelOf(html(chart), chart));
-      // The chart marks 14 Sep and 22 Sep; every legend entry names 22 Sep alone (wf-147).
-      expect(items.find((t) => t.startsWith("Max account 1")), chart).toMatch(/^Max account 1 \([-+]\d+% on 22 Sep\)$/);
-      expect(items.find((t) => t.startsWith("Max account 2")), chart).toMatch(/^Max account 2 \([-+]\d+% on 22 Sep\)$/);
-      expect(items.join(" "), chart).not.toContain("14 Sep");
-      // Max account 3 has no level before 14 Sep; 22 Sep is the newest marker either way.
-      expect(items.find((t) => t.startsWith("Max account 3")), chart).toMatch(/^Max account 3 \([-+]\d+% on 22 Sep\)$/);
-      // Max account 4 has a level only after 22 Sep: no change applies, so its name alone.
-      expect(items, chart).toContain("Max account 4");
-      expect(items.join(" "), chart).not.toContain("across the change");
+      expect(items.length, chart).toBeGreaterThan(0);
+      for (const t of items) expect(t, chart).toMatch(/^Max account \d$/);
     }
-    // Tokens per week draws no 22 Sep marker (it rounds to 0% there), so 14 Sep is its newest.
-    const tokens = legend(panelOf(html("tokens"), "tokens"));
-    expect(tokens.find((t) => t.startsWith("Max account 1"))).toMatch(/^Max account 1 \([-+]\d+% on 14 Sep\)$/);
-    expect(tokens.join(" ")).not.toContain("22 Sep");
-    expect(tokens.join(" ")).not.toMatch(/(^|[^\d])0% on/);
-  });
-
-  it("reads an account's change off its own levels either side of the marker", () => {
-    const levels = [
-      { start: "2026-09-01T00:00:00Z", end: "2026-09-14T12:00:00Z", value: 100 },
-      { start: "2026-09-14T12:00:00Z", end: "2026-09-22T19:00:00Z", value: 94 },
-      { start: "2026-09-25T00:00:00Z", end: "2026-09-28T00:00:00Z", value: 90, gap: true },
-    ];
-    expect(accountChangePct(levels, "2026-09-14T12:00:00Z")).toBeCloseTo(-6, 10);
-    // The level after 22 Sep follows a gap: no level on the near side of that change.
-    expect(accountChangePct(levels, "2026-09-22T19:00:00Z")).toBeNull();
-    // The newest marker, 22 Sep, has no figure for this account: just its name, never 14 Sep's (wf-147).
-    expect(accountLegendText("Max account 1", levels, [{ date: "2026-09-22T19:00:00Z" }, { date: "2026-09-14T12:00:00Z" }])).toBe(
-      "Max account 1",
-    );
-    expect(accountLegendText("Max account 1", levels, [{ date: "2026-09-14T12:00:00Z" }])).toBe("Max account 1 (-6% on 14 Sep)");
-    expect(accountLegendText("Max account 1", levels, [])).toBe("Max account 1");
-    // An account whose own step at the newest marked change rounds to 0% gets just its name (seat 123).
-    const flat = [
-      { start: "2026-09-01T00:00:00Z", end: "2026-09-14T12:00:00Z", value: 100 },
-      { start: "2026-09-14T12:00:00Z", end: "2026-09-22T19:00:00Z", value: 94 },
-      { start: "2026-09-22T19:00:00Z", end: "2026-09-28T00:00:00Z", value: 94.3 },
-    ];
-    expect(accountLegendText("Max account 1", flat, [{ date: "2026-09-14T12:00:00Z" }, { date: "2026-09-22T19:00:00Z" }])).toBe(
-      "Max account 1",
-    );
-    expect(accountLegendText("Max account 1", levels, [{ date: "2026-09-05" }])).toBe("Max account 1");
-    // A level running straight through a change: a level either side, and no movement.
-    expect(accountChangePct(levels, "2026-09-05")).toBe(0);
   });
 });
 
@@ -2682,33 +2677,8 @@ describe("how settled a change is (tracker PR #98)", () => {
   });
 });
 
-describe("account legend states each account's measured change (wf-146)", () => {
-  const levels = [
-    { start: "2026-09-01T00:00:00Z", end: "2026-09-14T12:00:00Z", value: 100 },
-    { start: "2026-09-14T12:00:00Z", end: "2026-09-22T19:00:00Z", value: 109 },
-    { start: "2026-09-22T19:00:00Z", end: "2026-09-28T00:00:00Z", value: 103.5 },
-  ];
-  const markers = [{ date: "2026-09-14T12:00:00Z" }, { date: "2026-09-22T19:00:00Z" }];
-
-  it("uses the published per-account figure at a marker on the same UTC day, not the level step", () => {
-    expect(accountLegendText("Max account 2", levels, markers, [{ date: "2026-09-22T19:41:49+00:00", pct: 10.4 }])).toBe(
-      "Max account 2 (+10% on 22 Sep)",
-    );
-  });
-
-  it("falls back to the level step where no figure is published for that marker", () => {
-    expect(accountLegendText("Max account 2", levels, markers)).toBe("Max account 2 (-5% on 22 Sep)");
-    // A figure for another day does not stand in for this one.
-    expect(accountLegendText("Max account 2", levels, markers, [{ date: "2026-09-29T18:25:18Z", pct: 4 }])).toBe(
-      "Max account 2 (-5% on 22 Sep)",
-    );
-  });
-
-  it("drops a published figure that rounds to 0%", () => {
-    expect(accountLegendText("Max account 2", levels, markers, [{ date: "2026-09-22T12:00:00Z", pct: 0.3 }])).toBe("Max account 2");
-  });
-
-  it("renders the 22 Sep window figures from the live file's shape", () => {
+describe("account legend on the live file's shape (wf-146, names only since 2026-10-23)", () => {
+  it("lists the accounts by name even where the file publishes their measured change", () => {
     const j = {
       ...(live0928 as unknown as UsageJson),
       credits: {
@@ -2740,10 +2710,7 @@ describe("account legend states each account's measured change (wf-146)", () => 
     const at = h.indexOf('<div role="tabpanel" id="plan-chart-window"');
     const panel = h.slice(at, h.indexOf('<div role="tabpanel"', at + 1));
     const items = [...panel.matchAll(/<li data-account="[^"]*"[^>]*><span class="swatch"[^>]*><\/span>([^<]*)<\/li>/g)].map((m) => m[1]);
-    expect(items.find((t) => t.startsWith("Max account 1"))).toMatch(/\+38% on 22 Sep\)$/);
-    expect(items.find((t) => t.startsWith("Max account 2"))).toMatch(/\+10% on 22 Sep\)$/);
-    expect(items.find((t) => t.startsWith("Max account 3"))).toMatch(/\+18% on 22 Sep\)$/);
-    expect(items).toContain("Max account 4");
+    expect(items).toEqual(["Max account 1", "Max account 2", "Max account 3", "Max account 4"]);
   });
 });
 
@@ -2830,7 +2797,7 @@ describe("headless NB under the window figure (wf-146)", () => {
     expect(renderToString(<HeadlessNote factor={null} className="quiet" />)).toBe("");
   });
 
-  it("sits under the hero window figure and under the window chart, and only where the file publishes it", () => {
+  it("sits under the hero window figure only, not under the window chart, and only where the file publishes it", () => {
     const base = live0928 as unknown as UsageJson;
     const page = (j: UsageJson) =>
       strip(
@@ -2846,7 +2813,9 @@ describe("headless NB under the window figure (wf-146)", () => {
     expect(withFactor).toContain(`<div class="quiet" data-note="headless">${NB}</div>`);
     const at = withFactor.indexOf('<div role="tabpanel" id="plan-chart-window"');
     const panel = withFactor.slice(at, withFactor.indexOf('<div role="tabpanel"', at + 1));
-    expect(panel).toContain(`<div class="sub" data-note="headless">${NB}</div>`);
+    // Under the chart it is gone (Jonathan, 2026-10-23); the hero keeps it.
+    expect(panel).not.toContain("headless work");
+    expect(withFactor.split("headless work").length - 1).toBe(1);
     expect(page({ ...base, five_hour_meter: { headless_factor: { value: null } } })).not.toContain("headless work");
     expect(page({ ...base, five_hour_meter: undefined })).not.toContain("headless work");
   });

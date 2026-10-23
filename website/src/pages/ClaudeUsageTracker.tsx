@@ -6,6 +6,7 @@ import Seo from "@/components/Seo";
 import SpeedChart, { SpeedByAccountChart, accountColor } from "@/components/SpeedChart";
 import FourAccountChart from "@/components/FourAccountChart";
 import { accountsHeading, fourAccountChart, type PublishedChangeMarker } from "@/lib/fourAccounts";
+import { placeMarkerLabels } from "@/lib/markerLabels";
 import { PageShell } from "@/components/redesign/RedesignChrome";
 import {
   EFFORTS,
@@ -63,7 +64,6 @@ import {
   tokensPerWeekChangePct,
   pendingChangeStates,
   publishedChangeMarkers,
-  accountMeterChanges,
   headlessFactor,
   type AccountLines,
   type ChangeState,
@@ -246,63 +246,28 @@ const LABEL_BAND_GAP_PX = 5;
 
 // Where each change marker's label goes: in a band reserved above the plot, never inside it, so no
 // label can sit on a drawn line (seat 120: "-26% on 14 Sep" sat on the Max 20x line once a second,
-// newer marker pushed it down a row into the plot). Each label sits beside its own marker line:
-// to its right where it fits between `left` and `right` (the band's edges: nothing else is drawn
-// there, so it may run past the plot into the right margin), else to its left, so none is clipped.
-// Labels keep their markers' order: an earlier label reaching right across a later one reaching
-// left would cross it (wf-148: "+20% on 22 Sep" sat over the 14 Sep line, "-1% on 14 Sep" past the
-// 22 Sep one), so the earlier one turns to reach left of its own line instead. Where a newer label
-// would still cover an older one, the older goes up a row, newest placed first; the band grows by
-// a row for each, and `top` is where the plot then starts.
+// newer marker pushed it down a row into the plot). Each marker's dashed line runs on up to its own
+// label's row and the label sits just beside it, to its right where it fits between `left` and
+// `right` (the band's edges: nothing else is drawn there, so it may run past the plot into the
+// right margin), else to its left; two close lines take their labels on their outer sides before
+// one is lifted a row, and no label is drawn across another marker's leader
+// (lib/markerLabels: Jonathan, 2026-10-23). The band grows by a row for each row used, and `top`
+// is where the plot then starts.
 export function layoutMarkerLabels<M extends { x: number; text: string }>(
   markers: M[],
   right: number,
   left = 0,
 ): { top: number; labels: (M & { tx: number; ty: number; anchor: "start" | "end"; lo: number; hi: number; row: number })[] } {
-  const width = (m: M) => m.text.length * LABEL_CHAR_PX;
-  const span = (m: M, anchor: "start" | "end"): [number, number] =>
-    anchor === "end" ? [m.x - 6 - width(m), m.x - 6] : [m.x + 6, m.x + 6 + width(m)];
-  const fits = (m: M, anchor: "start" | "end") => {
-    const [lo, hi] = span(m, anchor);
-    return lo >= left && hi <= right;
-  };
-  const order = markers.map((_, i) => i).sort((a, b) => markers[a].x - markers[b].x);
-  const anchors = markers.map((m) => (fits(m, "start") || !fits(m, "end") ? ("start" as const) : ("end" as const)));
-  // Only ever turns a label from right to left, so it settles.
-  for (let changed = true; changed; ) {
-    changed = false;
-    for (let a = 0; a < order.length; a++)
-      for (let b = a + 1; b < order.length; b++) {
-        const i = order[a], j = order[b];
-        if (anchors[i] === "start" && anchors[j] === "end" && span(markers[j], "end")[0] < span(markers[i], "start")[1]) {
-          anchors[i] = "end";
-          changed = true;
-        }
-      }
-  }
-  const sided = markers.map((m, i) => {
-    const anchor = anchors[i];
-    let [lo, hi] = span(m, anchor);
-    // Last resort on a chart too narrow for a label on either side: slide it back inside the band.
-    const shift = Math.max(0, left - lo) - Math.max(0, hi - right);
-    lo += shift;
-    hi += shift;
-    return { ...m, anchor, lo, hi, tx: anchor === "end" ? hi : lo };
-  });
-  const placed: { lo: number; hi: number; row: number }[] = [];
-  const rows = new Array<number>(markers.length);
-  for (const i of [...order].reverse()) {
-    const m = sided[i];
-    let row = 0;
-    while (placed.some((p) => p.row === row && m.lo < p.hi && p.lo < m.hi)) row++;
-    placed.push({ lo: m.lo, hi: m.hi, row });
-    rows[i] = row;
-  }
-  const rowCount = markers.length > 0 ? Math.max(...rows) + 1 : 1;
+  const slots = placeMarkerLabels(
+    markers.map((m) => ({ x: m.x, w: m.text.length * LABEL_CHAR_PX })),
+    left,
+    right,
+  );
+  const rowCount = markers.length > 0 ? Math.max(...slots.map((s) => s.row)) + 1 : 1;
   const top = LABEL_BAND_TOP_PX + rowCount * LABEL_LINE_PX;
   // The bottom row's descenders stop the gap short of the plot; each older row sits one line higher.
   const base = top - LABEL_BAND_GAP_PX - LABEL_DESCENT_PX;
-  return { top, labels: sided.map((m, i) => ({ ...m, row: rows[i], ty: base - rows[i] * LABEL_LINE_PX })) };
+  return { top, labels: markers.map((m, i) => ({ ...m, ...slots[i], ty: base - slots[i].row * LABEL_LINE_PX })) };
 }
 
 function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: number, gap = 16): Map<Plan, number> {
@@ -316,52 +281,6 @@ function stackLabels(items: { plan: Plan; y: number }[], top: number, bottom: nu
   if (overflow > 0) for (const it of sorted) it.y -= overflow;
   for (const it of sorted) it.y = Math.max(it.y, top);
   return new Map(sorted.map((it) => [it.plan, it.y]));
-}
-
-// Two moments this close are one change: the chart's own NEAR_MS, so a marker drawn at the
-// announced date still finds the account's step a day or two either side of it.
-const CHANGE_NEAR_MS = 3 * 86400e3;
-
-// An account's own movement across one marked change, read off the account's drawn levels: the
-// level that ends at the account's step nearest the change and the one that starts there. Null
-// where the account has no level on one side (a gap, or no reading before or after). A level that
-// runs straight through the change is 0%: the account has a level either side, and it did not move.
-export function accountChangePct(
-  levels: { start: string; end: string; value: number; gap?: boolean }[],
-  date: string,
-): number | null {
-  const at = Date.parse(date.length === 10 ? `${date}T00:00:00Z` : date);
-  let best: { i: number; off: number } | null = null;
-  for (let i = 1; i < levels.length; i++) {
-    if (levels[i].gap) continue;
-    const off = Math.abs(Date.parse(levels[i].start) - at);
-    if (off <= CHANGE_NEAR_MS && (!best || off < best.off)) best = { i, off };
-  }
-  if (best) {
-    const before = levels[best.i - 1].value, after = levels[best.i].value;
-    return before ? ((after - before) / before) * 100 : null;
-  }
-  const through = levels.some((l) => Date.parse(l.start) < at && at < Date.parse(l.end));
-  return through ? 0 : null;
-}
-
-// "Max account 1 (+8% on 22 Sep)": the newest change the chart marks, by date, where the account
-// has a level on both sides and its own step there does not round to 0% (wf-147). Only the newest
-// marker: an account with no figure there gets just its name, never an older marker's figure, so
-// the legend moves to each new change as the chart marks it. Where the file publishes the
-// account's own measured change at that marker (`measured`, matched by UTC day), the legend states
-// that figure instead of the level step, so it agrees with the headline's change test. The date is
-// written the way the marker writes it, so the legend and the marker name the same day.
-export function accountLegendText(
-  name: string,
-  levels: { start: string; end: string; value: number; gap?: boolean }[],
-  markers: { date: string }[],
-  measured: { date: string; pct: number }[] = [],
-): string {
-  const newest = [...markers].sort((a, b) => Date.parse(a.date) - Date.parse(b.date)).at(-1);
-  if (!newest) return name;
-  const pct = measured.find((c) => utcDay(c.date) === utcDay(newest.date))?.pct ?? accountChangePct(levels, newest.date);
-  return pct === null || markerRoundsToZero(pct) ? name : `${name} (${markerPctText(pct)} on ${fmtDateShort(utcDay(newest.date))})`;
 }
 
 // An account line and its reading dots sit this faint until the account is highlighted (wf-147),
@@ -463,7 +382,6 @@ function LevelChart({
   pendingStates,
   published,
   accountLines,
-  accountChanges,
   missingFor,
   shown = true,
 }: {
@@ -502,9 +420,6 @@ function LevelChart({
   // with the same legend and the same "No data for ..." note for an account that has nothing to
   // draw here.
   accountLines?: AccountLines;
-  // Each account's own measured change at a tested boundary, on this chart's meter: where one
-  // falls on a marker's day, the account's legend entry states it instead of its level step.
-  accountChanges?: { date: string; perAccount: Record<string, number> }[];
   missingFor?: string;
   // False while the chart sits in a hidden panel; the scroller re-opens on the newest readings
   // when it is shown.
@@ -660,8 +575,8 @@ function LevelChart({
   const markerLayout = layoutMarkerLabels(shownMarkers, W, L);
   const changeMarkers = markerLayout.labels;
   const T = markerLayout.top, B = T + 180, H = B + 60;
-  // Each account's legend entry names the newest change this chart marks by its date, with the
-  // account's own movement across it on this chart's quantity (seat 120, wf-147).
+  // Each account's legend entry is its name alone: the change markers carry the figures
+  // (Jonathan, 2026-10-23).
   const accountLegend = accountLines && (accounts.length > 0 || accountLines.missing.length > 0) && (
     <ul className="share-legend speed-legend level-accounts">
       {accounts.map((l) => (
@@ -673,16 +588,7 @@ function LevelChart({
           {...accountHighlightProps(l.account, setHighlight, { focusable: true })}
         >
           <span className="swatch" style={{ background: colorOf(l.account) }} />
-          {accountLegendText(
-            accountLabel(l.account),
-            l.levels,
-            // The legend names the newest measured change: an account's own movement across a
-            // provisional one is not stated beside the provisional figure.
-            changeMarkers.filter((m) => !m.provisional),
-            (accountChanges ?? []).flatMap((c) =>
-              typeof c.perAccount[l.account] === "number" ? [{ date: c.date, pct: c.perAccount[l.account] }] : [],
-            ),
-          )}
+          {accountLabel(l.account)}
         </li>
       ))}
       {accountLines.missing.length > 0 && (
@@ -754,6 +660,21 @@ function LevelChart({
       </g>
       {ticks.map((t) => (
         <text key={t} x={0} y={y(t) + 4}>{fmtValue(t)}</text>
+      ))}
+      {/* Each marker's leader: its own line carried up out of the plot to its label's row, so the
+          label is attached to the line that reaches it. */}
+      {changeMarkers.map((m) => (
+        <line
+          key={`leader-${m.date}`}
+          data-leader={m.text}
+          x1={m.x}
+          x2={m.x}
+          y1={m.ty - LABEL_ASCENT_PX}
+          y2={T}
+          style={{ stroke: markerColour(m.pct) }}
+          strokeWidth="1.5"
+          strokeDasharray="5 4"
+        />
       ))}
       {changeMarkers.map((m) => (
         <g key={m.date}>
@@ -1018,7 +939,6 @@ export function HeadlessNote({
     </div>
   );
 }
-
 // A figure priced at a rate the tracker publishes as provisional says so in words beside the
 // number, the way the plan table marks an inferred one. Nothing for any other figure.
 const PROVISIONAL_NOTE = "Provisional: priced at a measured rate that is not yet final.";
@@ -1546,8 +1466,6 @@ export default function ClaudeUsageTracker({
   // speed-by-account chart gives the same accounts.
   const windowAccountLines = useMemo(() => (data ? accountWindowTokenLines(data, model) : undefined), [data, model]);
   const weeklyTokenAccountLines = useMemo(() => (data ? accountWeeklyTokenLines(data, model) : undefined), [data, model]);
-  const windowAccountChanges = useMemo(() => (data ? accountMeterChanges(data, "window") : undefined), [data]);
-  const weeklyAccountChanges = useMemo(() => (data ? accountMeterChanges(data, "weekly") : undefined), [data]);
   const headless = useMemo(() => (data ? headlessFactor(data) : null), [data]);
   const windowsAccountLines = useMemo(() => (data ? accountWindowLines(data) : undefined), [data]);
   // The readings behind the selected plan's levels, and the documented level beside them. Only a
@@ -2159,12 +2077,10 @@ export default function ClaudeUsageTracker({
                         pendingStates={pendingStates}
                         published={windowMarkers}
                         accountLines={windowAccountLines}
-                        accountChanges={windowAccountChanges}
                         missingFor={modelLabel(model)}
                         shown={planChart === "window"}
                       />
                     )}
-                    <HeadlessNote factor={headless} className="sub" />
                   </>
                 )}
             </div>
@@ -2215,7 +2131,6 @@ export default function ClaudeUsageTracker({
                       pendingStates={pendingStates}
                       published={weeklyMarkers}
                       accountLines={weeklyTokenAccountLines}
-                      accountChanges={weeklyAccountChanges}
                       missingFor={modelLabel(model)}
                       shown={planChart === "tokens"}
                       // This chart's quantity is tokens a week buys, so its marker states the
