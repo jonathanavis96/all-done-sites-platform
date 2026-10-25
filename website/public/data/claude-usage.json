@@ -3,20 +3,20 @@
   "a1": {
    "feed_at": "2026-10-23T17:16:40.423788+00:00",
    "newest_stretch_end": "2026-10-23T14:24:16+00:00",
-   "state": "fresh"
+   "state": "stopped"
   },
   "a2": {
-   "feed_at": "2026-10-25T04:57:24+00:00",
+   "feed_at": "2026-10-25T05:29:05+00:00",
    "newest_stretch_end": "2026-10-18T03:16:10+00:00",
    "state": "idle"
   },
   "a3": {
-   "feed_at": "2026-10-25T04:57:25+00:00",
+   "feed_at": "2026-10-25T05:29:05+00:00",
    "newest_stretch_end": "2026-10-23T15:18:35+00:00",
    "state": "fresh"
   },
   "a4": {
-   "feed_at": "2026-10-25T04:59:34+00:00",
+   "feed_at": "2026-10-25T05:29:05+00:00",
    "newest_stretch_end": "2026-10-06T22:48:16+00:00",
    "state": "idle"
   }
@@ -207,8 +207,8 @@
   "max20": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-10-25T05:00:05+00:00",
-    "current_since": "2026-09-25T05:00:05+00:00",
+    "as_of": "2026-10-25T05:30:04+00:00",
+    "current_since": "2026-09-25T05:30:04+00:00",
     "freshest_sample_at": "2026-10-23T19:12:07+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 2,
@@ -261,8 +261,8 @@
   "max5": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-10-25T05:00:05+00:00",
-    "current_since": "2026-09-25T05:00:05+00:00",
+    "as_of": "2026-10-25T05:30:04+00:00",
+    "current_since": "2026-09-25T05:30:04+00:00",
     "freshest_sample_at": "2026-10-23T19:56:41+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -329,8 +329,8 @@
   "pro": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-10-25T05:00:05+00:00",
-    "current_since": "2026-09-25T05:00:05+00:00",
+    "as_of": "2026-10-25T05:30:04+00:00",
+    "current_since": "2026-09-25T05:30:04+00:00",
     "freshest_sample_at": "2026-10-24T07:37:50+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -370,7 +370,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-10-25T05:00:05+00:00"
+  "updated_at": "2026-10-25T05:30:04+00:00"
  },
  "credits": {
   "as_of": "2026-10-23T15:18:35+00:00",
@@ -9395,7 +9395,7 @@
    }
   ]
  },
- "generated_at": "2026-10-25T05:01:19.595105+00:00",
+ "generated_at": "2026-10-25T05:31:20.937768+00:00",
  "headline": {
   "at": "2026-10-09T16:00:00+00:00",
   "change_pct": 17.0,
@@ -21206,7 +21206,7 @@
   "windows_per_week_change_pct": -2.5
  },
  "last_sample_at": "2026-10-23T15:18:35+00:00",
- "meter_read_at": "2026-10-25T04:59:34+00:00",
+ "meter_read_at": "2026-10-25T05:29:05+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -21429,7 +21429,7 @@
    }
   }
  },
- "passive_account_count": 4,
+ "passive_account_count": 3,
  "passive_generated_at": "2026-10-23T17:16:40.270819+00:00",
  "plan_measured": "max20",
  "plan_ratios": {
@@ -32735,15 +32735,15 @@
       {
        "day": "2026-10-25",
        "fast_session_requests": 0,
-       "n": 61,
+       "n": 65,
        "output_tokens_per_s": {
-        "median": 77.0,
+        "median": 76.7,
         "q1": 62.3,
         "q3": 85.6
        },
        "time_to_first_block_s": {
-        "median": 5.74,
-        "q1": 4.71,
+        "median": 5.69,
+        "q1": 4.65,
         "q3": 7.52
        }
       }
@@ -34444,15 +34444,15 @@
       {
        "day": "2026-10-25",
        "fast_session_requests": 0,
-       "n": 57,
+       "n": 61,
        "output_tokens_per_s": {
-        "median": 76.7,
+        "median": 75.7,
         "q1": 61.6,
         "q3": 85.2
        },
        "time_to_first_block_s": {
-        "median": 5.69,
-        "q1": 4.65,
+        "median": 5.66,
+        "q1": 4.61,
         "q3": 7.44
        }
       }
@@ -35960,15 +35960,15 @@
       {
        "day": "2026-10-25",
        "fast_session_requests": 0,
-       "n": 57,
+       "n": 61,
        "output_tokens_per_s": {
-        "median": 76.7,
+        "median": 75.7,
         "q1": 61.6,
         "q3": 85.2
        },
        "time_to_first_block_s": {
-        "median": 5.69,
-        "q1": 4.65,
+        "median": 5.66,
+        "q1": 4.61,
         "q3": 7.44
        }
       }
@@ -37002,14 +37002,14 @@
      {
       "day": "2026-10-25",
       "fast_session_requests": 0,
-      "n": 339,
+      "n": 343,
       "output_tokens_per_s": {
-       "median": 80.0,
-       "q1": 70.2,
+       "median": 79.9,
+       "q1": 70.0,
        "q3": 90.4
       },
       "time_to_first_block_s": {
-       "median": 5.15,
+       "median": 5.14,
        "q1": 3.93,
        "q3": 8.01
       }
