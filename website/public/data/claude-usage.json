@@ -6,17 +6,17 @@
    "state": "stopped"
   },
   "a2": {
-   "feed_at": "2026-10-27T00:57:39+00:00",
+   "feed_at": "2026-10-27T01:28:14+00:00",
    "newest_stretch_end": "2026-10-18T03:16:10+00:00",
    "state": "idle"
   },
   "a3": {
-   "feed_at": "2026-10-27T00:58:45+00:00",
+   "feed_at": "2026-10-27T01:29:20+00:00",
    "newest_stretch_end": "2026-10-26T20:46:08+00:00",
    "state": "fresh"
   },
   "a4": {
-   "feed_at": "2026-10-27T00:58:44+00:00",
+   "feed_at": "2026-10-27T01:29:19+00:00",
    "newest_stretch_end": "2026-10-06T22:48:16+00:00",
    "state": "idle"
   }
@@ -207,8 +207,8 @@
   "max20": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-10-27T01:00:05+00:00",
-    "current_since": "2026-09-27T01:00:05+00:00",
+    "as_of": "2026-10-27T01:30:05+00:00",
+    "current_since": "2026-09-27T01:30:05+00:00",
     "freshest_sample_at": "2026-10-23T19:12:07+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 2,
@@ -261,8 +261,8 @@
   "max5": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-10-27T01:00:05+00:00",
-    "current_since": "2026-09-27T01:00:05+00:00",
+    "as_of": "2026-10-27T01:30:05+00:00",
+    "current_since": "2026-09-27T01:30:05+00:00",
     "freshest_sample_at": "2026-10-23T19:56:41+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -329,8 +329,8 @@
   "pro": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-10-27T01:00:05+00:00",
-    "current_since": "2026-09-27T01:00:05+00:00",
+    "as_of": "2026-10-27T01:30:05+00:00",
+    "current_since": "2026-09-27T01:30:05+00:00",
     "freshest_sample_at": "2026-10-24T07:37:50+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -370,7 +370,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-10-27T01:00:05+00:00"
+  "updated_at": "2026-10-27T01:30:05+00:00"
  },
  "credits": {
   "as_of": "2026-10-26T20:46:08+00:00",
@@ -3794,7 +3794,7 @@
        3713229448
       ],
       "provisional": false,
-      "raw_windows_per_week_meters": 6.6641,
+      "raw_windows_per_week_meters": 6.6718,
       "seven_day_points": 155.0,
       "until": null,
       "weekly_credits_per_pct": 1465127,
@@ -3804,7 +3804,7 @@
       ],
       "window": 744074722,
       "windows_per_week": 4.8854,
-      "windows_per_week_meters": 4.4808,
+      "windows_per_week_meters": 4.4884,
       "windows_per_week_source": "weekly_over_window"
      }
     ],
@@ -4470,7 +4470,7 @@
      "per_week_source": "seven_day_meter_direct",
      "provisional": false,
      "raw_windows_per_week_meters": 4.9101,
-     "raw_windows_per_week_pooled": 4.7701,
+     "raw_windows_per_week_pooled": 4.7722,
      "seven_day_points": 556.0,
      "until": null,
      "value": 4037865560,
@@ -4492,10 +4492,10 @@
       9.3788
      ],
      "windows_per_week_meters": 4.1954,
-     "windows_per_week_pooled": 4.1232,
+     "windows_per_week_pooled": 4.1254,
      "windows_per_week_pooled_interval": [
-      3.8875,
-      4.3835
+      3.8895,
+      4.3858
      ],
      "windows_per_week_provisional": false,
      "windows_per_week_source": "weekly_over_window"
@@ -9559,7 +9559,7 @@
    }
   ]
  },
- "generated_at": "2026-10-27T01:01:31.206268+00:00",
+ "generated_at": "2026-10-27T01:31:30.451883+00:00",
  "headline": {
   "at": "2026-10-09T16:00:00+00:00",
   "change_pct": 17.0,
@@ -21609,7 +21609,7 @@
   "windows_per_week_change_pct": -9.2
  },
  "last_sample_at": "2026-10-26T20:46:08+00:00",
- "meter_read_at": "2026-10-27T00:58:45+00:00",
+ "meter_read_at": "2026-10-27T01:29:20+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -22821,7 +22821,7 @@
    },
    "a3": {
     "first_day": "2026-08-30",
-    "last_day": "2026-10-26"
+    "last_day": "2026-10-27"
    },
    "a4": {
     "first_day": "2026-09-21",
@@ -37521,6 +37521,21 @@
        "q1": 2.24,
        "q3": 6.45
       }
+     },
+     {
+      "day": "2026-10-27",
+      "fast_session_requests": 0,
+      "n": 35,
+      "output_tokens_per_s": {
+       "median": 100.4,
+       "q1": 90.9,
+       "q3": 116.5
+      },
+      "time_to_first_block_s": {
+       "median": 2.67,
+       "q1": 1.91,
+       "q3": 4.52
+      }
      }
     ]
    },
@@ -44812,7 +44827,7 @@
       },
       {
        "assumed": false,
-       "end": "2026-10-27T00:57:39+00:00",
+       "end": "2026-10-27T01:28:14+00:00",
        "opened_by": "2026-10-09T16:00:00+00:00",
        "pieces": 67,
        "points": 59,
@@ -44831,7 +44846,7 @@
      ]
     },
     "a3": {
-     "current": 4.5,
+     "current": 4.51,
      "n": 115,
      "regimes": [
       {
@@ -44878,15 +44893,15 @@
        "points": 60,
        "provisional": false,
        "quality": "bounded",
-       "raw_windows": 6.66,
+       "raw_windows": 6.67,
        "rounding_interval": [
-        4.0266,
-        5.0322
+        4.0335,
+        5.0406
        ],
        "seven_day_pct": 131.0,
        "source": "passive_paired_deltas",
        "start": "2026-10-09T19:09:59.852583+00:00",
-       "windows": 4.48
+       "windows": 4.49
       }
      ]
     },
@@ -57841,25 +57856,25 @@
       null
      ],
      "seven_day_pct": 0.0,
-     "window_ending": "2026-10-27T00:57:39+00:00",
+     "window_ending": "2026-10-27T01:28:14+00:00",
      "windows": null
     },
     {
      "account": "a3",
-     "five_hour_pct": 1.0,
+     "five_hour_pct": 2.0,
      "headless_inflation": 1.0,
      "headless_share": null,
      "headless_share_source": null,
      "pieces": 1,
-     "raw_five_hour_pct": 1.0,
+     "raw_five_hour_pct": 2.0,
      "raw_rounding_interval": [
-      0.0,
+      0.2734,
       null
      ],
      "raw_windows": null,
      "reset_verified": true,
      "rounding_interval": [
-      0.0,
+      0.2734,
       null
      ],
      "seven_day_pct": 0.0,
@@ -57871,15 +57886,15 @@
    "current_estimate": {
     "as_of": "2026-10-27T02:30:00+00:00",
     "assumed": false,
-    "five_hour_pct": 1760.0,
+    "five_hour_pct": 1761.0,
     "from": "2026-10-13T02:30:00+00:00",
     "pieces": 158,
     "points": 156,
     "quality": "measured",
     "reasons": [],
     "rounding_interval": [
-     3.9188,
-     4.3852
+     3.921,
+     4.3877
     ],
     "seven_day_pct": 425.0,
     "source": "passive_paired_deltas",
@@ -58063,13 +58078,13 @@
      "quality": "bounded",
      "raw_windows": 6.47,
      "rounding_interval": [
-      5.2804,
-      5.7418
+      5.2934,
+      5.7558
      ],
      "seven_day_pct": 518.0,
      "source": "passive_paired_deltas",
      "start": "2026-08-15T00:20:00.078325+00:00",
-     "windows": 5.4999
+     "windows": 5.5133
     },
     {
      "assumed": false,
@@ -58090,13 +58105,13 @@
      "quality": "bounded",
      "raw_windows": 5.0,
      "rounding_interval": [
-      4.295,
-      4.8073
+      4.3055,
+      4.8191
      ],
      "seven_day_pct": 314.0,
      "source": "passive_paired_deltas",
      "start": "2026-09-14T11:30:00.088328+00:00",
-     "windows": 4.5374
+     "windows": 4.5485
     },
     {
      "assumed": false,
@@ -58117,13 +58132,13 @@
      "quality": "bounded",
      "raw_windows": 5.58,
      "rounding_interval": [
-      4.1708,
-      4.9703
+      4.1809,
+      4.9824
      ],
      "seven_day_pct": 290.0,
      "source": "passive_paired_deltas",
      "start": "2026-09-23T16:29:59.664984+00:00",
-     "windows": 4.5374
+     "windows": 4.5485
     },
     {
      "assumed": false,
@@ -58135,13 +58150,13 @@
      "quality": "bounded",
      "raw_windows": 4.77,
      "rounding_interval": [
-      3.8875,
-      4.3835
+      3.8895,
+      4.3858
      ],
      "seven_day_pct": 461.0,
      "source": "passive_paired_deltas",
      "start": "2026-10-09T16:29:59.671254+00:00",
-     "windows": 4.12
+     "windows": 4.13
     }
    ],
    "regimes_method": "one regime per span between the four-account detector's provisional and measured changes (a span opened by a provisional one flagged `provisional`), pooled over every account's windows ending in it; every step the ratio's size at the change (own level in `own_windows`)",
@@ -58315,18 +58330,18 @@
     },
     {
      "assumed": false,
-     "five_hour_pct": 41.4,
+     "five_hour_pct": 42.4,
      "n": 10,
      "partial": true,
-     "raw_windows": 5.8,
+     "raw_windows": 5.9,
      "rounding_interval": [
-      2.4796,
-      9.4247
+      2.5437,
+      9.6387
      ],
      "seven_day_pct": 10.0,
      "source": "passive_paired_deltas",
      "week_ending": "2026-11-01",
-     "windows": 4.14
+     "windows": 4.24
     }
    ]
   },
