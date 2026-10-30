@@ -6,17 +6,17 @@
    "state": "idle"
   },
   "a2": {
-   "feed_at": "2026-10-30T19:28:08+00:00",
+   "feed_at": "2026-10-30T19:58:31+00:00",
    "newest_stretch_end": "2026-10-18T03:16:10+00:00",
    "state": "idle"
   },
   "a3": {
-   "feed_at": "2026-10-30T19:26:09+00:00",
+   "feed_at": "2026-10-30T19:56:32+00:00",
    "newest_stretch_end": "2026-10-27T14:47:08+00:00",
    "state": "idle"
   },
   "a4": {
-   "feed_at": "2026-10-30T19:28:09+00:00",
+   "feed_at": "2026-10-30T19:58:31+00:00",
    "newest_stretch_end": "2026-10-06T22:48:16+00:00",
    "state": "idle"
   }
@@ -207,8 +207,8 @@
   "max20": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-10-30T19:30:05+00:00",
-    "current_since": "2026-09-30T19:30:05+00:00",
+    "as_of": "2026-10-30T20:00:04+00:00",
+    "current_since": "2026-09-30T20:00:04+00:00",
     "freshest_sample_at": "2026-10-23T19:12:07+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 2,
@@ -261,14 +261,14 @@
   "max5": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-10-30T19:30:05+00:00",
-    "current_since": "2026-09-30T19:30:05+00:00",
+    "as_of": "2026-10-30T20:00:04+00:00",
+    "current_since": "2026-09-30T20:00:04+00:00",
     "freshest_sample_at": "2026-10-23T19:56:41+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
     "reason": null,
     "samples_without_capture": 0,
-    "stale": false
+    "stale": true
    },
    "identity_basis": "unverified_source_ids",
    "missing_reasons": [],
@@ -329,8 +329,8 @@
   "pro": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-10-30T19:30:05+00:00",
-    "current_since": "2026-09-30T19:30:05+00:00",
+    "as_of": "2026-10-30T20:00:04+00:00",
+    "current_since": "2026-09-30T20:00:04+00:00",
     "freshest_sample_at": "2026-10-24T07:37:50+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -370,7 +370,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-10-30T19:30:05+00:00"
+  "updated_at": "2026-10-30T20:00:04+00:00"
  },
  "credits": {
   "as_of": "2026-10-27T14:47:08+00:00",
@@ -2974,11 +2974,11 @@
     "median_session_tokens": 2011452,
     "per_week": {
      "interval": [
-      703.9,
-      1792.5
+      705.5,
+      1796.7
      ],
      "status": null,
-     "value": 1045.1
+     "value": 1047.6
     },
     "per_window": {
      "interval": [
@@ -3005,7 +3005,7 @@
      "status": null,
      "value": 501709830
     },
-    "windows_per_week": 4.19
+    "windows_per_week": 4.2
    },
    "claude-opus-4-7": {
     "cache_normalised": true,
@@ -3015,11 +3015,11 @@
     "median_session_tokens": 128108,
     "per_week": {
      "interval": [
-      35888.1,
-      65573.3
+      35973.7,
+      65729.8
      ],
      "status": null,
-     "value": 49954.5
+     "value": 50073.7
     },
     "per_window": {
      "interval": [
@@ -3046,7 +3046,7 @@
      "status": null,
      "value": 1527343084
     },
-    "windows_per_week": 4.19
+    "windows_per_week": 4.2
    },
    "claude-opus-4-8": {
     "cache_normalised": true,
@@ -3056,11 +3056,11 @@
     "median_session_tokens": 10052,
     "per_week": {
      "interval": [
-      457376.3,
-      835701.0
+      458467.9,
+      837695.5
      ],
      "status": null,
-     "value": 636646.2
+     "value": 638165.6
     },
     "per_window": {
      "interval": [
@@ -3087,7 +3087,7 @@
      "status": null,
      "value": 1527343084
     },
-    "windows_per_week": 4.19
+    "windows_per_week": 4.2
    },
    "claude-opus-5": {
     "cache_normalised": true,
@@ -3097,11 +3097,11 @@
     "median_session_tokens": 6169454,
     "per_week": {
      "interval": [
-      745.2,
-      1361.6
+      747.0,
+      1364.9
      ],
      "status": null,
-     "value": 1037.3
+     "value": 1039.8
     },
     "per_window": {
      "interval": [
@@ -3128,7 +3128,7 @@
      "status": null,
      "value": 1527343084
     },
-    "windows_per_week": 4.19
+    "windows_per_week": 4.2
    },
    "claude-opus-5-5": {
     "cache_normalised": true,
@@ -3138,11 +3138,11 @@
     "median_session_tokens": 924341,
     "per_week": {
      "interval": [
-      6217.3,
-      11360.1
+      6232.2,
+      11387.2
      ],
      "status": null,
-     "value": 8654.2
+     "value": 8674.9
     },
     "per_window": {
      "interval": [
@@ -3169,7 +3169,7 @@
      "status": null,
      "value": 1909178855
     },
-    "windows_per_week": 4.19
+    "windows_per_week": 4.2
    },
    "claude-sonnet-4-6": {
     "cache_normalised": true,
@@ -3182,11 +3182,11 @@
     "median_session_tokens": 219922,
     "per_week": {
      "interval": [
-      36231.6,
-      85949.5
+      36318.0,
+      86154.6
      ],
      "status": null,
-     "value": 57687.6
+     "value": 57825.3
     },
     "per_window": {
      "interval": [
@@ -3213,7 +3213,7 @@
      "status": null,
      "value": 3027870557
     },
-    "windows_per_week": 4.19
+    "windows_per_week": 4.2
    },
    "claude-sonnet-5": {
     "cache_normalised": true,
@@ -3226,11 +3226,11 @@
     "median_session_tokens": 836411,
     "per_week": {
      "interval": [
-      9526.6,
-      22599.1
+      9549.3,
+      22653.1
      ],
      "status": null,
-     "value": 15168.1
+     "value": 15204.3
     },
     "per_window": {
      "interval": [
@@ -3257,7 +3257,7 @@
      "status": null,
      "value": 3027870557
     },
-    "windows_per_week": 4.19
+    "windows_per_week": 4.2
    }
   },
   "window_credits": {
@@ -3546,8 +3546,8 @@
        1550008,
        1883968
       ],
-      "window": 1089345481,
-      "windows_per_week": 3.9299,
+      "window": 1089464819,
+      "windows_per_week": 3.9295,
       "windows_per_week_meters": 3.9716,
       "windows_per_week_source": "weekly_over_window"
      }
@@ -3656,8 +3656,8 @@
        1583599,
        1820863
       ],
-      "window": 1092497460,
-      "windows_per_week": 3.9126,
+      "window": 1092617143,
+      "windows_per_week": 3.9121,
       "windows_per_week_meters": 4.0471,
       "windows_per_week_source": "weekly_over_window"
      }
@@ -3766,8 +3766,8 @@
        1430954,
        1506934
       ],
-      "window": 746901302,
-      "windows_per_week": 4.8864,
+      "window": 746983125,
+      "windows_per_week": 4.8858,
       "windows_per_week_meters": 4.5558,
       "windows_per_week_source": "weekly_over_window"
      }
@@ -3860,7 +3860,7 @@
       "measured_window": null,
       "n_measured_window": 0,
       "n_weekly_days": 17,
-      "n_window": 29,
+      "n_window": 30,
       "n_wpw": 44,
       "per_week": 4156150318,
       "per_week_interval": [
@@ -3868,7 +3868,7 @@
        4312800850
       ],
       "provisional": false,
-      "raw_windows_per_week_meters": 4.1165,
+      "raw_windows_per_week_meters": 4.1262,
       "seven_day_points": 142.0,
       "until": null,
       "weekly_credits_per_pct": 1675120,
@@ -3876,9 +3876,9 @@
        1551222,
        1738258
       ],
-      "window": 1026304572,
-      "windows_per_week": 4.0496,
-      "windows_per_week_meters": 4.067,
+      "window": 1022141183,
+      "windows_per_week": 4.0661,
+      "windows_per_week_meters": 4.0768,
       "windows_per_week_source": "weekly_over_window"
      }
     ]
@@ -4434,7 +4434,7 @@
      "per_week_source": "seven_day_meter_direct",
      "provisional": false,
      "raw_windows_per_week_meters": 4.8371,
-     "raw_windows_per_week_pooled": 4.7726,
+     "raw_windows_per_week_pooled": 4.7744,
      "seven_day_points": 657.0,
      "until": null,
      "value": 4096551530,
@@ -4456,10 +4456,10 @@
       10.0851
      ],
      "windows_per_week_meters": 4.202,
-     "windows_per_week_pooled": 4.1623,
+     "windows_per_week_pooled": 4.1641,
      "windows_per_week_pooled_interval": [
-      3.9409,
-      4.4051
+      3.9426,
+      4.407
      ],
      "windows_per_week_provisional": false,
      "windows_per_week_source": "weekly_over_window"
@@ -9768,7 +9768,7 @@
    }
   ]
  },
- "generated_at": "2026-10-30T19:31:43.302412+00:00",
+ "generated_at": "2026-10-30T20:01:34.907758+00:00",
  "headline": {
   "at": "2026-10-09T16:00:00+00:00",
   "change_pct": 17.6,
@@ -22213,8 +22213,8 @@
   ],
   "windows_per_week_change_pct": -9.1
  },
- "last_sample_at": "2026-10-30T15:33:24+00:00",
- "meter_read_at": "2026-10-30T19:28:09+00:00",
+ "last_sample_at": "2026-10-30T19:42:26+00:00",
+ "meter_read_at": "2026-10-30T19:58:31+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -22487,27 +22487,27 @@
      "changes_from": "four_accounts",
      "rate_sources": {
       "anchor": 3,
-      "measured": 298,
+      "measured": 299,
       "reference_table": 27
      },
      "unpriced_models": []
     },
-    "meter_movement_pct": 130.0,
+    "meter_movement_pct": 140.0,
     "observed_from": "2026-10-26T20:46:08+00:00",
-    "observed_to": "2026-10-30T15:33:24+00:00",
+    "observed_to": "2026-10-30T19:42:26+00:00",
     "readings": 7,
     "reset_verified": true,
-    "rounding_relative": 0.1615,
+    "rounding_relative": 0.1643,
     "source": "passive",
-    "stretches": 13,
-    "window_pieces": 21
+    "stretches": 14,
+    "window_pieces": 23
    },
    "freshness": {
-    "as_of": "2026-10-30T15:33:24+00:00",
+    "as_of": "2026-10-30T19:42:26+00:00",
     "stale": false,
-    "stale_after": "2026-11-09T15:33:24+00:00"
+    "stale_after": "2026-11-09T19:42:26+00:00"
    },
-   "measured_at": "2026-10-30T15:33:24+00:00",
+   "measured_at": "2026-10-30T19:42:26+00:00",
    "meter_budget_per_window": 212.12,
    "probe_effort": "low",
    "probed_at": "2026-09-09T00:14:11.932199+00:00",
@@ -22563,27 +22563,27 @@
      "changes_from": "four_accounts",
      "rate_sources": {
       "anchor": 3,
-      "measured": 298,
+      "measured": 299,
       "reference_table": 27
      },
      "unpriced_models": []
     },
-    "meter_movement_pct": 130.0,
+    "meter_movement_pct": 140.0,
     "observed_from": "2026-10-26T20:46:08+00:00",
-    "observed_to": "2026-10-30T15:33:24+00:00",
+    "observed_to": "2026-10-30T19:42:26+00:00",
     "readings": 7,
     "reset_verified": true,
-    "rounding_relative": 0.1615,
+    "rounding_relative": 0.1643,
     "source": "passive",
-    "stretches": 13,
-    "window_pieces": 21
+    "stretches": 14,
+    "window_pieces": 23
    },
    "freshness": {
-    "as_of": "2026-10-30T15:33:24+00:00",
+    "as_of": "2026-10-30T19:42:26+00:00",
     "stale": false,
-    "stale_after": "2026-11-09T15:33:24+00:00"
+    "stale_after": "2026-11-09T19:42:26+00:00"
    },
-   "measured_at": "2026-10-30T15:33:24+00:00",
+   "measured_at": "2026-10-30T19:42:26+00:00",
    "meter_budget_per_window": 212.12,
    "probe_effort": "low",
    "probed_at": null,
@@ -22639,27 +22639,27 @@
      "changes_from": "four_accounts",
      "rate_sources": {
       "anchor": 3,
-      "measured": 298,
+      "measured": 299,
       "reference_table": 27
      },
      "unpriced_models": []
     },
-    "meter_movement_pct": 130.0,
+    "meter_movement_pct": 140.0,
     "observed_from": "2026-10-26T20:46:08+00:00",
-    "observed_to": "2026-10-30T15:33:24+00:00",
+    "observed_to": "2026-10-30T19:42:26+00:00",
     "readings": 7,
     "reset_verified": true,
-    "rounding_relative": 0.1615,
+    "rounding_relative": 0.1643,
     "source": "passive",
-    "stretches": 13,
-    "window_pieces": 21
+    "stretches": 14,
+    "window_pieces": 23
    },
    "freshness": {
-    "as_of": "2026-10-30T15:33:24+00:00",
+    "as_of": "2026-10-30T19:42:26+00:00",
     "stale": false,
-    "stale_after": "2026-11-09T15:33:24+00:00"
+    "stale_after": "2026-11-09T19:42:26+00:00"
    },
-   "measured_at": "2026-10-30T15:33:24+00:00",
+   "measured_at": "2026-10-30T19:42:26+00:00",
    "meter_budget_per_window": 212.12,
    "probe_effort": "low",
    "probed_at": null,
@@ -22715,27 +22715,27 @@
      "changes_from": "four_accounts",
      "rate_sources": {
       "anchor": 3,
-      "measured": 298,
+      "measured": 299,
       "reference_table": 27
      },
      "unpriced_models": []
     },
-    "meter_movement_pct": 130.0,
+    "meter_movement_pct": 140.0,
     "observed_from": "2026-10-26T20:46:08+00:00",
-    "observed_to": "2026-10-30T15:33:24+00:00",
+    "observed_to": "2026-10-30T19:42:26+00:00",
     "readings": 7,
     "reset_verified": true,
-    "rounding_relative": 0.1615,
+    "rounding_relative": 0.1643,
     "source": "passive",
-    "stretches": 13,
-    "window_pieces": 21
+    "stretches": 14,
+    "window_pieces": 23
    },
    "freshness": {
-    "as_of": "2026-10-30T15:33:24+00:00",
+    "as_of": "2026-10-30T19:42:26+00:00",
     "stale": false,
-    "stale_after": "2026-11-09T15:33:24+00:00"
+    "stale_after": "2026-11-09T19:42:26+00:00"
    },
-   "measured_at": "2026-10-30T15:33:24+00:00",
+   "measured_at": "2026-10-30T19:42:26+00:00",
    "meter_budget_per_window": 212.12,
    "probe_effort": "low",
    "probed_at": null,
@@ -22791,27 +22791,27 @@
      "changes_from": "four_accounts",
      "rate_sources": {
       "anchor": 3,
-      "measured": 298,
+      "measured": 299,
       "reference_table": 27
      },
      "unpriced_models": []
     },
-    "meter_movement_pct": 130.0,
+    "meter_movement_pct": 140.0,
     "observed_from": "2026-10-26T20:46:08+00:00",
-    "observed_to": "2026-10-30T15:33:24+00:00",
+    "observed_to": "2026-10-30T19:42:26+00:00",
     "readings": 7,
     "reset_verified": true,
-    "rounding_relative": 0.1615,
+    "rounding_relative": 0.1643,
     "source": "passive",
-    "stretches": 13,
-    "window_pieces": 21
+    "stretches": 14,
+    "window_pieces": 23
    },
    "freshness": {
-    "as_of": "2026-10-30T15:33:24+00:00",
+    "as_of": "2026-10-30T19:42:26+00:00",
     "stale": false,
-    "stale_after": "2026-11-09T15:33:24+00:00"
+    "stale_after": "2026-11-09T19:42:26+00:00"
    },
-   "measured_at": "2026-10-30T15:33:24+00:00",
+   "measured_at": "2026-10-30T19:42:26+00:00",
    "meter_budget_per_window": 212.12,
    "probe_effort": "low",
    "probed_at": null,
@@ -22867,27 +22867,27 @@
      "changes_from": "four_accounts",
      "rate_sources": {
       "anchor": 3,
-      "measured": 298,
+      "measured": 299,
       "reference_table": 27
      },
      "unpriced_models": []
     },
-    "meter_movement_pct": 130.0,
+    "meter_movement_pct": 140.0,
     "observed_from": "2026-10-26T20:46:08+00:00",
-    "observed_to": "2026-10-30T15:33:24+00:00",
+    "observed_to": "2026-10-30T19:42:26+00:00",
     "readings": 7,
     "reset_verified": true,
-    "rounding_relative": 0.1615,
+    "rounding_relative": 0.1643,
     "source": "passive",
-    "stretches": 13,
-    "window_pieces": 21
+    "stretches": 14,
+    "window_pieces": 23
    },
    "freshness": {
-    "as_of": "2026-10-30T15:33:24+00:00",
+    "as_of": "2026-10-30T19:42:26+00:00",
     "stale": false,
-    "stale_after": "2026-11-09T15:33:24+00:00"
+    "stale_after": "2026-11-09T19:42:26+00:00"
    },
-   "measured_at": "2026-10-30T15:33:24+00:00",
+   "measured_at": "2026-10-30T19:42:26+00:00",
    "meter_budget_per_window": 212.12,
    "probe_effort": "low",
    "probed_at": null,
@@ -22943,27 +22943,27 @@
      "changes_from": "four_accounts",
      "rate_sources": {
       "anchor": 3,
-      "measured": 298,
+      "measured": 299,
       "reference_table": 27
      },
      "unpriced_models": []
     },
-    "meter_movement_pct": 130.0,
+    "meter_movement_pct": 140.0,
     "observed_from": "2026-10-26T20:46:08+00:00",
-    "observed_to": "2026-10-30T15:33:24+00:00",
+    "observed_to": "2026-10-30T19:42:26+00:00",
     "readings": 7,
     "reset_verified": true,
-    "rounding_relative": 0.1615,
+    "rounding_relative": 0.1643,
     "source": "passive",
-    "stretches": 13,
-    "window_pieces": 21
+    "stretches": 14,
+    "window_pieces": 23
    },
    "freshness": {
-    "as_of": "2026-10-30T15:33:24+00:00",
+    "as_of": "2026-10-30T19:42:26+00:00",
     "stale": false,
-    "stale_after": "2026-11-09T15:33:24+00:00"
+    "stale_after": "2026-11-09T19:42:26+00:00"
    },
-   "measured_at": "2026-10-30T15:33:24+00:00",
+   "measured_at": "2026-10-30T19:42:26+00:00",
    "meter_budget_per_window": 212.12,
    "probe_effort": "low",
    "probed_at": "2026-09-08T12:32:29.571179+00:00",
@@ -23019,27 +23019,27 @@
      "changes_from": "four_accounts",
      "rate_sources": {
       "anchor": 3,
-      "measured": 298,
+      "measured": 299,
       "reference_table": 27
      },
      "unpriced_models": []
     },
-    "meter_movement_pct": 130.0,
+    "meter_movement_pct": 140.0,
     "observed_from": "2026-10-26T20:46:08+00:00",
-    "observed_to": "2026-10-30T15:33:24+00:00",
+    "observed_to": "2026-10-30T19:42:26+00:00",
     "readings": 7,
     "reset_verified": true,
-    "rounding_relative": 0.1615,
+    "rounding_relative": 0.1643,
     "source": "passive",
-    "stretches": 13,
-    "window_pieces": 21
+    "stretches": 14,
+    "window_pieces": 23
    },
    "freshness": {
-    "as_of": "2026-10-30T15:33:24+00:00",
+    "as_of": "2026-10-30T19:42:26+00:00",
     "stale": false,
-    "stale_after": "2026-11-09T15:33:24+00:00"
+    "stale_after": "2026-11-09T19:42:26+00:00"
    },
-   "measured_at": "2026-10-30T15:33:24+00:00",
+   "measured_at": "2026-10-30T19:42:26+00:00",
    "meter_budget_per_window": 212.12,
    "probe_effort": "low",
    "probed_at": null,
@@ -23095,27 +23095,27 @@
      "changes_from": "four_accounts",
      "rate_sources": {
       "anchor": 3,
-      "measured": 298,
+      "measured": 299,
       "reference_table": 27
      },
      "unpriced_models": []
     },
-    "meter_movement_pct": 130.0,
+    "meter_movement_pct": 140.0,
     "observed_from": "2026-10-26T20:46:08+00:00",
-    "observed_to": "2026-10-30T15:33:24+00:00",
+    "observed_to": "2026-10-30T19:42:26+00:00",
     "readings": 7,
     "reset_verified": true,
-    "rounding_relative": 0.1615,
+    "rounding_relative": 0.1643,
     "source": "passive",
-    "stretches": 13,
-    "window_pieces": 21
+    "stretches": 14,
+    "window_pieces": 23
    },
    "freshness": {
-    "as_of": "2026-10-30T15:33:24+00:00",
+    "as_of": "2026-10-30T19:42:26+00:00",
     "stale": false,
-    "stale_after": "2026-11-09T15:33:24+00:00"
+    "stale_after": "2026-11-09T19:42:26+00:00"
    },
-   "measured_at": "2026-10-30T15:33:24+00:00",
+   "measured_at": "2026-10-30T19:42:26+00:00",
    "meter_budget_per_window": 212.12,
    "probe_effort": "low",
    "probed_at": null,
@@ -23171,27 +23171,27 @@
      "changes_from": "four_accounts",
      "rate_sources": {
       "anchor": 3,
-      "measured": 298,
+      "measured": 299,
       "reference_table": 27
      },
      "unpriced_models": []
     },
-    "meter_movement_pct": 130.0,
+    "meter_movement_pct": 140.0,
     "observed_from": "2026-10-26T20:46:08+00:00",
-    "observed_to": "2026-10-30T15:33:24+00:00",
+    "observed_to": "2026-10-30T19:42:26+00:00",
     "readings": 7,
     "reset_verified": true,
-    "rounding_relative": 0.1615,
+    "rounding_relative": 0.1643,
     "source": "passive",
-    "stretches": 13,
-    "window_pieces": 21
+    "stretches": 14,
+    "window_pieces": 23
    },
    "freshness": {
-    "as_of": "2026-10-30T15:33:24+00:00",
+    "as_of": "2026-10-30T19:42:26+00:00",
     "stale": false,
-    "stale_after": "2026-11-09T15:33:24+00:00"
+    "stale_after": "2026-11-09T19:42:26+00:00"
    },
-   "measured_at": "2026-10-30T15:33:24+00:00",
+   "measured_at": "2026-10-30T19:42:26+00:00",
    "meter_budget_per_window": 212.12,
    "probe_effort": "low",
    "probed_at": "2026-09-14T13:16:57.472646+00:00",
@@ -23247,27 +23247,27 @@
      "changes_from": "four_accounts",
      "rate_sources": {
       "anchor": 3,
-      "measured": 298,
+      "measured": 299,
       "reference_table": 27
      },
      "unpriced_models": []
     },
-    "meter_movement_pct": 130.0,
+    "meter_movement_pct": 140.0,
     "observed_from": "2026-10-26T20:46:08+00:00",
-    "observed_to": "2026-10-30T15:33:24+00:00",
+    "observed_to": "2026-10-30T19:42:26+00:00",
     "readings": 7,
     "reset_verified": true,
-    "rounding_relative": 0.1615,
+    "rounding_relative": 0.1643,
     "source": "passive",
-    "stretches": 13,
-    "window_pieces": 21
+    "stretches": 14,
+    "window_pieces": 23
    },
    "freshness": {
-    "as_of": "2026-10-30T15:33:24+00:00",
+    "as_of": "2026-10-30T19:42:26+00:00",
     "stale": false,
-    "stale_after": "2026-11-09T15:33:24+00:00"
+    "stale_after": "2026-11-09T19:42:26+00:00"
    },
-   "measured_at": "2026-10-30T15:33:24+00:00",
+   "measured_at": "2026-10-30T19:42:26+00:00",
    "meter_budget_per_window": 212.12,
    "probe_effort": "low",
    "probed_at": null,
@@ -33922,16 +33922,16 @@
       {
        "day": "2026-10-30",
        "fast_session_requests": 0,
-       "n": 1612,
+       "n": 1621,
        "output_tokens_per_s": {
         "median": 99.6,
-        "q1": 88.3,
+        "q1": 88.4,
         "q3": 110.9
        },
        "time_to_first_block_s": {
         "median": 4.41,
-        "q1": 2.85,
-        "q3": 8.05
+        "q1": 2.84,
+        "q3": 8.01
        }
       }
      ],
@@ -34434,15 +34434,15 @@
       {
        "day": "2026-10-30",
        "fast_session_requests": 0,
-       "n": 669,
+       "n": 673,
        "output_tokens_per_s": {
-        "median": 97.6,
+        "median": 97.7,
         "q1": 80.1,
         "q3": 109.3
        },
        "time_to_first_block_s": {
-        "median": 3.61,
-        "q1": 2.42,
+        "median": 3.62,
+        "q1": 2.43,
         "q3": 5.89
        }
       }
@@ -35946,16 +35946,16 @@
       {
        "day": "2026-10-30",
        "fast_session_requests": 0,
-       "n": 1435,
+       "n": 1444,
        "output_tokens_per_s": {
         "median": 98.5,
-        "q1": 87.3,
-        "q3": 110.1
+        "q1": 87.4,
+        "q3": 110.0
        },
        "time_to_first_block_s": {
-        "median": 4.46,
+        "median": 4.45,
         "q1": 2.95,
-        "q3": 7.96
+        "q3": 7.91
        }
       }
      ],
@@ -36719,7 +36719,7 @@
       {
        "day": "2026-10-30",
        "fast_session_requests": 0,
-       "n": 563,
+       "n": 567,
        "output_tokens_per_s": {
         "median": 96.3,
         "q1": 75.8,
@@ -36727,7 +36727,7 @@
        },
        "time_to_first_block_s": {
         "median": 3.71,
-        "q1": 2.58,
+        "q1": 2.59,
         "q3": 6.03
        }
       }
@@ -37719,7 +37719,7 @@
       {
        "day": "2026-10-30",
        "fast_session_requests": 0,
-       "n": 2276,
+       "n": 2285,
        "output_tokens_per_s": {
         "median": 99.4,
         "q1": 89.4,
@@ -37727,8 +37727,8 @@
        },
        "time_to_first_block_s": {
         "median": 4.17,
-        "q1": 2.62,
-        "q3": 7.46
+        "q1": 2.61,
+        "q3": 7.43
        }
       }
      ],
@@ -38231,15 +38231,15 @@
       {
        "day": "2026-10-30",
        "fast_session_requests": 0,
-       "n": 669,
+       "n": 673,
        "output_tokens_per_s": {
-        "median": 99.1,
+        "median": 99.2,
         "q1": 81.2,
         "q3": 110.4
        },
        "time_to_first_block_s": {
-        "median": 3.79,
-        "q1": 2.54,
+        "median": 3.78,
+        "q1": 2.56,
         "q3": 6.4
        }
       }
@@ -38941,16 +38941,16 @@
      {
       "day": "2026-10-30",
       "fast_session_requests": 0,
-      "n": 3116,
+      "n": 3129,
       "output_tokens_per_s": {
        "median": 98.9,
        "q1": 88.0,
        "q3": 109.2
       },
       "time_to_first_block_s": {
-       "median": 4.15,
+       "median": 4.14,
        "q1": 2.61,
-       "q3": 7.51
+       "q3": 7.49
       }
      }
     ]
@@ -46952,7 +46952,7 @@
      ]
     },
     "a4": {
-     "current": 4.06,
+     "current": 4.07,
      "n": 74,
      "regimes": [
       {
@@ -46999,15 +46999,15 @@
        "points": 44,
        "provisional": false,
        "quality": "bounded",
-       "raw_windows": 4.12,
+       "raw_windows": 4.13,
        "rounding_interval": [
-        3.5663,
-        4.6915
+        3.575,
+        4.7025
        ],
        "seven_day_pct": 103.0,
        "source": "passive_paired_deltas",
        "start": "2026-10-09T16:37:54+00:00",
-       "windows": 4.07
+       "windows": 4.08
       }
      ]
     }
@@ -61205,20 +61205,20 @@
     },
     {
      "account": "a4",
-     "five_hour_pct": 1.0,
+     "five_hour_pct": 2.0,
      "headless_inflation": 1.0,
-     "headless_share": null,
-     "headless_share_source": null,
+     "headless_share": 0.0,
+     "headless_share_source": "stretches",
      "pieces": 1,
-     "raw_five_hour_pct": 1.0,
+     "raw_five_hour_pct": 2.0,
      "raw_rounding_interval": [
-      0.0,
+      0.2734,
       null
      ],
      "raw_windows": null,
      "reset_verified": true,
      "rounding_interval": [
-      0.0,
+      0.2734,
       null
      ],
      "seven_day_pct": 0.0,
@@ -61226,24 +61226,24 @@
      "windows": null
     }
    ],
-   "current": 4.19,
+   "current": 4.2,
    "current_estimate": {
     "as_of": "2026-10-30T21:30:00.399347+00:00",
     "assumed": false,
-    "five_hour_pct": 1748.8,
+    "five_hour_pct": 1749.8,
     "from": "2026-10-16T22:30:00.186972+00:00",
     "pieces": 176,
     "points": 173,
     "quality": "measured",
     "reasons": [],
     "rounding_interval": [
-     3.9527,
-     4.4601
+     3.9549,
+     4.4627
     ],
     "seven_day_pct": 417.0,
     "source": "passive_paired_deltas",
     "stale": false,
-    "value": 4.19
+    "value": 4.2
    },
    "headless_factor": 1.51,
    "history": [
@@ -61494,8 +61494,8 @@
      "quality": "bounded",
      "raw_windows": 4.77,
      "rounding_interval": [
-      3.9409,
-      4.4051
+      3.9426,
+      4.407
      ],
      "seven_day_pct": 563.0,
      "source": "passive_paired_deltas",
@@ -61674,18 +61674,18 @@
     },
     {
      "assumed": false,
-     "five_hour_pct": 373.4,
+     "five_hour_pct": 374.4,
      "n": 59,
      "partial": true,
-     "raw_windows": 5.08,
+     "raw_windows": 5.09,
      "rounding_interval": [
-      3.6929,
-      5.2059
+      3.703,
+      5.2195
      ],
      "seven_day_pct": 86.0,
      "source": "passive_paired_deltas",
      "week_ending": "2026-11-01",
-     "windows": 4.34
+     "windows": 4.35
     }
    ]
   },
@@ -61695,7 +61695,7 @@
     "reason": "scaled_from_max20_by_weekly_window_ratio",
     "status": "inferred"
    },
-   "current": 6.98,
+   "current": 7.0,
    "current_estimate": null,
    "history": [
     {
@@ -67533,7 +67533,7 @@
     "reason": "scaled_from_max20_by_weekly_window_ratio",
     "status": "inferred"
    },
-   "current": 5.03,
+   "current": 5.04,
    "current_estimate": null,
    "history": [],
    "inferred_from": "max20",
