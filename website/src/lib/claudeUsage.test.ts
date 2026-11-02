@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   accountMeterChanges,
+  fiveHourEndedAt,
+  fiveHourEndNote,
   fmtLocalDateTime,
   headlessFactor,
   speedAccountSeries,
@@ -2984,5 +2986,25 @@ describe("publishedChangeMarkers", () => {
       four_accounts: { change_markers: { five_hour_limit: [marker({ change_pct: null }), marker({ style: "candidate" }), marker({ style: "step" })] } },
     } as UsageJson;
     expect(publishedChangeMarkers(j, "five_hour_limit").map((m) => m.style)).toEqual(["step"]);
+  });
+});
+
+describe("the five-hour limit's end (tracker ADR 0001 rule 24)", () => {
+  const END = "2026-10-30T23:37:06+00:00";
+  const withEnd = (b: UsageJson["five_hour_limit"]): UsageJson => ({ ...J, five_hour_limit: b });
+
+  it("reads the end only from a removed block with a real instant", () => {
+    expect(fiveHourEndedAt(withEnd({ status: "removed", ended_at: END }))).toBe(END);
+    expect(fiveHourEndedAt(withEnd({ status: "in_force", ended_at: null }))).toBeNull();
+    expect(fiveHourEndedAt(withEnd({ status: "removed", ended_at: "not a date" }))).toBeNull();
+    expect(fiveHourEndedAt(J)).toBeNull();
+    expect(fiveHourEndNote(J)).toBeNull();
+    expect(fiveHourEndNote(withEnd({ status: "removed", ended_at: END }))).toContain("30 Oct 2026");
+  });
+
+  it("never calls a final 5-hour figure stale", () => {
+    const now = Date.parse("2027-01-01T00:00:00Z");
+    expect(staleEvidenceAt(J, SONNET, now)).not.toBeNull();
+    expect(staleEvidenceAt(withEnd({ status: "removed", ended_at: END }), SONNET, now)).toBeNull();
   });
 });

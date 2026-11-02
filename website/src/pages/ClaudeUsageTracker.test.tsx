@@ -2998,3 +2998,39 @@ describe("provisional levels on the charts and in the hero", () => {
     expect(done).not.toContain("(provisional)");
   });
 });
+
+describe("the five-hour limit's end (tracker ADR 0001 rule 24)", () => {
+  const MODEL = "claude-opus-5-5";
+  const END = "2026-10-15T00:00:00+00:00";
+  const ended = (): UsageJson => ({
+    ...(provisionalLevels as unknown as UsageJson),
+    five_hour_limit: { status: "removed", ended_at: END, plan: "max20", plan_display_name: "Ultra", accounts: {} },
+  });
+  const ariaOf = (html: string, title: string) =>
+    html.match(new RegExp(`aria-label="${title}\\.([^"]*)"`))?.[1] ?? "";
+  const toDates = (aria: string) =>
+    [...aria.matchAll(/ to (\d{1,2} [A-Z][a-z]{2} \d{4})/g)].map((m) => Date.parse(`${m[1]} UTC`));
+
+  it("marks the end on every plan chart and says why under the hero", () => {
+    const html = renderHtml(ended(), "max20", MODEL);
+    expect(html.match(/data-end-marker=""/g)).toHaveLength(3);
+    expect(html).toContain("5-hour limit removed (Ultra), 15 Oct");
+    const note = html.match(/<div class="quiet" data-five-hour-end="">(.*?)<\/div>/)?.[1] ?? "";
+    expect(note.replace(/&quot;/g, '"')).toContain('Anthropic is moving Max 20x accounts to "Ultra", which has no 5-hour limit.');
+    const before = renderHtml(provisionalLevels as unknown as UsageJson, "max20", MODEL);
+    expect(before).not.toContain("data-end-marker");
+    expect(before).not.toContain("data-five-hour-end");
+  });
+
+  it("ends the 5-hour charts at the end and runs the weekly one on", () => {
+    const html = renderHtml(ended(), "max20", MODEL);
+    const end = Date.parse(END);
+    for (const title of ["Effective window size over time", "Five-hour windows per week over time"]) {
+      const dates = toDates(ariaOf(html, title));
+      expect(dates.length, title).toBeGreaterThan(0);
+      expect(Math.max(...dates), title).toBeLessThanOrEqual(end);
+    }
+    const weekly = toDates(ariaOf(html, "Tokens per week over time"));
+    expect(Math.max(...weekly)).toBeGreaterThan(end);
+  });
+});
