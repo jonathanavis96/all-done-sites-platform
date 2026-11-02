@@ -3030,6 +3030,11 @@ describe("the five-hour limit's end (tracker ADR 0001 rule 24)", () => {
       expect(dates.length, title).toBeGreaterThan(0);
       expect(Math.max(...dates), title).toBeLessThanOrEqual(end);
     }
+    // The pooled weekly points too: none ends after the end (Codex, #140).
+    const pooled = ariaOf(html, "Five-hour windows per week over time").split("Weekly pooled: ")[1] ?? "";
+    const weeks = [...pooled.matchAll(/(\d{1,2} [A-Z][a-z]{2} \d{4}) \d/g)].map((m) => Date.parse(`${m[1]} UTC`));
+    expect(weeks.length).toBeGreaterThan(0);
+    expect(Math.max(...weeks)).toBeLessThanOrEqual(end);
     const weekly = toDates(ariaOf(html, "Tokens per week over time"));
     expect(Math.max(...weekly)).toBeGreaterThan(end);
   });

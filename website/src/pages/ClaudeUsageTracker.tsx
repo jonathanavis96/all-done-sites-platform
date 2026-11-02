@@ -482,7 +482,9 @@ function LevelChart({
   // in the x-axis span, not in the aria label -- so it neither hangs a huge whisker in the
   // margin nor stretches this chart's x domain past its sibling chart's.
   const pooled = (overlay?.weekly ?? []).filter(
-    (p) => !p.partial && (clip === null || Date.parse(p.week_ending) <= clip + 7 * 86400e3),
+    // Past the five-hour limit's end nothing is drawn, a week that only ends after it included:
+    // its point would sit beyond the marker that calls every figure before it final.
+    (p) => !p.partial && (clip === null || Date.parse(p.week_ending) <= clip),
   );
   // A whisker end the collector could not bound (null) is not drawn, so it sets no range either.
   const whisker = (iv: (number | null)[] | null | undefined): [number, number] | null =>
