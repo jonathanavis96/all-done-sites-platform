@@ -421,6 +421,34 @@ export interface AccountFeed {
   state?: "fresh" | "idle" | "stopped" | string;
 }
 
+export interface FiveHourLimit {
+  status: "removed" | "in_force";
+  ended_at: string | null;
+  plan?: string;
+  plan_display_name?: string;
+  accounts?: Record<string, { switched: boolean; five_hour_last: string | null; weekly_only_since: string | null }>;
+  rule?: string;
+}
+
+// The page's sentence for the five-hour limit's end, or null while it is still measured.
+export function fiveHourEndNote(j: UsageJson | null | undefined): string | null {
+  const at = fiveHourEndedAt(j);
+  if (!at) return null;
+  return (
+    `Anthropic is moving Max 20x accounts to "Ultra", which has no 5-hour limit. The first watched ` +
+    `account lost it on ${fmtDate(at.slice(0, 10))}, so every 5-hour figure here is final as of that ` +
+    `date. The weekly limit is still measured.`
+  );
+}
+
+// When the tracker's 5-hour series ended, as the published instant, or null while the 5-hour limit
+// is still measured (or the file predates the block).
+export function fiveHourEndedAt(j: UsageJson | null | undefined): string | null {
+  const b = j?.five_hour_limit;
+  if (!b || b.status !== "removed" || typeof b.ended_at !== "string") return null;
+  return Number.isFinite(Date.parse(b.ended_at)) ? b.ended_at : null;
+}
+
 export interface UsageJson {
   schema_version?: number;
   rate_basis?: string;
@@ -433,6 +461,10 @@ export interface UsageJson {
   // "stopped" means the collector has not delivered on schedule; "idle" means it ran but the
   // account was not used. Absent from JSON published before the field existed.
   account_feeds?: Record<string, AccountFeed>;
+  // The five-hour limit's end (tracker ADR 0001 rule 24): Max 20x accounts moved one at a time to
+  // "Ultra", which has no 5-hour limit. Past `ended_at` every 5-hour figure is final and the weekly
+  // limit is the live one. Absent from files published before 2026-11-02.
+  five_hour_limit?: FiveHourLimit;
   // Newest passive (non-probe) measurement's timestamp. Optional: older JSON predates passive
   // measurement.
   passive_generated_at?: string | null;
@@ -1187,6 +1219,8 @@ export function rateStaleAfter(j: UsageJson, model: string): string | null {
 // One function decides both whether the line shows and which date it gives, so the two cannot
 // come from different evidence.
 export function staleEvidenceAt(j: UsageJson, model: string, now: number): string | null {
+  // Past the five-hour limit's end a 5-hour figure is final, not stale: `fiveHourEndNote` says so.
+  if (fiveHourEndedAt(j)) return null;
   const after = rateStaleAfter(j, model);
   if (after === null || !(now > Date.parse(after))) return null;
   return rateEvidenceAt(j, model);

@@ -65,6 +65,8 @@ import {
   pendingChangeStates,
   publishedChangeMarkers,
   headlessFactor,
+  fiveHourEndedAt,
+  fiveHourEndNote,
   type AccountLines,
   type ChangeState,
   type ContribPoint,
@@ -228,6 +230,9 @@ function labelPct(text: string): number | null {
 // Every chart with change markers measures how much a plan holds, so a fall is red and a rise
 // green. The colour keys off the same rounded percent the label prints, so the two cannot
 // disagree: a step that prints "0%", or a label with no percent, is grey.
+// The five-hour limit's end marker: a plan change, not a limit change, so neither red nor green.
+const END_MARKER_COLOUR = "#475569";
+
 export function markerColour(pct: number | null): string {
   const shown = pct === null ? 0 : Math.round(pct);
   return shown < 0 ? "#B42318" : shown > 0 ? "#059669" : "#94A3B8";
@@ -381,9 +386,11 @@ function LevelChart({
   markEvents,
   pendingStates,
   published,
-  accountLines,
+  accountLines: accountLinesIn,
   missingFor,
   shown = true,
+  fiveHourEnd,
+  clipAtEnd,
 }: {
   levelsByPlan: PlanLevels[];
   events: UsageEvent[];
@@ -424,7 +431,24 @@ function LevelChart({
   // False while the chart sits in a hidden panel; the scroller re-opens on the newest readings
   // when it is shown.
   shown?: boolean;
+  // The five-hour limit's end (tracker ADR 0001 rule 24), marked on the chart in grey. With
+  // `clipAtEnd` (a 5-hour quantity) nothing is drawn past it: the line ends where it was last
+  // measured instead of running on flat.
+  fiveHourEnd?: string | null;
+  clipAtEnd?: boolean;
 }) {
+  const clip = clipAtEnd && fiveHourEnd ? Date.parse(fiveHourEnd) : null;
+  const clipLevels = <L extends { start: string; end: string }>(levels: L[]): L[] =>
+    clip === null
+      ? levels
+      : levels
+          .filter((l) => Date.parse(l.start) < clip)
+          .map((l) => (Date.parse(l.end) > clip ? { ...l, end: new Date(clip).toISOString() } : l));
+  levelsByPlan = levelsByPlan.map((p) => ({ ...p, levels: clipLevels(p.levels) }));
+  const accountLines: AccountLines | undefined =
+    accountLinesIn && clip !== null
+      ? { ...accountLinesIn, lines: accountLinesIn.lines.map((l) => ({ ...l, levels: clipLevels(l.levels) })) }
+      : accountLinesIn;
   // With readings to show, the plot keeps a legible width and scrolls inside its own container on
   // a phone, rather than shrinking a hundred dots into a smear. It opens on the newest readings,
   // which sit at the right-hand end.
@@ -451,11 +475,17 @@ function LevelChart({
   // The plot's top (T), bottom (B) and the viewBox height (H) are set once the change markers'
   // labels are laid out, below: the labels take a band above the plot, one row per stacked label.
   const W = 840, L = 44, R = plotRight;
-  const readings = overlay?.readings ?? [];
+  const readings = (overlay?.readings ?? []).filter(
+    (r) => clip === null || Date.parse(r.window_ending) <= clip,
+  );
   // A partial (in-progress) week is dropped entirely -- not drawn, not in the y-axis range, not
   // in the x-axis span, not in the aria label -- so it neither hangs a huge whisker in the
   // margin nor stretches this chart's x domain past its sibling chart's.
-  const pooled = (overlay?.weekly ?? []).filter((p) => !p.partial);
+  const pooled = (overlay?.weekly ?? []).filter(
+    // Past the five-hour limit's end nothing is drawn, a week that only ends after it included:
+    // its point would sit beyond the marker that calls every figure before it final.
+    (p) => !p.partial && (clip === null || Date.parse(p.week_ending) <= clip),
+  );
   // A whisker end the collector could not bound (null) is not drawn, so it sets no range either.
   const whisker = (iv: (number | null)[] | null | undefined): [number, number] | null =>
     iv && typeof iv[0] === "number" && typeof iv[1] === "number" ? [iv[0], iv[1]] : null;
@@ -476,7 +506,10 @@ function LevelChart({
     ...readings.map((r) => stamp(r.window_ending)),
     ...pooled.map((p) => stamp(p.week_ending)),
   ].filter(Number.isFinite);
-  const markerDays = [...events, ...(markEvents ?? []), ...(published ?? [])].map((ev) => day(ev.date));
+  const markerDays = [
+    ...[...events, ...(markEvents ?? []), ...(published ?? [])].map((ev) => day(ev.date)),
+    ...(fiveHourEnd ? [Date.parse(fiveHourEnd)] : []),
+  ].filter(Number.isFinite);
   const d0 = Math.min(...stamps, ...markerDays);
   const d1 = Math.max(...stamps, ...markerDays);
   const span = Math.max(1, d1 - d0);
@@ -496,7 +529,7 @@ function LevelChart({
   // drawn step really is.
   const eventChange = latestWeeklyChange(events);
   const levelSteps = changeFromLevels ? levelStepsFor(plotted, plotted.find(isSelectedPlan)) : [];
-  const rawMarkers: { x: number; date: string; text: string; pct: number | null; provisional?: boolean }[] =
+  const rawMarkers: { x: number; date: string; text: string; pct: number | null; provisional?: boolean; end?: boolean }[] =
     levelSteps.length > 0
       ? levelSteps.map((st, i) => {
           // Only the newest step is the change the publisher's figure describes.
@@ -562,9 +595,18 @@ function LevelChart({
       });
     }
   }
+  if (fiveHourEnd) {
+    rawMarkers.push({
+      x: xAt(fiveHourEnd),
+      date: fiveHourEnd,
+      pct: null,
+      end: true,
+      text: `5-hour limit removed (Ultra), ${fmtDateShort(utcDay(fiveHourEnd))}`,
+    });
+  }
   rawMarkers.sort((a, b) => a.x - b.x);
   for (const m of rawMarkers) {
-    if (m.provisional) continue;
+    if (m.provisional || m.end) continue;
     const at = day(utcDay(m.date));
     const pending = (pendingStates ?? []).find((p) => Math.abs(day(p.date) - at) <= NEAR_MS);
     if (pending) m.text = `${m.text} (${pending.state})`;
@@ -671,15 +713,29 @@ function LevelChart({
           x2={m.x}
           y1={m.ty - LABEL_ASCENT_PX}
           y2={T}
-          style={{ stroke: markerColour(m.pct) }}
+          style={{ stroke: m.end ? END_MARKER_COLOUR : markerColour(m.pct) }}
           strokeWidth="1.5"
-          strokeDasharray="5 4"
+          strokeDasharray={m.end ? "2 3" : "5 4"}
         />
       ))}
       {changeMarkers.map((m) => (
         <g key={m.date}>
-          <line x1={m.x} x2={m.x} y1={T} y2={B} stroke={markerColour(m.pct)} strokeWidth="1.5" strokeDasharray="5 4" />
-          <text x={m.tx} y={m.ty} textAnchor={m.anchor} style={{ fill: markerColour(m.pct), fontWeight: 600 }}>
+          <line
+            x1={m.x}
+            x2={m.x}
+            y1={T}
+            y2={B}
+            stroke={m.end ? END_MARKER_COLOUR : markerColour(m.pct)}
+            strokeWidth="1.5"
+            strokeDasharray={m.end ? "2 3" : "5 4"}
+            data-end-marker={m.end ? "" : undefined}
+          />
+          <text
+            x={m.tx}
+            y={m.ty}
+            textAnchor={m.anchor}
+            style={{ fill: m.end ? END_MARKER_COLOUR : markerColour(m.pct), fontWeight: 600 }}
+          >
             {m.text}
           </text>
         </g>
@@ -1700,6 +1756,10 @@ export default function ClaudeUsageTracker({
     weeklyCut ? ` since the ${fmtDate(weeklyCut.date).slice(0, -5)} cut` : ""
   }, and Pro is inferred the same way.`;
   const h = data ? headline(data) : null;
+  // The five-hour limit's end (tracker ADR 0001 rule 24): marked on every plan chart, the 5-hour
+  // charts end there, and one sentence under the hero says why.
+  const fiveHourEnd = fiveHourEndedAt(data);
+  const endNote = fiveHourEndNote(data);
   // Localise only after mount: the prerender must emit the same text the first client render produces.
   const [localTime, setLocalTime] = useState<string | null>(null);
   // The stale line depends on the clock, so without a fixed `now` it is decided after mount, never
@@ -1982,6 +2042,7 @@ export default function ClaudeUsageTracker({
                       .
                     </div>
                   )}
+                  {endNote && <div className="quiet" data-five-hour-end="">{endNote}</div>}
                   {staleAt && <div className="stale">Last measured {fmtDate(staleAt.slice(0, 10))}.</div>}
                   {stoppedLine && <div className="stale">{stoppedLine}</div>}
                 </>
@@ -2042,6 +2103,7 @@ export default function ClaudeUsageTracker({
                           <>
                             <Fig fig={wt.perWindow} unit="tokens per 5-hour window" />
                             {wt.perWindow.range ? ` (${wt.perWindow.range})` : ""}
+                            {fiveHourEnd ? ` (final: no 5-hour limit after ${fmtDate(fiveHourEnd.slice(0, 10))})` : ""}
                             {wt.inferredNote && wt.perWindow.kind === "value" && (
                               <em>{wt.inferredNote}</em>
                             )}
@@ -2079,6 +2141,8 @@ export default function ClaudeUsageTracker({
                         accountLines={windowAccountLines}
                         missingFor={modelLabel(model)}
                         shown={planChart === "window"}
+                        fiveHourEnd={fiveHourEnd}
+                        clipAtEnd
                       />
                     )}
                   </>
@@ -2133,6 +2197,7 @@ export default function ClaudeUsageTracker({
                       accountLines={weeklyTokenAccountLines}
                       missingFor={modelLabel(model)}
                       shown={planChart === "tokens"}
+                      fiveHourEnd={fiveHourEnd}
                       // This chart's quantity is tokens a week buys, so its marker states the
                       // published tokens-per-week figure where there is one. The windows-per-week
                       // chart below keeps its own windows-per-week figure.
@@ -2154,6 +2219,7 @@ export default function ClaudeUsageTracker({
                       <div className="rate">
                         <span>
                           <b>{r.planWindowsPerWeek.toFixed(1)}</b> five-hour windows per week
+                          {fiveHourEnd ? ` (final: no 5-hour limit after ${fmtDate(fiveHourEnd.slice(0, 10))})` : ""}
                         </span>
                       </div>
                     )}
@@ -2172,6 +2238,8 @@ export default function ClaudeUsageTracker({
                       accountLines={windowsAccountLines}
                       missingFor="five-hour windows per week"
                       shown={planChart === "windows"}
+                      fiveHourEnd={fiveHourEnd}
+                      clipAtEnd
                     />
                   </>
                 )}
