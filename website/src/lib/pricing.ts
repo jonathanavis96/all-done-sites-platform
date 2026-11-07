@@ -235,34 +235,65 @@ export function isUsableContact(value: string): boolean {
 }
 
 /**
+ * The longest checkout waits on logging before it sends the customer to Paystack,
+ * in total. The IP lookup gets half of it, so the contact record still has time
+ * to go out.
+ */
+export const CHECKOUT_LOG_BUDGET_MS = 3000;
+
+/**
  * Records terms acceptance (IP + timestamp) to Formspree and localStorage. The
  * contact goes to Formspree only, so someone who abandons the payment can still be
  * followed up; it is not kept in the browser.
+ *
+ * Logging must never cost the customer the checkout: this settles within
+ * CHECKOUT_LOG_BUDGET_MS whatever the two services do. The Formspree request is
+ * sent once, with keepalive, so a slow answer still lands after the browser has
+ * moved on to Paystack.
  */
 export async function recordTermsAcceptance(planId: PlanId, region: RegionKey, contact: string): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, CHECKOUT_LOG_BUDGET_MS);
+  });
+  try {
+    await Promise.race([logTermsAcceptance(planId, region, contact), deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function logTermsAcceptance(planId: PlanId, region: RegionKey, contact: string): Promise<void> {
   const acceptedAt = new Date().toISOString();
   let ip = "";
+  const ipLookup = new AbortController();
+  const ipTimer = setTimeout(() => ipLookup.abort(), CHECKOUT_LOG_BUDGET_MS / 2);
   try {
-    const res = await fetch("https://api.ipify.org?format=json");
+    const res = await fetch("https://api.ipify.org?format=json", { signal: ipLookup.signal });
     if (res.ok) {
       const data = await res.json();
       ip = data.ip || "";
     }
   } catch {
     // ignore
+  } finally {
+    clearTimeout(ipTimer);
   }
   const details = { plan: planId, region, acceptedAt, ip, termsVersion: TERMS_VERSION };
+  // Before the Formspree request, so a slow Formspree cannot cost the thank-you
+  // page the record it reads.
+  try {
+    localStorage.setItem("termsAccepted", JSON.stringify(details));
+  } catch {
+    // ignore
+  }
   try {
     await fetch("https://formspree.io/f/mwpneboe", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ _subject: "Terms acceptance record", ...details, contact: contact.trim() }),
+      keepalive: true,
     });
-  } catch {
-    // ignore
-  }
-  try {
-    localStorage.setItem("termsAccepted", JSON.stringify(details));
   } catch {
     // ignore
   }

@@ -29,6 +29,7 @@ import {
   isUsableContact,
   recordTermsAcceptance,
 } from "@/lib/pricing";
+import { useBfcacheRestore } from "@/hooks/useBfcacheRestore";
 import "@/styles/home.css";
 
 // The hero frame scrolls the whole Baobab homepage, which is 12,998px tall at
@@ -132,6 +133,9 @@ export default function Index() {
   const [termsContact, setTermsContact] = useState("");
   const [termsText, setTermsText] = useState("");
   const [redirecting, setRedirecting] = useState(false);
+  // Back from Paystack can restore this page from the back/forward cache with
+  // `redirecting` still true, which leaves the pop-up's buttons dead.
+  useBfcacheRestore(() => setRedirecting(false));
 
   // Browser guess first (instant), then the IP country from Cloudflare, which
   // is what decides: a timezone cannot tell Lagos from Johannesburg pricing.

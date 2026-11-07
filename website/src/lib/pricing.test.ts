@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  CHECKOUT_LOG_BUDGET_MS,
   countryFromTrace,
   detectRegionFromIp,
   isUsableContact,
@@ -144,5 +145,73 @@ describe("recordTermsAcceptance", () => {
     await recordTermsAcceptance("launch", "ZA", "  a@b.co ");
     const formspree = fetchMock.mock.calls.find(([url]) => url.includes("formspree"));
     expect(JSON.parse(String(formspree?.[1]?.body))).toMatchObject({ plan: "launch", region: "ZA", contact: "a@b.co" });
+  });
+
+  describe("when the logging services are slow", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      const store = new Map<string, string>();
+      vi.stubGlobal("localStorage", {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+      });
+    });
+    afterEach(() => vi.useRealTimers());
+
+    // A request that never answers, but ends when its AbortSignal fires, as fetch does.
+    const never = (init?: RequestInit) =>
+      new Promise<Response>((_, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      });
+    const settled = async (p: Promise<void>) => {
+      let done = false;
+      void p.then(() => (done = true));
+      await vi.advanceTimersByTimeAsync(CHECKOUT_LOG_BUDGET_MS);
+      return done;
+    };
+
+    it("lets the customer through when both ipify and Formspree hang", async () => {
+      const fetchMock = vi.fn((_url: string, init?: RequestInit) => never(init));
+      vi.stubGlobal("fetch", fetchMock);
+      expect(await settled(recordTermsAcceptance("launch", "ZA", "a@b.co"))).toBe(true);
+    });
+
+    it("still records the acceptance, once, when only ipify hangs", async () => {
+      const fetchMock = vi.fn((url: string, init?: RequestInit) =>
+        url.includes("ipify") ? never(init) : Promise.resolve(new Response("{}")),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      expect(await settled(recordTermsAcceptance("launch", "ZA", "a@b.co"))).toBe(true);
+      const sent = fetchMock.mock.calls.filter(([url]) => url.includes("formspree"));
+      expect(sent).toHaveLength(1);
+      expect(JSON.parse(String(sent[0][1]?.body))).toMatchObject({ contact: "a@b.co", ip: "" });
+    });
+
+    it("never sends the record twice when Formspree hangs, and lets it outlive the page", async () => {
+      const fetchMock = vi.fn((url: string, init?: RequestInit) =>
+        url.includes("ipify") ? Promise.resolve(Response.json({ ip: "1.2.3.4" })) : never(init),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      expect(await settled(recordTermsAcceptance("launch", "ZA", "a@b.co"))).toBe(true);
+      await vi.advanceTimersByTimeAsync(CHECKOUT_LOG_BUDGET_MS * 3);
+      const sent = fetchMock.mock.calls.filter(([url]) => url.includes("formspree"));
+      expect(sent).toHaveLength(1);
+      // The thank-you page reads this, so it must be there even though Formspree never answered.
+      expect(JSON.parse(localStorage.getItem("termsAccepted") ?? "{}")).toMatchObject({ plan: "launch", ip: "1.2.3.4" });
+      expect(vi.getTimerCount()).toBe(0);
+      // keepalive lets the request finish after the browser has left for Paystack.
+      expect(sent[0][1]?.keepalive).toBe(true);
+    });
+
+    it("keeps the ip and sends one record when both answer normally", async () => {
+      const fetchMock = vi.fn(async (url: string, _init?: RequestInit) =>
+        url.includes("ipify") ? Response.json({ ip: "1.2.3.4" }) : new Response("{}"),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      expect(await settled(recordTermsAcceptance("launch", "ZA", "a@b.co"))).toBe(true);
+      const sent = fetchMock.mock.calls.filter(([url]) => url.includes("formspree"));
+      expect(sent).toHaveLength(1);
+      expect(JSON.parse(String(sent[0][1]?.body))).toMatchObject({ ip: "1.2.3.4", contact: "a@b.co" });
+    });
   });
 });
