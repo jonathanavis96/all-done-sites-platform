@@ -104,14 +104,21 @@ ${ctaUrl ? `<p style="margin:0 0 22px"><a href="${ctaUrl}" style="display:inline
 </div></body></html>`;
 }
 
-/** A full-page HTML response for the links people click from their inbox. */
-export function pageResponse(title, message, status = 200) {
+/**
+ * A full-page HTML response for the links people click from their inbox. With
+ * `confirm`, the page shows a button that POSTs to `confirm.action` above the
+ * link back to the tracker, for an action a GET must not perform by itself.
+ */
+export function pageResponse(title, message, status = 200, confirm = null) {
+  const form = confirm
+    ? `<form method="post" action="${escapeHtml(confirm.action)}"><button type="submit">${escapeHtml(confirm.label)}</button></form>`
+    : "";
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${escapeHtml(title)} | All Done Sites</title>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f7f7f5;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1f2328;padding:24px}
 .c{max-width:460px;background:#fff;border:1px solid #e6e4df;border-radius:12px;padding:32px;text-align:center}
 h1{font-size:21px;margin:0 0 12px}p{font-size:15px;line-height:1.6;color:#3f4550;margin:0 0 22px}
-a{display:inline-block;background:#0EA5E9;color:#fff;text-decoration:none;font-weight:600;padding:10px 18px;border-radius:8px}</style></head>
-<body><div class="c"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p><a href="${PAGE}">Back to the tracker</a></div></body></html>`;
+a,button{display:inline-block;background:#0EA5E9;color:#fff;text-decoration:none;font:inherit;font-weight:600;padding:10px 18px;border:0;border-radius:8px;cursor:pointer}form{margin:0 0 14px}form+a{background:none;color:#3f4550;font-weight:500}</style></head>
+<body><div class="c"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p>${form}<a href="${PAGE}">Back to the tracker</a></div></body></html>`;
   return new Response(html, {
     status,
     headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },

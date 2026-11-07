@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   countryFromTrace,
   detectRegionFromIp,
+  isUsableContact,
+  recordTermsAcceptance,
   regionForCountry,
   regionFromBrowser,
   regionReducer,
@@ -116,5 +118,31 @@ describe("regionReducer", () => {
   it("still lets the visitor change currency by hand after opening checkout", () => {
     const s = run({ type: "checkoutOpened" }, { type: "picked", region: "UK" });
     expect(s.region).toBe("UK");
+  });
+});
+
+describe("isUsableContact", () => {
+  it("accepts an email address or a phone number", () => {
+    for (const v of ["a@b.co", " name@business.co.za ", "082 222 7457", "+27 82 222 7457", "(021) 555-0100"]) {
+      expect(isUsableContact(v)).toBe(true);
+    }
+  });
+
+  it("refuses what nobody could be reached on", () => {
+    for (const v of ["", "   ", "abc", "a@b", "12345", "call me", "082 222 7457 ext"]) {
+      expect(isUsableContact(v)).toBe(false);
+    }
+  });
+});
+
+describe("recordTermsAcceptance", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("sends the contact with the terms record, trimmed", async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+    await recordTermsAcceptance("launch", "ZA", "  a@b.co ");
+    const formspree = fetchMock.mock.calls.find(([url]) => url.includes("formspree"));
+    expect(JSON.parse(String(formspree?.[1]?.body))).toMatchObject({ plan: "launch", region: "ZA", contact: "a@b.co" });
   });
 });

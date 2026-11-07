@@ -89,9 +89,6 @@ import {
 } from "@/lib/contrib";
 import "@/styles/home.css";
 import "@/styles/claude-usage.css";
-// Build-time snapshot so the prerendered HTML carries real figures; the fetch below refreshes it.
-import initialJson from "../../public/data/claude-usage.json";
-const initialData = initialJson as unknown as UsageJson;
 
 const SITE = "https://alldonesites.com";
 
@@ -1319,7 +1316,9 @@ function familyLabel(family: string | null, model: string): string {
 }
 
 export default function ClaudeUsageTracker({
-  initial = initialData,
+  // TrackerRoute passes the data snapshot, so the prerendered HTML carries real figures; the
+  // fetch below refreshes it.
+  initial = null,
   initialPlan = "max20",
   initialModel,
   initialContribMetric = "usd",

@@ -12,7 +12,7 @@ import { Link } from "react-router-dom";
 import Seo from "@/components/Seo";
 import { useToast } from "@/hooks/use-toast";
 import { RedesignNav, RedesignFooter } from "@/components/redesign/RedesignChrome";
-import { WHATSAPP, PHONE_TEL, EMAIL } from "@/lib/site";
+import { WHATSAPP, WHATSAPP_HELLO, PHONE_TEL, EMAIL } from "@/lib/site";
 import {
   type RegionKey,
   type PlanId,
@@ -26,6 +26,7 @@ import {
   detectRegionFromIp,
   regionReducer,
   formatAmount,
+  isUsableContact,
   recordTermsAcceptance,
 } from "@/lib/pricing";
 import "@/styles/home.css";
@@ -84,6 +85,8 @@ type Project = {
   status: "live" | "soon";
   label: string;
   delay: string;
+  /** The site refuses to load in a frame, so it opens in a new tab instead of the preview. */
+  noFrame?: boolean;
 };
 
 const PROJECTS: Project[] = [
@@ -91,14 +94,14 @@ const PROJECTS: Project[] = [
   { img: { src: pcquantiCard720, srcSet: `${pcquantiCard360} 360w, ${pcquantiCard720} 720w` }, url: "https://pcquanti.co.za", host: "pcquanti.co.za", name: "PC Quanti", status: "live", label: "Live", delay: ".1s" },
   { img: { src: aifocusCard720, srcSet: `${aifocusCard360} 360w, ${aifocusCard720} 720w` }, url: "https://aifocus.work", host: "aifocus.work", name: "AI Focus", status: "live", label: "Live", delay: ".15s" },
   { img: { src: deenesocialCard720, srcSet: `${deenesocialCard360} 360w, ${deenesocialCard720} 720w` }, url: "https://deenesocial.com", host: "deenesocial.com", name: "Deene Social", status: "live", label: "Live", delay: ".2s" },
-  { img: { src: jacquichowlesCard720, srcSet: `${jacquichowlesCard360} 360w, ${jacquichowlesCard720} 720w` }, url: "https://jacquichowles.com", host: "jacquichowles.com", name: "Jacqui Chowles", status: "live", label: "Live", delay: ".25s" },
+  { img: { src: jacquichowlesCard720, srcSet: `${jacquichowlesCard360} 360w, ${jacquichowlesCard720} 720w` }, url: "https://jacquichowles.com", host: "jacquichowles.com", name: "Jacqui Chowles", status: "live", label: "Live", delay: ".25s", noFrame: true },
   { img: { src: reachrightCard720, srcSet: `${reachrightCard360} 360w, ${reachrightCard720} 720w` }, url: "https://reachrightmarketing.com", host: "reachrightmarketing.com", name: "ReachRight", status: "live", label: "Live", delay: ".3s" },
 ];
 
 const FAQS: { q: string; a: string }[] = [
   { q: "How fast can you launch my website?", a: "Most sites are ready in 7 to 14 days, depending on the complexity and how quickly we receive your content." },
   { q: "Do I own the website?", a: "Yes. After your first 12 months, the site's code and files can be transferred to you, so it is yours to keep. While you are subscribed, we host, maintain and look after everything for you." },
-  { q: "Can I cancel anytime?", a: "Our standard plan runs on a 12-month term. After that you can cancel, and the website becomes yours to keep or move. An introductory 1-month trial is available by invitation." },
+  { q: "Can I cancel anytime?", a: "Not in the first 12 months. Our standard plan has a 12-month minimum term, and if you end it early you still owe the remaining months of that term. After that you can cancel in writing, and the website becomes yours to keep or move. An introductory 1-month trial is available by invitation." },
   { q: "What counts as a small content update?", a: "Things like swapping photos, changing text, or adding a new section. Larger redesigns or new pages are scoped separately." },
   { q: "Do you handle hosting and maintenance?", a: "Yes. Hosting, updates and security are all included in your subscription while you are an active client." },
   { q: "Do you provide SEO?", a: "Yes, every plan includes SEO. We also build your site to be found and referenced by AI assistants, not just traditional search engines. Higher plans add ongoing analytics, reporting and performance improvements." },
@@ -113,6 +116,8 @@ const TIERS: Tier[] = [
   { id: "premium", name: "Premium", sub: "Advanced features & priority care", pages: "Up to 12 pages", features: ["Everything in Business", "Advanced interactive sections", "Priority support & faster turnaround", "14 pro mailboxes at your domain"], featured: true, delay: ".21s" },
 ];
 
+const SITE = "https://alldonesites.com";
+
 export default function Index() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const { toast } = useToast();
@@ -124,6 +129,7 @@ export default function Index() {
   const [{ region }, dispatchRegion] = useReducer(regionReducer, { region: "ZA", committed: false });
   const [terms, setTerms] = useState<{ id: PlanId; name: string; region: RegionKey; payLink: string } | null>(null);
   const [termsChecked, setTermsChecked] = useState(false);
+  const [termsContact, setTermsContact] = useState("");
   const [termsText, setTermsText] = useState("");
   const [redirecting, setRedirecting] = useState(false);
 
@@ -143,6 +149,7 @@ export default function Index() {
     // Checkout has begun: a late IP answer must not change the region under the
     // open modal, or the terms record and the Paystack link would disagree.
     dispatchRegion({ type: "checkoutOpened" });
+    if (window.gtag) window.gtag("event", "begin_checkout", { plan: id, region });
     setTerms({ id, name, region, payLink: PAYSTACK_PAGES[region][id] });
     setTermsChecked(false);
     if (!termsText) {
@@ -156,7 +163,7 @@ export default function Index() {
   async function acceptTerms() {
     if (!terms) return;
     setRedirecting(true);
-    await recordTermsAcceptance(terms.id, terms.region);
+    await recordTermsAcceptance(terms.id, terms.region, termsContact);
     window.location.href = terms.payLink;
   }
 
@@ -164,12 +171,12 @@ export default function Index() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "All Done Sites",
-    url: typeof window !== "undefined" ? window.location.origin : "",
+    url: SITE,
     slogan: "Your website, done for you, for one simple monthly fee",
     description:
       "Done-for-you websites on a simple monthly fee. We design, host, maintain and update your site, and build it to be found by both search engines and AI assistants.",
     sameAs: [],
-    logo: "/favicon.png",
+    logo: `${SITE}/favicon.png`,
   };
   // Local/service-business schema: entity grounding for search + AI (NAP,
   // area served, price range). sameAs is left for the Google Business Profile
@@ -178,9 +185,9 @@ export default function Index() {
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
     name: "All Done Sites",
-    url: typeof window !== "undefined" ? window.location.origin : "https://alldonesites.com",
-    image: "/og.png",
-    logo: "/favicon.png",
+    url: SITE,
+    image: `${SITE}/og.png`,
+    logo: `${SITE}/favicon.png`,
     telephone: "+27 82 222 7457",
     email: "hello@alldonesites.com",
     priceRange: `${formatAmount(region, PRICES[region].launch)} to ${formatAmount(region, PRICES[region].premium)} per month`,
@@ -240,6 +247,22 @@ export default function Index() {
     if (!root) return;
     const cleanups: Array<() => void> = [];
 
+    const steps = root.querySelector(".steps");
+
+    // Content is visible by default, so a slow or failed script never leaves a
+    // blank section. Once this runs, whatever is on screen is marked as already
+    // revealed and only then does .anim hide the rest, ready to animate in. The
+    // observer's first callback reports every target at once, with no forced layout.
+    const startIO = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) e.target.classList.add(e.target === steps ? "play" : "in");
+      });
+      root.classList.add("anim");
+      startIO.disconnect();
+    });
+    root.querySelectorAll(".reveal, .reveal-fade, .steps").forEach((el) => startIO.observe(el));
+    cleanups.push(() => startIO.disconnect());
+
     // scroll-reveal fade-ups
     const revealIO = new IntersectionObserver(
       (entries) => {
@@ -256,7 +279,6 @@ export default function Index() {
     cleanups.push(() => revealIO.disconnect());
 
     // how-it-works synced loading bar + sequential step pop-in
-    const steps = root.querySelector(".steps");
     if (steps) {
       const howIO = new IntersectionObserver(
         (entries) => {
@@ -375,7 +397,9 @@ export default function Index() {
       const onClick = (ev: MouseEvent) => {
         if ((ev.target as HTMLElement).closest("a")) return;
         const url = c.getAttribute("data-url");
-        if (url) openSite(url);
+        if (!url) return;
+        if (c.hasAttribute("data-noframe")) window.open(url, "_blank", "noopener,noreferrer");
+        else openSite(url);
       };
       c.addEventListener("click", onClick);
       cleanups.push(() => c.removeEventListener("click", onClick));
@@ -480,11 +504,12 @@ export default function Index() {
             </p>
             <div className="ctarow">
               <a href="#getquote" className="btn lg">Get my free quote</a>
-              <a href="#pf" className="ghost">See our work →</a>
+              <a href="#pf" className="ghost desk-only">See our work →</a>
+              <a href={WHATSAPP_HELLO} target="_blank" rel="noopener noreferrer" className="ghost phone-only">WhatsApp us →</a>
             </div>
             <div className="stats">
               <div className="stat">
-                <div className="n"><span data-count={7}>0</span></div>
+                <div className="n"><span data-count={7}>7</span></div>
                 <div className="l">sites built and maintained</div>
               </div>
               <div className="stat">
@@ -504,7 +529,7 @@ export default function Index() {
                 <Lights />
                 <span className="u">baobabwines.com</span>
               </div>
-              <button className="expand" title="Open preview" type="button">⤢</button>
+              <button className="expand" title="Open preview" aria-label="Open a live preview of baobabwines.com" type="button">⤢</button>
               <picture>
                 {/* Stacked layout: the frame is ~92vw (~359 CSS px on a
                     390px phone). Mobile gets its own q50 encodes and stops at
@@ -597,7 +622,7 @@ export default function Index() {
             </div>
             <div className="cell reveal" style={{ transitionDelay: ".06s" }}>
               <h3>Hosting &amp; security</h3>
-              <p>Fast, SSL, backups, monitored.</p>
+              <p>Fast, secure, backed up and monitored.</p>
             </div>
             <div className="cell reveal" style={{ transitionDelay: ".12s" }}>
               <h3>Mobile-friendly</h3>
@@ -628,7 +653,7 @@ export default function Index() {
         <div className="wrap">
           <span className="eyebrow kicker reveal">Recent work</span>
           <h2 className="h2 reveal">Real sites. Real businesses.</h2>
-          <p className="lead2 reveal">Click any project to open the live site right here, scroll and click around inside it, or open it full screen.</p>
+          <p className="lead2 reveal">Open any project to see the live site, scroll around inside it, or open it full screen.</p>
 
           <div className="feature reveal-fade tilt" data-url="https://ranksentinel.co">
             <div className="fimg">
@@ -664,12 +689,12 @@ export default function Index() {
 
           <div className="pf">
             {PROJECTS.map((p) => (
-              <div className="card reveal-fade tilt" data-url={p.url} style={{ transitionDelay: p.delay }} key={p.name}>
+              <div className="card reveal-fade tilt" data-url={p.url} data-noframe={p.noFrame ? "" : undefined} style={{ transitionDelay: p.delay }} key={p.name}>
                 <div className="cbar">
                   <Lights />
                   <span className="u">{p.host}</span>
                 </div>
-                <button className="expand" title="Open preview" type="button">⤢</button>
+                <button className="expand" title="Open preview" aria-label={`Open ${p.name}`} type="button">⤢</button>
                 <div className="cimg">
                   <img
                     src={p.img.src}
@@ -686,7 +711,7 @@ export default function Index() {
               </div>
             ))}
           </div>
-          <div className="hint">⤢ Hover a card and click to open the live site inside a window, scroll and interact, or open it full screen.</div>
+          <div className="hint">⤢ Click or tap a project to see the live site.</div>
 
           <div className="marq">
             <div className="track">
@@ -724,7 +749,7 @@ export default function Index() {
                 <div className="tname">{t.name}</div>
                 <div className="tsub">{t.sub}</div>
                 <div className="price">{formatAmount(region, PRICES[region][t.id])}<small>/mo</small></div>
-                <div className="pages">{t.pages}</div>
+                <div className="pages">{t.pages} · 12-month minimum</div>
                 <ul>
                   {t.features.map((f) => (
                     <li key={f}>{f}</li>
@@ -743,7 +768,7 @@ export default function Index() {
             </div>
             <Link to="/contact-enterprise/" className="btn">Talk to us</Link>
           </div>
-          <p className="pricenote">Free build to get started. Hosting, SSL, backups and pro email included. Need separate mailboxes? Add professional mailbox aliases at {formatAmount(region, MAILBOX_PRICE[region])}/month each.</p>
+          <p className="pricenote">All plans have a 12-month minimum term. Free build to get started. Hosting, SSL, backups and pro email included. Need separate mailboxes? Add professional mailbox aliases at {formatAmount(region, MAILBOX_PRICE[region])}/month each.</p>
         </div>
       </section>
 
@@ -779,12 +804,12 @@ export default function Index() {
               <input type="text" name="_gotcha" tabIndex={-1} autoComplete="off" style={{ display: "none" }} aria-hidden="true" />
               <input type="hidden" name="_subject" value="New quote request — All Done Sites" />
               <div className="frow2">
-                <div className="field"><label htmlFor="q-name">Name</label><input id="q-name" name="name" type="text" placeholder="Jane Smith" required /></div>
-                <div className="field"><label htmlFor="q-company">Company</label><input id="q-company" name="company" type="text" placeholder="Your business" /></div>
+                <div className="field"><label htmlFor="q-name">Name</label><input id="q-name" name="name" type="text" autoComplete="name" placeholder="Your name" required /></div>
+                <div className="field"><label htmlFor="q-company">Company</label><input id="q-company" name="company" type="text" autoComplete="organization" placeholder="Your business" /></div>
               </div>
               <div className="frow2">
-                <div className="field"><label htmlFor="q-email">Email</label><input id="q-email" name="email" type="email" placeholder="jane@business.co.za" required /></div>
-                <div className="field"><label htmlFor="q-phone">Phone</label><input id="q-phone" name="phone" type="tel" placeholder="072 000 0000" /></div>
+                <div className="field"><label htmlFor="q-email">Email</label><input id="q-email" name="email" type="email" autoComplete="email" placeholder="you@business.co.za" required /></div>
+                <div className="field"><label htmlFor="q-phone">Phone</label><input id="q-phone" name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="072 000 0000" /></div>
               </div>
               <div className="field">
                 <label htmlFor="q-plan">Which plan are you interested in?</label>
@@ -816,11 +841,11 @@ export default function Index() {
               </span>
               <span><span className="at">Call us</span><br /><span className="as">Speak to a real person</span></span>
             </a>
-            <a className="alt" href={`mailto:${EMAIL}?subject=Book a call`}>
+            <a className="alt" href={`mailto:${EMAIL}?subject=Website enquiry`}>
               <span className="ic">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0284C7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0284C7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></svg>
               </span>
-              <span><span className="at">Book a call</span><br /><span className="as">Pick a time that suits you</span></span>
+              <span><span className="at">Email us</span><br /><span className="as">We reply within 1 business day</span></span>
             </a>
             <div className="reassure">No upfront cost. We build your site free to start, then it's one simple monthly fee.</div>
           </div>
@@ -854,13 +879,24 @@ export default function Index() {
               <p>Please review and accept the agreement before continuing to payment for the {terms.name} plan.</p>
             </div>
             <div className="tbody">{termsText || "Loading…"}</div>
+            <label className="tcontact">
+              <span>Your email or WhatsApp number</span>
+              <input
+                type="text"
+                autoComplete="email"
+                value={termsContact}
+                onChange={(e) => setTermsContact(e.target.value)}
+                placeholder="you@business.co.za"
+              />
+              <small>So we can reach you about your site, or help if the payment does not go through.</small>
+            </label>
             <label className="tcheck">
               <input type="checkbox" checked={termsChecked} onChange={(e) => setTermsChecked(e.target.checked)} />
               <span>I have read, understood and agree to be bound by the All Done Sites Subscription Agreement.</span>
             </label>
             <div className="tfoot">
               <button type="button" className="vbtn" onClick={() => setTerms(null)} disabled={redirecting}>Cancel</button>
-              <button type="button" className="btn" disabled={!termsChecked || redirecting} onClick={acceptTerms}>
+              <button type="button" className="btn" disabled={!termsChecked || !isUsableContact(termsContact) || redirecting} onClick={acceptTerms}>
                 {redirecting ? "Redirecting…" : "Accept & continue to payment"}
               </button>
             </div>

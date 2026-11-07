@@ -3,6 +3,7 @@ import { createRoot, hydrateRoot } from "react-dom/client"
 import { BrowserRouter } from "react-router-dom"
 import { HelmetProvider } from "react-helmet-async"
 import App from "./App"
+import { loadTracker } from "./pages/TrackerRoute"
 import "./index.css"
 
 const root = document.getElementById("root")!
@@ -27,7 +28,17 @@ if (root.hasChildNodes()) {
     if (hydrated) return
     hydrated = true
     cleanup()
-    hydrateRoot(root, tree)
+    // The tracker's code is in its own chunk, and hydrating without it would throw
+    // away the prerendered page until it arrived. If the chunk fails to load, the
+    // prerendered page stays up, which beats hydrating into an error.
+    if (window.location.pathname.startsWith("/claude-usage-tracker")) {
+      loadTracker().then(
+        () => hydrateRoot(root, tree),
+        () => {},
+      )
+    } else {
+      hydrateRoot(root, tree)
+    }
   }
   evts.forEach((e) => window.addEventListener(e, run, { passive: true }))
   const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void })

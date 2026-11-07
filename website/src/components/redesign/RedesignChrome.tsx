@@ -2,16 +2,23 @@
 // pages, and a hash-scroll helper. All of it lives inside the `.adsx` scope so
 // it uses the new cyan/Bricolage design system (see styles/home.css).
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { WHATSAPP, EMAIL, PHONE_TEL, PHONE_DISPLAY } from "@/lib/site";
+import { Menu } from "lucide-react";
+import { WHATSAPP, WHATSAPP_HELLO, EMAIL, PHONE_TEL, PHONE_DISPLAY } from "@/lib/site";
 
 const base = import.meta.env.BASE_URL || "/";
 
 /** Smooth-scrolls to a hash target on navigation, or to top on a plain route change. */
 export function ScrollToHash() {
-  const { pathname, hash } = useLocation();
+  const { pathname, hash, key } = useLocation();
+  const firstRun = useRef(true);
   useEffect(() => {
+    // Hydration is deferred until first interaction or idle, so on a prerendered
+    // page this runs after the visitor may have started scrolling: the first run
+    // must not send them back to the top.
+    const isFirstRun = firstRun.current;
+    firstRun.current = false;
     if (hash) {
       const t = window.setTimeout(() => {
         const el = document.querySelector(hash);
@@ -19,19 +26,47 @@ export function ScrollToHash() {
       }, 60);
       return () => window.clearTimeout(t);
     }
-    window.scrollTo(0, 0);
-  }, [pathname, hash]);
+    // "instant" overrides the smooth scrolling set on html for in-page anchors;
+    // a new page should start at the top, not roll up to it.
+    if (!isFirstRun) window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    // `key` as well as the URL: tapping a menu link for the section you already
+    // visited leaves the URL unchanged and should still go there.
+  }, [pathname, hash, key]);
   return null;
 }
 
+const NAV_LINKS = [
+  { to: "/#how", label: "How it works" },
+  { to: "/#pf", label: "Portfolio" },
+  { to: "/#pricing", label: "Pricing" },
+  { to: "/guides/", label: "Guides" },
+  { to: "/#faq", label: "FAQ" },
+];
+
 export function RedesignNav() {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, key } = useLocation();
+  const menuRef = useRef<HTMLDetailsElement>(null);
   const onBrand = (e: React.MouseEvent) => {
     e.preventDefault();
     if (pathname === "/") window.scrollTo({ top: 0, behavior: "smooth" });
     else navigate("/");
   };
+  useEffect(() => {
+    const onPointer = (e: Event) => {
+      const menu = menuRef.current;
+      if (menu?.open && !menu.contains(e.target as Node)) menu.open = false;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && menuRef.current) menuRef.current.open = false;
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
   return (
     <nav>
       <div className="wrap navinner">
@@ -41,13 +76,22 @@ export function RedesignNav() {
         </a>
         <div className="navright">
           <div className="nl">
-            <Link to="/#how">How it works</Link>
-            <Link to="/#pf">Portfolio</Link>
-            <Link to="/#pricing">Pricing</Link>
-            <Link to="/guides/">Guides</Link>
-            <Link to="/#faq">FAQ</Link>
+            {NAV_LINKS.map((l) => (
+              <Link to={l.to} key={l.to}>{l.label}</Link>
+            ))}
           </div>
           <Link to="/#getquote" className="btn">Get a quote</Link>
+          {/* Phones only. <details> opens before the page has hydrated, and the
+              key closes it again whenever a link is followed. */}
+          <details className="mnav" key={key} ref={menuRef}>
+            <summary aria-label="Menu"><Menu size={22} aria-hidden="true" /></summary>
+            <div className="mnav-panel">
+              {NAV_LINKS.map((l) => (
+                <Link to={l.to} key={l.to}>{l.label}</Link>
+              ))}
+              <a href={WHATSAPP_HELLO} target="_blank" rel="noopener noreferrer">WhatsApp us</a>
+            </div>
+          </details>
         </div>
       </div>
     </nav>
@@ -96,7 +140,7 @@ export function RedesignFooter() {
             <a href={`mailto:${EMAIL}`}>{EMAIL}</a>
             <a href={PHONE_TEL}>{PHONE_DISPLAY}</a>
             <a href={WHATSAPP} target="_blank" rel="noopener noreferrer">WhatsApp us</a>
-            <Link to="/#getquote">Book a call</Link>
+            <Link to="/#getquote">Get a quote</Link>
           </div>
         </div>
         <div className="fbot">
@@ -123,7 +167,8 @@ export function PageShell({
   return (
     <div className="adsx">
       <RedesignNav />
-      <main>
+      {/* Layout already wraps every page in <main>. */}
+      <div>
         <section className="pagewrap">
           <div className="wrap">
             {(eyebrow || title || sub) && (
@@ -136,7 +181,7 @@ export function PageShell({
             {children}
           </div>
         </section>
-      </main>
+      </div>
       <RedesignFooter />
     </div>
   );

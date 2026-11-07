@@ -85,9 +85,17 @@ export async function onRequestPost({ request, env }) {
   await kv.put(sentKey(date), new Date().toISOString());
 
   // Read the subscriber records a batch at a time rather than one round trip each.
-  const subKeys = await listAllKeys(kv, "sub:");
-  const records = await getManyJson(kv, subKeys);
-  const recipients = subKeys.filter((_, i) => records[i]?.status === "confirmed").map((k) => k.slice("sub:".length));
+  // Nobody has been mailed yet, so a failed read releases the claim: a retry
+  // should send rather than report "already sent".
+  let recipients;
+  try {
+    const subKeys = await listAllKeys(kv, "sub:");
+    const records = await getManyJson(kv, subKeys);
+    recipients = subKeys.filter((_, i) => records[i]?.status === "confirmed").map((k) => k.slice("sub:".length));
+  } catch (err) {
+    await kv.delete(sentKey(date)).catch(() => {});
+    return json({ ok: false, date, sent: 0, error: String(err).slice(0, 200) }, 503);
+  }
 
   const modelLabel = model ? MODEL_LABELS[model] ?? model : null;
   let subject, headingText, intro, introText;

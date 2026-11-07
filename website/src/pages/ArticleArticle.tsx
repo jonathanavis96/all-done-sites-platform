@@ -6,6 +6,7 @@ import { getArticle, getRelatedSlugs } from "@/content/articles";
 import ContentBlockView from "@/components/ContentBlockView";
 import ArticleNav from "@/components/ArticleNav";
 import { useLocalPrices } from "@/hooks/useLocalPrices";
+import { WHATSAPP_HELLO } from "@/lib/site";
 import { absoluteImage, imageSrcs, renderInline, stripInline } from "@/content/shared";
 import "@/styles/home.css";
 
@@ -128,7 +129,9 @@ export default function ArticleArticle() {
       />
 
       <div className="guide-layout">
-        <article className="legal guide-body">
+        {/* The key gives each slug a fresh DOM subtree. useLocalPrices rewrites text
+            nodes in here, so React must never reconcile one article into another. */}
+        <article className="legal guide-body" key={article.slug}>
           <p className="intro">{renderInline(article.intro)}</p>
 
           <ArticleNav toc={toc} />
@@ -162,6 +165,9 @@ export default function ArticleArticle() {
               <Link to="/#pricing" className="btn-ghost">
                 See pricing
               </Link>
+              <a href={WHATSAPP_HELLO} target="_blank" rel="noopener noreferrer" className="btn-ghost">
+                WhatsApp us
+              </a>
             </div>
           </aside>
 

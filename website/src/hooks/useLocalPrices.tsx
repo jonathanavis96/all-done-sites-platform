@@ -131,7 +131,12 @@ function annotate(root: HTMLElement, viewer: string, rates: Record<string, numbe
 
 /**
  * Annotate prices inside the element matched by `selector` once the content has
- * rendered. `deps` should identify the article, so a route change re-runs it.
+ * rendered. `key` should identify the article, so a route change re-runs it.
+ *
+ * ⚠ annotate() replaces text nodes React created. React keeps references to those
+ * nodes, so reconciling this element against different content throws, or leaves
+ * the old text on screen. The element therefore needs a React `key` that changes
+ * with the article, which makes React discard the whole subtree instead.
  */
 export function useLocalPrices(selector = "article.guide-body", key?: string): void {
   useEffect(() => {

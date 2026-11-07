@@ -2,6 +2,21 @@ import { describe, expect, it } from "vitest";
 import { convert, findPrices, roundApprox } from "./currency";
 
 describe("findPrices", () => {
+  it("reads an unseparated amount of four or more digits whole", () => {
+    expect(findPrices("R2000, R15000, $1500 and ZAR 12000").map((p) => [p.text, p.amount])).toEqual([
+      ["R2000", 2000],
+      ["R15000", 15000],
+      ["$1500", 1500],
+      ["ZAR 12000", 12000],
+    ]);
+  });
+
+  it("still reads the short and separated forms", () => {
+    expect(findPrices("R800, R2 000, R2,000, R1,200.50 and R12 500").map((p) => p.amount)).toEqual([
+      800, 2000, 2000, 1200.5, 12500,
+    ]);
+  });
+
   it("reads rand, symbols and codes", () => {
     expect(findPrices("R800, $45 and ZAR 1,200").map((p) => [p.currency, p.amount])).toEqual([
       ["ZAR", 800],

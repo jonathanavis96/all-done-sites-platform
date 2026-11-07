@@ -13,7 +13,10 @@ import GuidesIndex from "./pages/GuidesIndex";
 import GuideArticle from "./pages/GuideArticle";
 import ArticlesIndex from "./pages/ArticlesIndex";
 import ArticleArticle from "./pages/ArticleArticle";
-import ClaudeUsageTracker from "./pages/ClaudeUsageTracker";
+import TrackerRoute from "./pages/TrackerRoute";
+// Kept in the main stylesheet, not the tracker's chunk: the prerendered tracker
+// page has to be styled before its JavaScript arrives.
+import "@/styles/claude-usage.css";
 
 // Secondary pages are code-split so they don't weigh down the homepage bundle.
 const ContactEnterprise = lazy(() => import("./pages/ContactEnterprise"));
@@ -59,7 +62,7 @@ export default function App() {
             {/* Content / SEO guides */}
             <Route path="/guides" element={<GuidesIndex />} />
             <Route path="/guides/:slug" element={<GuideArticle />} />
-            <Route path="/claude-usage-tracker" element={<ClaudeUsageTracker />} />
+            <Route path="/claude-usage-tracker" element={<TrackerRoute />} />
             <Route path="/claude-usage-tracker/me" element={<ClaudeUsageMe />} />
             <Route path="/claude-usage-tracker/me/:id" element={<ClaudeUsageMe />} />
 

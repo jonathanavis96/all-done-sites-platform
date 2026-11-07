@@ -59,11 +59,16 @@ html { scroll-behavior: smooth; }
 .adsx section { position: relative; }
 .adsx .gridbg { background-image: linear-gradient(rgba(15, 23, 42, .1) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, .1) 1px, transparent 1px); background-size: 46px 46px; }
 
-/* ---- animation primitives ---- */
-.adsx .reveal { opacity: 0; transform: translateY(26px); transition: opacity .7s cubic-bezier(.2, .7, .2, 1), transform .7s cubic-bezier(.2, .7, .2, 1); }
-.adsx .reveal.in { opacity: 1; transform: none; }
-.adsx .reveal-fade { opacity: 0; transition: opacity .6s ease; }
-.adsx .reveal-fade.in { opacity: 1; }
+/* ---- animation primitives ----
+   Nothing starts hidden: the hidden states all sit under .anim, which Index.tsx
+   adds once it has marked what is already on screen. Prerendered content is
+   therefore readable before the script runs, and if it never does. */
+.adsx .reveal { transition: opacity .7s cubic-bezier(.2, .7, .2, 1), transform .7s cubic-bezier(.2, .7, .2, 1); }
+.adsx.anim .reveal { opacity: 0; transform: translateY(26px); }
+.adsx.anim .reveal.in { opacity: 1; transform: none; }
+.adsx .reveal-fade { transition: opacity .6s ease; }
+.adsx.anim .reveal-fade { opacity: 0; }
+.adsx.anim .reveal-fade.in { opacity: 1; }
 @keyframes ads-floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 .ads-scrollbar { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--ads-acg); z-index: 100; box-shadow: 0 0 10px rgba(14, 165, 233, .6); }
 .adsx .aurora { position: absolute; width: 540px; height: 400px; border-radius: 50%; filter: blur(72px); pointer-events: none; z-index: 0; top: -150px; right: -80px; background: radial-gradient(circle, rgba(14, 165, 233, .16), transparent 70%); animation: ads-drift 16s ease-in-out infinite; }
@@ -79,6 +84,15 @@ html { scroll-behavior: smooth; }
 .adsx .nl { display: flex; gap: 26px; align-items: center; }
 .adsx .nl a { color: var(--ads-bd); text-decoration: none; font-size: 13.5px; font-weight: 500; }
 .adsx .nl a:hover { color: var(--ads-tx); }
+/* phone menu: shown at 860px and below, in place of .nl. A div, not a <nav>,
+   because `.adsx nav` makes every nav sticky. */
+.adsx .mnav { display: none; }
+.adsx .mnav summary { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-right: -10px; list-style: none; cursor: pointer; color: var(--ads-tx); }
+.adsx .mnav summary::-webkit-details-marker { display: none; }
+.adsx .mnav-panel { position: absolute; top: 100%; left: 0; right: 0; padding: 6px 28px 14px; background: var(--ads-surface); border-bottom: 1px solid var(--ads-line); box-shadow: var(--ads-sh); }
+.adsx .mnav-panel a { display: block; padding: 13px 0; font-size: 16px; font-weight: 500; color: var(--ads-tx); text-decoration: none; border-bottom: 1px solid var(--ads-line2); }
+.adsx .mnav-panel a:last-child { border-bottom: none; color: var(--ads-acd); font-weight: 600; }
+.adsx .phone-only { display: none; }
 
 /* ---- hero ---- */
 .adsx .hero { padding: 78px 0 64px; overflow: hidden; }
@@ -142,10 +156,12 @@ html { scroll-behavior: smooth; }
 .adsx .progress { position: absolute; top: 23px; left: 40px; right: calc(25% - 40px); height: 3px; border-radius: 3px; background: rgba(15, 23, 42, .08); overflow: hidden; }
 .adsx .progress .fill { position: absolute; left: 0; top: 0; height: 100%; width: 0; background: var(--ads-acg); transition: width 2.9s linear; }
 .adsx .steps.play .progress .fill { width: 100%; }
-.adsx .step { position: relative; padding: 0 16px; opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
-.adsx .steps.play .step { opacity: 1; transform: none; }
-.adsx .step .num { width: 48px; height: 48px; border-radius: 50%; background: #fff; border: 2px solid rgba(14, 165, 233, .45); box-shadow: 0 5px 16px rgba(14, 165, 233, .22); display: flex; align-items: center; justify-content: center; font-family: var(--ads-mono); font-weight: 600; color: var(--ads-acd); position: relative; z-index: 1; transform: scale(.5); opacity: 0; transition: transform .5s cubic-bezier(.2, 1.4, .4, 1), opacity .5s; }
-.adsx .steps.play .step .num { transform: scale(1); opacity: 1; }
+.adsx .step { position: relative; padding: 0 16px; transition: opacity .6s ease, transform .6s ease; }
+.adsx.anim .step { opacity: 0; transform: translateY(18px); }
+.adsx.anim .steps.play .step { opacity: 1; transform: none; }
+.adsx .step .num { width: 48px; height: 48px; border-radius: 50%; background: #fff; border: 2px solid rgba(14, 165, 233, .45); box-shadow: 0 5px 16px rgba(14, 165, 233, .22); display: flex; align-items: center; justify-content: center; font-family: var(--ads-mono); font-weight: 600; color: var(--ads-acd); position: relative; z-index: 1; transition: transform .5s cubic-bezier(.2, 1.4, .4, 1), opacity .5s; }
+.adsx.anim .step .num { transform: scale(.5); opacity: 0; }
+.adsx.anim .steps.play .step .num { transform: scale(1); opacity: 1; }
 .adsx .step h3 { font-size: 18px; margin: 18px 0 8px; color: var(--ads-tx); }
 .adsx .step p { font-size: 13.5px; }
 
@@ -279,12 +295,15 @@ html { scroll-behavior: smooth; }
 
 /* ---- terms-acceptance modal ---- */
 .adsx .tmodal { position: fixed; inset: 0; z-index: 210; background: rgba(8, 12, 20, .6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 24px; }
-.adsx .tbox { width: min(720px, 96vw); max-height: 86vh; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 100px -20px rgba(0, 0, 0, .55); display: flex; flex-direction: column; }
+.adsx .tbox { width: min(720px, 96vw); max-height: 86vh; background: #fff; border-radius: 16px; overflow-x: hidden; overflow-y: auto; box-shadow: 0 40px 100px -20px rgba(0, 0, 0, .55); display: flex; flex-direction: column; }
 .adsx .thead { padding: 20px 24px; border-bottom: 1px solid var(--ads-line); }
 .adsx .thead h3 { font-size: 18px; font-weight: 700; }
 .adsx .thead p { font-size: 13px; color: var(--ads-bd); margin-top: 5px; }
-.adsx .tbody { padding: 18px 24px; overflow-y: auto; white-space: pre-wrap; font-size: 12.5px; line-height: 1.65; color: var(--ads-bd); flex: 1; }
-.adsx .tcheck { display: flex; gap: 10px; align-items: flex-start; padding: 14px 24px; border-top: 1px solid var(--ads-line); font-size: 13px; color: var(--ads-bd); }
+.adsx .tbody { padding: 18px 24px; overflow-y: auto; white-space: pre-wrap; font-size: 12.5px; line-height: 1.65; color: var(--ads-bd); flex: 1; min-height: 140px; }
+.adsx .tcontact { display: block; padding: 14px 24px 0; border-top: 1px solid var(--ads-line); font-size: 13px; font-weight: 600; color: var(--ads-tx); }
+.adsx .tcontact input { display: block; width: 100%; margin-top: 6px; border: 1px solid var(--ads-line); border-radius: 11px; padding: 11px 14px; font-family: var(--ads-body); font-size: 14px; font-weight: 400; color: var(--ads-tx); background: #fff; }
+.adsx .tcontact small { display: block; margin-top: 6px; font-size: 12px; font-weight: 400; color: var(--ads-mut); }
+.adsx .tcheck { display: flex; gap: 10px; align-items: flex-start; padding: 14px 24px; font-size: 13px; color: var(--ads-bd); }
 .adsx .tcheck input { margin-top: 2px; width: 16px; height: 16px; flex: none; accent-color: var(--ads-ac); }
 .adsx .tfoot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--ads-line); flex-wrap: wrap; }
 .adsx .tfoot .vbtn { font-family: var(--ads-disp); font-weight: 600; font-size: 13px; padding: 11px 18px; border-radius: 11px; border: 1px solid var(--ads-line); background: #fff; color: var(--ads-tx); cursor: pointer; }
@@ -385,6 +404,12 @@ html { scroll-behavior: smooth; }
   .adsx .pf { grid-template-columns: 1fr 1fr; }
   .adsx .tiers { grid-template-columns: 1fr; }
   .adsx .nl { display: none; }
+  .adsx .mnav { display: block; }
+  .adsx .phone-only { display: inline-flex; }
+  .adsx .desk-only { display: none; }
+  .adsx .navright { gap: 12px; }
+  /* iOS Safari zooms the page when a focused field is under 16px */
+  .adsx .field input, .adsx .field textarea, .adsx .field select, .adsx .regionsel select, .adsx .tcontact input { font-size: 16px; }
   .adsx .frow2 { grid-template-columns: 1fr; }
   .adsx .prob .oldway, .adsx .prob .flip { font-size: 28px; }
   .adsx .h2 { font-size: 30px; }
@@ -394,7 +419,16 @@ html { scroll-behavior: smooth; }
 @media (max-width: 520px) {
   .adsx .pf { grid-template-columns: 1fr; }
   .adsx .stats { gap: 22px; flex-wrap: wrap; }
+  .adsx .ctarow { flex-wrap: wrap; gap: 14px 22px; }
+  /* what the visitor is buying should not be the smallest type on the page */
+  .adsx .tier li, .adsx .cell p, .adsx .step p { font-size: 15px; }
+  .adsx .fcols .col a { padding: 6px 0; margin-bottom: 2px; }
 }
+/* No hover on touch screens, so the "opens a preview" cue is always on. */
+@media (hover: none) {
+  .adsx .expand, .adsx .frame .expand { opacity: 1; transform: none; }
+}
+.adsx .expand:focus-visible { opacity: 1; transform: none; }
 
 /* ---- guides ---- */
 /* Index grid of guide cards */

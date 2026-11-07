@@ -33,7 +33,8 @@ if (!fs.existsSync(distIndex)) {
   process.exit(1);
 }
 
-const { render, prerenderRoutes = [] } = await import(pathToFileURL(serverEntry).href);
+const { render, ready, prerenderRoutes = [] } = await import(pathToFileURL(serverEntry).href);
+await ready;
 
 // The pristine client template (read before we mutate dist/index.html for "/").
 const template = fs.readFileSync(distIndex, "utf-8");

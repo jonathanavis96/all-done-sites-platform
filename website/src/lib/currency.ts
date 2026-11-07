@@ -141,7 +141,9 @@ const KNOWN_CODES = [
 const PRICE_RE = new RegExp(
   // Either "ZAR 800" / "ZAR800", or a symbol immediately before the number.
   String.raw`(?:\b(${KNOWN_CODES.join("|")})\s?|(NZ\$|HK\$|US\$|R\$|A\$|C\$|S\$|\$|£|€|₹|¥|₦|(?<![A-Za-z])R(?=\d)))` +
-    String.raw`(\d{1,3}(?:[ ,]\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)`,
+    // Separated thousands need at least one group, or "\d{1,3}" alone would stop
+    // three digits into an unseparated amount and read R2000 as R200.
+    String.raw`((?:\d{1,3}(?:[ ,]\d{3})+|\d+)(?:\.\d{1,2})?)`,
   "g",
 );
 

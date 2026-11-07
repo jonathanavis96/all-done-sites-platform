@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { contactMethod } from "@/lib/site";
 
 declare global {
   interface Window {
@@ -19,4 +20,17 @@ export function useAnalytics() {
       });
     }
   }, [location]);
+
+  // Quote forms are not the only way in: without this, a lead who taps WhatsApp,
+  // call or email never shows up in GA. Delegated so every such link on every
+  // page counts, including ones added later.
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const link = (e.target as Element | null)?.closest?.("a[href]");
+      const method = link ? contactMethod(link.getAttribute("href") ?? "") : null;
+      if (method && window.gtag) window.gtag("event", "contact_click", { method });
+    };
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, []);
 }

@@ -21,8 +21,10 @@ import {
 } from "@/lib/contrib";
 import "@/styles/home.css";
 import "@/styles/claude-usage.css";
-import initialJson from "../../public/data/claude-usage.json";
-const initialUsage = initialJson as unknown as UsageJson;
+
+// Empty until the fetch below answers; the fleet figures read as "none yet" meanwhile.
+// The snapshot is never imported here: see TrackerRoute.tsx for what that costs.
+const NO_USAGE = {} as UsageJson;
 
 const SITE = "https://alldonesites.com";
 
@@ -162,7 +164,7 @@ export default function ClaudeUsageMe() {
   const { id = "" } = useParams();
   const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [usage, setUsage] = useState<UsageJson>(initialUsage);
+  const [usage, setUsage] = useState<UsageJson>(NO_USAGE);
 
   useEffect(() => {
     setMe(null);

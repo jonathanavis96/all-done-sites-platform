@@ -83,12 +83,12 @@ export default function ContactEnterprise() {
           <input type="hidden" name="plan" value={selectedPlan} />
 
           <div className="frow2">
-            <div className="field"><label htmlFor="e-name">Name</label><input id="e-name" name="name" placeholder="Jane Doe" required disabled={status === "sending"} /></div>
-            <div className="field"><label htmlFor="e-company">Company</label><input id="e-company" name="company" placeholder="Your Company" disabled={status === "sending"} /></div>
+            <div className="field"><label htmlFor="e-name">Name</label><input id="e-name" name="name" autoComplete="name" placeholder="Your name" required disabled={status === "sending"} /></div>
+            <div className="field"><label htmlFor="e-company">Company</label><input id="e-company" name="company" autoComplete="organization" placeholder="Your Company" disabled={status === "sending"} /></div>
           </div>
           <div className="frow2">
-            <div className="field"><label htmlFor="e-email">Email</label><input id="e-email" name="email" type="email" placeholder="you@business.com" required disabled={status === "sending"} /></div>
-            <div className="field"><label htmlFor="e-phone">Phone</label><input id="e-phone" name="phone" type="tel" placeholder="072 000 0000" disabled={status === "sending"} /></div>
+            <div className="field"><label htmlFor="e-email">Email</label><input id="e-email" name="email" type="email" autoComplete="email" placeholder="you@business.com" required disabled={status === "sending"} /></div>
+            <div className="field"><label htmlFor="e-phone">Phone</label><input id="e-phone" name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="072 000 0000" disabled={status === "sending"} /></div>
           </div>
           <div className="field">
             <label htmlFor="e-plan">Plan</label>

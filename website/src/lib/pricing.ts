@@ -227,8 +227,19 @@ export function formatAmount(region: RegionKey, amount: number): string {
   return `${symbol}${n}`;
 }
 
-/** Records terms acceptance (IP + timestamp) to Formspree and localStorage. */
-export async function recordTermsAcceptance(planId: PlanId, region: RegionKey): Promise<void> {
+/** True for something we could reach a person on: an email address or a phone number. */
+export function isUsableContact(value: string): boolean {
+  const v = value.trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return true;
+  return /^\+?[\d\s()-]+$/.test(v) && v.replace(/\D/g, "").length >= 9;
+}
+
+/**
+ * Records terms acceptance (IP + timestamp) to Formspree and localStorage. The
+ * contact goes to Formspree only, so someone who abandons the payment can still be
+ * followed up; it is not kept in the browser.
+ */
+export async function recordTermsAcceptance(planId: PlanId, region: RegionKey, contact: string): Promise<void> {
   const acceptedAt = new Date().toISOString();
   let ip = "";
   try {
@@ -245,7 +256,7 @@ export async function recordTermsAcceptance(planId: PlanId, region: RegionKey): 
     await fetch("https://formspree.io/f/mwpneboe", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ _subject: "Terms acceptance record", ...details }),
+      body: JSON.stringify({ _subject: "Terms acceptance record", ...details, contact: contact.trim() }),
     });
   } catch {
     // ignore

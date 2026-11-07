@@ -5,6 +5,14 @@ import { HelmetProvider, type HelmetServerState } from "react-helmet-async";
 import App from "./App";
 import { guides } from "./content/guides";
 import { articles } from "./content/articles";
+import { loadTracker } from "./pages/TrackerRoute";
+import type { UsageJson } from "./lib/claudeUsage";
+// Build-time snapshot so the prerendered tracker carries real figures. Imported here
+// and never by a module the browser loads: see TrackerRoute.tsx.
+import usageSnapshot from "../public/data/claude-usage.json";
+
+/** renderToString cannot wait for a lazy route, so await this before any render. */
+export const ready = loadTracker(usageSnapshot as unknown as UsageJson);
 
 /**
  * Render a route to static HTML for build-time prerendering.

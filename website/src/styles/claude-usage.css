@@ -81,7 +81,6 @@
 .cut .level-account { transition: opacity .15s ease; }
 .cut .level-account-key { cursor: pointer; }
 .cut .level-account-key:focus-visible { outline: 2px solid var(--ads-ac); outline-offset: 2px; border-radius: 2px; }
-@media (prefers-reduced-motion: reduce) { .cut .level-account { transition: none; } }
 .cut .tp-bars { display: flex; flex-direction: column; gap: 18px; }
 .cut .tp-row { display: flex; flex-direction: column; gap: 4px; }
 .cut .tp-label { font-size: 13px; font-weight: 600; color: var(--ads-tx); }

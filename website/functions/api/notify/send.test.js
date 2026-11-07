@@ -277,6 +277,38 @@ describe("POST /api/notify/send without `to` (the list send)", () => {
     expect(e.NOTIFY_KV.store.has("sent:2026-02-31")).toBe(false);
   });
 
+  it("releases the date marker when the subscriber list cannot be read, so a retry can still send", async () => {
+    const e = env();
+    e.NOTIFY_KV.store.set("sub:a@example.com", JSON.stringify({ status: "confirmed" }));
+    const healthyList = e.NOTIFY_KV.list;
+    e.NOTIFY_KV.list = async () => {
+      throw new Error("KV unavailable");
+    };
+    const change = { date: "2026-09-12", direction: "increased", percent: 7 };
+    const res = await onRequestPost({ request: post(change), env: e });
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ ok: false, sent: 0 });
+    expect(e.NOTIFY_KV.store.has("sent:2026-09-12")).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    e.NOTIFY_KV.list = healthyList;
+    const retry = await onRequestPost({ request: post(change), env: e });
+    expect(await retry.json()).toMatchObject({ ok: true, sent: 1 });
+  });
+
+  it("releases the date marker when a subscriber record cannot be read", async () => {
+    const e = env();
+    e.NOTIFY_KV.store.set("sub:a@example.com", JSON.stringify({ status: "confirmed" }));
+    e.NOTIFY_KV.get = async (key) => {
+      if (key.startsWith("sub:")) throw new Error("KV unavailable");
+      return e.NOTIFY_KV.store.get(key) ?? null;
+    };
+    const change = { date: "2026-09-13", direction: "increased", percent: 7 };
+    const res = await onRequestPost({ request: post(change), env: e });
+    expect(res.status).toBe(503);
+    expect(e.NOTIFY_KV.store.has("sent:2026-09-13")).toBe(false);
+  });
+
   it("releases the date marker when every batch fails, so a retry can still send", async () => {
     fetchMock.mockImplementation(async () => new Response("down", { status: 500 }));
     const e = env();
