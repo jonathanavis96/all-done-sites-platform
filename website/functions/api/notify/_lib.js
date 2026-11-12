@@ -20,6 +20,11 @@ export const rateKey = (ip) => `rl:${ip}`;
 
 export const SUBSCRIBE_MAX_PER_WINDOW = 5;
 export const SUBSCRIBE_WINDOW_SECONDS = 3600;
+/**
+ * How long an unconfirmed sign-up is kept. `send` reads every `sub:` record, so sign-ups nobody
+ * confirms must not pile up for ever; after this the link answers "sign up again".
+ */
+export const PENDING_TTL_SECONDS = 7 * 24 * 3600;
 
 export function json(body, status = 200) {
   return new Response(JSON.stringify(body), {

@@ -7,6 +7,7 @@
  * address is on the list. Nothing is mailed to a confirmed subscriber.
  */
 import {
+  PENDING_TTL_SECONDS,
   SUBSCRIBE_MAX_PER_WINDOW,
   SUBSCRIBE_WINDOW_SECONDS,
   emailHtml,
@@ -56,6 +57,9 @@ export async function onRequestPost(context) {
   await kv.put(
     subKey(email),
     JSON.stringify({ status: "pending", created_at: existing?.created_at ?? now, updated_at: now }),
+    // Expires unless confirmed (confirm rewrites it without a TTL), so abandoned sign-ups do not
+    // accumulate in the list `send` reads in full.
+    { expirationTtl: PENDING_TTL_SECONDS },
   );
 
   const token = await signToken(env.NOTIFY_TOKEN_SECRET, "confirm", email);
