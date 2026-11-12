@@ -315,6 +315,8 @@ describe("POST /api/notify/send without `to` (the list send)", () => {
     e.NOTIFY_KV.store.set("sub:a@example.com", JSON.stringify({ status: "confirmed" }));
     const change = { date: "2026-09-11", direction: "increased", percent: 7 };
     const res = await onRequestPost({ request: post(change), env: e });
+    // Not a 2xx: the tracker records the date as notified on any 2xx and would never retry.
+    expect(res.status).toBe(502);
     expect(await res.json()).toMatchObject({ ok: false, sent: 0 });
     expect(e.NOTIFY_KV.store.has("sent:2026-09-11")).toBe(false);
 

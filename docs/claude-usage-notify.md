@@ -33,7 +33,7 @@ underscore.
 | `/api/notify/subscribe` | POST | `{"email":"…"}` | `200 {ok,message}`, `400` bad address or body, `429` rate-limited, `502` Resend refused, `503` unconfigured |
 | `/api/notify/confirm` | GET | `?token=…` | HTML page: `200` confirmed, `400` bad token, `404` no pending record |
 | `/api/notify/unsubscribe` | GET, POST | `?token=…` | HTML page: `200` removed, `400` bad token |
-| `/api/notify/send` | POST | `{date,direction,percent,model?,scope?,limit?,…}` + `Authorization: Bearer $NOTIFY_SEND_SECRET` | `200 {ok,date,subscribers,sent,failures}`, `401`, `400` bad payload, `503` unconfigured |
+| `/api/notify/send` | POST | `{date,direction,percent,model?,scope?,limit?,…}` + `Authorization: Bearer $NOTIFY_SEND_SECRET` | `200 {ok,date,subscribers,sent,failures}`, `401`, `400` bad payload, `502` every batch failed (nobody mailed; the date marker is released so a retry sends), `503` unconfigured or the list could not be read |
 | `/api/notify/send` (one address) | POST | `{to,subject,text}` + the same bearer secret | `200 {ok,to,sent:1}`, `401`, `400` bad payload, `403` address not in `NOTIFY_ADMIN_TO`, `502` Resend refused, `503` unconfigured |
 
 `confirm` and `unsubscribe` return a rendered HTML page rather than JSON,

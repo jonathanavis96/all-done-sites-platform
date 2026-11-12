@@ -155,9 +155,15 @@ export async function onRequestPost({ request, env }) {
 
   // Nobody was mailed, so release the claim: a retry should send rather than report "already sent".
   // After a partial send the marker stays, since a retry would mail the delivered half twice.
-  if (sent === 0 && failures.length > 0) await kv.delete(sentKey(date));
+  // It also answers 502, not 200: the tracker records the date as notified on any 2xx, so a 200
+  // here would stop it ever retrying a send that reached nobody.
+  const nobodyMailed = sent === 0 && failures.length > 0;
+  if (nobodyMailed) await kv.delete(sentKey(date));
 
-  return json({ ok: failures.length === 0, date, subscribers: recipients.length, sent, failures });
+  return json(
+    { ok: failures.length === 0, date, subscribers: recipients.length, sent, failures },
+    nobodyMailed ? 502 : 200,
+  );
 }
 
 const HERO_LIMITS = { five_hour_limit: "5-hour limit", weekly_limit: "weekly limit" };
