@@ -327,10 +327,15 @@ export function modelsIn(samples: PublicSample[]): string[] {
  * published JSON has no rate for that model yet.
  */
 export function fleetTokensPerPercent(j: UsageJson, plan: Plan, model: string): number | null {
-  const rate = j.rates?.[model];
+  // The same id rule as priceForModel, so a sample's model finds its tracker figure whenever it
+  // finds a price (the old claude-fable-5 id, a dated or [1m] id).
+  const id = normalizeModelId(model);
+  const rates = j.rates ?? {};
+  const key = Object.prototype.hasOwnProperty.call(rates, id) ? id : id === "claude-fable-5" ? "claude-fable-5-1" : id;
+  const rate = rates[key];
   const ratio = j.plan_ratios?.[plan];
   if (!rate || typeof ratio !== "number" || typeof rate.tokens_per_window !== "number") return null;
-  if (!modelPlanLimit(j, model, plan).included) return null;
+  if (!modelPlanLimit(j, key, plan).included) return null;
   return (rate.tokens_per_window * ratio) / 100;
 }
 
