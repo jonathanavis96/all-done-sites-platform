@@ -1190,18 +1190,22 @@ function ContributorsChart({
   tab,
   refMix,
   planLabel,
+  now,
 }: {
   points: ContribPoint[];
   reference: number | null;
   tab: ContribTab;
   refMix: RefMix;
   planLabel: string;
+  // The axis's right edge. Passed in rather than read here, so the prerender and the first
+  // client render draw the same axis.
+  now: number;
 }) {
   const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
   const valueOf = tab.value;
   const usable = points.filter((p) => typeof valueOf(p) === "number");
   const groups = contribGroups(usable);
-  const { t0, t1, frac } = contribXScale(usable);
+  const { t0, t1, frac } = contribXScale(usable, now);
   // With no dots the scale comes from the tracker's line alone, which then sits two thirds up the
   // plot, or a plain 0-to-1 axis where there is no line either.
   const yMax =
@@ -1770,6 +1774,16 @@ export default function ClaudeUsageTracker({
   useEffect(() => {
     setStaleAt(data ? staleEvidenceAt(data, model, now ?? Date.now()) : null);
   }, [data, model, now]);
+  // The contributor chart's axis ends at the clock, so like the stale line the clock is read only
+  // after mount. Until then it ends at the data's own timestamp, which the prerender and the first
+  // client render share; reading Date.now() in render made the two disagree and failed hydration.
+  const [chartNow, setChartNow] = useState<number | null>(now ?? null);
+  useEffect(() => {
+    setChartNow(now ?? Date.now());
+  }, [now]);
+  // generated_at carries microseconds, cut to milliseconds so every browser's Date.parse reads it.
+  const chartClock =
+    chartNow ?? (data ? Date.parse(data.generated_at.replace(/(\.\d{3})\d+/, "$1")) || 0 : 0);
   // An account whose feed has stopped can leave a figure looking current. Decided after mount
   // like the stale line, so the prerender matches the first client render.
   const [stoppedLine, setStoppedLine] = useState<string | null>(() =>
@@ -2437,6 +2451,7 @@ export default function ClaudeUsageTracker({
               reference={contribTab.reference(wt, fleetUsdPerPercent(data, plan))}
               refMix={{ model: modelLabel(model), cacheReadShare: wt?.cacheReadShare ?? null }}
               planLabel={PLAN_LABELS[plan]}
+              now={chartClock}
             />
             {/* The cost sentence belongs to the cost chart, so it follows its own tab rather than
                 sitting under whichever chart happens to be open. */}

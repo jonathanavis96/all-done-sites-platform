@@ -2102,6 +2102,23 @@ describe("the contributors section", () => {
   }
   const chartSvg = (section: string) => section.match(/<svg class="chart contrib-chart"[\s\S]*?<\/svg>/)?.[0] ?? null;
 
+  it("draws the same chart in the prerender and the first client render, whatever the clock says", () => {
+    // Without a fixed `now` the axis must not read the clock in render: the prerender ran at
+    // build time, and a different chart at hydration failed it.
+    const drawn = (at: string) => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(Date.parse(at));
+      try {
+        return chartSvg(contributors(renderHtml(SNAP, "max20", "claude-opus-5", undefined, "usd")));
+      } finally {
+        vi.useRealTimers();
+      }
+    };
+    const first = drawn("2026-09-23T12:00:00Z");
+    expect(first).not.toBeNull();
+    expect(drawn("2026-10-05T03:00:00Z")).toBe(first);
+  });
+
   it("has a plan picker and no model picker on any tab", () => {
     for (const plan of ["max20", "pro"] as Plan[]) {
       for (const tab of TABS) {
