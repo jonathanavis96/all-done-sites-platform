@@ -86,19 +86,28 @@ describe("POST /api/contribute with a JSON body", () => {
     expect(res.status).toBe(400);
   });
 
-  it("answers 400 for a body of 2048 bytes or more", async () => {
+  it("answers 400 for a body of 4096 bytes or more", async () => {
     const body = validBody(Date.now(), {
       tokens_since_five_hour_reset: Object.fromEntries(
         Array.from({ length: 12 }, (_, i) => [
-          `claude-model-${i}-${"x".repeat(80)}`,
+          `claude-model-${i}-${"x".repeat(300)}`,
           { input: 1, output: 1, cache_read: 1, cache_write: 1 },
         ]),
       ),
     });
-    expect(JSON.stringify(body).length).toBeGreaterThanOrEqual(2048);
+    expect(JSON.stringify(body).length).toBeGreaterThanOrEqual(4096);
     const res = await call(body);
     expect(res.status).toBe(400);
-    expect((await res.json()).error).toContain("2048");
+    expect((await res.json()).error).toContain("4096");
+  });
+
+  it("accepts a sample listing all 12 models with large counts, in both forms", async () => {
+    const counts = { input: 1234567, output: 234567, cache_read: 123456789, cache_write: 1234567, cache_write_1h: 123456 };
+    const models = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`claude-sonnet-4-${i}`, counts]));
+    const body = validBody(Date.now(), { tokens_since_five_hour_reset: models, tokens_since_seven_day_reset: models });
+    expect(JSON.stringify(body).length).toBeGreaterThan(2048);
+    expect((await call(body)).status).toBe(200);
+    expect((await call({ cut1: encodeCut1(body) })).status).toBe(200);
   });
 
   it("stops reading an oversized body instead of buffering all of it", async () => {

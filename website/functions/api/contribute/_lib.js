@@ -28,8 +28,8 @@ export const SAMPLE_TTL_SECONDS = 180 * 86400;
 export const RATE_WINDOW_SECONDS = 3600;
 export const MAX_PER_ID_PER_HOUR = 4;
 export const MAX_PER_IP_PER_HOUR = 30;
-/** Longest raw request body read before parsing; a CUT1 wrapper around a 2 KB body fits. */
-export const MAX_RAW_BYTES = 4096;
+/** Longest raw request body read before parsing; a CUT1 wrapper around a 4 KB body fits. */
+export const MAX_RAW_BYTES = 8192;
 
 export const SAMPLE_PREFIX = "contrib:s:";
 export const samplePrefix = (id) => `${SAMPLE_PREFIX}${id}:`;

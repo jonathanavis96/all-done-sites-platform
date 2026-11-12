@@ -23,7 +23,9 @@ export const PLANS: Plan[] = ["pro", "max5", "max20"];
 export const PLAN_SOURCES = ["endpoint", "stored", "flag"] as const;
 export type PlanSource = (typeof PLAN_SOURCES)[number];
 
-export const MAX_BODY_BYTES = 2048;
+// A sample listing all MAX_MODELS models with large counts, in both token maps, is about
+// 3.5 KB, so the cap leaves room for the full model limit (2048 refused 7 models).
+export const MAX_BODY_BYTES = 4096;
 export const MAX_MODELS = 12;
 const TS_WINDOW_MS = 24 * 3600e3;
 const RESETS_WINDOW_MS = 8 * 86400e3;
@@ -257,13 +259,16 @@ export function encodeCut1(body: object): string {
   return "CUT1:" + b64urlEncode(utf8.enc.encode(JSON.stringify(sorted(body))));
 }
 
+/** Longest CUT1 payload: base64 of a MAX_BODY_BYTES body, rounded up. */
+const MAX_CUT1_CHARS = Math.ceil((MAX_BODY_BYTES * 4) / 3) + 4;
+
 /** Decode a CUT1 line to its JSON text, or throw with a one-line reason. */
 export function decodeCut1(line: unknown): string {
   if (typeof line !== "string") throw new Error("cut1 must be a string");
   const s = line.trim();
   if (!s.startsWith("CUT1:")) throw new Error("not a CUT1 line");
   const payload = s.slice(5);
-  if (payload.length === 0 || payload.length > 4096 || !/^[A-Za-z0-9_-]+=*$/.test(payload)) {
+  if (payload.length === 0 || payload.length > MAX_CUT1_CHARS || !/^[A-Za-z0-9_-]+=*$/.test(payload)) {
     throw new Error("CUT1 payload is not url-safe base64");
   }
   let bytes: Uint8Array;
