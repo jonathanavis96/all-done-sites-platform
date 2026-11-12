@@ -132,10 +132,43 @@ export default function Index() {
   const [termsChecked, setTermsChecked] = useState(false);
   const [termsContact, setTermsContact] = useState("");
   const [termsText, setTermsText] = useState("");
+  const [termsFailed, setTermsFailed] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   // Back from Paystack can restore this page from the back/forward cache with
   // `redirecting` still true, which leaves the pop-up's buttons dead.
   useBfcacheRestore(() => setRedirecting(false));
+
+  // The terms pop-up is a modal dialog: focus moves into it when it opens, Tab stays inside
+  // it, Escape closes it, and focus goes back to the button that opened it.
+  const termsBoxRef = useRef<HTMLDivElement | null>(null);
+  const termsOpen = terms !== null;
+  useEffect(() => {
+    if (!termsOpen) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    termsBoxRef.current?.focus();
+    return () => opener?.focus();
+  }, [termsOpen]);
+  function termsKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Escape") {
+      if (!redirecting) setTerms(null);
+      return;
+    }
+    if (e.key !== "Tab") return;
+    const items = Array.from(
+      e.currentTarget.querySelectorAll<HTMLElement>("a[href], input:not([disabled]), button:not([disabled])"),
+    );
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const at = document.activeElement;
+    if (e.shiftKey && (at === first || at === e.currentTarget)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && at === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 
   // Browser guess first (instant), then the IP country from Cloudflare, which
   // is what decides: a timezone cannot tell Lagos from Johannesburg pricing.
@@ -156,12 +189,15 @@ export default function Index() {
     if (window.gtag) window.gtag("event", "begin_checkout", { plan: id, region });
     setTerms({ id, name, region, payLink: PAYSTACK_PAGES[region][id] });
     setTermsChecked(false);
+    // A failed load is not kept as the agreement's text, so the next opening tries again,
+    // and an error status is a failure rather than text to show.
     if (!termsText) {
+      setTermsFailed(false);
       const b = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
       fetch(`${b}/terms.txt`)
-        .then((r) => r.text())
+        .then((r) => (r.ok ? r.text() : Promise.reject(new Error(`terms.txt ${r.status}`))))
         .then(setTermsText)
-        .catch(() => setTermsText("The agreement could not be loaded. Please see the Terms page."));
+        .catch(() => setTermsFailed(true));
     }
   }
   async function acceptTerms() {
@@ -877,12 +913,25 @@ export default function Index() {
       {/* ===== terms-acceptance modal (before Paystack) ===== */}
       {terms && (
         <div className="tmodal" onClick={(e) => { if (e.target === e.currentTarget && !redirecting) setTerms(null); }}>
-          <div className="tbox">
+          <div
+            className="tbox"
+            ref={termsBoxRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="terms-title"
+            tabIndex={-1}
+            onKeyDown={termsKeyDown}
+          >
             <div className="thead">
-              <h3>All Done Sites Subscription Agreement</h3>
+              <h3 id="terms-title">All Done Sites Subscription Agreement</h3>
               <p>Please review and accept the agreement before continuing to payment for the {terms.name} plan.</p>
             </div>
-            <div className="tbody">{termsText || "Loading…"}</div>
+            <div className="tbody">
+              {termsText ||
+                (termsFailed
+                  ? "The agreement could not be loaded. Please close this and try again, or see the Terms page."
+                  : "Loading…")}
+            </div>
             <label className="tcontact">
               <span>Your email or WhatsApp number</span>
               <input
@@ -900,7 +949,7 @@ export default function Index() {
             </label>
             <div className="tfoot">
               <button type="button" className="vbtn" onClick={() => setTerms(null)} disabled={redirecting}>Cancel</button>
-              <button type="button" className="btn" disabled={!termsChecked || !isUsableContact(termsContact) || redirecting} onClick={acceptTerms}>
+              <button type="button" className="btn" disabled={!termsText || !termsChecked || !isUsableContact(termsContact) || redirecting} onClick={acceptTerms}>
                 {redirecting ? "Redirecting…" : "Accept & continue to payment"}
               </button>
             </div>
