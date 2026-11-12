@@ -173,8 +173,9 @@ const isFigure = (x) => typeof x === "number" && Number.isFinite(x);
 const isRange = (x) => Array.isArray(x) && x.length === 2 && x.every(isFigure);
 // A published one-decimal figure as the email writes it: no sign, "0" for -0.
 const fmtPct = (x) => `${Number(Math.abs(x).toFixed(1))}%`;
+// The article for the figure as fmtPct prints it: 7.97 prints "8%", so "an", not "a".
 const article = (x) => {
-  const whole = Math.floor(Math.abs(x));
+  const whole = Math.floor(Number(Math.abs(x).toFixed(1)));
   return whole === 11 || whole === 18 || String(whole).startsWith("8") ? "an" : "a";
 };
 

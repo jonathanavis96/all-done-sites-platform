@@ -248,6 +248,15 @@ describe("POST /api/notify/send without `to` (the list send)", () => {
     );
   });
 
+  it("picks the article for the rounded figure it prints", async () => {
+    const e = env();
+    e.NOTIFY_KV.store.set("sub:a@example.com", JSON.stringify({ status: "confirmed" }));
+    const change = { ...OCT09, weekly_limit_change_pct: 1.5, weekly_limit_change_interval_pct: [-7.97, 10.96] };
+    await onRequestPost({ request: post(change), env: e });
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.text).toContain("(very likely between an 8% decrease and an 11% increase).");
+  });
+
   it.each([
     ["an unknown limit", { ...OCT09, limit: "windows_per_week" }],
     ["an inherited property name as the limit", { ...OCT09, limit: "constructor" }],
