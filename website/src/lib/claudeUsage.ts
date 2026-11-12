@@ -677,7 +677,9 @@ export function speedAccountSeries(
 // The one sentence of the block's own method that defines the charted figure (the one starting
 // "Output speed"), or its first sentence if a later method is worded otherwise.
 export function speedMethodSentence(block: SpeedBlock): string | null {
-  const sentences = (block.method ?? "").split(/(?<=\.)\s+(?=[A-Z])/).map((s) => s.trim()).filter(Boolean);
+  // No lookbehind: Safari before 16.4 (inside the build's safari14 target) throws on one.
+  const parts = (block.method ?? "").split(/\.\s+(?=[A-Z])/);
+  const sentences = parts.map((s, i) => (i < parts.length - 1 ? `${s}.` : s).trim()).filter(Boolean);
   return sentences.find((s) => s.startsWith("Output speed")) ?? sentences[0] ?? null;
 }
 
