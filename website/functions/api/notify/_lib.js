@@ -11,8 +11,14 @@ import { b64urlDecode, b64urlEncode } from "../../../src/lib/contrib";
 export const SITE = "https://alldonesites.com";
 export const PAGE = `${SITE}/claude-usage-tracker/`;
 
-/** KV key for a subscriber record. */
+/** KV key for a confirmed subscriber's record. Only confirm writes one. */
 export const subKey = (email) => `sub:${email}`;
+/**
+ * KV key for an unconfirmed sign-up. Kept apart from `sub:` so a sign-up can never overwrite a
+ * confirmed record: KV has no compare-and-set and a read may be up to a minute stale, so a form
+ * re-sent just after confirming could read the old state and put the address back to pending.
+ */
+export const pendingKey = (email) => `pending:${email}`;
 /** KV key for the marker that a given change date has already been sent. */
 export const sentKey = (date) => `sent:${date}`;
 /** KV key for the per-IP subscribe rate limit. */
@@ -21,8 +27,8 @@ export const rateKey = (ip) => `rl:${ip}`;
 export const SUBSCRIBE_MAX_PER_WINDOW = 5;
 export const SUBSCRIBE_WINDOW_SECONDS = 3600;
 /**
- * How long an unconfirmed sign-up is kept. `send` reads every `sub:` record, so sign-ups nobody
- * confirms must not pile up for ever; after this the link answers "sign up again".
+ * How long an unconfirmed sign-up is kept, so sign-ups nobody confirms do not pile up for ever;
+ * after this the link answers "sign up again".
  */
 export const PENDING_TTL_SECONDS = 7 * 24 * 3600;
 

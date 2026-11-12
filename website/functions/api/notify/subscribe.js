@@ -14,6 +14,7 @@ import {
   isValidEmail,
   json,
   normalizeEmail,
+  pendingKey,
   rateKey,
   sendEmails,
   signToken,
@@ -53,12 +54,13 @@ export async function onRequestPost(context) {
     return json({ ok: true, message: "Check your inbox for the confirmation link." });
   }
 
+  // The pending record has its own key and expires unless confirmed. This never writes `sub:`,
+  // so a stale read above cannot put a just-confirmed subscriber back to pending.
   const now = new Date().toISOString();
+  const pending = await kv.get(pendingKey(email), { type: "json" });
   await kv.put(
-    subKey(email),
-    JSON.stringify({ status: "pending", created_at: existing?.created_at ?? now, updated_at: now }),
-    // Expires unless confirmed (confirm rewrites it without a TTL), so abandoned sign-ups do not
-    // accumulate in the list `send` reads in full.
+    pendingKey(email),
+    JSON.stringify({ status: "pending", created_at: pending?.created_at ?? existing?.created_at ?? now, updated_at: now }),
     { expirationTtl: PENDING_TTL_SECONDS },
   );
 

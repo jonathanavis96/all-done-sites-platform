@@ -109,7 +109,8 @@ preview.
 
 | Key | Value | TTL |
 |---|---|---|
-| `sub:<email>` | `{"status":"pending"\|"confirmed","created_at":ISO,"updated_at":ISO,"confirmed_at":ISO?}` | none |
+| `sub:<email>` | `{"status":"confirmed","created_at":ISO,"updated_at":ISO,"confirmed_at":ISO}` (written only by confirm; older records may still say `"pending"`) | none |
+| `pending:<email>` | `{"status":"pending","created_at":ISO,"updated_at":ISO}`, an unconfirmed sign-up; confirm deletes it | 7 days |
 | `sent:<YYYY-MM-DD>` | ISO timestamp the fan-out for that change date started | none |
 | `rl:<ip>` | subscribe count for that IP | 3600s |
 

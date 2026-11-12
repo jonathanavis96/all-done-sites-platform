@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { onRequestPost } from "./subscribe";
-import { PENDING_TTL_SECONDS, subKey } from "./_lib";
+import { PENDING_TTL_SECONDS, pendingKey, subKey } from "./_lib";
 
 function fakeKv() {
   const store = new Map();
@@ -36,8 +36,21 @@ describe("POST /api/notify/subscribe", () => {
     const e = env();
     const res = await onRequestPost({ request: post("someone@example.com"), env: e });
     expect(res.status).toBe(200);
-    const key = subKey("someone@example.com");
+    const key = pendingKey("someone@example.com");
     expect(JSON.parse(e.NOTIFY_KV.store.get(key)).status).toBe("pending");
     expect(e.NOTIFY_KV.ttls.get(key)).toBe(PENDING_TTL_SECONDS);
+  });
+
+  it("never writes the subscriber record, so a stale read cannot put a confirmed subscriber back to pending", async () => {
+    const e = env();
+    // KV reads can lag a write by up to a minute: the record was just confirmed elsewhere, but
+    // this read still sees nothing.
+    e.NOTIFY_KV.store.set(subKey("someone@example.com"), JSON.stringify({ status: "confirmed" }));
+    const get = e.NOTIFY_KV.get;
+    e.NOTIFY_KV.get = async (key, opts) => (key.startsWith("sub:") ? null : get.call(e.NOTIFY_KV, key, opts));
+    const res = await onRequestPost({ request: post("someone@example.com"), env: e });
+    expect(res.status).toBe(200);
+    expect(JSON.parse(e.NOTIFY_KV.store.get(subKey("someone@example.com"))).status).toBe("confirmed");
+    expect(e.NOTIFY_KV.ttls.has(subKey("someone@example.com"))).toBe(false);
   });
 });

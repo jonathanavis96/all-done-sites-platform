@@ -8,7 +8,7 @@
  * page with one button; POST, from that button, confirms. Unsubscribe works the
  * same way.
  */
-import { pageResponse, subKey, verifyToken } from "./_lib";
+import { pageResponse, pendingKey, subKey, verifyToken } from "./_lib";
 
 /** The address in a valid confirmation link and its record, or the error page to show instead. */
 async function readLink({ request, env }) {
@@ -23,7 +23,9 @@ async function readLink({ request, env }) {
     return { error: pageResponse("That link isn't valid", "The confirmation link was incomplete or has been altered. Sign up again from the tracker page.", 400) };
   }
 
-  const existing = await kv.get(subKey(email), { type: "json" });
+  // The confirmed record, else the pending sign-up (a `sub:` record may also be a pending one
+  // written before sign-ups had their own key).
+  const existing = (await kv.get(subKey(email), { type: "json" })) ?? (await kv.get(pendingKey(email), { type: "json" }));
   if (!existing) {
     return { error: pageResponse("Sign up again", "We have no pending sign-up for that address. Enter it on the tracker page and we'll send a fresh link.", 404) };
   }
@@ -56,6 +58,7 @@ export async function onRequestPost(context) {
       subKey(email),
       JSON.stringify({ ...existing, status: "confirmed", confirmed_at: now, updated_at: now }),
     );
+    await context.env.NOTIFY_KV.delete(pendingKey(email));
   }
   return pageResponse(...ON_THE_LIST);
 }
