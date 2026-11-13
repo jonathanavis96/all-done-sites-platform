@@ -7,7 +7,7 @@
 // how-it-works timeline, live-preview modal, scroll-progress bar, aurora drift,
 // hero auto-scroll).
 
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useId, useReducer, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Seo from "@/components/Seo";
 import { useToast } from "@/hooks/use-toast";
@@ -962,13 +962,27 @@ export default function Index() {
 
 function Faq({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(!!defaultOpen);
+  const id = `faq-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
   return (
     <div className={`qa${open ? " open" : ""}`}>
-      <div className="q" onClick={() => setOpen((o) => !o)} role="button" tabIndex={0} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setOpen((o) => !o)}>
+      <div
+        className="q"
+        onClick={() => setOpen((o) => !o)}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-controls={id}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          // Space would otherwise also scroll the page, as it does for any non-button element.
+          e.preventDefault();
+          setOpen((o) => !o);
+        }}
+      >
         {q}
-        <span className="chev">{open ? "–" : "+"}</span>
+        <span className="chev" aria-hidden="true">{open ? "–" : "+"}</span>
       </div>
-      <div className="a">{a}</div>
+      <div className="a" id={id}>{a}</div>
     </div>
   );
 }
