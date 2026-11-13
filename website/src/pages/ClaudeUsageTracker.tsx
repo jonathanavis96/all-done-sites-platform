@@ -914,18 +914,43 @@ function LevelChart({
 function InfoTip({ label, text }: { label: string; text: string }) {
   const id = `tip-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
   const [open, setOpen] = useState(false);
+  // Focus and hover also show the tip (CSS), so closing it by a second tap or Escape has to beat
+  // them: `dismissed` hides it until focus leaves. A tap focuses before it clicks, so the click
+  // still decides by `open` alone.
+  const [focused, setFocused] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const close = () => {
+    setOpen(false);
+    setDismissed(true);
+  };
   return (
-    <span className="info-tip" data-open={open ? "true" : undefined}>
+    <span
+      className="info-tip"
+      data-open={open && !dismissed ? "true" : undefined}
+      data-dismissed={dismissed ? "true" : undefined}
+      onMouseLeave={() => setDismissed(false)}
+    >
       <button
         type="button"
         className="info-tip-btn"
         aria-label={label}
         aria-describedby={id}
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        onBlur={() => setOpen(false)}
+        aria-expanded={(open || focused) && !dismissed}
+        onClick={() => {
+          if (open) close();
+          else {
+            setOpen(true);
+            setDismissed(false);
+          }
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          setOpen(false);
+          setDismissed(false);
+        }}
         onKeyDown={(e) => {
-          if (e.key === "Escape") setOpen(false);
+          if (e.key === "Escape") close();
         }}
       >
         <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
@@ -1344,18 +1369,24 @@ export default function ClaudeUsageTracker({
   const startModel = initialModel ?? (initial && defaultModel(initial)) ?? "claude-opus-5";
   const [model, setModel] = useState(startModel);
   const [effort, setEffort] = useState<Effort>("high");
+  // Set once the visitor picks a model, so the data refresh below keeps their pick instead of
+  // moving the selector back to the default.
+  const pickedModel = useRef(false);
+  const pickModel = (m: string) => {
+    pickedModel.current = true;
+    setModel(m);
+  };
 
   useEffect(() => {
     fetch("/data/claude-usage.json")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((j: UsageJson) => {
         setData(j);
-        const fallback = initialModel === undefined ? defaultModel(j) : null;
-        if (fallback) setModel(fallback);
-        else if (!j.rates[model]) {
-          const first = Object.keys(j.rates)[0];
-          if (first) setModel(first);
-        }
+        setModel((current) => {
+          const fallback = initialModel === undefined && !pickedModel.current ? defaultModel(j) : null;
+          if (fallback) return fallback;
+          return j.rates[current] ? current : (Object.keys(j.rates)[0] ?? current);
+        });
       })
       .catch(() => setFailed(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1892,7 +1923,7 @@ export default function ClaudeUsageTracker({
                 </span>
                 , running{" "}
                 <span className="sel">
-                  <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
+                  <select aria-label="Model" value={model} onChange={(e) => pickModel(e.target.value)}>
                     {modelsNewestFirst(pageModels(data, Object.keys(data.rates)), data).map((m) => (
                       <option key={m} value={m}>{modelLabel(m)}</option>
                     ))}
@@ -2285,7 +2316,7 @@ export default function ClaudeUsageTracker({
               <h2>How fast each model answers</h2>
               <div className="section-sel">
                 <span className="sel">
-                  <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
+                  <select aria-label="Model" value={model} onChange={(e) => pickModel(e.target.value)}>
                     {modelsNewestFirst(pageModels(data, Object.keys(data.rates)), data).map((m) => (
                       <option key={m} value={m}>{modelLabel(m)}</option>
                     ))}

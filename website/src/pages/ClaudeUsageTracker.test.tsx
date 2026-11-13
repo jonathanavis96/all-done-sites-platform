@@ -2323,6 +2323,9 @@ describe("the speed section's info icons", () => {
     const css = readFileSync(resolve(__dirname, "../styles/claude-usage.css"), "utf8");
     expect(css).toContain(".info-tip:focus-within .info-tip-text");
     expect(css).toContain(".info-tip[data-open] .info-tip-text");
+    // A second tap or Escape closes it even while focus or a touch's hover would still show it.
+    expect(css).toContain(".cut .info-tip[data-dismissed] .info-tip-text { visibility: hidden; opacity: 0; }");
+    expect(css.indexOf(".info-tip[data-dismissed]")).toBeGreaterThan(css.indexOf(".info-tip:focus-within .info-tip-text"));
   });
 
   it("keeps the by-account chart directly below the per-model chart, full width", () => {
