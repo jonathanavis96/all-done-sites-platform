@@ -1,25 +1,25 @@
 {
  "account_feeds": {
   "a1": {
-   "feed_at": "2026-11-12T07:16:44.040493+00:00",
-   "newest_step_end": "2026-11-11T22:55:41+00:00",
+   "feed_at": "2026-11-13T04:17:12.060124+00:00",
+   "newest_step_end": "2026-11-13T03:00:02.400398+00:00",
    "newest_stretch_end": "2026-10-30T04:16:47+00:00",
    "state": "fresh"
   },
   "a2": {
-   "feed_at": "2026-11-13T03:59:22+00:00",
-   "newest_step_end": "2026-11-13T03:59:22+00:00",
+   "feed_at": "2026-11-13T04:30:04+00:00",
+   "newest_step_end": "2026-11-13T04:19:41+00:00",
    "newest_stretch_end": "2026-10-18T03:16:10+00:00",
    "state": "fresh"
   },
   "a3": {
-   "feed_at": "2026-11-13T03:57:22+00:00",
-   "newest_step_end": "2026-11-13T03:32:11+00:00",
+   "feed_at": "2026-11-13T04:27:58+00:00",
+   "newest_step_end": "2026-11-13T04:02:24+00:00",
    "newest_stretch_end": "2026-10-30T10:49:15+00:00",
    "state": "fresh"
   },
   "a4": {
-   "feed_at": "2026-11-13T04:01:23+00:00",
+   "feed_at": "2026-11-13T04:30:04+00:00",
    "newest_step_end": "2026-11-13T02:50:07+00:00",
    "newest_stretch_end": "2026-10-06T22:48:16+00:00",
    "state": "fresh"
@@ -211,8 +211,8 @@
   "max20": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-11-13T04:00:04+00:00",
-    "current_since": "2026-10-14T04:00:04+00:00",
+    "as_of": "2026-11-13T04:30:04+00:00",
+    "current_since": "2026-10-14T04:30:04+00:00",
     "freshest_sample_at": "2026-10-23T19:12:07+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 2,
@@ -265,8 +265,8 @@
   "max5": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-11-13T04:00:04+00:00",
-    "current_since": "2026-10-14T04:00:04+00:00",
+    "as_of": "2026-11-13T04:30:04+00:00",
+    "current_since": "2026-10-14T04:30:04+00:00",
     "freshest_sample_at": "2026-10-23T19:56:41+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -333,8 +333,8 @@
   "pro": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-11-13T04:00:04+00:00",
-    "current_since": "2026-10-14T04:00:04+00:00",
+    "as_of": "2026-11-13T04:30:04+00:00",
+    "current_since": "2026-10-14T04:30:04+00:00",
     "freshest_sample_at": "2026-10-24T07:37:50+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -374,7 +374,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-11-13T04:00:04+00:00"
+  "updated_at": "2026-11-13T04:30:04+00:00"
  },
  "credits": {
   "as_of": "2026-10-30T10:49:15+00:00",
@@ -3013,22 +3013,22 @@
     "credits_per_token_at_split": 0.02053333,
     "credits_per_token_at_split_interval": null,
     "derivation": "credits",
-    "median_session_tokens": 595450,
+    "median_session_tokens": 625973,
     "per_week": {
      "interval": [
-      10289.5,
-      19198.9
+      9787.8,
+      18262.8
      ],
      "status": null,
-     "value": 14472.9
+     "value": 13767.1
     },
     "per_window": {
      "interval": [
-      2461.6,
-      4593.0
+      2341.6,
+      4369.1
      ],
      "status": null,
-     "value": 3462.4
+     "value": 3293.6
     },
     "rate_source": "list_price_until_separable",
     "split": {
@@ -3057,22 +3057,22 @@
      0.01461463
     ],
     "derivation": "credits",
-    "median_session_tokens": 219922,
+    "median_session_tokens": 222343,
     "per_week": {
      "interval": [
-      39142.1,
-      94504.8
+      38715.9,
+      93475.8
      ],
      "status": null,
-     "value": 62566.5
+     "value": 61885.2
     },
     "per_window": {
      "interval": [
-      9364.1,
-      22608.8
+      9262.2,
+      22362.6
      ],
      "status": null,
-     "value": 14968.1
+     "value": 14805.1
     },
     "rate_source": "measured",
     "split": {
@@ -3419,21 +3419,27 @@
       "measured_family": "opus-5-5",
       "measured_window": 1466118980,
       "n_measured_window": 12,
-      "n_weekly_days": 0,
+      "n_weekly_days": 1,
       "n_window": 46,
       "n_wpw": 0,
-      "per_week": null,
-      "per_week_interval": null,
+      "per_week": 0,
+      "per_week_interval": [
+       0,
+       0
+      ],
       "provisional": false,
       "raw_windows_per_week_meters": null,
-      "seven_day_points": 0,
+      "seven_day_points": 25.0,
       "until": null,
       "weekly_credits_per_pct": null,
-      "weekly_credits_per_pct_interval": null,
+      "weekly_credits_per_pct_interval": [
+       0,
+       0
+      ],
       "window": 1152828224,
-      "windows_per_week": null,
+      "windows_per_week": 0.0,
       "windows_per_week_meters": null,
-      "windows_per_week_source": null
+      "windows_per_week_source": "weekly_over_window"
      }
     ],
     "a2": [
@@ -3553,22 +3559,22 @@
       "n_weekly_days": 4,
       "n_window": 46,
       "n_wpw": 0,
-      "per_week": 4108531763,
+      "per_week": 4788417099,
       "per_week_interval": [
-       1696740755,
-       5585270038
+       3364261769,
+       6132513607
       ],
       "provisional": false,
       "raw_windows_per_week_meters": null,
-      "seven_day_points": 14.0,
+      "seven_day_points": 12.0,
       "until": null,
-      "weekly_credits_per_pct": 1655928,
+      "weekly_credits_per_pct": 1929953,
       "weekly_credits_per_pct_interval": [
-       683865,
-       2251121
+       1355953,
+       2471686
       ],
       "window": 1144102545,
-      "windows_per_week": 3.5911,
+      "windows_per_week": 4.1853,
       "windows_per_week_meters": null,
       "windows_per_week_source": "weekly_over_window"
      }
@@ -3692,8 +3698,8 @@
       "n_wpw": 0,
       "per_week": 973074710,
       "per_week_interval": [
-       539407988,
-       1832493288
+       537459076,
+       1915771093
       ],
       "provisional": false,
       "raw_windows_per_week_meters": null,
@@ -3701,8 +3707,8 @@
       "until": null,
       "weekly_credits_per_pct": 392194,
       "weekly_credits_per_pct_interval": [
-       217406,
-       738579
+       216621,
+       772144
       ],
       "window": 781150849,
       "windows_per_week": 1.2457,
@@ -3830,7 +3836,7 @@
       "per_week": 1396921069,
       "per_week_interval": [
        918856388,
-       1913871445
+       1895096741
       ],
       "provisional": false,
       "raw_windows_per_week_meters": null,
@@ -3839,7 +3845,7 @@
       "weekly_credits_per_pct": 563024,
       "weekly_credits_per_pct_interval": [
        370342,
-       771378
+       763811
       ],
       "window": 1070194700,
       "windows_per_week": 1.3053,
@@ -4148,61 +4154,61 @@
    "per_week": {
     "all": {
      "interval": [
-      845699073,
-      2361237976
+      710344865,
+      1849685144
      ],
      "status": null,
-     "value": 1412162086
+     "value": 1195240970
     },
     "per_family": {
      "fable": {
       "all": {
        "interval": [
-        259326800,
-        1023669374
+        217821524,
+        801895469
        ],
        "status": null,
-       "value": 464465332
+       "value": 393119175
       }
      },
      "haiku": {
       "all": {
        "interval": [
-        4228495365,
-        11806189880
+        3551724325,
+        9248425720
        ],
        "status": null,
-       "value": 7060810430
+       "value": 5976204850
       }
      },
      "opus": {
       "all": {
        "interval": [
-        845699073,
-        2361237976
+        710344865,
+        1849685144
        ],
        "status": null,
-       "value": 1412162086
+       "value": 1195240970
       }
      },
      "opus-5-5": {
       "all": {
        "interval": [
-        1123300019,
-        3136314971
+        943515756,
+        2456844786
        ],
        "status": null,
-       "value": 1875704667
+       "value": 1587579137
       }
      },
      "sonnet": {
       "all": {
        "interval": [
-        1485243143,
-        5365991746
+        1247529853,
+        4203470940
        ],
        "status": null,
-       "value": 2818418809
+       "value": 2385483696
       }
      }
     },
@@ -4210,11 +4216,11 @@
     "status": null,
     "windows_per_week": {
      "interval": [
-      0.5514,
-      5.5981
+      0.4631,
+      4.3853
      ],
      "source": "per_week_regimes, newest regime (weekly_over_window)",
-     "value": 1.3748
+     "value": 1.1637
     },
     "windows_per_week_provisional": false
    },
@@ -4222,8 +4228,8 @@
     {
      "from": null,
      "interval": [
-      2884453979,
-      3235349865
+      2441375254,
+      2738370297
      ],
      "n_weekly_days": 36,
      "n_windows_per_week": 143,
@@ -4234,13 +4240,13 @@
      "raw_windows_per_week_pooled": 6.471,
      "seven_day_points": 501.0,
      "until": "2026-09-14T09:00:00+00:00",
-     "value": 3062786612,
+     "value": 2592314351,
      "week_bridge": {
       "at": [
        "2026-09-14T09:00:00+00:00"
       ],
       "direct_value": 3197832033,
-      "factor": 0.95777
+      "factor": 0.810647
      },
      "weekly_accounts": [
       "a1",
@@ -4254,17 +4260,17 @@
       1361491
      ],
      "window": 723628355,
-     "windows_per_week": 1.8375,
+     "windows_per_week": 1.5553,
      "windows_per_week_bridge": {
       "at": [
        "2026-09-14T09:00:00+00:00"
       ],
       "direct_value": 4.4192,
-      "factor": 0.415799
+      "factor": 0.351951
      },
      "windows_per_week_interval": [
-      1.2557,
-      2.3295
+      1.0629,
+      1.9718
      ],
      "windows_per_week_meters": 4.8466,
      "windows_per_week_pooled": 5.9733,
@@ -4278,8 +4284,8 @@
     {
      "from": "2026-09-14T09:00:00+00:00",
      "interval": [
-      2884453979,
-      3235349865
+      2441375254,
+      2738370297
      ],
      "n_weekly_days": 36,
      "n_windows_per_week": 88,
@@ -4290,13 +4296,13 @@
      "raw_windows_per_week_pooled": 5.0,
      "seven_day_points": 501.0,
      "until": "2026-09-23T13:00:00+00:00",
-     "value": 3062786612,
+     "value": 2592314351,
      "week_bridge": {
       "at": [
        "2026-09-23T13:00:00+00:00"
       ],
       "direct_value": 3197832033,
-      "factor": 0.95777
+      "factor": 0.810647
      },
      "weekly_accounts": [
       "a1",
@@ -4310,17 +4316,17 @@
       1361491
      ],
      "window": 723628355,
-     "windows_per_week": 1.5141,
+     "windows_per_week": 1.2816,
      "windows_per_week_bridge": {
       "at": [
        "2026-09-23T13:00:00+00:00"
       ],
       "direct_value": 4.4192,
-      "factor": 0.342619
+      "factor": 0.290007
      },
      "windows_per_week_interval": [
-      1.0347,
-      1.9195
+      0.8758,
+      1.6248
      ],
      "windows_per_week_meters": 4.8466,
      "windows_per_week_pooled": 4.7022,
@@ -4334,8 +4340,8 @@
     {
      "from": "2026-09-23T13:00:00+00:00",
      "interval": [
-      3480953639,
-      4078592427
+      2946247067,
+      3452083027
      ],
      "n_weekly_days": 130,
      "n_windows_per_week": 165,
@@ -4346,13 +4352,13 @@
      "raw_windows_per_week_pooled": 5.5828,
      "seven_day_points": 1105.0,
      "until": "2026-10-09T16:00:00+00:00",
-     "value": 3745788027,
+     "value": 3170400451,
      "week_bridge": {
       "at": [
        "2026-10-09T16:00:00+00:00"
       ],
       "direct_value": 4463563873,
-      "factor": 0.839192
+      "factor": 0.710285
      },
      "weekly_accounts": [
       "a1",
@@ -4366,17 +4372,17 @@
       1958861
      ],
      "window": 873419424,
-     "windows_per_week": 1.5141,
+     "windows_per_week": 1.2816,
      "windows_per_week_bridge": {
       "at": [
        "2026-10-09T16:00:00+00:00"
       ],
       "direct_value": 5.1104,
-      "factor": 0.296278
+      "factor": 0.250784
      },
      "windows_per_week_interval": [
-      0.7315,
-      2.6811
+      0.6192,
+      2.2694
      ],
      "windows_per_week_meters": 4.2256,
      "windows_per_week_pooled": 4.5939,
@@ -4390,8 +4396,8 @@
     {
      "from": "2026-10-09T16:00:00+00:00",
      "interval": [
-      3480953639,
-      4078592427
+      2946247067,
+      3452083027
      ],
      "n_weekly_days": 130,
      "n_windows_per_week": 255,
@@ -4402,13 +4408,13 @@
      "raw_windows_per_week_pooled": 4.7423,
      "seven_day_points": 1105.0,
      "until": "2026-11-10T16:00:00+00:00",
-     "value": 3745788027,
+     "value": 3170400451,
      "week_bridge": {
       "at": [
        "2026-11-10T16:00:00+00:00"
       ],
       "direct_value": 4463563873,
-      "factor": 0.839192
+      "factor": 0.710285
      },
      "weekly_accounts": [
       "a1",
@@ -4422,17 +4428,17 @@
       1958861
      ],
      "window": 1027141243,
-     "windows_per_week": 1.3748,
+     "windows_per_week": 1.1637,
      "windows_per_week_bridge": {
       "at": [
        "2026-11-10T16:00:00+00:00"
       ],
       "direct_value": 4.3456,
-      "factor": 0.316366
+      "factor": 0.267788
      },
      "windows_per_week_interval": [
-      0.8556,
-      3.6454
+      0.7242,
+      3.0856
      ],
      "windows_per_week_meters": 4.2256,
      "windows_per_week_pooled": 4.1521,
@@ -4446,34 +4452,35 @@
     {
      "from": "2026-11-10T16:00:00+00:00",
      "interval": [
-      845699073,
-      2361237976
+      710344865,
+      1849685144
      ],
-     "n_weekly_days": 12,
+     "n_weekly_days": 13,
      "n_windows_per_week": 0,
      "per_week_factor": null,
      "per_week_source": "seven_day_meter_direct",
      "provisional": true,
      "raw_windows_per_week_meters": null,
      "raw_windows_per_week_pooled": null,
-     "seven_day_points": 127.0,
+     "seven_day_points": 150.0,
      "until": null,
-     "value": 1412162086,
+     "value": 1195240970,
      "weekly_accounts": [
+      "a1",
       "a2",
       "a3",
       "a4"
      ],
-     "weekly_credits_per_pct": 569166,
+     "weekly_credits_per_pct": 481737,
      "weekly_credits_per_pct_interval": [
-      340856,
-      951688
+      286302,
+      745508
      ],
      "window": 1027141243,
-     "windows_per_week": 1.3748,
+     "windows_per_week": 1.1637,
      "windows_per_week_interval": [
-      0.5514,
-      5.5981
+      0.4631,
+      4.3853
      ],
      "windows_per_week_meters": null,
      "windows_per_week_pooled": null,
@@ -10690,7 +10697,7 @@
    }
   ]
  },
- "generated_at": "2026-11-13T04:02:15.813371+00:00",
+ "generated_at": "2026-11-13T04:34:47.547599+00:00",
  "headline": {
   "at": "2026-11-10T16:00:00+00:00",
   "change_pct": -62.3,
@@ -23136,7 +23143,7 @@
   "windows_per_week_change_pct": -9.2
  },
  "last_sample_at": "2026-10-30T19:42:26+00:00",
- "meter_read_at": "2026-11-13T04:01:23+00:00",
+ "meter_read_at": "2026-11-13T04:30:04+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -23360,7 +23367,7 @@
   }
  },
  "passive_account_count": 4,
- "passive_generated_at": "2026-11-12T07:16:43.920090+00:00",
+ "passive_generated_at": "2026-11-13T04:17:11.931277+00:00",
  "plan_measured": "max20",
  "plan_ratios": {
   "max20": 1.0,
@@ -24350,14 +24357,14 @@
  "schema_version": 2,
  "session_tokens": {
   "claude-opus-4-8": 23741,
-  "claude-opus-5-5": 595450,
-  "claude-sonnet-4-6": 219922
+  "claude-opus-5-5": 625973,
+  "claude-sonnet-4-6": 222343
  },
  "speed": {
   "accounts": {
    "a1": {
     "first_day": "2026-08-20",
-    "last_day": "2026-11-11"
+    "last_day": "2026-11-13"
    },
    "a2": {
     "first_day": "2026-08-23",
@@ -27386,22 +27393,52 @@
         "q1": 2.87,
         "q3": 6.15
        }
+      },
+      {
+       "day": "2026-11-12",
+       "fast_session_requests": 0,
+       "n": 383,
+       "output_tokens_per_s": {
+        "median": 95.2,
+        "q1": 87.7,
+        "q3": 105.0
+       },
+       "time_to_first_block_s": {
+        "median": 6.24,
+        "q1": 2.82,
+        "q3": 18.91
+       }
+      },
+      {
+       "day": "2026-11-13",
+       "fast_session_requests": 0,
+       "n": 328,
+       "output_tokens_per_s": {
+        "median": 95.2,
+        "q1": 86.5,
+        "q3": 104.0
+       },
+       "time_to_first_block_s": {
+        "median": 5.88,
+        "q1": 3.2,
+        "q3": 11.31
+       }
       }
      ],
      "a2": [
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 89,
+       "n": 162,
        "output_tokens_per_s": {
-        "median": 81.8,
-        "q1": 73.6,
-        "q3": 90.4
+        "median": 80.3,
+        "q1": 70.2,
+        "q3": 89.7
        },
        "time_to_first_block_s": {
-        "median": 6.64,
-        "q1": 4.52,
-        "q3": 11.19
+        "median": 6.74,
+        "q1": 4.71,
+        "q3": 11.83
        }
       }
      ],
@@ -27409,16 +27446,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 360,
+       "n": 421,
        "output_tokens_per_s": {
-        "median": 90.9,
-        "q1": 84.1,
-        "q3": 100.0
+        "median": 91.2,
+        "q1": 84.9,
+        "q3": 100.4
        },
        "time_to_first_block_s": {
-        "median": 5.14,
-        "q1": 3.37,
-        "q3": 9.5
+        "median": 5.11,
+        "q1": 3.28,
+        "q3": 9.61
        }
       }
      ]
@@ -27454,22 +27491,69 @@
         "q1": 2.87,
         "q3": 6.15
        }
+      },
+      {
+       "day": "2026-11-12",
+       "fast_session_requests": 0,
+       "n": 383,
+       "output_tokens_per_s": {
+        "median": 95.2,
+        "q1": 87.7,
+        "q3": 105.0
+       },
+       "time_to_first_block_s": {
+        "median": 6.24,
+        "q1": 2.82,
+        "q3": 18.91
+       }
+      },
+      {
+       "day": "2026-11-13",
+       "fast_session_requests": 0,
+       "n": 250,
+       "output_tokens_per_s": {
+        "median": 95.1,
+        "q1": 85.6,
+        "q3": 104.1
+       },
+       "time_to_first_block_s": {
+        "median": 6.5,
+        "q1": 3.3,
+        "q3": 12.77
+       }
+      }
+     ],
+     "a1:sdk-cli": [
+      {
+       "day": "2026-11-13",
+       "fast_session_requests": 0,
+       "n": 78,
+       "output_tokens_per_s": {
+        "median": 96.0,
+        "q1": 88.8,
+        "q3": 103.9
+       },
+       "time_to_first_block_s": {
+        "median": 4.33,
+        "q1": 3.06,
+        "q3": 8.24
+       }
       }
      ],
      "a2:sdk-cli": [
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 89,
+       "n": 162,
        "output_tokens_per_s": {
-        "median": 81.8,
-        "q1": 73.6,
-        "q3": 90.4
+        "median": 80.3,
+        "q1": 70.2,
+        "q3": 89.7
        },
        "time_to_first_block_s": {
-        "median": 6.64,
-        "q1": 4.52,
-        "q3": 11.19
+        "median": 6.74,
+        "q1": 4.71,
+        "q3": 11.83
        }
       }
      ],
@@ -27477,16 +27561,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 360,
+       "n": 421,
        "output_tokens_per_s": {
-        "median": 90.9,
-        "q1": 84.1,
-        "q3": 100.0
+        "median": 91.2,
+        "q1": 84.9,
+        "q3": 100.4
        },
        "time_to_first_block_s": {
-        "median": 5.14,
-        "q1": 3.37,
-        "q3": 9.5
+        "median": 5.11,
+        "q1": 3.28,
+        "q3": 9.61
        }
       }
      ]
@@ -27522,20 +27606,50 @@
         "q1": 2.87,
         "q3": 6.15
        }
+      },
+      {
+       "day": "2026-11-12",
+       "fast_session_requests": 0,
+       "n": 383,
+       "output_tokens_per_s": {
+        "median": 95.2,
+        "q1": 87.7,
+        "q3": 105.0
+       },
+       "time_to_first_block_s": {
+        "median": 6.24,
+        "q1": 2.82,
+        "q3": 18.91
+       }
+      },
+      {
+       "day": "2026-11-13",
+       "fast_session_requests": 0,
+       "n": 250,
+       "output_tokens_per_s": {
+        "median": 95.1,
+        "q1": 85.6,
+        "q3": 104.1
+       },
+       "time_to_first_block_s": {
+        "median": 6.5,
+        "q1": 3.3,
+        "q3": 12.77
+       }
       }
      ],
      "sdk-cli": [
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 449,
+       "n": 661,
        "output_tokens_per_s": {
-        "median": 89.6,
-        "q1": 81.7,
-        "q3": 98.5
+        "median": 89.7,
+        "q1": 81.6,
+        "q3": 99.2
        },
        "time_to_first_block_s": {
-        "median": 5.44,
+        "median": 5.47,
         "q1": 3.6,
         "q3": 10.01
        }
@@ -27574,18 +27688,33 @@
       }
      },
      {
-      "day": "2026-11-13",
+      "day": "2026-11-12",
       "fast_session_requests": 0,
-      "n": 449,
+      "n": 383,
       "output_tokens_per_s": {
-       "median": 89.6,
-       "q1": 81.7,
-       "q3": 98.5
+       "median": 95.2,
+       "q1": 87.7,
+       "q3": 105.0
       },
       "time_to_first_block_s": {
-       "median": 5.44,
-       "q1": 3.6,
-       "q3": 10.01
+       "median": 6.24,
+       "q1": 2.82,
+       "q3": 18.91
+      }
+     },
+     {
+      "day": "2026-11-13",
+      "fast_session_requests": 0,
+      "n": 911,
+      "output_tokens_per_s": {
+       "median": 90.7,
+       "q1": 82.5,
+       "q3": 100.3
+      },
+      "time_to_first_block_s": {
+       "median": 5.72,
+       "q1": 3.58,
+       "q3": 10.75
       }
      }
     ]
@@ -34762,6 +34891,36 @@
         "q1": 2.44,
         "q3": 6.11
        }
+      },
+      {
+       "day": "2026-11-12",
+       "fast_session_requests": 0,
+       "n": 1622,
+       "output_tokens_per_s": {
+        "median": 98.5,
+        "q1": 90.1,
+        "q3": 108.2
+       },
+       "time_to_first_block_s": {
+        "median": 3.62,
+        "q1": 2.24,
+        "q3": 5.97
+       }
+      },
+      {
+       "day": "2026-11-13",
+       "fast_session_requests": 0,
+       "n": 618,
+       "output_tokens_per_s": {
+        "median": 99.6,
+        "q1": 92.7,
+        "q3": 109.5
+       },
+       "time_to_first_block_s": {
+        "median": 3.63,
+        "q1": 2.34,
+        "q3": 5.95
+       }
       }
      ],
      "a2": [
@@ -35503,16 +35662,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 709,
+       "n": 1440,
        "output_tokens_per_s": {
-        "median": 104.1,
-        "q1": 96.5,
-        "q3": 114.2
+        "median": 102.6,
+        "q1": 95.0,
+        "q3": 113.7
        },
        "time_to_first_block_s": {
-        "median": 3.16,
-        "q1": 1.99,
-        "q3": 6.09
+        "median": 3.46,
+        "q1": 2.07,
+        "q3": 6.41
        }
       }
      ],
@@ -36195,16 +36354,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 344,
+       "n": 408,
        "output_tokens_per_s": {
-        "median": 85.4,
-        "q1": 74.6,
-        "q3": 98.3
+        "median": 86.4,
+        "q1": 75.0,
+        "q3": 100.4
        },
        "time_to_first_block_s": {
-        "median": 5.07,
-        "q1": 3.66,
-        "q3": 7.8
+        "median": 4.99,
+        "q1": 3.55,
+        "q3": 7.71
        }
       }
      ],
@@ -36662,16 +36821,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 49,
+       "n": 60,
        "output_tokens_per_s": {
-        "median": 90.0,
-        "q1": 84.1,
-        "q3": 101.6
+        "median": 90.8,
+        "q1": 85.3,
+        "q3": 102.9
        },
        "time_to_first_block_s": {
-        "median": 3.94,
-        "q1": 2.92,
-        "q3": 6.03
+        "median": 3.79,
+        "q1": 2.54,
+        "q3": 4.78
        }
       }
      ]
@@ -37367,6 +37526,36 @@
         "q1": 2.36,
         "q3": 5.64
        }
+      },
+      {
+       "day": "2026-11-12",
+       "fast_session_requests": 0,
+       "n": 1306,
+       "output_tokens_per_s": {
+        "median": 99.1,
+        "q1": 91.5,
+        "q3": 108.0
+       },
+       "time_to_first_block_s": {
+        "median": 3.42,
+        "q1": 2.19,
+        "q3": 5.75
+       }
+      },
+      {
+       "day": "2026-11-13",
+       "fast_session_requests": 0,
+       "n": 618,
+       "output_tokens_per_s": {
+        "median": 99.6,
+        "q1": 92.7,
+        "q3": 109.5
+       },
+       "time_to_first_block_s": {
+        "median": 3.63,
+        "q1": 2.34,
+        "q3": 5.95
+       }
       }
      ],
      "a1:sdk-cli": [
@@ -37428,6 +37617,21 @@
         "median": 3.91,
         "q1": 2.58,
         "q3": 7.07
+       }
+      },
+      {
+       "day": "2026-11-12",
+       "fast_session_requests": 0,
+       "n": 316,
+       "output_tokens_per_s": {
+        "median": 93.6,
+        "q1": 85.3,
+        "q3": 109.8
+       },
+       "time_to_first_block_s": {
+        "median": 4.2,
+        "q1": 2.56,
+        "q3": 9.1
        }
       }
      ],
@@ -38654,16 +38858,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 678,
+       "n": 1409,
        "output_tokens_per_s": {
-        "median": 104.1,
-        "q1": 96.3,
-        "q3": 114.3
+        "median": 102.5,
+        "q1": 94.9,
+        "q3": 113.8
        },
        "time_to_first_block_s": {
-        "median": 3.12,
-        "q1": 1.97,
-        "q3": 5.99
+        "median": 3.43,
+        "q1": 2.06,
+        "q3": 6.38
        }
       }
      ],
@@ -39003,16 +39207,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 219,
+       "n": 242,
        "output_tokens_per_s": {
-        "median": 86.3,
-        "q1": 76.2,
-        "q3": 100.0
+        "median": 84.9,
+        "q1": 74.9,
+        "q3": 98.2
        },
        "time_to_first_block_s": {
-        "median": 5.22,
-        "q1": 3.76,
-        "q3": 7.88
+        "median": 5.21,
+        "q1": 3.75,
+        "q3": 7.83
        }
       }
      ],
@@ -39545,16 +39749,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 125,
+       "n": 166,
        "output_tokens_per_s": {
-        "median": 83.0,
-        "q1": 70.8,
-        "q3": 94.9
+        "median": 88.4,
+        "q1": 75.1,
+        "q3": 101.9
        },
        "time_to_first_block_s": {
-        "median": 4.71,
-        "q1": 3.49,
-        "q3": 7.52
+        "median": 4.59,
+        "q1": 3.36,
+        "q3": 7.41
        }
       }
      ],
@@ -40059,16 +40263,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 49,
+       "n": 60,
        "output_tokens_per_s": {
-        "median": 90.0,
-        "q1": 84.1,
-        "q3": 101.6
+        "median": 90.8,
+        "q1": 85.3,
+        "q3": 102.9
        },
        "time_to_first_block_s": {
-        "median": 3.94,
-        "q1": 2.92,
-        "q3": 6.03
+        "median": 3.79,
+        "q1": 2.54,
+        "q3": 4.78
        }
       }
      ],
@@ -40967,31 +41171,31 @@
       {
        "day": "2026-11-12",
        "fast_session_requests": 0,
-       "n": 3358,
+       "n": 4664,
        "output_tokens_per_s": {
-        "median": 103.3,
-        "q1": 94.2,
-        "q3": 114.7
+        "median": 102.0,
+        "q1": 93.4,
+        "q3": 112.8
        },
        "time_to_first_block_s": {
-        "median": 3.06,
-        "q1": 2.02,
-        "q3": 4.86
+        "median": 3.15,
+        "q1": 2.06,
+        "q3": 5.12
        }
       },
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 299,
+       "n": 951,
        "output_tokens_per_s": {
-        "median": 89.1,
-        "q1": 79.5,
-        "q3": 103.2
+        "median": 97.2,
+        "q1": 87.5,
+        "q3": 107.7
        },
        "time_to_first_block_s": {
-        "median": 4.95,
-        "q1": 3.64,
-        "q3": 7.7
+        "median": 4.12,
+        "q1": 2.76,
+        "q3": 6.46
        }
       }
      ],
@@ -41644,31 +41848,31 @@
       {
        "day": "2026-11-12",
        "fast_session_requests": 0,
-       "n": 388,
+       "n": 704,
        "output_tokens_per_s": {
-        "median": 98.5,
-        "q1": 91.0,
-        "q3": 107.9
+        "median": 97.3,
+        "q1": 87.7,
+        "q3": 108.8
        },
        "time_to_first_block_s": {
         "median": 4.21,
-        "q1": 2.74,
-        "q3": 8.12
+        "q1": 2.67,
+        "q3": 8.29
        }
       },
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 803,
+       "n": 1575,
        "output_tokens_per_s": {
-        "median": 102.0,
-        "q1": 93.6,
-        "q3": 112.8
+        "median": 101.4,
+        "q1": 93.8,
+        "q3": 112.7
        },
        "time_to_first_block_s": {
-        "median": 3.44,
-        "q1": 2.05,
-        "q3": 6.27
+        "median": 3.57,
+        "q1": 2.15,
+        "q3": 6.5
        }
       }
      ],
@@ -42684,31 +42888,31 @@
      {
       "day": "2026-11-12",
       "fast_session_requests": 0,
-      "n": 3746,
+      "n": 5368,
       "output_tokens_per_s": {
-       "median": 102.7,
-       "q1": 93.9,
-       "q3": 114.1
+       "median": 101.4,
+       "q1": 92.7,
+       "q3": 112.3
       },
       "time_to_first_block_s": {
-       "median": 3.17,
-       "q1": 2.06,
-       "q3": 5.1
+       "median": 3.26,
+       "q1": 2.12,
+       "q3": 5.42
       }
      },
      {
       "day": "2026-11-13",
       "fast_session_requests": 0,
-      "n": 1102,
+      "n": 2526,
       "output_tokens_per_s": {
-       "median": 99.4,
-       "q1": 89.1,
+       "median": 99.8,
+       "q1": 91.8,
        "q3": 111.0
       },
       "time_to_first_block_s": {
-       "median": 3.89,
-       "q1": 2.34,
-       "q3": 6.7
+       "median": 3.79,
+       "q1": 2.33,
+       "q3": 6.48
       }
      }
     ]
@@ -48571,16 +48775,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 139,
+       "n": 142,
        "output_tokens_per_s": {
-        "median": 119.7,
-        "q1": 104.2,
-        "q3": 128.9
+        "median": 119.9,
+        "q1": 104.4,
+        "q3": 129.2
        },
        "time_to_first_block_s": {
-        "median": 5.77,
-        "q1": 3.02,
-        "q3": 9.51
+        "median": 5.6,
+        "q1": 2.96,
+        "q3": 9.46
        }
       }
      ],
@@ -50890,16 +51094,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 33,
+       "n": 63,
        "output_tokens_per_s": {
-        "median": 126.7,
+        "median": 118.8,
         "q1": 109.7,
-        "q3": 143.4
+        "q3": 133.3
        },
        "time_to_first_block_s": {
-        "median": 2.56,
-        "q1": 2.01,
-        "q3": 3.8
+        "median": 2.41,
+        "q1": 1.8,
+        "q3": 3.78
        }
       }
      ],
@@ -51402,16 +51606,16 @@
       {
        "day": "2026-11-13",
        "fast_session_requests": 0,
-       "n": 139,
+       "n": 152,
        "output_tokens_per_s": {
-        "median": 120.5,
-        "q1": 105.2,
-        "q3": 129.2
+        "median": 120.6,
+        "q1": 106.4,
+        "q3": 129.7
        },
        "time_to_first_block_s": {
-        "median": 5.77,
-        "q1": 2.94,
-        "q3": 9.8
+        "median": 5.94,
+        "q1": 2.97,
+        "q3": 9.95
        }
       }
      ]
@@ -52050,16 +52254,16 @@
      {
       "day": "2026-11-13",
       "fast_session_requests": 0,
-      "n": 172,
+      "n": 215,
       "output_tokens_per_s": {
-       "median": 121.3,
-       "q1": 105.9,
-       "q3": 130.1
+       "median": 120.3,
+       "q1": 107.5,
+       "q3": 130.9
       },
       "time_to_first_block_s": {
-       "median": 4.2,
-       "q1": 2.72,
-       "q3": 8.76
+       "median": 3.88,
+       "q1": 2.43,
+       "q3": 8.04
       }
      }
     ]
