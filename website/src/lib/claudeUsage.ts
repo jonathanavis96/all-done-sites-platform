@@ -1009,8 +1009,12 @@ const MODEL_PICKER_ORDER = [
   "claude-opus-5-5",
   "claude-opus-5",
   "claude-sonnet-5",
+  // Named because neither has a named predecessor (claude-haiku-5, claude-opus-4), so the rule
+  // below put them last: Haiku 5.5 under Haiku 4.5, Opus 4.6 under everything.
+  "claude-haiku-5-5",
   "claude-opus-4-8",
   "claude-opus-4-7",
+  "claude-opus-4-6",
   "claude-sonnet-4-6",
   "claude-haiku-4-5",
 ];

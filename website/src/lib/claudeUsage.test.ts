@@ -2121,6 +2121,14 @@ describe("modelsNewestFirst", () => {
   });
 });
 
+describe("modelsNewestFirst with the models the tracker publishes now", () => {
+  it("lists Haiku 5.5 before every 4.x model and Opus 4.6 after Opus 4.7, not last", () => {
+    expect(
+      modelsNewestFirst(["claude-haiku-4-5", "claude-opus-4-6", "claude-haiku-5-5", "claude-opus-4-7", "claude-sonnet-4-6", "claude-sonnet-5"]),
+    ).toEqual(["claude-sonnet-5", "claude-haiku-5-5", "claude-opus-4-7", "claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"]);
+  });
+});
+
 describe("picker order by first use, and the default model", () => {
   // The 28 Sep live file (candidates haiku, fable, opus-5-5) plus Sonnet 5.5 as the 29 Sep refresh
   // published it: rates for claude-sonnet-5-5 and a sonnet-5-5 candidate, no per_model row.
