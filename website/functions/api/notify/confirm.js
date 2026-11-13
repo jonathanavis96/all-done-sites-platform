@@ -1,6 +1,12 @@
 /**
- * GET /api/notify/confirm?token=… — the link from the confirmation email.
+ * /api/notify/confirm?token=… — the link from the confirmation email.
  * Returns a full HTML page, because a person clicks this from their inbox.
+ *
+ * GET never confirms. Mail scanners and link previews fetch every URL in a
+ * message, so a GET that confirmed would put an address on the list that nobody
+ * confirmed, which defeats the double opt-in. GET checks the link and shows a
+ * page with one button; POST, from that button, confirms. Unsubscribe works the
+ * same way.
  */
 import { pageResponse, pendingKey, subKey, verifyToken } from "./_lib";
 
@@ -32,6 +38,17 @@ const ON_THE_LIST = [
 ];
 
 export async function onRequestGet(context) {
+  const { existing, error } = await readLink(context);
+  if (error) return error;
+  if (existing.status === "confirmed") return pageResponse(...ON_THE_LIST);
+  const { pathname, search } = new URL(context.request.url);
+  return pageResponse("Confirm your alert", "Press the button and we'll email you the next time Anthropic changes Claude's usage limits.", 200, {
+    action: `${pathname}${search}`,
+    label: "Confirm subscription",
+  });
+}
+
+export async function onRequestPost(context) {
   const { email, existing, error } = await readLink(context);
   if (error) return error;
   if (existing.status !== "confirmed") {

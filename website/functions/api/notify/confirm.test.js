@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { onRequestGet } from "./confirm";
+import { onRequestGet, onRequestPost } from "./confirm";
 import { pendingKey, signToken, subKey } from "./_lib";
 
 const SECRET = "token-secret";
@@ -29,34 +29,28 @@ function env(status = "pending", key = status === "pending" ? pendingKey(EMAIL) 
 }
 
 const url = (token) => `https://alldonesites.com/api/notify/confirm?token=${encodeURIComponent(token)}`;
+const status = (e) => JSON.parse(e.NOTIFY_KV.store.get(subKey(EMAIL)) ?? e.NOTIFY_KV.store.get(pendingKey(EMAIL))).status;
 
-describe("GET /api/notify/confirm (the link in the email)", () => {
-  it("confirms the sign-up, keeping created_at, and writes it without a TTL", async () => {
+describe("GET /api/notify/confirm (a person, or a mail scanner following the link)", () => {
+  it("shows a page with a confirm button and confirms nothing", async () => {
     const e = env();
     const token = await signToken(SECRET, "confirm", EMAIL);
     const res = await onRequestGet({ request: new Request(url(token)), env: e });
+    const html = await res.text();
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain("on the list");
-    const rec = JSON.parse(e.NOTIFY_KV.store.get(subKey(EMAIL)));
-    expect(rec).toMatchObject({ status: "confirmed", created_at: "2026-11-01T00:00:00.000Z" });
-    expect(e.NOTIFY_KV.puts).toEqual([{ key: subKey(EMAIL), opts: undefined }]);
-    expect(e.NOTIFY_KV.store.has(pendingKey(EMAIL))).toBe(false);
+    expect(status(e)).toBe("pending");
+    expect(e.NOTIFY_KV.puts).toEqual([]);
+    expect(html).toContain('<form method="post"');
+    expect(html).toContain(`action="/api/notify/confirm?token=${encodeURIComponent(token)}"`);
   });
 
-  it("confirms a pending sign-up stored under sub: before sign-ups had their own key", async () => {
-    const e = env("pending", subKey(EMAIL));
-    const token = await signToken(SECRET, "confirm", EMAIL);
-    const res = await onRequestGet({ request: new Request(url(token)), env: e });
-    expect(res.status).toBe(200);
-    expect(JSON.parse(e.NOTIFY_KV.store.get(subKey(EMAIL))).status).toBe("confirmed");
-  });
-
-  it("leaves an already confirmed subscriber as they are", async () => {
+  it("tells an already confirmed subscriber so, without a button", async () => {
     const e = env("confirmed");
     const token = await signToken(SECRET, "confirm", EMAIL);
     const res = await onRequestGet({ request: new Request(url(token)), env: e });
-    expect(await res.text()).toContain("on the list");
-    expect(e.NOTIFY_KV.puts).toEqual([]);
+    const html = await res.text();
+    expect(html).toContain("on the list");
+    expect(html).not.toContain("<form");
   });
 
   it("refuses a bad token and an unsubscribe token", async () => {
@@ -76,3 +70,52 @@ describe("GET /api/notify/confirm (the link in the email)", () => {
   });
 });
 
+describe("POST /api/notify/confirm (the button)", () => {
+  it("confirms the sign-up, keeping created_at, and writes it without a TTL", async () => {
+    const e = env();
+    const token = await signToken(SECRET, "confirm", EMAIL);
+    const res = await onRequestPost({ request: new Request(url(token), { method: "POST" }), env: e });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("on the list");
+    const rec = JSON.parse(e.NOTIFY_KV.store.get(subKey(EMAIL)));
+    expect(rec).toMatchObject({ status: "confirmed", created_at: "2026-11-01T00:00:00.000Z" });
+    expect(e.NOTIFY_KV.puts).toEqual([{ key: subKey(EMAIL), opts: undefined }]);
+    expect(e.NOTIFY_KV.store.has(pendingKey(EMAIL))).toBe(false);
+  });
+
+  it("confirms a pending sign-up stored under sub: before sign-ups had their own key", async () => {
+    const e = env("pending", subKey(EMAIL));
+    const token = await signToken(SECRET, "confirm", EMAIL);
+    const res = await onRequestPost({ request: new Request(url(token), { method: "POST" }), env: e });
+    expect(res.status).toBe(200);
+    expect(JSON.parse(e.NOTIFY_KV.store.get(subKey(EMAIL))).status).toBe("confirmed");
+  });
+
+  it("refuses a bad token", async () => {
+    const e = env();
+    const res = await onRequestPost({ request: new Request(url("nonsense.token"), { method: "POST" }), env: e });
+    expect(res.status).toBe(400);
+    expect(status(e)).toBe("pending");
+  });
+});
+
+describe("the confirmation link, end to end", () => {
+  for (const [label, key] of [
+    ["a pending sign-up", pendingKey(EMAIL)],
+    ["a pending sign-up left under sub: by the old code", subKey(EMAIL)],
+  ]) {
+    it(`a GET leaves ${label} pending, and the button's POST confirms it`, async () => {
+      const e = env("pending", key);
+      const token = await signToken(SECRET, "confirm", EMAIL);
+      await onRequestGet({ request: new Request(url(token)), env: e });
+      await onRequestGet({ request: new Request(url(token)), env: e });
+      expect(status(e)).toBe("pending");
+      expect(e.NOTIFY_KV.puts).toEqual([]);
+
+      const res = await onRequestPost({ request: new Request(url(token), { method: "POST" }), env: e });
+      expect(res.status).toBe(200);
+      expect(JSON.parse(e.NOTIFY_KV.store.get(subKey(EMAIL))).status).toBe("confirmed");
+      expect(e.NOTIFY_KV.store.has(pendingKey(EMAIL))).toBe(false);
+    });
+  }
+});

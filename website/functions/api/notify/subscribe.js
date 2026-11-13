@@ -71,9 +71,9 @@ export async function onRequestPost(context) {
       {
         to: [email],
         subject: "Confirm your Claude limits alert",
-        text: `Confirm your subscription: ${confirmUrl}\n\nIf you didn't sign up, ignore this email.`,
+        text: `Open this link and press the button to confirm your subscription: ${confirmUrl}\n\nIf you didn't sign up, ignore this email.`,
         html: emailHtml({
-          heading: "One click to confirm",
+          heading: "Confirm your alert",
           body: "We'll email you when Anthropic changes Claude's usage limits — nothing else, and no more than one email per change.",
           ctaLabel: "Confirm subscription",
           ctaUrl: confirmUrl,
