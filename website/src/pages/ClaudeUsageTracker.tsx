@@ -1222,9 +1222,11 @@ function ContributorsChart({
   const tickCount = 4;
   for (let i = 0; i <= tickCount; i++) dateTicks.push(t0 + ((t1 - t0) * i) / tickCount);
   const span =
-    usable.length > 0
-      ? `${fmtDate(new Date(t0).toISOString())} to ${fmtDate(new Date(t1).toISOString())}`
-      : "no readings yet";
+    usable.length === 1
+      ? `on ${fmtDate(usable[0].t)}`
+      : usable.length > 0
+        ? `${fmtDate(new Date(t0).toISOString())} to ${fmtDate(new Date(t1).toISOString())}`
+        : "no readings yet";
   const ariaLabel = `${usable.length} reading${usable.length === 1 ? "" : "s"} from ${groups.length} contributor ID${groups.length === 1 ? "" : "s"}, ${span}`;
   return (
     <>

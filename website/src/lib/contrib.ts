@@ -530,7 +530,9 @@ const CONTRIB_CHART_SPAN_MS = 30 * 86400e3;
 /**
  * The chart's x scale: a fraction-of-width function over [earliest point, or 30 days ago,
  * whichever is later] to now. A single point (or none) centers at 0.5 rather than dividing by
- * a zero span, so a brand-new contributor's first reading still renders sanely.
+ * a zero span, so a brand-new contributor's first reading still renders sanely. The axis is then
+ * centred on that point too (as far before it as now is after it), so the date under the middle
+ * of the chart is the reading's own date.
  */
 export function contribXScale(
   points: ContribPointLike[],
@@ -538,10 +540,11 @@ export function contribXScale(
 ): { t0: number; t1: number; frac: (t: string) => number } {
   const times = points.map((p) => Date.parse(p.t)).filter((t) => Number.isFinite(t));
   const t1 = now;
-  if (times.length <= 1) {
-    const t0 = times.length === 1 ? Math.min(times[0], now - 1) : now - CONTRIB_CHART_SPAN_MS;
-    return { t0, t1, frac: () => 0.5 };
+  if (times.length === 1) {
+    const d = Math.max(1, now - times[0]);
+    return { t0: times[0] - d, t1: times[0] + d, frac: () => 0.5 };
   }
+  if (times.length === 0) return { t0: now - CONTRIB_CHART_SPAN_MS, t1, frac: () => 0.5 };
   // A loop, not Math.min(...times): spreading a few hundred thousand values overflows the stack.
   const earliest = times.reduce((a, b) => (b < a ? b : a));
   const t0 = Math.max(earliest, now - CONTRIB_CHART_SPAN_MS);

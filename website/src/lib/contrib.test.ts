@@ -462,6 +462,9 @@ describe("contrib chart helpers", () => {
     const now = Date.parse("2026-09-16T00:00:00Z");
     const scale = contribXScale([P("2026-09-10T00:00:00Z", 1, 1)], now);
     expect(scale.frac("2026-09-10T00:00:00Z")).toBe(0.5);
+    // The axis is centred on it too, so the middle date label is the reading's own date.
+    expect((scale.t0 + scale.t1) / 2).toBe(Date.parse("2026-09-10T00:00:00Z"));
+    expect(scale.t1).toBe(now);
   });
 
   it("contribXScale spans from the earliest point, or 30 days ago, whichever is later", () => {
