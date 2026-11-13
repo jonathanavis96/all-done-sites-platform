@@ -19,9 +19,13 @@ interface SeoProps {
   noindex?: boolean;
 }
 
+const SITE = "https://alldonesites.com";
+
 /** Normalize spa-github-pages URLs:
  * - Turn https://example.com/?/pricing → https://example.com/pricing
- * - Drop tracking query params (keep hash)
+ * - Drop query params and the #fragment, and name the production host: a canonical computed
+ *   from window.location on /#pricing or a preview host otherwise contradicted the static
+ *   shell's own canonical.
  */
 function normalizeCanonical(raw: string): string {
   try {
@@ -36,9 +40,8 @@ function normalizeCanonical(raw: string): string {
       // Ensure leading slash
       u.pathname = restored.startsWith("/") ? restored : `/${restored}`;
     }
-    // Strip any leftover "clean" query params; canonical shouldn’t include them
-    // (keep hash if present)
-    return `${u.origin}${u.pathname}${u.hash || ""}`;
+    // Strip any leftover "clean" query params and the fragment; canonical includes neither.
+    return `${SITE}${u.pathname}`;
   } catch {
     return raw;
   }
