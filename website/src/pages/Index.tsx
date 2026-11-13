@@ -929,7 +929,7 @@ export default function Index() {
             <div className="tbody">
               {termsText ||
                 (termsFailed
-                  ? "The agreement could not be loaded. Please close this and try again, or see the Terms page."
+                  ? "The agreement could not be loaded. Please see the Terms page."
                   : "Loading…")}
             </div>
             <label className="tcontact">
@@ -949,7 +949,7 @@ export default function Index() {
             </label>
             <div className="tfoot">
               <button type="button" className="vbtn" onClick={() => setTerms(null)} disabled={redirecting}>Cancel</button>
-              <button type="button" className="btn" disabled={!termsText || !termsChecked || !isUsableContact(termsContact) || redirecting} onClick={acceptTerms}>
+              <button type="button" className="btn" disabled={!termsChecked || !isUsableContact(termsContact) || redirecting} onClick={acceptTerms}>
                 {redirecting ? "Redirecting…" : "Accept & continue to payment"}
               </button>
             </div>
