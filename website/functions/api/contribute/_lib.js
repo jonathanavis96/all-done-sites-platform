@@ -5,8 +5,8 @@
  * binding under a `contrib:` prefix, no new Cloudflare resources:
  *
  *   contrib:s:<contributor_id>:<ts>   one sample, the validated body plus received_at, 180-day TTL
- *   contrib:rl:id:<contributor_id>    per-contributor hourly counter
- *   contrib:rl:ip:<sha256 of ip>      per-IP hourly counter (the hash is never stored on a sample)
+ *   contrib:rl:id:<contributor_id>:<hour>  per-contributor counter for one clock hour
+ *   contrib:rl:ip:<sha256 of ip>:<hour>    per-IP counter for one clock hour (the hash is never stored on a sample)
  *
  * Validation itself lives in src/lib/contrib.ts, shared with the page, so the paste
  * box and the server can never disagree about what a sample is.
@@ -28,14 +28,18 @@ export const SAMPLE_TTL_SECONDS = 180 * 86400;
 export const RATE_WINDOW_SECONDS = 3600;
 export const MAX_PER_ID_PER_HOUR = 4;
 export const MAX_PER_IP_PER_HOUR = 30;
-/** Longest raw request body read before parsing; a CUT1 wrapper around a 2 KB body fits. */
-export const MAX_RAW_BYTES = 4096;
+/** Longest raw request body read before parsing; a CUT1 wrapper around a 4 KB body fits. */
+export const MAX_RAW_BYTES = 8192;
 
 export const SAMPLE_PREFIX = "contrib:s:";
 export const samplePrefix = (id) => `${SAMPLE_PREFIX}${id}:`;
 export const sampleKey = (id, ts) => `${SAMPLE_PREFIX}${id}:${ts}`;
-export const idRateKey = (id) => `contrib:rl:id:${id}`;
-export const ipRateKey = (ipHash) => `contrib:rl:ip:${ipHash}`;
+// Rate counters count per clock hour: the hour is part of the key, so a new hour starts a new
+// counter. A single key whose TTL every accepted sample refreshed never emptied for a steady
+// contributor, and the page's own 30-minute schedule hit 429 from its fifth sample on.
+const rateHour = (now) => Math.floor(now / (RATE_WINDOW_SECONDS * 1000));
+export const idRateKey = (id, now = Date.now()) => `contrib:rl:id:${id}:${rateHour(now)}`;
+export const ipRateKey = (ipHash, now = Date.now()) => `contrib:rl:ip:${ipHash}:${rateHour(now)}`;
 
 /**
  * The request body as text, or null once it passes `max` bytes. Reads chunk by chunk so an

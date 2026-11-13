@@ -37,6 +37,15 @@ export function loadTracker(snapshot?: UsageJson): Promise<Tracker> {
   return loading;
 }
 
+/**
+ * Whether the browser's snapshot arrived. Without it the page's first render is the
+ * failed state, not the prerendered figures, so hydrating would replace a good
+ * prerendered page with "Data temporarily unavailable."
+ */
+export function trackerSnapshotLoaded(): boolean {
+  return loaded?.snapshot != null;
+}
+
 const LazyTracker = lazy(() => loadTracker().then((Page) => ({ default: Page })));
 
 export default function TrackerRoute() {

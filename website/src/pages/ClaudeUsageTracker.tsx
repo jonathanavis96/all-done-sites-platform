@@ -914,18 +914,43 @@ function LevelChart({
 function InfoTip({ label, text }: { label: string; text: string }) {
   const id = `tip-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
   const [open, setOpen] = useState(false);
+  // Focus and hover also show the tip (CSS), so closing it by a second tap or Escape has to beat
+  // them: `dismissed` hides it until focus leaves. A tap focuses before it clicks, so the click
+  // still decides by `open` alone.
+  const [focused, setFocused] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const close = () => {
+    setOpen(false);
+    setDismissed(true);
+  };
   return (
-    <span className="info-tip" data-open={open ? "true" : undefined}>
+    <span
+      className="info-tip"
+      data-open={open && !dismissed ? "true" : undefined}
+      data-dismissed={dismissed ? "true" : undefined}
+      onMouseLeave={() => setDismissed(false)}
+    >
       <button
         type="button"
         className="info-tip-btn"
         aria-label={label}
         aria-describedby={id}
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        onBlur={() => setOpen(false)}
+        aria-expanded={(open || focused) && !dismissed}
+        onClick={() => {
+          if (open) close();
+          else {
+            setOpen(true);
+            setDismissed(false);
+          }
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          setOpen(false);
+          setDismissed(false);
+        }}
         onKeyDown={(e) => {
-          if (e.key === "Escape") setOpen(false);
+          if (e.key === "Escape") close();
         }}
       >
         <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
@@ -1190,18 +1215,22 @@ function ContributorsChart({
   tab,
   refMix,
   planLabel,
+  now,
 }: {
   points: ContribPoint[];
   reference: number | null;
   tab: ContribTab;
   refMix: RefMix;
   planLabel: string;
+  // The axis's right edge. Passed in rather than read here, so the prerender and the first
+  // client render draw the same axis.
+  now: number;
 }) {
   const W = 840, H = 260, L = 44, R = 832, T = 20, B = 200;
   const valueOf = tab.value;
   const usable = points.filter((p) => typeof valueOf(p) === "number");
   const groups = contribGroups(usable);
-  const { t0, t1, frac } = contribXScale(usable);
+  const { t0, t1, frac } = contribXScale(usable, now);
   // With no dots the scale comes from the tracker's line alone, which then sits two thirds up the
   // plot, or a plain 0-to-1 axis where there is no line either.
   const yMax =
@@ -1218,9 +1247,11 @@ function ContributorsChart({
   const tickCount = 4;
   for (let i = 0; i <= tickCount; i++) dateTicks.push(t0 + ((t1 - t0) * i) / tickCount);
   const span =
-    usable.length > 0
-      ? `${fmtDate(new Date(t0).toISOString())} to ${fmtDate(new Date(t1).toISOString())}`
-      : "no readings yet";
+    usable.length === 1
+      ? `on ${fmtDate(usable[0].t)}`
+      : usable.length > 0
+        ? `${fmtDate(new Date(t0).toISOString())} to ${fmtDate(new Date(t1).toISOString())}`
+        : "no readings yet";
   const ariaLabel = `${usable.length} reading${usable.length === 1 ? "" : "s"} from ${groups.length} contributor ID${groups.length === 1 ? "" : "s"}, ${span}`;
   return (
     <>
@@ -1338,18 +1369,24 @@ export default function ClaudeUsageTracker({
   const startModel = initialModel ?? (initial && defaultModel(initial)) ?? "claude-opus-5";
   const [model, setModel] = useState(startModel);
   const [effort, setEffort] = useState<Effort>("high");
+  // Set once the visitor picks a model, so the data refresh below keeps their pick instead of
+  // moving the selector back to the default.
+  const pickedModel = useRef(false);
+  const pickModel = (m: string) => {
+    pickedModel.current = true;
+    setModel(m);
+  };
 
   useEffect(() => {
     fetch("/data/claude-usage.json")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((j: UsageJson) => {
         setData(j);
-        const fallback = initialModel === undefined ? defaultModel(j) : null;
-        if (fallback) setModel(fallback);
-        else if (!j.rates[model]) {
-          const first = Object.keys(j.rates)[0];
-          if (first) setModel(first);
-        }
+        setModel((current) => {
+          const fallback = initialModel === undefined && !pickedModel.current ? defaultModel(j) : null;
+          if (fallback) return fallback;
+          return j.rates[current] ? current : (Object.keys(j.rates)[0] ?? current);
+        });
       })
       .catch(() => setFailed(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1770,6 +1807,16 @@ export default function ClaudeUsageTracker({
   useEffect(() => {
     setStaleAt(data ? staleEvidenceAt(data, model, now ?? Date.now()) : null);
   }, [data, model, now]);
+  // The contributor chart's axis ends at the clock, so like the stale line the clock is read only
+  // after mount. Until then it ends at the data's own timestamp, which the prerender and the first
+  // client render share; reading Date.now() in render made the two disagree and failed hydration.
+  const [chartNow, setChartNow] = useState<number | null>(now ?? null);
+  useEffect(() => {
+    setChartNow(now ?? Date.now());
+  }, [now]);
+  // generated_at carries microseconds, cut to milliseconds so every browser's Date.parse reads it.
+  const chartClock =
+    chartNow ?? (data ? Date.parse(data.generated_at.replace(/(\.\d{3})\d+/, "$1")) || 0 : 0);
   // An account whose feed has stopped can leave a figure looking current. Decided after mount
   // like the stale line, so the prerender matches the first client render.
   const [stoppedLine, setStoppedLine] = useState<string | null>(() =>
@@ -1876,7 +1923,7 @@ export default function ClaudeUsageTracker({
                 </span>
                 , running{" "}
                 <span className="sel">
-                  <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
+                  <select aria-label="Model" value={model} onChange={(e) => pickModel(e.target.value)}>
                     {modelsNewestFirst(pageModels(data, Object.keys(data.rates)), data).map((m) => (
                       <option key={m} value={m}>{modelLabel(m)}</option>
                     ))}
@@ -2269,7 +2316,7 @@ export default function ClaudeUsageTracker({
               <h2>How fast each model answers</h2>
               <div className="section-sel">
                 <span className="sel">
-                  <select aria-label="Model" value={model} onChange={(e) => setModel(e.target.value)}>
+                  <select aria-label="Model" value={model} onChange={(e) => pickModel(e.target.value)}>
                     {modelsNewestFirst(pageModels(data, Object.keys(data.rates)), data).map((m) => (
                       <option key={m} value={m}>{modelLabel(m)}</option>
                     ))}
@@ -2437,6 +2484,7 @@ export default function ClaudeUsageTracker({
               reference={contribTab.reference(wt, fleetUsdPerPercent(data, plan))}
               refMix={{ model: modelLabel(model), cacheReadShare: wt?.cacheReadShare ?? null }}
               planLabel={PLAN_LABELS[plan]}
+              now={chartClock}
             />
             {/* The cost sentence belongs to the cost chart, so it follows its own tab rather than
                 sitting under whichever chart happens to be open. */}

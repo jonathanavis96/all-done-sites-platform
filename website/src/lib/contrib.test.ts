@@ -177,6 +177,17 @@ describe("derived figures", () => {
     expect(fleetTokensPerPercent(j, "max5", "claude-fable-5-1")).toBe(500_000);
     expect(fleetTokensPerPercent(j, "max20", "claude-sonnet-5")).toBeNull();
   });
+
+  it("finds the tracker figure under the same id the price uses: the old Fable id, a dated or [1m] id", () => {
+    const j = {
+      plan_ratios: { pro: 0.05, max5: 0.25, max20: 1 },
+      rates: { "claude-fable-5-1": { tokens_per_window: 200_000_000 }, "claude-sonnet-5": { tokens_per_window: 40_000_000 } },
+    } as unknown as UsageJson;
+    expect(fleetTokensPerPercent(j, "max5", "claude-fable-5")).toBe(500_000);
+    expect(fleetTokensPerPercent(j, "pro", "claude-fable-5")).toBeNull();
+    expect(fleetTokensPerPercent(j, "max20", "claude-sonnet-5-20260101")).toBe(400_000);
+    expect(fleetTokensPerPercent(j, "max20", "claude-sonnet-5[1m]")).toBe(400_000);
+  });
 });
 
 describe("pricing a sample", () => {
@@ -451,6 +462,9 @@ describe("contrib chart helpers", () => {
     const now = Date.parse("2026-09-16T00:00:00Z");
     const scale = contribXScale([P("2026-09-10T00:00:00Z", 1, 1)], now);
     expect(scale.frac("2026-09-10T00:00:00Z")).toBe(0.5);
+    // The axis is centred on it too, so the middle date label is the reading's own date.
+    expect((scale.t0 + scale.t1) / 2).toBe(Date.parse("2026-09-10T00:00:00Z"));
+    expect(scale.t1).toBe(now);
   });
 
   it("contribXScale spans from the earliest point, or 30 days ago, whichever is later", () => {

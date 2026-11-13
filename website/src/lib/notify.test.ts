@@ -34,4 +34,9 @@ describe("isValidEmail", () => {
   it("rejects an address over the 254-character forward-path limit", () => {
     expect(isValidEmail("a".repeat(250) + "@example.com")).toBe(false);
   });
+
+  it("counts the limit in bytes, so a long non-ASCII address cannot overrun a KV key", () => {
+    expect(isValidEmail("é".repeat(120) + "@example.com")).toBe(true);
+    expect(isValidEmail("é".repeat(200) + "@example.com")).toBe(false);
+  });
 });

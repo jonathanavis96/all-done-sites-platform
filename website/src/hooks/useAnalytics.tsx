@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { contactMethod } from "@/lib/site";
 
@@ -10,8 +10,15 @@ declare global {
 
 export function useAnalytics() {
   const location = useLocation();
+  // gtag('config') in index.html already sends the landing page's page_view, so only the
+  // in-app navigations after it are sent from here; sending on mount too counted it twice.
+  const landed = useRef(false);
 
   useEffect(() => {
+    if (!landed.current) {
+      landed.current = true;
+      return;
+    }
     if (window.gtag) {
       window.gtag("event", "page_view", {
         page_path: location.pathname + location.search,

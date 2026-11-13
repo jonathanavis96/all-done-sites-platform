@@ -139,8 +139,10 @@ const KNOWN_CODES = [
 ];
 
 const PRICE_RE = new RegExp(
+  // No lookbehind ("\bR", not "(?<![A-Za-z])R"): Safari before 16.4, inside the build's safari14
+  // target, throws on one, and this runs when the module loads.
   // Either "ZAR 800" / "ZAR800", or a symbol immediately before the number.
-  String.raw`(?:\b(${KNOWN_CODES.join("|")})\s?|(NZ\$|HK\$|US\$|R\$|A\$|C\$|S\$|\$|£|€|₹|¥|₦|(?<![A-Za-z])R(?=\d)))` +
+  String.raw`(?:\b(${KNOWN_CODES.join("|")})\s?|(NZ\$|HK\$|US\$|R\$|A\$|C\$|S\$|\$|£|€|₹|¥|₦|\bR(?=\d)))` +
     // Separated thousands need at least one group, or "\d{1,3}" alone would stop
     // three digits into an unseparated amount and read R2000 as R200.
     String.raw`((?:\d{1,3}(?:[ ,]\d{3})+|\d+)(?:\.\d{1,2})?)`,

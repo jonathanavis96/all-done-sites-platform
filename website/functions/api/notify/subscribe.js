@@ -7,12 +7,14 @@
  * address is on the list. Nothing is mailed to a confirmed subscriber.
  */
 import {
+  PENDING_TTL_SECONDS,
   SUBSCRIBE_MAX_PER_WINDOW,
   SUBSCRIBE_WINDOW_SECONDS,
   emailHtml,
   isValidEmail,
   json,
   normalizeEmail,
+  pendingKey,
   rateKey,
   sendEmails,
   signToken,
@@ -52,10 +54,14 @@ export async function onRequestPost(context) {
     return json({ ok: true, message: "Check your inbox for the confirmation link." });
   }
 
+  // The pending record has its own key and expires unless confirmed. This never writes `sub:`,
+  // so a stale read above cannot put a just-confirmed subscriber back to pending.
   const now = new Date().toISOString();
+  const pending = await kv.get(pendingKey(email), { type: "json" });
   await kv.put(
-    subKey(email),
-    JSON.stringify({ status: "pending", created_at: existing?.created_at ?? now, updated_at: now }),
+    pendingKey(email),
+    JSON.stringify({ status: "pending", created_at: pending?.created_at ?? existing?.created_at ?? now, updated_at: now }),
+    { expirationTtl: PENDING_TTL_SECONDS },
   );
 
   const token = await signToken(env.NOTIFY_TOKEN_SECRET, "confirm", email);
@@ -65,9 +71,9 @@ export async function onRequestPost(context) {
       {
         to: [email],
         subject: "Confirm your Claude limits alert",
-        text: `Confirm your subscription: ${confirmUrl}\n\nIf you didn't sign up, ignore this email.`,
+        text: `Open this link and press the button to confirm your subscription: ${confirmUrl}\n\nIf you didn't sign up, ignore this email.`,
         html: emailHtml({
-          heading: "One click to confirm",
+          heading: "Confirm your alert",
           body: "We'll email you when Anthropic changes Claude's usage limits — nothing else, and no more than one email per change.",
           ctaLabel: "Confirm subscription",
           ctaUrl: confirmUrl,

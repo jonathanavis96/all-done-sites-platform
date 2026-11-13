@@ -112,10 +112,13 @@ routes.forEach(route => {
     `<title>${route.title} | All Done Sites</title>`
   );
 
-  // Update description
+  // Update description. The template writes this tag over several lines, so match
+  // the whole tag as prerender.js does; a one-line pattern never matched and every
+  // shell shipped the homepage description. data-rh lets <Seo> replace it after
+  // hydration instead of adding a second description beside it.
   html = html.replace(
-    /<meta name="description" content="[^"]*"/i,
-    `<meta name="description" content="${route.description}"`
+    /<meta[^>]*name="description"[^>]*>/i,
+    `<meta name="description" content="${route.description}" data-rh="true" />`
   );
 
   // Keep flow-only pages out of the index

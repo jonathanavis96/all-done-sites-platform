@@ -233,6 +233,7 @@
 .cut .info-tip-btn:focus-visible { outline: 2px solid var(--ads-acd); outline-offset: 1px; }
 .cut .info-tip-text { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 5; max-width: 560px; padding: 10px 12px; border: 1px solid var(--ads-line); border-radius: 8px; background: var(--ads-surface); color: var(--ads-bd); font-size: 13.5px; font-weight: 400; line-height: 1.5; box-shadow: 0 6px 20px rgba(15, 23, 42, .12); visibility: hidden; opacity: 0; transition: opacity .12s; }
 .cut .info-tip:hover .info-tip-text, .cut .info-tip:focus-within .info-tip-text, .cut .info-tip[data-open] .info-tip-text { visibility: visible; opacity: 1; }
+.cut .info-tip[data-dismissed] .info-tip-text { visibility: hidden; opacity: 0; }
 
 /* The four-account chart: drawn at the width it is shown at, so its text is the same size on a
    phone as on a wide screen. */

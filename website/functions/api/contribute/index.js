@@ -96,7 +96,10 @@ export async function onRequestPost({ request, env }) {
   // against a runaway script or a hostile poster, not an exact meter.
   const ip = request.headers.get("cf-connecting-ip") || "unknown";
   const ipHash = await sha256Hex(ip);
-  const [idSeen, ipSeen] = await Promise.all([kv.get(idRateKey(id)), kv.get(ipRateKey(ipHash))]);
+  const now = Date.now();
+  const idKey = idRateKey(id, now);
+  const ipKey = ipRateKey(ipHash, now);
+  const [idSeen, ipSeen] = await Promise.all([kv.get(idKey), kv.get(ipKey)]);
   if (Number(idSeen || 0) >= MAX_PER_ID_PER_HOUR) {
     return json({ error: "Too many samples from this contributor id. Try again in an hour." }, 429, allow);
   }
@@ -104,8 +107,8 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Too many samples from here. Try again in an hour." }, 429, allow);
   }
   await Promise.all([
-    kv.put(idRateKey(id), String(Number(idSeen || 0) + 1), { expirationTtl: RATE_WINDOW_SECONDS }),
-    kv.put(ipRateKey(ipHash), String(Number(ipSeen || 0) + 1), { expirationTtl: RATE_WINDOW_SECONDS }),
+    kv.put(idKey, String(Number(idSeen || 0) + 1), { expirationTtl: RATE_WINDOW_SECONDS }),
+    kv.put(ipKey, String(Number(ipSeen || 0) + 1), { expirationTtl: RATE_WINDOW_SECONDS }),
   ]);
 
   // Stored: the validated fields and when it arrived. The IP hash is only ever a

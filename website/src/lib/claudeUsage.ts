@@ -677,7 +677,9 @@ export function speedAccountSeries(
 // The one sentence of the block's own method that defines the charted figure (the one starting
 // "Output speed"), or its first sentence if a later method is worded otherwise.
 export function speedMethodSentence(block: SpeedBlock): string | null {
-  const sentences = (block.method ?? "").split(/(?<=\.)\s+(?=[A-Z])/).map((s) => s.trim()).filter(Boolean);
+  // No lookbehind: Safari before 16.4 (inside the build's safari14 target) throws on one.
+  const parts = (block.method ?? "").split(/\.\s+(?=[A-Z])/);
+  const sentences = parts.map((s, i) => (i < parts.length - 1 ? `${s}.` : s).trim()).filter(Boolean);
   return sentences.find((s) => s.startsWith("Output speed")) ?? sentences[0] ?? null;
 }
 
@@ -1007,8 +1009,12 @@ const MODEL_PICKER_ORDER = [
   "claude-opus-5-5",
   "claude-opus-5",
   "claude-sonnet-5",
+  // Named because neither has a named predecessor (claude-haiku-5, claude-opus-4), so the rule
+  // below put them last: Haiku 5.5 under Haiku 4.5, Opus 4.6 under everything.
+  "claude-haiku-5-5",
   "claude-opus-4-8",
   "claude-opus-4-7",
+  "claude-opus-4-6",
   "claude-sonnet-4-6",
   "claude-haiku-4-5",
 ];

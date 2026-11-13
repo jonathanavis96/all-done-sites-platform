@@ -14,6 +14,9 @@ export function normalizeEmail(raw: string): string {
 
 export function isValidEmail(raw: string): boolean {
   const e = normalizeEmail(raw);
-  // 254 is the RFC 5321 limit on a forward path; anything longer is not routable.
-  return e.length > 0 && e.length <= 254 && EMAIL_RE.test(e);
+  // 254 octets is the RFC 5321 limit on a forward path; anything longer is not routable. Counted
+  // in UTF-8 bytes, not characters: 254 non-ASCII characters overran KV's 512-byte key limit and
+  // made subscribe throw.
+  const bytes = new TextEncoder().encode(e).length;
+  return bytes > 0 && bytes <= 254 && EMAIL_RE.test(e);
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { onRequestOptions, onRequestPost } from "./index";
 import { encodeCut1 } from "../../../src/lib/contrib";
 import { CONTRIB_ID, OTHER_ID, fakeKv, storedRecord, validBody } from "./_fixtures";
@@ -41,8 +41,8 @@ describe("POST /api/contribute with a JSON body", () => {
     expect(e.NOTIFY_KV.ttls.get(key)).toBe(180 * 86400);
     // Rate-limit keys were written, and the IP is hashed rather than stored.
     const keys = [...e.NOTIFY_KV.store.keys()];
-    expect(keys).toContain(`contrib:rl:id:${CONTRIB_ID}`);
-    expect(keys.some((k) => k.startsWith("contrib:rl:ip:") && /^contrib:rl:ip:[0-9a-f]{64}$/.test(k))).toBe(true);
+    expect(keys.some((k) => /^contrib:rl:id:[0-9a-f-]+:\d+$/.test(k) && k.includes(CONTRIB_ID))).toBe(true);
+    expect(keys.some((k) => /^contrib:rl:ip:[0-9a-f]{64}:\d+$/.test(k))).toBe(true);
     expect(keys.some((k) => k.includes("203.0.113.7"))).toBe(false);
   });
 
@@ -86,19 +86,28 @@ describe("POST /api/contribute with a JSON body", () => {
     expect(res.status).toBe(400);
   });
 
-  it("answers 400 for a body of 2048 bytes or more", async () => {
+  it("answers 400 for a body of 4096 bytes or more", async () => {
     const body = validBody(Date.now(), {
       tokens_since_five_hour_reset: Object.fromEntries(
         Array.from({ length: 12 }, (_, i) => [
-          `claude-model-${i}-${"x".repeat(80)}`,
+          `claude-model-${i}-${"x".repeat(300)}`,
           { input: 1, output: 1, cache_read: 1, cache_write: 1 },
         ]),
       ),
     });
-    expect(JSON.stringify(body).length).toBeGreaterThanOrEqual(2048);
+    expect(JSON.stringify(body).length).toBeGreaterThanOrEqual(4096);
     const res = await call(body);
     expect(res.status).toBe(400);
-    expect((await res.json()).error).toContain("2048");
+    expect((await res.json()).error).toContain("4096");
+  });
+
+  it("accepts a sample listing all 12 models with large counts, in both forms", async () => {
+    const counts = { input: 1234567, output: 234567, cache_read: 123456789, cache_write: 1234567, cache_write_1h: 123456 };
+    const models = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`claude-sonnet-4-${i}`, counts]));
+    const body = validBody(Date.now(), { tokens_since_five_hour_reset: models, tokens_since_seven_day_reset: models });
+    expect(JSON.stringify(body).length).toBeGreaterThan(2048);
+    expect((await call(body)).status).toBe(200);
+    expect((await call({ cut1: encodeCut1(body) })).status).toBe(200);
   });
 
   it("stops reading an oversized body instead of buffering all of it", async () => {
@@ -199,7 +208,11 @@ describe("POST /api/contribute with a JSON body", () => {
 });
 
 describe("POST /api/contribute rate limits", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("allows 4 samples per contributor id per hour and refuses the 5th", async () => {
+    // Mid-hour, so the five calls cannot straddle a clock-hour boundary.
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.UTC(2026, 10, 13, 10, 30) });
     const e = env();
     const now = Date.now();
     for (let i = 0; i < 4; i++) {
@@ -209,12 +222,26 @@ describe("POST /api/contribute rate limits", () => {
     const fifth = await call(validBody(now - 5 * 60e3), e, { ip: "198.51.100.9" });
     expect(fifth.status).toBe(429);
     expect((await fifth.json()).error).toContain("contributor id");
-    expect(e.NOTIFY_KV.ttls.get(`contrib:rl:id:${CONTRIB_ID}`)).toBe(3600);
+    const hour = Math.floor(now / 3600e3);
+    expect(e.NOTIFY_KV.ttls.get(`contrib:rl:id:${CONTRIB_ID}:${hour}`)).toBe(3600);
     // The refused sample was not stored.
     expect([...e.NOTIFY_KV.store.keys()].filter((k) => k.startsWith("contrib:s:")).length).toBe(4);
   });
 
+  it("lets a steady 30-minute schedule through: the count starts again each clock hour", async () => {
+    // A counter whose TTL every sample refreshed never emptied, so the 5th sample was refused.
+    const start = Date.UTC(2026, 10, 13, 10, 5);
+    vi.useFakeTimers({ toFake: ["Date"], now: start });
+    const e = env();
+    for (let i = 0; i < 8; i++) {
+      vi.setSystemTime(start + i * 30 * 60e3);
+      const res = await call(validBody(Date.now()), e);
+      expect(res.status).toBe(200);
+    }
+  });
+
   it("allows 30 samples per IP per hour and refuses the 31st", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.UTC(2026, 10, 13, 10, 30) });
     const e = env();
     const now = Date.now();
     const idFor = (i) => `${i.toString(16).padStart(8, "0")}-0000-4000-8000-000000000000`;

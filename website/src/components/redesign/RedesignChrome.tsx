@@ -20,8 +20,19 @@ export function ScrollToHash() {
     const isFirstRun = firstRun.current;
     firstRun.current = false;
     if (hash) {
+      // On a prerendered page the browser has already jumped to the hash target, and hydration
+      // can come from the visitor's own scroll: once the page has moved, the first run leaves it.
+      if (isFirstRun && window.scrollY !== 0) return;
       const t = window.setTimeout(() => {
-        const el = document.querySelector(hash);
+        // By id, not querySelector: a fragment such as "#1-step" or "#a%20b" is not a valid
+        // selector and made querySelector throw.
+        let id = hash.slice(1);
+        try {
+          id = decodeURIComponent(id);
+        } catch {
+          /* a malformed escape: look the fragment up as written */
+        }
+        const el = document.getElementById(id);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 60);
       return () => window.clearTimeout(t);
@@ -33,6 +44,17 @@ export function ScrollToHash() {
     // visited leaves the URL unchanged and should still go there.
   }, [pathname, hash, key]);
   return null;
+}
+
+/**
+ * The logo link: scroll to the top on the home page, otherwise go home inside the app. A
+ * modified or non-primary click (new tab, new window, download) is left to the browser.
+ */
+function brandClick(e: React.MouseEvent, pathname: string, navigate: (to: string) => void) {
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  if (pathname === "/") window.scrollTo({ top: 0, behavior: "smooth" });
+  else navigate("/");
 }
 
 const NAV_LINKS = [
@@ -47,11 +69,7 @@ export function RedesignNav() {
   const navigate = useNavigate();
   const { pathname, key } = useLocation();
   const menuRef = useRef<HTMLDetailsElement>(null);
-  const onBrand = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (pathname === "/") window.scrollTo({ top: 0, behavior: "smooth" });
-    else navigate("/");
-  };
+  const onBrand = (e: React.MouseEvent) => brandClick(e, pathname, navigate);
   useEffect(() => {
     const onPointer = (e: Event) => {
       const menu = menuRef.current;
@@ -101,11 +119,7 @@ export function RedesignNav() {
 export function RedesignFooter() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const onBrand = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (pathname === "/") window.scrollTo({ top: 0, behavior: "smooth" });
-    else navigate("/");
-  };
+  const onBrand = (e: React.MouseEvent) => brandClick(e, pathname, navigate);
   return (
     <footer>
       <div className="wrap">

@@ -23,7 +23,9 @@ export const PLANS: Plan[] = ["pro", "max5", "max20"];
 export const PLAN_SOURCES = ["endpoint", "stored", "flag"] as const;
 export type PlanSource = (typeof PLAN_SOURCES)[number];
 
-export const MAX_BODY_BYTES = 2048;
+// A sample listing all MAX_MODELS models with large counts, in both token maps, is about
+// 3.5 KB, so the cap leaves room for the full model limit (2048 refused 7 models).
+export const MAX_BODY_BYTES = 4096;
 export const MAX_MODELS = 12;
 const TS_WINDOW_MS = 24 * 3600e3;
 const RESETS_WINDOW_MS = 8 * 86400e3;
@@ -257,13 +259,16 @@ export function encodeCut1(body: object): string {
   return "CUT1:" + b64urlEncode(utf8.enc.encode(JSON.stringify(sorted(body))));
 }
 
+/** Longest CUT1 payload: base64 of a MAX_BODY_BYTES body, rounded up. */
+const MAX_CUT1_CHARS = Math.ceil((MAX_BODY_BYTES * 4) / 3) + 4;
+
 /** Decode a CUT1 line to its JSON text, or throw with a one-line reason. */
 export function decodeCut1(line: unknown): string {
   if (typeof line !== "string") throw new Error("cut1 must be a string");
   const s = line.trim();
   if (!s.startsWith("CUT1:")) throw new Error("not a CUT1 line");
   const payload = s.slice(5);
-  if (payload.length === 0 || payload.length > 4096 || !/^[A-Za-z0-9_-]+=*$/.test(payload)) {
+  if (payload.length === 0 || payload.length > MAX_CUT1_CHARS || !/^[A-Za-z0-9_-]+=*$/.test(payload)) {
     throw new Error("CUT1 payload is not url-safe base64");
   }
   let bytes: Uint8Array;
@@ -322,10 +327,15 @@ export function modelsIn(samples: PublicSample[]): string[] {
  * published JSON has no rate for that model yet.
  */
 export function fleetTokensPerPercent(j: UsageJson, plan: Plan, model: string): number | null {
-  const rate = j.rates?.[model];
+  // The same id rule as priceForModel, so a sample's model finds its tracker figure whenever it
+  // finds a price (the old claude-fable-5 id, a dated or [1m] id).
+  const id = normalizeModelId(model);
+  const rates = j.rates ?? {};
+  const key = Object.prototype.hasOwnProperty.call(rates, id) ? id : id === "claude-fable-5" ? "claude-fable-5-1" : id;
+  const rate = rates[key];
   const ratio = j.plan_ratios?.[plan];
   if (!rate || typeof ratio !== "number" || typeof rate.tokens_per_window !== "number") return null;
-  if (!modelPlanLimit(j, model, plan).included) return null;
+  if (!modelPlanLimit(j, key, plan).included) return null;
   return (rate.tokens_per_window * ratio) / 100;
 }
 
@@ -520,7 +530,9 @@ const CONTRIB_CHART_SPAN_MS = 30 * 86400e3;
 /**
  * The chart's x scale: a fraction-of-width function over [earliest point, or 30 days ago,
  * whichever is later] to now. A single point (or none) centers at 0.5 rather than dividing by
- * a zero span, so a brand-new contributor's first reading still renders sanely.
+ * a zero span, so a brand-new contributor's first reading still renders sanely. The axis is then
+ * centred on that point too (as far before it as now is after it), so the date under the middle
+ * of the chart is the reading's own date.
  */
 export function contribXScale(
   points: ContribPointLike[],
@@ -528,10 +540,11 @@ export function contribXScale(
 ): { t0: number; t1: number; frac: (t: string) => number } {
   const times = points.map((p) => Date.parse(p.t)).filter((t) => Number.isFinite(t));
   const t1 = now;
-  if (times.length <= 1) {
-    const t0 = times.length === 1 ? Math.min(times[0], now - 1) : now - CONTRIB_CHART_SPAN_MS;
-    return { t0, t1, frac: () => 0.5 };
+  if (times.length === 1) {
+    const d = Math.max(1, now - times[0]);
+    return { t0: times[0] - d, t1: times[0] + d, frac: () => 0.5 };
   }
+  if (times.length === 0) return { t0: now - CONTRIB_CHART_SPAN_MS, t1, frac: () => 0.5 };
   // A loop, not Math.min(...times): spreading a few hundred thousand values overflows the stack.
   const earliest = times.reduce((a, b) => (b < a ? b : a));
   const t0 = Math.max(earliest, now - CONTRIB_CHART_SPAN_MS);
