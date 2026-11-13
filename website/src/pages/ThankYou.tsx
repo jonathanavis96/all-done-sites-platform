@@ -97,24 +97,26 @@ export default function ThankYou() {
             <input id="ty-email" name="email" type="email" placeholder="you@business.com" required disabled={status === "sending"} />
           </div>
 
-          {/* Terms-acceptance details captured at checkout (if present). */}
+          {/* Terms-acceptance details captured at checkout (if present). The paid plan and region
+              are sent either way, from the payment's return URL when this browser has no record
+              (another device, a private window, cleared storage). */}
           {(() => {
+            let details: { acceptedAt?: string; ip?: string; plan?: string; region?: string; termsVersion?: string } | null = null;
             try {
               const stored = localStorage.getItem("termsAccepted");
-              if (!stored) return null;
-              const details = JSON.parse(stored);
-              return (
-                <>
-                  <input type="hidden" name="termsAcceptedAt" value={details.acceptedAt || ""} />
-                  <input type="hidden" name="termsIP" value={details.ip || ""} />
-                  <input type="hidden" name="termsPlan" value={details.plan || plan} />
-                  <input type="hidden" name="termsRegion" value={details.region || region} />
-                  <input type="hidden" name="termsVersion" value={details.termsVersion || ""} />
-                </>
-              );
+              if (stored) details = JSON.parse(stored);
             } catch {
-              return null;
+              details = null;
             }
+            return (
+              <>
+                {details && <input type="hidden" name="termsAcceptedAt" value={details.acceptedAt || ""} />}
+                {details && <input type="hidden" name="termsIP" value={details.ip || ""} />}
+                <input type="hidden" name="termsPlan" value={details?.plan || plan} />
+                <input type="hidden" name="termsRegion" value={details?.region || region} />
+                {details && <input type="hidden" name="termsVersion" value={details.termsVersion || ""} />}
+              </>
+            );
           })()}
 
           <button className="btn lg formbtn" type="submit" disabled={status === "sending"}>
