@@ -7,19 +7,19 @@
    "state": "fresh"
   },
   "a2": {
-   "feed_at": "2026-11-16T15:30:04+00:00",
-   "newest_step_end": "2026-11-16T13:56:10+00:00",
+   "feed_at": "2026-11-16T15:59:04+00:00",
+   "newest_step_end": "2026-11-16T15:32:04+00:00",
    "newest_stretch_end": "2026-10-18T03:16:10+00:00",
    "state": "fresh"
   },
   "a3": {
-   "feed_at": "2026-11-16T15:30:05+00:00",
+   "feed_at": "2026-11-16T15:56:00+00:00",
    "newest_step_end": "2026-11-13T15:47:06+00:00",
    "newest_stretch_end": "2026-10-30T10:49:15+00:00",
-   "state": "fresh"
+   "state": "idle"
   },
   "a4": {
-   "feed_at": "2026-11-16T15:30:04+00:00",
+   "feed_at": "2026-11-16T16:01:04+00:00",
    "newest_step_end": "2026-11-16T13:21:05+00:00",
    "newest_stretch_end": "2026-10-06T22:48:16+00:00",
    "state": "fresh"
@@ -211,8 +211,8 @@
   "max20": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-11-16T15:30:05+00:00",
-    "current_since": "2026-10-17T15:30:05+00:00",
+    "as_of": "2026-11-16T16:00:04+00:00",
+    "current_since": "2026-10-17T16:00:04+00:00",
     "freshest_sample_at": "2026-10-23T19:12:07+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 2,
@@ -265,8 +265,8 @@
   "max5": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-11-16T15:30:05+00:00",
-    "current_since": "2026-10-17T15:30:05+00:00",
+    "as_of": "2026-11-16T16:00:04+00:00",
+    "current_since": "2026-10-17T16:00:04+00:00",
     "freshest_sample_at": "2026-10-23T19:56:41+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -333,8 +333,8 @@
   "pro": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-11-16T15:30:05+00:00",
-    "current_since": "2026-10-17T15:30:05+00:00",
+    "as_of": "2026-11-16T16:00:04+00:00",
+    "current_since": "2026-10-17T16:00:04+00:00",
     "freshest_sample_at": "2026-10-24T07:37:50+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -374,7 +374,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-11-16T15:30:05+00:00"
+  "updated_at": "2026-11-16T16:00:04+00:00"
  },
  "credits": {
   "as_of": "2026-10-30T10:49:15+00:00",
@@ -3636,22 +3636,22 @@
       "n_weekly_days": 4,
       "n_window": 46,
       "n_wpw": 0,
-      "per_week": 1473282861,
+      "per_week": 1487603764,
       "per_week_interval": [
-       1003480854,
+       1098008362,
        1867466031
       ],
       "provisional": false,
       "raw_windows_per_week_meters": null,
-      "seven_day_points": 19.0,
+      "seven_day_points": 20.0,
       "until": null,
-      "weekly_credits_per_pct": 593801,
+      "weekly_credits_per_pct": 599573,
       "weekly_credits_per_pct_interval": [
-       404449,
+       442548,
        752675
       ],
       "window": 1144102545,
-      "windows_per_week": 1.2877,
+      "windows_per_week": 1.3002,
       "windows_per_week_meters": null,
       "windows_per_week_source": "weekly_over_window"
      }
@@ -4285,61 +4285,61 @@
    "per_week": {
     "all": {
      "interval": [
-      451203957,
-      2349588357
+      469341156,
+      2348471266
      ],
      "status": null,
-     "value": 1227753597
+     "value": 1235813405
     },
     "per_family": {
      "fable": {
       "all": {
        "interval": [
-        138358054,
-        1018618905
+        143919680,
+        1018134612
        ],
        "status": null,
-       "value": 403812698
+       "value": 406463599
       }
      },
      "haiku": {
       "all": {
        "interval": [
-        2256019785,
-        11747941785
+        2346705780,
+        11742356330
        ],
        "status": null,
-       "value": 6138767985
+       "value": 6179067025
       }
      },
      "opus": {
       "all": {
        "interval": [
-        451203957,
-        2349588357
+        469341156,
+        2348471266
        ],
        "status": null,
-       "value": 1227753597
+       "value": 1235813405
       }
      },
      "opus-5-5": {
       "all": {
        "interval": [
-        599311776,
-        3120841362
+        623402515,
+        3119357585
        ],
        "status": null,
-       "value": 1630764043
+       "value": 1641469485
       }
      },
      "sonnet": {
       "all": {
        "interval": [
-        792418491,
-        5339517600
+        824271607,
+        5336978973
        ],
        "status": null,
-       "value": 2450372989
+       "value": 2466458900
       }
      }
     },
@@ -4347,11 +4347,11 @@
     "status": null,
     "windows_per_week": {
      "interval": [
-      0.2942,
-      5.5705
+      0.306,
+      5.5679
      ],
      "source": "per_week_regimes, newest regime (weekly_over_window)",
-     "value": 1.1953
+     "value": 1.2032
     },
     "windows_per_week_provisional": false
    },
@@ -4359,8 +4359,8 @@
     {
      "from": null,
      "interval": [
-      3327122476,
-      3731869301
+      3348963966,
+      3756367824
      ],
      "n_weekly_days": 36,
      "n_windows_per_week": 143,
@@ -4371,13 +4371,13 @@
      "raw_windows_per_week_pooled": 6.471,
      "seven_day_points": 501.0,
      "until": "2026-09-14T09:00:00+00:00",
-     "value": 3532823284,
+     "value": 3556015133,
      "week_bridge": {
       "at": [
        "2026-09-14T09:00:00+00:00"
       ],
       "direct_value": 3197832033,
-      "factor": 1.104756
+      "factor": 1.112008
      },
      "weekly_accounts": [
       "a1",
@@ -4391,17 +4391,17 @@
       1361491
      ],
      "window": 723628355,
-     "windows_per_week": 1.5976,
+     "windows_per_week": 1.6081,
      "windows_per_week_bridge": {
       "at": [
        "2026-09-14T09:00:00+00:00"
       ],
       "direct_value": 4.4192,
-      "factor": 0.361507
+      "factor": 0.363896
      },
      "windows_per_week_interval": [
-      1.0918,
-      2.0253
+      1.099,
+      2.0387
      ],
      "windows_per_week_meters": 4.8466,
      "windows_per_week_pooled": 5.9733,
@@ -4415,8 +4415,8 @@
     {
      "from": "2026-09-14T09:00:00+00:00",
      "interval": [
-      3327122477,
-      3731869302
+      3348963966,
+      3756367824
      ],
      "n_weekly_days": 36,
      "n_windows_per_week": 88,
@@ -4427,13 +4427,13 @@
      "raw_windows_per_week_pooled": 5.0,
      "seven_day_points": 501.0,
      "until": "2026-09-23T13:00:00+00:00",
-     "value": 3532823284,
+     "value": 3556015133,
      "week_bridge": {
       "at": [
        "2026-09-23T13:00:00+00:00"
       ],
       "direct_value": 3197832033,
-      "factor": 1.104756
+      "factor": 1.112008
      },
      "weekly_accounts": [
       "a1",
@@ -4447,17 +4447,17 @@
       1361491
      ],
      "window": 723628355,
-     "windows_per_week": 1.3164,
+     "windows_per_week": 1.3251,
      "windows_per_week_bridge": {
       "at": [
        "2026-09-23T13:00:00+00:00"
       ],
       "direct_value": 4.4192,
-      "factor": 0.297882
+      "factor": 0.299851
      },
      "windows_per_week_interval": [
-      0.8996,
-      1.6689
+      0.9055,
+      1.6799
      ],
      "windows_per_week_meters": 4.8466,
      "windows_per_week_pooled": 4.7022,
@@ -4471,8 +4471,8 @@
     {
      "from": "2026-09-23T13:00:00+00:00",
      "interval": [
-      4021731241,
-      4712215182
+      4048132614,
+      4743149359
      ],
      "n_weekly_days": 130,
      "n_windows_per_week": 165,
@@ -4483,13 +4483,13 @@
      "raw_windows_per_week_pooled": 5.5828,
      "seven_day_points": 1105.0,
      "until": "2026-10-09T16:00:00+00:00",
-     "value": 4327708523,
+     "value": 4356118538,
      "week_bridge": {
       "at": [
        "2026-10-09T16:00:00+00:00"
       ],
       "direct_value": 4463563873,
-      "factor": 0.969563
+      "factor": 0.975928
      },
      "weekly_accounts": [
       "a1",
@@ -4503,17 +4503,17 @@
       1958861
      ],
      "window": 873419424,
-     "windows_per_week": 1.3164,
+     "windows_per_week": 1.3251,
      "windows_per_week_bridge": {
       "at": [
        "2026-10-09T16:00:00+00:00"
       ],
       "direct_value": 5.1104,
-      "factor": 0.257594
+      "factor": 0.259297
      },
      "windows_per_week_interval": [
-      0.636,
-      2.331
+      0.6402,
+      2.3465
      ],
      "windows_per_week_meters": 4.2256,
      "windows_per_week_pooled": 4.5939,
@@ -4527,8 +4527,8 @@
     {
      "from": "2026-10-09T16:00:00+00:00",
      "interval": [
-      4021731242,
-      4712215182
+      4048132614,
+      4743149359
      ],
      "n_weekly_days": 130,
      "n_windows_per_week": 255,
@@ -4539,13 +4539,13 @@
      "raw_windows_per_week_pooled": 4.7423,
      "seven_day_points": 1105.0,
      "until": "2026-11-10T16:00:00+00:00",
-     "value": 4327708523,
+     "value": 4356118538,
      "week_bridge": {
       "at": [
        "2026-11-10T16:00:00+00:00"
       ],
       "direct_value": 4463563873,
-      "factor": 0.969563
+      "factor": 0.975928
      },
      "weekly_accounts": [
       "a1",
@@ -4559,17 +4559,17 @@
       1958861
      ],
      "window": 1027141243,
-     "windows_per_week": 1.1953,
+     "windows_per_week": 1.2032,
      "windows_per_week_bridge": {
       "at": [
        "2026-11-10T16:00:00+00:00"
       ],
       "direct_value": 4.3456,
-      "factor": 0.27506
+      "factor": 0.276878
      },
      "windows_per_week_interval": [
-      0.7439,
-      3.1694
+      0.7488,
+      3.1904
      ],
      "windows_per_week_meters": 4.2256,
      "windows_per_week_pooled": 4.1521,
@@ -4583,8 +4583,8 @@
     {
      "from": "2026-11-10T16:00:00+00:00",
      "interval": [
-      1214271815,
-      3331602290
+      1222243119,
+      3353473189
      ],
      "n_weekly_days": 9,
      "n_windows_per_week": 0,
@@ -4595,13 +4595,13 @@
      "raw_windows_per_week_pooled": null,
      "seven_day_points": 115.0,
      "until": "2026-11-12T19:00:00+00:00",
-     "value": 2059989257,
+     "value": 2073512424,
      "week_bridge": {
       "at": [
        "2026-11-12T19:00:00+00:00"
       ],
       "direct_value": 1369684754,
-      "factor": 1.503988
+      "factor": 1.513861
      },
      "weekly_accounts": [
       "a2",
@@ -4614,17 +4614,17 @@
       892819
      ],
      "window": 1027141243,
-     "windows_per_week": 1.1953,
+     "windows_per_week": 1.2032,
      "windows_per_week_bridge": {
       "at": [
        "2026-11-12T19:00:00+00:00"
       ],
       "direct_value": 1.3335,
-      "factor": 0.896363
+      "factor": 0.902287
      },
      "windows_per_week_interval": [
-      0.4718,
-      4.7075
+      0.475,
+      4.7386
      ],
      "windows_per_week_meters": null,
      "windows_per_week_pooled": null,
@@ -4635,8 +4635,8 @@
     {
      "from": "2026-11-12T19:00:00+00:00",
      "interval": [
-      451203957,
-      2349588357
+      469341156,
+      2348471266
      ],
      "n_weekly_days": 12,
      "n_windows_per_week": 0,
@@ -4645,25 +4645,25 @@
      "provisional": true,
      "raw_windows_per_week_meters": null,
      "raw_windows_per_week_pooled": null,
-     "seven_day_points": 65.0,
+     "seven_day_points": 66.0,
      "until": null,
-     "value": 1227753597,
+     "value": 1235813405,
      "weekly_accounts": [
       "a1",
       "a2",
       "a3",
       "a4"
      ],
-     "weekly_credits_per_pct": 494841,
+     "weekly_credits_per_pct": 498090,
      "weekly_credits_per_pct_interval": [
-      181856,
-      946992
+      189166,
+      946542
      ],
      "window": 1027141243,
-     "windows_per_week": 1.1953,
+     "windows_per_week": 1.2032,
      "windows_per_week_interval": [
-      0.2942,
-      5.5705
+      0.306,
+      5.5679
      ],
      "windows_per_week_meters": null,
      "windows_per_week_pooled": null,
@@ -10993,7 +10993,7 @@
    }
   ]
  },
- "generated_at": "2026-11-16T15:31:49.798615+00:00",
+ "generated_at": "2026-11-16T16:01:47.272228+00:00",
  "headline": {
   "at": "2026-11-10T16:00:00+00:00",
   "change_pct": -52.4,
@@ -23446,7 +23446,7 @@
   "windows_per_week_change_pct": -9.2
  },
  "last_sample_at": "2026-10-30T19:42:26+00:00",
- "meter_read_at": "2026-11-16T15:30:05+00:00",
+ "meter_read_at": "2026-11-16T16:01:04+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -36239,16 +36239,16 @@
       {
        "day": "2026-11-16",
        "fast_session_requests": 0,
-       "n": 261,
+       "n": 262,
        "output_tokens_per_s": {
-        "median": 96.9,
+        "median": 97.0,
         "q1": 90.4,
         "q3": 104.4
        },
        "time_to_first_block_s": {
-        "median": 3.71,
-        "q1": 2.5,
-        "q3": 5.67
+        "median": 3.69,
+        "q1": 2.49,
+        "q3": 5.66
        }
       }
      ],
@@ -37443,16 +37443,16 @@
       {
        "day": "2026-11-16",
        "fast_session_requests": 0,
-       "n": 121,
+       "n": 125,
        "output_tokens_per_s": {
         "median": 88.1,
-        "q1": 81.2,
+        "q1": 81.4,
         "q3": 99.6
        },
        "time_to_first_block_s": {
-        "median": 4.01,
-        "q1": 2.57,
-        "q3": 5.53
+        "median": 3.97,
+        "q1": 2.54,
+        "q3": 5.46
        }
       }
      ]
@@ -39208,16 +39208,16 @@
       {
        "day": "2026-11-16",
        "fast_session_requests": 0,
-       "n": 255,
+       "n": 256,
        "output_tokens_per_s": {
-        "median": 96.8,
+        "median": 96.9,
         "q1": 90.3,
         "q3": 104.3
        },
        "time_to_first_block_s": {
-        "median": 3.62,
-        "q1": 2.44,
-        "q3": 5.61
+        "median": 3.61,
+        "q1": 2.43,
+        "q3": 5.6
        }
       }
      ],
@@ -41020,16 +41020,16 @@
       {
        "day": "2026-11-16",
        "fast_session_requests": 0,
-       "n": 121,
+       "n": 125,
        "output_tokens_per_s": {
         "median": 88.1,
-        "q1": 81.2,
+        "q1": 81.4,
         "q3": 99.6
        },
        "time_to_first_block_s": {
-        "median": 4.01,
-        "q1": 2.57,
-        "q3": 5.53
+        "median": 3.97,
+        "q1": 2.54,
+        "q3": 5.46
        }
       }
      ],
@@ -41988,16 +41988,16 @@
       {
        "day": "2026-11-16",
        "fast_session_requests": 0,
-       "n": 376,
+       "n": 381,
        "output_tokens_per_s": {
         "median": 94.7,
-        "q1": 87.3,
+        "q1": 87.2,
         "q3": 103.3
        },
        "time_to_first_block_s": {
         "median": 3.78,
-        "q1": 2.5,
-        "q3": 5.57
+        "q1": 2.49,
+        "q3": 5.54
        }
       }
      ],
@@ -43765,16 +43765,16 @@
      {
       "day": "2026-11-16",
       "fast_session_requests": 0,
-      "n": 382,
+      "n": 387,
       "output_tokens_per_s": {
        "median": 94.8,
-       "q1": 87.5,
+       "q1": 87.4,
        "q3": 103.4
       },
       "time_to_first_block_s": {
-       "median": 3.83,
-       "q1": 2.51,
-       "q3": 5.61
+       "median": 3.81,
+       "q1": 2.5,
+       "q3": 5.58
       }
      }
     ]
