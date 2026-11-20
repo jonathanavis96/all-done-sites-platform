@@ -49,71 +49,89 @@ export interface ArticleSection {
   };
 }
 
+type SectionModule = Pick<typeof defaultSection, "articles" | "getArticle" | "getRelatedSlugs">;
+
+type SectionConfig = Omit<ArticleSection, "articles" | "getArticle" | "getRelatedSlugs">;
+
+/**
+ * A section: its config plus its entries, which are read from the content module on
+ * use rather than copied in at import time. The table therefore always reflects the
+ * module, and a module (or test mock) that does not export one of these is only a
+ * problem for code that actually asks for it.
+ */
+function section(config: SectionConfig, mod: SectionModule): ArticleSection {
+  return Object.defineProperties(config as ArticleSection, {
+    articles: { get: () => mod.articles, enumerable: true },
+    getArticle: { value: (slug: string | undefined) => mod.getArticle(slug), enumerable: true },
+    getRelatedSlugs: { value: (slug: string) => mod.getRelatedSlugs(slug), enumerable: true },
+  });
+}
+
 export const ARTICLE_SECTIONS: Record<ArticleSectionKey, ArticleSection> = {
-  default: {
-    key: "default",
-    basePath: "/articles",
-    inLanguage: "en-ZA",
-    hreflang: "x-default",
-    articles: defaultSection.articles,
-    getArticle: defaultSection.getArticle,
-    getRelatedSlugs: defaultSection.getRelatedSlugs,
-    copy: {
-      eyebrow: "Articles",
-      title: "Articles from All Done Sites",
-      sub: "News, updates and longer-form writing from the All Done Sites team.",
-      seoTitle: "Articles | All Done Sites",
-      description: "News, updates and longer-form writing from the All Done Sites team.",
-      itemListName: "All Done Sites articles",
-      empty:
-        "We have not published any articles yet. In the meantime, our [guides](/guides/) answer the questions small business owners most often ask about getting a website in South Africa.",
-      llmsHeading: "Articles",
+  default: section(
+    {
+      key: "default",
+      basePath: "/articles",
+      inLanguage: "en-ZA",
+      hreflang: "x-default",
+      copy: {
+        eyebrow: "Articles",
+        title: "Articles from All Done Sites",
+        sub: "News, updates and longer-form writing from the All Done Sites team.",
+        seoTitle: "Articles | All Done Sites",
+        description: "News, updates and longer-form writing from the All Done Sites team.",
+        itemListName: "All Done Sites articles",
+        empty:
+          "We have not published any articles yet. In the meantime, our [guides](/guides/) answer the questions small business owners most often ask about getting a website in South Africa.",
+        llmsHeading: "Articles",
+      },
     },
-  },
-  us: {
-    key: "us",
-    basePath: "/us/articles",
-    lang: "en-US",
-    inLanguage: "en-US",
-    hreflang: "en-US",
-    articles: usSection.articles,
-    getArticle: usSection.getArticle,
-    getRelatedSlugs: usSection.getRelatedSlugs,
-    copy: {
-      eyebrow: "US articles",
-      title: "Articles for US small businesses",
-      sub: "Longer-form writing from the All Done Sites team for small business owners in the United States.",
-      seoTitle: "US Articles | All Done Sites",
-      description:
-        "Longer-form writing from the All Done Sites team for small business owners in the United States.",
-      itemListName: "All Done Sites articles for the US",
-      empty:
-        "We have not published any articles for US readers yet. In the meantime, our [other articles](/articles/) and [guides](/guides/) cover getting and running a small business website.",
-      llmsHeading: "US articles",
+    defaultSection,
+  ),
+  us: section(
+    {
+      key: "us",
+      basePath: "/us/articles",
+      lang: "en-US",
+      inLanguage: "en-US",
+      hreflang: "en-US",
+      copy: {
+        eyebrow: "US articles",
+        title: "Articles for US small businesses",
+        sub: "Longer-form writing from the All Done Sites team for small business owners in the United States.",
+        seoTitle: "US Articles | All Done Sites",
+        description:
+          "Longer-form writing from the All Done Sites team for small business owners in the United States.",
+        itemListName: "All Done Sites articles for the US",
+        empty:
+          "We have not published any articles for US readers yet. In the meantime, our [other articles](/articles/) and [guides](/guides/) cover getting and running a small business website.",
+        llmsHeading: "US articles",
+      },
     },
-  },
-  uk: {
-    key: "uk",
-    basePath: "/uk/articles",
-    lang: "en-GB",
-    inLanguage: "en-GB",
-    hreflang: "en-GB",
-    articles: ukSection.articles,
-    getArticle: ukSection.getArticle,
-    getRelatedSlugs: ukSection.getRelatedSlugs,
-    copy: {
-      eyebrow: "UK articles",
-      title: "Articles for UK small businesses",
-      sub: "Longer-form writing from the All Done Sites team for small business owners in the United Kingdom.",
-      seoTitle: "UK Articles | All Done Sites",
-      description:
-        "Longer-form writing from the All Done Sites team for small business owners in the United Kingdom.",
-      itemListName: "All Done Sites articles for the UK",
-      empty:
-        "We have not published any articles for UK readers yet. In the meantime, our [other articles](/articles/) and [guides](/guides/) cover getting and running a small business website.",
-      llmsHeading: "UK articles",
+    usSection,
+  ),
+  uk: section(
+    {
+      key: "uk",
+      basePath: "/uk/articles",
+      lang: "en-GB",
+      inLanguage: "en-GB",
+      hreflang: "en-GB",
+      copy: {
+        eyebrow: "UK articles",
+        title: "Articles for UK small businesses",
+        sub: "Longer-form writing from the All Done Sites team for small business owners in the United Kingdom.",
+        seoTitle: "UK Articles | All Done Sites",
+        description:
+          "Longer-form writing from the All Done Sites team for small business owners in the United Kingdom.",
+        itemListName: "All Done Sites articles for the UK",
+        empty:
+          "We have not published any articles for UK readers yet. In the meantime, our [other articles](/articles/) and [guides](/guides/) cover getting and running a small business website.",
+        llmsHeading: "UK articles",
+      },
     },
-  },
+    ukSection,
+  ),
 };
 
 /** Sections in a fixed order: the original first, then the sectioned ones. */
