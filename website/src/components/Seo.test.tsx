@@ -23,3 +23,33 @@ describe("Seo's computed canonical", () => {
     expect(html).not.toMatch(/(canonical|og:url)"[^>]*localhost/);
   });
 });
+
+describe("Seo's locale", () => {
+  it("sets <html lang> while a localised page is mounted and puts the site default back after", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    document.documentElement.lang = "en";
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(async () =>
+      root.render(
+        <HelmetProvider context={{}}>
+          <Seo title="t" description="d" locale="en-GB" />
+        </HelmetProvider>,
+      ),
+    );
+    expect(document.documentElement.lang).toBe("en-GB");
+    await act(async () => root.unmount());
+    expect(document.documentElement.lang).toBe("en");
+    host.remove();
+  });
+
+  it("emits og:locale in Open Graph form only when given", () => {
+    expect(head(<Seo title="t" description="d" locale="en-US" />)).toContain(
+      'property="og:locale" content="en_US"',
+    );
+    expect(head(<Seo title="t" description="d" />)).not.toContain("og:locale");
+  });
+});

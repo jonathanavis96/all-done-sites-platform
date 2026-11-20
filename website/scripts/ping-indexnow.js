@@ -24,7 +24,9 @@ if (!keyFile) {
 }
 const key = keyFile.replace(/\.txt$/, "");
 
-// Pull URLs from the generated sitemap (written into dist/ by prerender.js).
+// Pull URLs from the generated sitemap (written into dist/ by prerender.js). That
+// already lists every prerendered route at its full path, article sections
+// included (/articles/<slug>/, /us/articles/<slug>/, /uk/articles/<slug>/).
 const sitemap = fs.readFileSync(path.join(distDir, "sitemap.xml"), "utf-8");
 const urlList = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
 if (!urlList.length) {

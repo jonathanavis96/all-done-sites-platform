@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 
 interface SeoProps {
@@ -17,7 +18,18 @@ interface SeoProps {
    * produces "Crawled – currently not indexed" noise in Search Console.
    */
   noindex?: boolean;
+  /**
+   * BCP 47 language tag (e.g. "en-US") for pages written for one market. Sets
+   * `<html lang>` and og:locale. Omitted (the default) leaves the site-wide
+   * `<html lang="en">` from index.html alone and emits no og:locale.
+   */
+  locale?: string;
+  /** `<link rel="alternate" hreflang>` tags. Omitted or empty emits none. */
+  alternates?: Array<{ hreflang: string; href: string }>;
 }
+
+/** What index.html ships as `<html lang>`; restored when a localised page unmounts. */
+const DEFAULT_LANG = "en";
 
 const SITE = "https://alldonesites.com";
 
@@ -62,7 +74,28 @@ function safeJsonLd(data: object): string {
     .replace(/\u2029/g, "\\u2029");
 }
 
-export default function Seo({ title, description, canonical, jsonLd, image, noindex }: SeoProps) {
+export default function Seo({
+  title,
+  description,
+  canonical,
+  jsonLd,
+  image,
+  noindex,
+  locale,
+  alternates,
+}: SeoProps) {
+  // <html lang> is set here rather than through Helmet's htmlAttributes: Helmet removes
+  // an attribute it set once no page sets it any more, which would leave every page a
+  // reader navigates to afterwards with no lang at all. The prerendered HTML gets the
+  // same value from entry-server.tsx.
+  useEffect(() => {
+    if (!locale) return;
+    document.documentElement.lang = locale;
+    return () => {
+      document.documentElement.lang = DEFAULT_LANG;
+    };
+  }, [locale]);
+
   // 1) Decide canonical: explicit prop wins; else compute from window.location
   let computedCanonical = canonical;
   if (!computedCanonical && typeof window !== "undefined") {
@@ -93,12 +126,17 @@ export default function Seo({ title, description, canonical, jsonLd, image, noin
       <meta name="description" content={description} />
       {noindex && <meta name="robots" content="noindex, follow" />}
       {computedCanonical && <link rel="canonical" href={computedCanonical} />}
+      {alternates?.map((a) => (
+        <link key={a.hreflang} rel="alternate" hrefLang={a.hreflang} href={a.href} />
+      ))}
 
       {/* Open Graph (lightweight, no overkill) */}
       <meta property="og:type" content="website" />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       {computedCanonical && <meta property="og:url" content={computedCanonical} />}
+      {/* Open Graph writes locales with an underscore (language_TERRITORY). */}
+      {locale && <meta property="og:locale" content={locale.replace("-", "_")} />}
       {computedImage && <meta property="og:image" content={computedImage} />}
 
       {/* Twitter */}

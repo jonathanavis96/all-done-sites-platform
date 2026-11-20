@@ -5,7 +5,7 @@
  * Homepage: renders "/" and injects the rendered markup into #root of
  * dist/index.html, plus the rendered <title> + JSON-LD and a hero preload.
  *
- * Guides (and any other route in prerenderRoutes): renders each route and writes
+ * Guides, article sections (and any other route in prerenderRoutes): renders each route and writes
  * a full dist/<route>/index.html with the markup in #root and page-specific head
  * (title + meta + canonical + JSON-LD). This makes the article content + structured
  * data visible in the raw HTML for search engines and AI crawlers that do not run
@@ -17,6 +17,8 @@ import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { execFileSync } from "child_process";
 import { appendToHead, fillRoot } from "./inject-html.js";
+import { contentFileFor, sitemapXml } from "./sitemap.js";
+import { addSectionArticles } from "./llms.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
@@ -33,7 +35,9 @@ if (!fs.existsSync(distIndex)) {
   process.exit(1);
 }
 
-const { render, ready, prerenderRoutes = [] } = await import(pathToFileURL(serverEntry).href);
+const { render, ready, prerenderRoutes = [], llmsSections = [] } = await import(
+  pathToFileURL(serverEntry).href
+);
 await ready;
 
 // The pristine client template (read before we mutate dist/index.html for "/").
@@ -64,7 +68,7 @@ console.log("\n🧩 Prerendering...\n");
   console.log(`✓ / (${html.length.toLocaleString()} chars)`);
 }
 
-// ---- Other prerendered routes (guides) --------------------------------------
+// ---- Other prerendered routes (guides, article sections) --------------------
 // For these we replace the template's default meta with the page-specific head
 // that <Seo> produced (title, description, canonical, OG/Twitter, JSON-LD).
 function stripTemplateMeta(htmlStr) {
@@ -79,13 +83,16 @@ function stripTemplateMeta(htmlStr) {
 }
 
 for (const route of prerenderRoutes) {
-  const { html, headFull } = render(route);
+  const { html, headFull, lang } = render(route);
   if (!html || html.length < 50) {
     console.warn(`⚠️  ${route} rendered almost no content (${html.length} chars). Skipping write.`);
     continue;
   }
 
   let out = stripTemplateMeta(template);
+  // Market-specific article sections (/us/articles/, /uk/articles/) carry their
+  // own language; every other route keeps the template's <html lang>.
+  if (lang) out = out.replace(/<html lang="[^"]*"/i, () => `<html lang="${lang}"`);
   out = appendToHead(out, headFull);
   out = fillRoot(out, html);
 
@@ -101,20 +108,14 @@ for (const route of prerenderRoutes) {
 // Pages actually serves. Generated here so the sitemap can never drift from the
 // real routes, and never advertises a URL that redirects.
 {
-  const SITE = "https://alldonesites.com";
   const today = new Date().toISOString().slice(0, 10);
 
   // lastmod must reflect when the content actually changed, not when we last
   // deployed. Stamping every URL with today's date on every build teaches
   // Google to ignore the field entirely, which is the opposite of what we want
   // for guides and articles we need recrawled promptly. Take the date from the
-  // last commit that touched the file the route's content comes from.
-  const contentFileFor = (route) => {
-    if (route.startsWith("/guides")) return "src/content/guides.tsx";
-    if (route.startsWith("/articles")) return "src/content/articles.tsx";
-    if (route === "/claude-usage-tracker") return "public/data/claude-usage.json";
-    return "src/pages/Index.tsx";
-  };
+  // last commit that touched the file the route's content comes from
+  // (contentFileFor in sitemap.js).
   const lastmodCache = new Map();
   const lastmodFor = (route) => {
     const file = contentFileFor(route);
@@ -133,25 +134,26 @@ for (const route of prerenderRoutes) {
     }
     return lastmodCache.get(file);
   };
-  const toUrl = (route) => {
-    if (route === "/") return `${SITE}/`;
-    const clean = route.replace(/^\//, "").replace(/\/$/, "");
-    return `${SITE}/${clean}/`;
-  };
-  const entries = ["/", ...prerenderRoutes].map((r) => {
-    const loc = toUrl(r);
-    const isIndex = r === "/guides" || r === "/articles";
-    const priority = r === "/" ? "1.0" : isIndex ? "0.8" : "0.7";
-    const changefreq = r === "/" ? "weekly" : r === "/claude-usage-tracker" ? "daily" : "monthly";
-    return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmodFor(r)}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
-  });
-  const xml =
-    `<?xml version="1.0" encoding="UTF-8"?>\n` +
-    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    `${entries.join("\n")}\n` +
-    `</urlset>\n`;
+  const { xml, count } = sitemapXml(["/", ...prerenderRoutes], lastmodFor);
   fs.writeFileSync(path.join(distDir, "sitemap.xml"), xml);
-  console.log(`✓ sitemap.xml (${entries.length} URLs)`);
+  console.log(`✓ sitemap.xml (${count} URLs)`);
+}
+
+// ---- llms.txt -----------------------------------------------------------------
+// public/llms.txt (copied into dist/ by vite) is maintained by hand and lists the
+// original /articles/ section. Articles in the market-specific sections are added
+// to the built copy here; with those sections empty the file is left untouched.
+{
+  const llmsPath = path.join(distDir, "llms.txt");
+  if (fs.existsSync(llmsPath)) {
+    const before = fs.readFileSync(llmsPath, "utf-8");
+    const after = addSectionArticles(before, llmsSections);
+    if (after !== before) {
+      fs.writeFileSync(llmsPath, after);
+      const added = llmsSections.reduce((n, s) => n + s.entries.length, 0);
+      console.log(`✓ llms.txt (+${added} sectioned article${added === 1 ? "" : "s"})`);
+    }
+  }
 }
 
 console.log("\n✅ Prerender complete.\n");
