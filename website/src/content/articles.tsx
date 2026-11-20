@@ -410,7 +410,7 @@ export const articles: Article[] = [
     intro:
       "\"Website designer for small business near me\" is really three separate searches wearing one disguise: a local freelancer, a DIY builder, and a remote studio that simply ranks well in your area. This guide sorts those apart, tells you when \"near\" genuinely matters, what each route costs in South Africa, and what to check before you commit to one.",
     publishedAt: "2026-10-05",
-    updatedAt: "2026-10-05",
+    updatedAt: "2026-11-20",
     author: {
       name: "Jonathan Avis",
       url: "https://www.linkedin.com/in/jonathan-avis-0503a6201/",
@@ -439,7 +439,7 @@ export const articles: Article[] = [
       { h2: "How to choose between website developers for small business near me" },
       { p: "Ask three developers the same brief and compare what comes back, not just the price. A vague quote with no timeline is a warning sign on its own." },
       { p: "Check what happens after launch. Some developers hand over the files and disappear. Others, like the managed monthly plans priced earlier in this guide, and covered in full in [monthly vs upfront website cost](/guides/monthly-vs-upfront-website-cost/), keep hosting, fixes and updates running for as long as you pay. Ask directly: who fixes it when it breaks, and how fast?" },
-      { p: "Look at real examples of their work, not a portfolio slide. Load a few of their sites on your phone. If those are slow or hard to read, yours will be too." },
+      { p: "Look at real examples of their work, not a portfolio slide, and judge them against what [good small business website design](/articles/best-website-design-for-small-business/) should actually do. Load a few of their sites on your phone. If those are slow or hard to read, yours will be too." },
       { p: "Get the scope in writing: number of pages, who writes the copy, how many rounds of changes are included. A cheap quote that balloons once you ask for a second round of edits was never the cheap option." },
       { p: "Plain language matters more than it sounds like it should. If a developer cannot explain a decision without jargon in the first call, that will not improve once you have paid them." },
       { h2: "What happens after launch: hosting, updates and ongoing support" },
