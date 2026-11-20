@@ -915,6 +915,118 @@ export const articles: Article[] = [
       },
     ],
   },
+  {
+    slug: "ai-search-vs-seo-what-actually-changes",
+    title: "AI Search vs SEO: What Actually Changes",
+    metaTitle: "AI Search vs SEO: What Actually Changes | All Done Sites",
+    description:
+      "AI search is not replacing SEO. See how results, ranking signals, traffic and cost compare, and which edits help your small business site in both.",
+    summary:
+      "How AI search optimisation compares with traditional SEO, what AI answers mean for a small business, and which edits to make to your pages.",
+    category: "Getting started",
+    readMins: 8,
+    intro:
+      "You have heard that AI is changing how people find businesses online. You may also have been told your SEO is now out of date. This article is for small business owners who want a straight answer.",
+    publishedAt: "2026-11-20",
+    updatedAt: "2026-11-20",
+    author: {
+      name: "Jonathan Avis",
+      url: "https://www.linkedin.com/in/jonathan-avis-0503a6201/",
+    },
+    blocks: [
+      { p: "It explains what AI search optimisation is and how it compares with traditional SEO. It then looks at what AI answers mean for a small business, whether they replace SEO, and which edits to make to your site." },
+      { h2: "The short answer" },
+      { p: "AI search optimisation and traditional SEO overlap far more than they differ. Most of what helps you rank in Google also helps AI tools mention your business. AI search is not replacing SEO." },
+      { p: "What changes is where the result appears. A search engine lists links, and you compete for the click. An AI answer pulls from several sources into one reply, and you compete to be cited inside it." },
+      { p: "For a small business, that comes down to three things:" },
+      { ul: [
+        "**Same foundation:** a fast, crawlable site with clear, honest pages still comes first.",
+        "**Different target:** being named in an answer now matters alongside ranking.",
+        "**Different measure:** rankings and clicks tell only part of the story, so watch enquiries and mentions too.",
+      ] },
+      { p: "If you do not have a site yet, start with [how to get a website for your small business](/guides/how-to-get-a-website-for-your-small-business/). The sections below compare the two approaches criterion by criterion, then cover what to change." },
+      { h2: "What AI search optimisation is, and how it differs from traditional SEO" },
+      { p: "AI search optimisation is the work of making your site easy for AI tools to read, trust and quote. Those tools include Google's AI answers, ChatGPT and Perplexity. You may also see it called AEO or GEO. The names differ, but the job is the same." },
+      { p: "Traditional SEO aims to put your page in a list of blue links. AI search optimisation aims to get your business named inside a written answer, often with a link beside it." },
+      { p: "The two share most of their foundations:" },
+      { ul: [
+        "**Clear content:** pages that answer a real question directly, in plain language.",
+        "**Sound technical setup:** a fast site that search crawlers can read.",
+        "**Trust signals:** accurate business details, reviews and mentions on other sites.",
+      ] },
+      { p: "The difference is in emphasis. AI tools lift short, self-contained passages, so a page that opens with the answer does better than one that buries it. They also lean on how consistently your business is described across the web." },
+      { p: "Whether it replaces SEO is covered below." },
+      { h2: "AI search vs SEO, criterion by criterion: results, ranking signals, traffic and cost" },
+      { ul: [
+        "**Results:** Traditional SEO gives you a list of links, and you want to sit near the top. AI search gives one written answer with a few cited sources, and on Google that answer often sits above the links.",
+        "**Ranking signals:** Google still rewards relevance, links, speed and a sound site. AI tools lean on the same foundations, then favour clear, self-contained passages they can quote with confidence.",
+        "**Traffic:** A ranking sends a click to your page. An AI answer often satisfies the reader without one, so you may get fewer visits that are better informed. Nobody can promise you a number here, and treat anyone who does with caution.",
+        "**Cost:** Most of the work is shared. Good copy, a fast site and accurate business details serve both. The extra effort is mostly in rewriting pages so each opens with the answer and uses question-style headings.",
+      ] },
+      { p: "SEO earns its place because search engines still send most of the traffic that turns into enquiries. AI search is a smaller channel today, and it grows from the same groundwork." },
+      { p: "You do not need two budgets. You need one site that is easy to find and easy to quote." },
+      { h2: "How AI search results are changing SEO for small businesses" },
+      { p: "AI answers change what a search result looks like. Often the reader gets a summary at the top of the page and only clicks through if they want more. For a small business, that shifts three things." },
+      { ul: [
+        "**Fewer easy clicks:** general questions (\"what is a bookkeeper?\") are the ones an AI answer settles on its own. Expect less traffic from those.",
+        "**Local and buying searches matter more:** someone who needs a plumber in Pretoria still has to contact one. Those searches keep sending enquiries.",
+        "**Being named counts:** an AI answer that mentions your business, or cites your page, puts you in front of the reader before they ever visit.",
+      ] },
+      { p: "Small businesses have an edge here. You know your customers, your area and your prices. A page that states them plainly gives an AI tool something specific to quote, which a generic blog post does not." },
+      { p: "The basics still decide whether you get picked up at all. A site that is fast, clear and easy for search engines to read comes first." },
+      { h2: "Is AI search replacing SEO?" },
+      { p: "No. For a small business, AI search is sitting on top of SEO, not pushing it out." },
+      { p: "AI tools still need somewhere to get their answers. They draw on pages that are indexed, clear and trusted, which is the same groundwork SEO has always done. Skip that groundwork and you are less likely to be named in an answer too." },
+      { p: "What has changed is the scoreboard. Ranking first no longer guarantees the click, and being mentioned in an answer can bring a visit you would never have counted before. Treat both as part of one job." },
+      { p: "Here is where each approach still wins:" },
+      { ul: [
+        "**Traditional SEO:** it still sends the steady stream of people ready to contact you, especially for local and buying searches.",
+        "**AI search optimisation:** it helps you get named when someone asks a question instead of typing a few keywords.",
+      ] },
+      { p: "Be wary of anyone who says SEO is dead and sells you a separate package to replace it. Our look at [AI search optimisation services and specialists](/articles/ai-search-optimisation-services-and-specialists/) covers what to ask before you pay for one." },
+      { p: "The honest picture is that nobody can promise how AI answers will behave next year. Good pages hold their value either way." },
+      { h2: "What to change on your site so it works for AI search and SEO" },
+      { p: "You do not need a second strategy. A handful of changes help both, and most are small edits to pages you already have." },
+      { ul: [
+        "**Answer first:** open each page with a direct answer to the question it targets, then explain. AI tools lift short passages, and search engines reward the same clarity.",
+        "**Question headings:** write subheadings the way customers ask, such as \"How long does a geyser repair take?\", and answer each in a few plain sentences.",
+        "**Clear business details:** keep your name, address, phone number, services and areas served consistent across your site and your Google Business Profile.",
+        "**Real specifics:** state what you offer, where, and for whom. Vague copy gives an AI tool nothing to quote.",
+        "**A fast, crawlable site:** If crawlers cannot read a page, neither Google nor an AI tool can use it, and a slow page puts you at a disadvantage against faster competitors. Our guide on [what hosting and maintenance include](/guides/whats-included-in-website-hosting-and-maintenance/) explains what keeps a site healthy.",
+      ] },
+      { p: "Start with your five most important pages. Check that each one answers its main question in the first paragraph. That one edit costs little and helps in both places." },
+      { h2: "Want it handled for you?" },
+      { p: "AI search has changed where your business can show up. It has not changed what makes a site worth showing. Clear pages, accurate details and a fast, readable site still do most of the work." },
+      { p: "You do not need to choose between the two approaches. Good SEO gives AI tools something to draw on, and answer-first pages help you in both places." },
+      { p: "All Done Sites builds and maintains small business websites set up for both, so if you want yours looked at, get in touch and tell us which five pages matter most to your business." },
+    ],
+    faqs: [
+      {
+        q: "Is AI search replacing SEO?",
+        a: "No. AI tools draw on the same indexed, trusted pages that SEO builds. For a small business, AI search sits on top of SEO rather than pushing it out.",
+      },
+      {
+        q: "What is the difference between AI search optimisation and SEO?",
+        a: "SEO aims to place your page in a list of links. AI search optimisation aims to get your business named inside a written answer. Most of the groundwork is shared.",
+      },
+      {
+        q: "Do I need a separate budget for AI search?",
+        a: "Usually not. Good copy, a fast site and consistent business details serve both. The extra effort is mostly rewriting pages so each one opens with the answer and uses question-style headings.",
+      },
+      {
+        q: "Will AI answers cut my website traffic?",
+        a: "Possibly for general questions, which an AI answer can settle on its own. Local and buying searches still send enquiries. Nobody can promise you a specific number either way.",
+      },
+      {
+        q: "What should I change first?",
+        a: "Your most important pages, using the answer-first check described above.",
+      },
+      {
+        q: "Should I trust someone who says SEO is dead?",
+        a: "Be cautious. SEO still sends the steady stream of people ready to contact you, and AI tools draw on the same groundwork.",
+      },
+    ],
+  },
 ];
 
 export function getArticle(slug: string | undefined): Article | undefined {
