@@ -70,6 +70,12 @@ export default function App() {
                 collection has content — see entry-server.tsx. */}
             <Route path="/articles" element={<ArticlesIndex />} />
             <Route path="/articles/:slug" element={<ArticleArticle />} />
+            {/* Market-specific article sections (content/sections.ts), rendered by the
+                same pages. Each is prerendered only once it has content. */}
+            <Route path="/us/articles" element={<ArticlesIndex section="us" />} />
+            <Route path="/us/articles/:slug" element={<ArticleArticle section="us" />} />
+            <Route path="/uk/articles" element={<ArticlesIndex section="uk" />} />
+            <Route path="/uk/articles/:slug" element={<ArticleArticle section="uk" />} />
 
             {/* The /new preview path is retired post-cutover; send it home. */}
             <Route path="/new/*" element={<Navigate to="/" replace />} />

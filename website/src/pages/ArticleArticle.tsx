@@ -2,7 +2,13 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import Seo from "@/components/Seo";
 import { PageShell } from "@/components/redesign/RedesignChrome";
-import { getArticle, getRelatedSlugs } from "@/content/articles";
+import {
+  ARTICLE_SECTIONS,
+  SITE,
+  articleUrl,
+  hreflangAlternates,
+  type ArticleSectionKey,
+} from "@/content/sections";
 import ContentBlockView from "@/components/ContentBlockView";
 import ArticleNav from "@/components/ArticleNav";
 import { useLocalPrices } from "@/hooks/useLocalPrices";
@@ -10,7 +16,6 @@ import { WHATSAPP_HELLO } from "@/lib/site";
 import { absoluteImage, imageSrcs, renderInline, stripInline } from "@/content/shared";
 import "@/styles/home.css";
 
-const SITE = "https://alldonesites.com";
 const OG_IMAGE = `${SITE}/og1200x630_v2.jpg`;
 
 // `article.author.url` is authored content, not runtime user input, but it still ends up
@@ -28,19 +33,25 @@ function safeHttpUrl(url: string | undefined): string | undefined {
   }
 }
 
-export default function ArticleArticle() {
+/** One article in an article section (/articles/, /us/articles/, /uk/articles/). */
+export default function ArticleArticle({ section: sectionKey = "default" }: { section?: ArticleSectionKey }) {
+  const section = ARTICLE_SECTIONS[sectionKey];
+  const { getArticle, getRelatedSlugs, basePath } = section;
   const { slug } = useParams();
   const article = getArticle(slug);
+  // Sections can share a slug, so the section is part of every per-article key: the
+  // same slug in another section is a different article and a different DOM subtree.
+  const articleKey = sectionKey === "default" ? slug : `${basePath}/${slug}`;
 
   // Show readers outside the rand an approximate price in their own currency.
-  useLocalPrices("article.guide-body", slug);
+  useLocalPrices("article.guide-body", articleKey);
 
-  // Unknown slug: send back to the articles index (valid slugs are prerendered).
-  if (!article) return <Navigate to="/articles/" replace />;
+  // Unknown slug: send back to the section index (valid slugs are prerendered).
+  if (!article) return <Navigate to={`${basePath}/`} replace />;
 
   // Trailing slash to match the URL Cloudflare Pages actually serves
   // (it 308-redirects the no-slash form to the directory form).
-  const url = `${SITE}/articles/${article.slug}/`;
+  const url = articleUrl(section, article.slug);
   const toc = article.blocks.filter((b): b is { h2: string } => "h2" in b).map((b) => b.h2);
   const related = getRelatedSlugs(article.slug)
     .map((s) => getArticle(s))
@@ -58,7 +69,7 @@ export default function ArticleArticle() {
     "@type": "Article",
     headline: article.title,
     description: stripInline(article.description),
-    inLanguage: "en-ZA",
+    inLanguage: section.inLanguage,
     datePublished: article.publishedAt,
     dateModified: article.updatedAt,
     author: article.author
@@ -126,12 +137,14 @@ export default function ArticleArticle() {
         canonical={url}
         image={OG_IMAGE}
         jsonLd={faqSchema ? [articleSchema, faqSchema] : articleSchema}
+        locale={section.lang}
+        alternates={hreflangAlternates(article.slug)}
       />
 
       <div className="guide-layout">
         {/* The key gives each slug a fresh DOM subtree. useLocalPrices rewrites text
             nodes in here, so React must never reconcile one article into another. */}
-        <article className="legal guide-body" key={article.slug}>
+        <article className="legal guide-body" key={articleKey}>
           <p className="intro">{renderInline(article.intro)}</p>
 
           <ArticleNav toc={toc} />
@@ -176,7 +189,7 @@ export default function ArticleArticle() {
               <h2>Related articles</h2>
               <div className="guide-related-grid">
                 {related.map((r) => (
-                  <Link to={`/articles/${r.slug}/`} className="guide-related-card" key={r.slug}>
+                  <Link to={`${basePath}/${r.slug}/`} className="guide-related-card" key={r.slug}>
                     <span className="eyebrow kicker">{r.category}</span>
                     <span className="grtitle">{r.title}</span>
                   </Link>
@@ -186,7 +199,7 @@ export default function ArticleArticle() {
           )}
 
           <p className="guide-back">
-            <Link to="/articles/">← All articles</Link>
+            <Link to={`${basePath}/`}>← All articles</Link>
           </p>
         </article>
       </div>
