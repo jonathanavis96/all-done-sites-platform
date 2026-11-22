@@ -124,15 +124,15 @@ export const articles: Article[] = [
     title: "How Much Should an Ecommerce Website Cost in South Africa?",
     metaTitle: "How Much Should an Ecommerce Website Cost in South Africa?",
     description:
-      "Ecommerce website costs in South Africa run R15,000 to R80,000 to build, plus R500 to R3,000 a month to run. See what drives the price and what to skip.",
+      "Ecommerce website costs in South Africa run R15,000 to R80,000 to build, plus from about R500 a month to run. See what drives the price and what to skip.",
     summary:
       "What ecommerce sites actually cost to build and run in South Africa, by shop size, platform, and the monthly fees quotes often leave out.",
     category: "Pricing",
-    readMins: 18,
+    readMins: 19,
     intro:
       "The price on an ecommerce quote and what the store costs you in its first year are rarely the same number. The monthly running cost is the part most quotes leave off, and it's often the difference between a build that looks cheap and a first year that isn't.",
     publishedAt: "2026-09-29",
-    updatedAt: "2026-09-29",
+    updatedAt: "2026-11-22",
     author: {
       name: "Jonathan Avis",
       url: "https://www.linkedin.com/in/jonathan-avis-0503a6201/",
@@ -191,7 +191,7 @@ export const articles: Article[] = [
       { h3: "Shopify" },
       { p: "Plans start in the region of a few hundred rand a month for the entry tier and climb to roughly two thousand once you need extra staff logins or better reporting — check current pricing, which changes and is often discounted for a first term. Shopify doesn't process its own payments in South Africa. Every sale carries a card fee from PayFast, Yoco or Peach Payments, plus a small extra transaction charge from Shopify itself. Apps for stock sync, reviews or loyalty programmes each add their own subscription on top of the plan fee." },
       { h3: "WooCommerce" },
-      { p: "WooCommerce itself is free. It's a plugin that turns a WordPress site into a store. The cost shifts to hosting (R150–R500 a month for something that holds up at checkout), an SSL certificate, usually bundled with hosting, and whichever premium plugins you need for shipping rules, stock management or backups. It's typically the cheapest to run month to month. But WordPress, WooCommerce and every plugin need regular updates. That's either your own time or a maintenance retainer, and skipping it is how sites break at the worst moment." },
+      { p: "WooCommerce itself is free. It's a plugin that turns a WordPress site into a store. The cost shifts to hosting (R100–R800 a month, with the plans that hold up at checkout towards the top), an SSL certificate, usually bundled with hosting, and whichever premium plugins you need for shipping rules, stock management or backups. It's typically the cheapest to run month to month. But WordPress, WooCommerce and every plugin need regular updates. That's either your own time or a maintenance retainer, and skipping it is how sites break at the worst moment." },
       { h3: "Wix" },
       { p: "Wix Business plans start in the region of a few hundred rand a month and include hosting, so there's no separate hosting invoice to track. It's the simplest of the three to run day-to-day. Product limits and design flexibility are tighter than Shopify or WooCommerce. Fine for a small, stable catalogue; restrictive once you're past a few hundred products or need checkout logic the platform doesn't offer out of the box." },
       { ul: [
@@ -216,7 +216,7 @@ export const articles: Article[] = [
       { p: "Add it up and a modest store often carries:" },
       { ul: [
         "Payment gateway fees: roughly 3% to 4% of turnover, plus a small fixed amount per sale",
-        "Platform or hosting fee: from about R150 a month upward, covered in the platform comparison above",
+        "Platform or hosting fee: from about R100 a month upward, covered in the platform comparison above",
         "Apps and integrations: a few hundred to a couple of thousand rand a month",
         "Backups and security: included on Shopify/Wix, a small extra monthly charge on WooCommerce if not bundled with hosting",
         "Content and small edits: nothing but your time if you do it yourself, up to R2,000 a month on retainer",
@@ -275,7 +275,7 @@ export const articles: Article[] = [
       { p: "Once you have those two numbers and a straight answer on who owns what after launch, you have enough to compare quotes properly and choose with your eyes open." },
       { p: "There's no single right price for an ecommerce website in South Africa. There's only a right price for your catalogue size, your platform choice, and how much of the ongoing work you take on. A 20-product shop on a template and a 300-product shop with stock syncing are different jobs, and the quotes should reflect that." },
       { p: "What keeps the numbers honest is separating the once-off build cost from the monthly running cost before you sign anything. Ask what's included item by item, which apps the build depends on, and who owns your domain and product data if you ever want to leave. A cheap build with an expensive first year isn't actually the cheaper option." },
-      { p: "If you're getting quotes now, start by counting your product list, deciding which platform fits how you plan to run the store month to month, and asking every supplier for the build price and the monthly cost as two separate numbers, in writing." },
+      { p: "If you're getting quotes now, start by counting your product list, deciding which platform fits how you plan to run the store month to month (our [comparison of Wix, Squarespace, WordPress and custom sites for small businesses](/articles/best-websites-for-niche-small-businesses/) can help), and asking every supplier for the build price and the monthly cost as two separate numbers, in writing." },
       { p: "If you'd rather start with a quote that's already split that way, ask us for an itemised one: the once-off build on one side, the monthly running cost on the other. Tell us your product count and your platform and we'll price it against that." },
     ],
     faqs: [
