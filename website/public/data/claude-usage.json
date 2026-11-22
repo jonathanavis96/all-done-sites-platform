@@ -1,25 +1,25 @@
 {
  "account_feeds": {
   "a1": {
-   "feed_at": "2026-11-21T22:16:54.719393+00:00",
-   "newest_step_end": "2026-11-21T19:11:52+00:00",
+   "feed_at": "2026-11-22T19:16:56.252757+00:00",
+   "newest_step_end": "2026-11-22T16:36:29+00:00",
    "newest_stretch_end": "2026-10-30T04:16:47+00:00",
    "state": "fresh"
   },
   "a2": {
-   "feed_at": "2026-11-22T18:59:38+00:00",
+   "feed_at": "2026-11-22T19:28:53+00:00",
    "newest_step_end": "2026-11-21T11:20:08+00:00",
    "newest_stretch_end": "2026-10-18T03:16:10+00:00",
    "state": "fresh"
   },
   "a3": {
-   "feed_at": "2026-11-22T19:00:45+00:00",
+   "feed_at": "2026-11-22T19:26:45+00:00",
    "newest_step_end": "2026-11-22T15:55:09+00:00",
    "newest_stretch_end": "2026-10-30T10:49:15+00:00",
    "state": "fresh"
   },
   "a4": {
-   "feed_at": "2026-11-22T19:01:48+00:00",
+   "feed_at": "2026-11-22T19:31:03+00:00",
    "newest_step_end": "2026-11-22T00:51:07+00:00",
    "newest_stretch_end": "2026-10-06T22:48:16+00:00",
    "state": "fresh"
@@ -228,55 +228,33 @@
  "contributed": {
   "evidence_window_days": 30,
   "max20": {
-   "contributors": 1,
+   "contributors": 0,
    "evidence": {
-    "as_of": "2026-11-22T19:00:05+00:00",
-    "current_since": "2026-10-23T19:00:05+00:00",
-    "freshest_sample_at": "2026-10-23T19:12:07+00:00",
+    "as_of": "2026-11-22T19:30:05+00:00",
+    "current_since": "2026-10-23T19:30:05+00:00",
+    "freshest_sample_at": null,
     "ignored_invalid_time_samples": 0,
-    "ignored_old_samples": 2,
-    "reason": null,
+    "ignored_old_samples": 3,
+    "reason": "no current samples",
     "samples_without_capture": 0,
     "stale": true
    },
    "identity_basis": "unverified_source_ids",
-   "missing_reasons": [],
-   "points": [
-    {
-     "c": 2351248796,
-     "coarse": false,
-     "t": "2026-10-23T19:12:07Z",
-     "tokens_per_pct": 21638465,
-     "tokens_per_pct_by_model": {
-      "claude-opus-5-5": 21752746
-     },
-     "tokens_per_pct_week": 110285445,
-     "usd_per_pct": 2.0138
-    }
+   "missing_reasons": [
+    "no current sample cleared the utilization floor with priced tokens"
    ],
+   "points": [],
    "quality": "conditional_local_transcripts",
-   "samples": 1,
-   "tokens_per_pct": {
-    "claude-opus-5-5": {
-     "contributors": 1,
-     "median": 21752746,
-     "samples": 1,
-     "spread": null
-    }
-   },
-   "usd_per_pct": {
-    "contributors": 1,
-    "median": 2.0138,
-    "samples": 1,
-    "spread": null
-   },
+   "samples": 0,
+   "tokens_per_pct": {},
+   "usd_per_pct": null,
    "weekly_windows": {
-    "contributors": 1,
+    "contributors": 0,
     "dropped": 0,
     "estimates": [],
     "measured": null,
     "quality": "conditional_paired_meter_deltas",
-    "reason": "1 contributor, none with a complete week yet; per-source estimates only, never pooled into a plan figure",
+    "reason": "no samples",
     "weeks": 0,
     "with_complete_week": 0
    }
@@ -284,8 +262,8 @@
   "max5": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-11-22T19:00:05+00:00",
-    "current_since": "2026-10-23T19:00:05+00:00",
+    "as_of": "2026-11-22T19:30:05+00:00",
+    "current_since": "2026-10-23T19:30:05+00:00",
     "freshest_sample_at": "2026-10-23T19:56:41+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -352,8 +330,8 @@
   "pro": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-11-22T19:00:05+00:00",
-    "current_since": "2026-10-23T19:00:05+00:00",
+    "as_of": "2026-11-22T19:30:05+00:00",
+    "current_since": "2026-10-23T19:30:05+00:00",
     "freshest_sample_at": "2026-10-24T07:37:50+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -393,7 +371,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-11-22T19:00:05+00:00"
+  "updated_at": "2026-11-22T19:30:05+00:00"
  },
  "credits": {
   "as_of": "2026-10-30T10:49:15+00:00",
@@ -3032,22 +3010,22 @@
     "credits_per_token_at_split": 0.02053333,
     "credits_per_token_at_split_interval": null,
     "derivation": "credits",
-    "median_session_tokens": 629806,
+    "median_session_tokens": 596196,
     "per_week": {
      "interval": [
-      9728.2,
-      18151.6
+      10276.7,
+      19174.9
      ],
      "status": null,
-     "value": 13683.4
+     "value": 14454.7
     },
     "per_window": {
      "interval": [
-      2327.3,
-      4342.5
+      2458.5,
+      4587.3
      ],
      "status": null,
-     "value": 3273.5
+     "value": 3458.1
     },
     "rate_source": "list_price_until_separable",
     "split": {
@@ -11011,7 +10989,7 @@
    }
   ]
  },
- "generated_at": "2026-11-22T19:03:05.395743+00:00",
+ "generated_at": "2026-11-22T19:35:22.757410+00:00",
  "headline": {
   "at": "2026-11-10T12:00:00+00:00",
   "change_pct": -48.0,
@@ -24575,7 +24553,7 @@
   "windows_per_week_change_pct": -9.2
  },
  "last_sample_at": "2026-10-30T19:42:26+00:00",
- "meter_read_at": "2026-11-22T19:01:48+00:00",
+ "meter_read_at": "2026-11-22T19:31:03+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -24819,7 +24797,7 @@
   }
  },
  "passive_account_count": 4,
- "passive_generated_at": "2026-11-21T22:16:54.594731+00:00",
+ "passive_generated_at": "2026-11-22T19:16:56.135503+00:00",
  "plan_measured": "max20",
  "plan_ratios": {
   "max20": 1.0,
@@ -25887,14 +25865,14 @@
  "schema_version": 2,
  "session_tokens": {
   "claude-opus-4-8": 37173,
-  "claude-opus-5-5": 629806,
+  "claude-opus-5-5": 596196,
   "claude-sonnet-4-6": 222992
  },
  "speed": {
   "accounts": {
    "a1": {
     "first_day": "2026-08-20",
-    "last_day": "2026-11-21"
+    "last_day": "2026-11-22"
    },
    "a2": {
     "first_day": "2026-08-23",
@@ -37183,16 +37161,31 @@
       {
        "day": "2026-11-21",
        "fast_session_requests": 0,
-       "n": 2064,
+       "n": 2203,
        "output_tokens_per_s": {
-        "median": 101.7,
-        "q1": 91.2,
-        "q3": 112.7
+        "median": 101.9,
+        "q1": 91.6,
+        "q3": 113.0
        },
        "time_to_first_block_s": {
-        "median": 3.43,
+        "median": 3.46,
         "q1": 2.3,
-        "q3": 6.22
+        "q3": 6.21
+       }
+      },
+      {
+       "day": "2026-11-22",
+       "fast_session_requests": 0,
+       "n": 362,
+       "output_tokens_per_s": {
+        "median": 103.2,
+        "q1": 95.5,
+        "q3": 113.2
+       },
+       "time_to_first_block_s": {
+        "median": 3.41,
+        "q1": 2.16,
+        "q3": 5.79
        }
       }
      ],
@@ -40268,16 +40261,31 @@
       {
        "day": "2026-11-21",
        "fast_session_requests": 0,
-       "n": 2062,
+       "n": 2201,
        "output_tokens_per_s": {
-        "median": 101.7,
-        "q1": 91.2,
-        "q3": 112.7
+        "median": 101.9,
+        "q1": 91.6,
+        "q3": 113.0
        },
        "time_to_first_block_s": {
-        "median": 3.42,
+        "median": 3.46,
         "q1": 2.3,
         "q3": 6.2
+       }
+      },
+      {
+       "day": "2026-11-22",
+       "fast_session_requests": 0,
+       "n": 362,
+       "output_tokens_per_s": {
+        "median": 103.2,
+        "q1": 95.5,
+        "q3": 113.2
+       },
+       "time_to_first_block_s": {
+        "median": 3.41,
+        "q1": 2.16,
+        "q3": 5.79
        }
       }
      ],
@@ -44434,31 +44442,31 @@
       {
        "day": "2026-11-21",
        "fast_session_requests": 0,
-       "n": 6008,
+       "n": 6147,
        "output_tokens_per_s": {
-        "median": 97.7,
-        "q1": 85.9,
-        "q3": 110.7
+        "median": 97.9,
+        "q1": 86.1,
+        "q3": 110.8
        },
        "time_to_first_block_s": {
         "median": 3.71,
-        "q1": 2.53,
-        "q3": 6.02
+        "q1": 2.52,
+        "q3": 6.03
        }
       },
       {
        "day": "2026-11-22",
        "fast_session_requests": 0,
-       "n": 2373,
+       "n": 2735,
        "output_tokens_per_s": {
-        "median": 95.0,
-        "q1": 85.3,
-        "q3": 108.5
+        "median": 96.6,
+        "q1": 86.8,
+        "q3": 109.3
        },
        "time_to_first_block_s": {
-        "median": 3.85,
-        "q1": 2.67,
-        "q3": 6.07
+        "median": 3.81,
+        "q1": 2.61,
+        "q3": 6.03
        }
       }
      ],
@@ -46361,31 +46369,31 @@
      {
       "day": "2026-11-21",
       "fast_session_requests": 0,
-      "n": 6042,
+      "n": 6181,
       "output_tokens_per_s": {
-       "median": 97.9,
-       "q1": 86.0,
-       "q3": 110.9
+       "median": 98.1,
+       "q1": 86.1,
+       "q3": 111.1
       },
       "time_to_first_block_s": {
        "median": 3.73,
-       "q1": 2.53,
+       "q1": 2.52,
        "q3": 6.08
       }
      },
      {
       "day": "2026-11-22",
       "fast_session_requests": 0,
-      "n": 2397,
+      "n": 2759,
       "output_tokens_per_s": {
-       "median": 95.1,
-       "q1": 85.5,
-       "q3": 109.0
+       "median": 96.8,
+       "q1": 86.9,
+       "q3": 109.7
       },
       "time_to_first_block_s": {
-       "median": 3.88,
-       "q1": 2.68,
-       "q3": 6.19
+       "median": 3.83,
+       "q1": 2.62,
+       "q3": 6.14
       }
      }
     ]
