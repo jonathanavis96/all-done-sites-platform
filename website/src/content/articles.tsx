@@ -485,7 +485,7 @@ export const articles: Article[] = [
     intro:
       "Budgeting for a small business website usually starts with one question: what does it actually cost? In South Africa a template build runs R5,590 to R15,000 once-off, or from R799 a month on a managed plan. This guide is for a small business owner who wants a straight number first, plus a sense of what changes it.",
     publishedAt: "2026-10-08",
-    updatedAt: "2026-10-08",
+    updatedAt: "2026-11-22",
     author: {
       name: "Jonathan Avis",
       url: "https://www.linkedin.com/in/jonathan-avis-0503a6201/",
@@ -514,7 +514,7 @@ export const articles: Article[] = [
       { p: "Some designers quote by the hour rather than by the project. If yours does, ask how many hours the build is expected to take and turn that into an estimated project total. Only then can you set it beside a fixed-price quote." },
       { p: "Two quotes for what looks like the same site can differ by thousands of rand. The reason is almost always one of these factors, not a difference in workmanship." },
       { h2: "Your Three Options: DIY Builder, Freelancer or Web Design Agency" },
-      { p: "Three routes get you a small business site, and each suits a different budget and a different amount of your own time." },
+      { p: "Three routes get you a small business site, and each suits a different budget and a different amount of your own time, as our [comparison of website builders, freelancers and design companies](/articles/best-website-design-for-small-business/) explains." },
       { ul: [
         "**DIY builder:** from around R300 a month, depending on the platform and the exchange rate on the day. You build it yourself on a platform like Squarespace. Cheapest route, but you carry the design and content work.",
         "**Freelance web designer:** usually lands in template territory. A freelancer can also do original design work, at which point pricing moves into the custom band.",
@@ -523,8 +523,8 @@ export const articles: Article[] = [
       { p: "A managed plan from R799 a month sits alongside any of these. It bundles hosting and support into one monthly fee rather than a separate once-off design cost. That is a different decision to who designs the site. Read [monthly vs upfront](/guides/monthly-vs-upfront-website-cost/) before you choose between a plan and a once-off quote." },
       { h2: "Monthly Costs: Hosting, Domain and Maintenance" },
       { p: "A once-off build price is only half the budget. Three ongoing costs keep a site online and working: hosting, a domain, and maintenance." },
-      { p: "Hosting alone typically runs **R89–R499 a month**, depending on traffic and the level of support included. A **.co.za domain** costs around **R150 a year** to register, separate from hosting. Skip a managed plan and you add a maintenance retainer on top. Agencies commonly charge **R500–R1,500 a month** for basic upkeep like updates, backups and small content changes, and up to **R12,000 a month** for hands-on support of a larger or e-commerce site." },
-      { p: "A managed plan from **R799 a month** bundles hosting and support into one bill. At the bottom of each range those items come to less than R799 a month: hosting from R89, a .co.za domain at around R150 a year, and basic maintenance from R500. Once maintenance moves past the basic band, the separate total runs well above R799. Compare on what is included, not on the headline number alone. Read [what's included in hosting and maintenance](/guides/whats-included-in-website-hosting-and-maintenance/) before comparing a monthly plan against a once-off quote plus these running costs." },
+      { p: "Hosting alone typically runs **R100–R800 a month**, depending on traffic and the level of support included. A **.co.za domain** renews from about **R99 a year**, separate from hosting. Skip a managed plan and you add a maintenance retainer on top. Agencies commonly charge **R500–R1,500 a month** for basic upkeep like updates, backups and small content changes, and up to **R12,000 a month** for hands-on support of a larger or e-commerce site." },
+      { p: "A managed plan from **R799 a month** bundles hosting and support into one bill. At the bottom of each range those items come to less than R799 a month: hosting from R100, a .co.za domain from about R99 a year, and basic maintenance from R500. Once maintenance moves past the basic band, the separate total runs well above R799. Compare on what is included, not on the headline number alone. Read [what's included in hosting and maintenance](/guides/whats-included-in-website-hosting-and-maintenance/) before comparing a monthly plan against a once-off quote plus these running costs." },
       { h2: "Why Overseas Website Quotes Don't Compare Directly: UK, Australia and India" },
       { p: "The figures in this article are South African, in rands, from South African suppliers. This guide prices the South African market only, so an overseas reader should use the band framework here rather than these rand amounts. That matters if you're comparing a local quote against something you found on a UK, Australian or Indian site. Currency, tax rules and labour costs differ. A number quoted in pounds or dollars won't translate cleanly into rands just by converting it on the day, and no rand figure in this article is a UK, Australian or Indian price." },
       { p: "The shape of the market is the same everywhere, though. A template or DIY build sits at the bottom of the range. A fully custom design costs more, because it includes original design work rather than a template with your logo dropped in. In South Africa that is the template band and the custom band set out in the short answer above." },
@@ -555,7 +555,7 @@ export const articles: Article[] = [
       },
       {
         q: "Does the build price include hosting and a domain?",
-        a: "Not usually, unless you're on a managed plan. Hosting alone typically costs R89 to R499 a month, and a .co.za domain around R150 a year.",
+        a: "Not usually, unless you're on a managed plan. Hosting alone typically costs R100 to R800 a month, and a .co.za domain renews from about R99 a year.",
       },
       {
         q: "Is a freelancer or an agency cheaper?",
