@@ -7,19 +7,19 @@
    "state": "fresh"
   },
   "a2": {
-   "feed_at": "2026-11-21T23:59:48+00:00",
+   "feed_at": "2026-11-22T00:28:43+00:00",
    "newest_step_end": "2026-11-21T11:20:08+00:00",
    "newest_stretch_end": "2026-10-18T03:16:10+00:00",
    "state": "fresh"
   },
   "a3": {
-   "feed_at": "2026-11-21T23:57:39+00:00",
+   "feed_at": "2026-11-22T00:29:49+00:00",
    "newest_step_end": "2026-11-21T23:42:06+00:00",
    "newest_stretch_end": "2026-10-30T10:49:15+00:00",
    "state": "fresh"
   },
   "a4": {
-   "feed_at": "2026-11-22T00:01:49+00:00",
+   "feed_at": "2026-11-22T00:30:51+00:00",
    "newest_step_end": "2026-11-21T08:09:05+00:00",
    "newest_stretch_end": "2026-10-06T22:48:16+00:00",
    "state": "fresh"
@@ -230,8 +230,8 @@
   "max20": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-11-22T00:00:05+00:00",
-    "current_since": "2026-10-23T00:00:05+00:00",
+    "as_of": "2026-11-22T00:30:05+00:00",
+    "current_since": "2026-10-23T00:30:05+00:00",
     "freshest_sample_at": "2026-10-23T19:12:07+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 2,
@@ -284,8 +284,8 @@
   "max5": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-11-22T00:00:05+00:00",
-    "current_since": "2026-10-23T00:00:05+00:00",
+    "as_of": "2026-11-22T00:30:05+00:00",
+    "current_since": "2026-10-23T00:30:05+00:00",
     "freshest_sample_at": "2026-10-23T19:56:41+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -352,8 +352,8 @@
   "pro": {
    "contributors": 1,
    "evidence": {
-    "as_of": "2026-11-22T00:00:05+00:00",
-    "current_since": "2026-10-23T00:00:05+00:00",
+    "as_of": "2026-11-22T00:30:05+00:00",
+    "current_since": "2026-10-23T00:30:05+00:00",
     "freshest_sample_at": "2026-10-24T07:37:50+00:00",
     "ignored_invalid_time_samples": 0,
     "ignored_old_samples": 0,
@@ -393,7 +393,7 @@
     "with_complete_week": 0
    }
   },
-  "updated_at": "2026-11-22T00:00:05+00:00"
+  "updated_at": "2026-11-22T00:30:05+00:00"
  },
  "credits": {
   "as_of": "2026-10-30T10:49:15+00:00",
@@ -11011,7 +11011,7 @@
    }
   ]
  },
- "generated_at": "2026-11-22T00:05:59.551076+00:00",
+ "generated_at": "2026-11-22T00:33:10.836102+00:00",
  "headline": {
   "at": "2026-11-10T12:00:00+00:00",
   "change_pct": -48.0,
@@ -24575,7 +24575,7 @@
   "windows_per_week_change_pct": -9.2
  },
  "last_sample_at": "2026-10-30T19:42:26+00:00",
- "meter_read_at": "2026-11-22T00:01:49+00:00",
+ "meter_read_at": "2026-11-22T00:30:51+00:00",
  "model_plan_limits": {
   "claude-fable-5-1": {
    "max20": {
@@ -38818,6 +38818,21 @@
         "q1": 2.66,
         "q3": 5.84
        }
+      },
+      {
+       "day": "2026-11-22",
+       "fast_session_requests": 0,
+       "n": 54,
+       "output_tokens_per_s": {
+        "median": 98.9,
+        "q1": 85.5,
+        "q3": 106.7
+       },
+       "time_to_first_block_s": {
+        "median": 2.69,
+        "q1": 2.22,
+        "q3": 3.68
+       }
       }
      ],
      "a4": [
@@ -42166,6 +42181,21 @@
         "q1": 2.66,
         "q3": 5.84
        }
+      },
+      {
+       "day": "2026-11-22",
+       "fast_session_requests": 0,
+       "n": 54,
+       "output_tokens_per_s": {
+        "median": 98.9,
+        "q1": 85.5,
+        "q3": 106.7
+       },
+       "time_to_first_block_s": {
+        "median": 2.69,
+        "q1": 2.22,
+        "q3": 3.68
+       }
       }
      ],
      "a3:sdk-cli": [
@@ -44385,6 +44415,21 @@
         "q1": 2.53,
         "q3": 6.02
        }
+      },
+      {
+       "day": "2026-11-22",
+       "fast_session_requests": 0,
+       "n": 54,
+       "output_tokens_per_s": {
+        "median": 98.9,
+        "q1": 85.5,
+        "q3": 106.7
+       },
+       "time_to_first_block_s": {
+        "median": 2.69,
+        "q1": 2.22,
+        "q3": 3.68
+       }
       }
      ],
      "sdk-cli": [
@@ -46296,6 +46341,21 @@
        "median": 3.73,
        "q1": 2.53,
        "q3": 6.08
+      }
+     },
+     {
+      "day": "2026-11-22",
+      "fast_session_requests": 0,
+      "n": 54,
+      "output_tokens_per_s": {
+       "median": 98.9,
+       "q1": 85.5,
+       "q3": 106.7
+      },
+      "time_to_first_block_s": {
+       "median": 2.69,
+       "q1": 2.22,
+       "q3": 3.68
       }
      }
     ]
